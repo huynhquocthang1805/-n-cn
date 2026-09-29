@@ -25,3 +25,6 @@ logs/
 *.log
 *.out
 *.toc
+
+# checkpoint nhỏ của demo (~120 KB) được đưa lên git
+!demo/*.pt

@@ -9,6 +9,7 @@ from __future__ import annotations
 import os, re, shutil, glob
 import numpy as np, pandas as pd
 from section_proofs import build_section
+from section_e13 import build_section as build_section_e13
 
 R = 'results'
 OUT = 'bao-cao-latex'
@@ -1042,9 +1043,9 @@ nhãn; cần mở rộng sang 10\,\% và 50\,\%, và quét cả learning rate l�
 hiện riêng phần động học đen làm ablation). Nên thêm GPR, XGBoost, CNN-1D và mô hình chuỗi
 (GRU/TCN trên cửa sổ 20--50 chu kỳ) --- tất cả cắm được vào chỗ mạng nghiệm.
 
-\item \textbf{{Đặc trưng.}} Bộ 16 đặc trưng thừa hưởng từ PINN4SOH; bước lọc $3\sigma$ theo
-cell dùng thống kê cả vòng đời (nhẹ, chỉ trên đặc trưng, nhưng vẫn không nhân quả) --- nên
-thay bằng lọc trượt nhân quả.
+\item \textbf{{Đặc trưng.}} Bộ 16 đặc trưng thừa hưởng từ PINN4SOH. Bước lọc $3\sigma$ theo
+cell dùng thống kê cả vòng đời ở E1--E12 đã được thay bằng lọc trượt nhân quả trong pipeline v2
+(mục~\ref{{sec:e13}}); các thí nghiệm E1--E12 vẫn giữ bộ lọc cũ để tái lập được.
 
 \item \textbf{{Vật lý sâu hơn.}} Đưa lượng Ah-throughput thay cho chỉ số chu kỳ làm biến thời
 gian (chuyển miền tốt hơn giữa các protocol), tách LLI/LAM từ phân tích IC/DV để SOH không
@@ -1056,6 +1057,9 @@ ràng buộc đơn điệu cả trên đường đi của $\mathbf{{x}}$, thay v
 """
 
     sec['10b-chungminh'] = build_section()
+    e13 = build_section_e13()          # rỗng nếu chưa chạy E13
+    if e13:
+        sec['10c-e13'] = e13
 
     for name, body in sec.items():
         open(f'{OUT}/sections/{name}.tex', 'w').write(body)

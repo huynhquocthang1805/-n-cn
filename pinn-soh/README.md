@@ -12,6 +12,12 @@ pipeline **không rò rỉ thông tin**.
 Toàn bộ kết quả trong báo cáo dựa trên **1 363 lượt huấn luyện thật** trên **387 cell** của
 bốn bộ dữ liệu công khai (XJTU, TJU, MIT, HUST).
 
+**Cập nhật 29/09/2026 — pipeline v2 và thí nghiệm xác nhận E13.** Sửa năm điểm của bản rà soát
+(lọc ngoại lai nhân quả, nhãn tuỳ chọn, cùng normaliser cho mọi mô hình, lấy cặp theo chu kỳ gốc,
+EOL theo chu kỳ có kiểm duyệt), rồi chạy lại phép so MLP–PINN theo một đề cương **ấn định trước**
+(`tai-lieu/de-cuong-E13.md`) bằng kiểm định chéo 5 fold theo cell × 5 lần lặp. Kết quả:
+`tai-lieu/ket-qua-E13.md`. Chế độ v1 vẫn là mặc định và tái lập từng bit các log cũ.
+
 ---
 
 ## 1. Cài đặt
@@ -81,6 +87,10 @@ print({d: len(load_dataset('PINN4SOH/data', d)) for d in ['XJTU','TJU','MIT','HU
 | `metrics.py` | MAE gộp hàng, MAE theo cell, MAE giai đoạn cuối, sai số EOL, chỉ số vi phạm đơn điệu, nhiễu quỹ đạo. |
 | `plotstyle.py` | Khuôn vẽ hình cho báo cáo. |
 
+Các tuỳ chọn của pipeline v2 nằm trong `Config` (mặc định = v1): `clean='causal'`,
+`norm_pool='train'`, `pair_by='cycle'`, `split='cv'` (+ `fold`, `repeat`, `n_folds`),
+`save_model`. `Config(...).v2()` bật cả ba sửa đổi dữ liệu cùng lúc.
+
 ### Thí nghiệm
 
 | Lệnh | Thí nghiệm | Số lượt |
@@ -96,6 +106,8 @@ print({d: len(load_dataset('PINN4SOH/data', d)) for d in ['XJTU','TJU','MIT','HU
 | `python experiments.py E10` | Ma trận chuyển miền đầy đủ 4×4 | 48 |
 | `python experiments.py E12` | **Ngân sách tinh chỉnh cân bằng** — cùng một lưới cho cả hai mô hình | 384 |
 | `python decode.py` | E8 — giải mã đơn điệu hậu kỳ (PAVA), không huấn luyện lại | — |
+| `python experiments.py E13 --workers 4` | **Xác nhận, pipeline v2** — CV 5 fold × 5 lần lặp theo cell, 11 nhánh chỉ khác hàm mất mát | 1 100 |
+| `python experiments.py E14 --workers 4 --seeds 0 1 2 3 4` | E5 lặp lại với **cùng normaliser** cho MLP và PINN, pipeline v2 | 80 |
 
 Tham số chung: `--seeds 0 1 2`, `--datasets XJTU TJU MIT HUST`, `--threads N`.
 Kết quả ghi vào `runs/<E?>/` dạng JSON, đặt tên theo cấu hình nên **chạy lại được từ giữa
@@ -104,12 +116,19 @@ chừng** (lượt đã có file thì bỏ qua).
 E11 (bộ chỉ số mở rộng) đọc lại dự đoán đã lưu của E1, không cần huấn luyện — nó chạy bên
 trong `analyze.py`.
 
+E13/E14 chạy song song `--workers` tiến trình (mỗi tiến trình 1 luồng) — ~2 giờ trên 4 lõi CPU.
+
 ### Tổng hợp và vẽ hình
 
 ```bash
 python analyze.py     # runs/**/*.json  ->  results/E?_table.csv + .md
 python figures.py     # results/*.csv   ->  results/fig_*.png và .pdf
+python analyze_e13.py # runs/E13, runs/E14 -> results/E13_*.csv|md, E14_table.*, fig_E13_*
+python section_e13.py # results/E13_*   -> tai-lieu/ket-qua-E13.md (cũng được make_latex.py chèn thành mục 10c)
 ```
+
+`results/E13_percell.csv` (một hàng = một cell × một lượt) đủ để kiểm lại mọi con số của E13 mà
+không cần 1 100 file JSON.
 
 `figures.py` dùng phông **TeX Gyre Heros** (gói `tex-gyre` của TeX Live, hoặc
 `fonts-texgyre` trên Debian/Ubuntu). Thiếu phông thì matplotlib tự lùi về DejaVu Sans —
@@ -119,6 +138,7 @@ hình vẫn vẽ ra, chỉ khác kiểu chữ.
 
 ```bash
 python verify_losses.py --csv     # 24 phép kiểm tính chất của các loss -> results/verify_table.csv
+python verify_pipeline.py --csv   # 21 phép kiểm cho pipeline v2 và CV -> results/verify_pipeline.csv
 python seed_sweep.py              # nâng phép so chính ở 30 % nhãn lên 10 seed   (~14 phút)
 python seed_sweep_tuned.py        # như trên, cấu hình đã tinh chỉnh            (~26 phút)
 python stats_test.py                                              # kiểm định cấu hình E1
@@ -145,7 +165,19 @@ python make_markdown.py   # report.html -> bao-cao-md/bao-cao.md + hinh/
 python make_latex.py      # results/  -> bao-cao-latex/  (xelatex + bibtex)
 cd bao-cao-latex && xelatex main && bibtex main && xelatex main && xelatex main
 cd slide && node make_slides_bk.js    # slide theo khuôn BK
+python slide/cap_nhat_slide_E13.py <bản-29-09.pptx> <bản-mới.pptx>   # điền kết quả E13 vào bộ slide 29/09
 ```
+
+### Demo — ước lượng SOH cho một cell
+
+```bash
+python demo.py train --dataset XJTU                     # PINN-semi, 30 % nhãn, v2 -> demo/XJTU.pt (~1 phút)
+python demo.py predict --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv"
+python demo.py predict --model demo/XJTU.pt --csv "..." --an-nhan   # bỏ cột capacity: cell chưa đo dung lượng
+```
+
+Ước lượng ở chu kỳ N chỉ dùng dữ liệu đến chu kỳ N, nên chạy trực tuyến được. Đầu ra:
+`demo/<cell>_soh.csv` và `.png`; lệnh `train` in danh sách cell test (chưa từng thấy khi huấn luyện).
 
 `section_proofs.py` được `make_latex.py` import, sinh mục 15 "Tính đúng đắn: chứng minh và
 kiểm định" thẳng từ `results/stats_*.csv` và `results/verify_table.csv`.
@@ -166,7 +198,10 @@ kiểm định" thẳng từ `results/stats_*.csv` và `results/verify_table.csv
    PINN. Trước E12 thì PINN được quét còn MLP chạy cấu hình cố định — tức là thiên vị.
 5. **Phát biểu đúng mức.** Với 10 seed, ở cấu hình đã tinh chỉnh có bằng chứng nhất quán
    rằng PINN giảm MAE 10–28 % trên ba trong bốn bộ, **nhưng chưa đạt mức có ý nghĩa thống kê
-   sau hiệu chỉnh đa so sánh**. Chi tiết ở `tai-lieu/chung-minh.md` mục 5.
+   sau hiệu chỉnh đa so sánh**. Chi tiết ở `tai-lieu/chung-minh.md` mục 5. E13 kiểm lại câu
+   hỏi này bằng giao thức mạnh hơn — xem `tai-lieu/ket-qua-E13.md`.
+6. **Chốt tiêu chí trước khi xem test.** Đề cương E13 được commit trước lượt huấn luyện đầu
+   tiên; phân tích chạy đúng các phép kiểm đã ấn định, không thêm hay bớt sau khi thấy kết quả.
 
 ## 5. Nguồn dữ liệu
 
