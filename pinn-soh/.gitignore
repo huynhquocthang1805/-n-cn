@@ -5,7 +5,8 @@ venv/
 .ipynb_checkpoints/
 
 # Dữ liệu gốc và kết quả chạy: gửi kèm dạng zip riêng, không đẩy lên git
-PINN4SOH/data/
+PINN4SOH/data
+*.pt
 runs/
 results/
 

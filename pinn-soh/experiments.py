@@ -14,6 +14,8 @@ E4  leakage audit     : PINN4SOH-style per-cell min-max normalisation of feature
                         normalisation; and no-cycle-input.
 E5  adaptation        : source (70 % labelled) + target with k in {0,3} labelled cells; PINN-semi applies the
                         label-free physics losses to ALL target training cells; evaluated on the target TEST cells.
+E13 confirmatory      : pipeline v2, 5-fold × 5-repeat cell-wise CV, 11 arms (tai-lieu/de-cuong-E13.md).
+E14 same-normaliser   : E5 with ONE normaliser for both models (source + target train features), pipeline v2.
 
 usage:  python experiments.py E1 [--seeds 0 1 2] [--datasets XJTU TJU MIT HUST] [--threads 2]
 """
@@ -185,12 +187,95 @@ def E12(seeds, datasets, out='runs/E12'):
                                save_predictions=False, **kw, **extra), verbose=False)
 
 
+# --------------------------------------------------------------------------- E13 confirmatory (pipeline v2, CV)
+# Đề cương ấn định trước: tai-lieu/de-cuong-E13.md. KHÔNG sửa cấu hình dưới đây sau khi đã chạy.
+E13_NET = dict(hidden=(128, 128, 64))                                   # TUNED 'wide'
+E13_PHYS = dict(beta_mono=0.5, residual='autograd', alpha_ode=0.02)     # E7, chọn theo validation
+E13_ARMS = [   # (tag, model, label_frac, extra) — thứ tự = thứ tự ưu tiên chạy
+    ('A', 'mlp', 0.3, {}),
+    ('C', 'pinn_semi', 0.3, E13_PHYS),
+    ('F', 'mlp', 0.7, {}),
+    ('B', 'pinn_sup', 0.3, E13_PHYS),
+    ('D', 'pinn_semi', 0.3, dict(E13_PHYS, alpha_ode=0.0, gamma_range=0.0)),
+    ('E', 'pinn_semi', 0.3, dict(beta_mono=0.5, residual='euler', alpha_ode=2.0)),
+    ('G', 'pinn_semi', 0.7, E13_PHYS),
+    ('L', 'mlp', 0.1, {}), ('L', 'pinn_semi', 0.1, E13_PHYS),
+    ('L', 'mlp', 0.5, {}), ('L', 'pinn_semi', 0.5, E13_PHYS),
+]
+E13_FOLDS = 5
+
+
+def _worker_init():
+    torch.set_num_threads(1)
+
+
+def _run_job(kind, kw):
+    import time as _t
+    t0 = _t.time()
+    if kind == 'train':
+        cfg = Config(**kw).v2()
+        r = run(cfg, verbose=False)
+        return kw.get('tag', ''), cfg.dataset, cfg.model, r['test'].get('MAE_cell'), _t.time() - t0
+    cfg = TransferConfig(**kw)
+    cfg.clean, cfg.pair_by = 'causal', 'cycle'                           # v2; norm_pool đặt trong kw
+    r = run_transfer(cfg)
+    return kw.get('tag', ''), f'{cfg.dataset}->{cfg.target}', cfg.model, r['target_test'].get('MAE_cell'), _t.time() - t0
+
+
+def _pool_run(jobs, workers):
+    import time as _t
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    import multiprocessing as mp
+    t0 = _t.time()
+    with ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context('spawn'),
+                             initializer=_worker_init) as ex:
+        futs = [ex.submit(_run_job, k, kw) for k, kw in jobs]
+        for i, f in enumerate(as_completed(futs), 1):
+            tag, ds, m, mae, dt = f.result()
+            el = _t.time() - t0
+            print(f'[{i:4d}/{len(jobs)}] {tag:>2s} {ds:<11s} {m:<10s} MAE_cell {mae:.4f}  {dt:4.0f}s  '
+                  f'(đã {el/60:.1f} ph, còn ~{el/i*(len(jobs)-i)/60:.0f} ph)', flush=True)
+    print('xong', flush=True)
+
+
+def E13(seeds, datasets, out='runs/E13', workers=4, repeats=5):
+    """Đối chứng xác nhận, ấn định trước (tai-lieu/de-cuong-E13.md). `seeds` không dùng:
+    seed = 100 * lần_lặp + fold, giống nhau cho mọi nhánh -> ghép cặp."""
+    from pinnsoh.train import run_name
+    jobs = []
+    for (tag, m, f, extra), r, ds, k in itertools.product(E13_ARMS, range(repeats), datasets, range(E13_FOLDS)):
+        kw = dict(dataset=ds, label_frac=f, model=m, seed=100 * r + k, split='cv', fold=k, repeat=r,
+                  n_folds=E13_FOLDS, tag=tag, out_dir=out, **E13_NET, **extra)
+        if not os.path.exists(os.path.join(out, run_name(Config(**kw)) + '.json')):
+            jobs.append(('train', kw))
+    print(f'E13: cần chạy {len(jobs)} lượt', flush=True)
+    _pool_run(jobs, workers)
+
+
+def E14(seeds, datasets, out='runs/E14', workers=4, repeats=None):
+    """E5 lặp lại với CÙNG normaliser cho MLP và PINN (norm_pool='train'), pipeline v2."""
+    jobs = []
+    for ds, s, k, m in itertools.product(datasets, seeds, [0, 3], ['mlp', 'pinn_semi']):
+        kw = dict(dataset=ds, target=PAIRS[ds][0], model=m, k_target=k, seed=s, norm='global',
+                  norm_pool='train', tag='samenorm', out_dir=out, save_predictions=False)
+        name = f'samenorm_{ds}_to_{PAIRS[ds][0]}_{m}_k{k}_s{s}_global'
+        if not os.path.exists(os.path.join(out, name + '.json')):
+            jobs.append(('transfer', kw))
+    print(f'E14: cần chạy {len(jobs)} lượt', flush=True)
+    _pool_run(jobs, workers)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('exp', choices=['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E9', 'E10', 'E12'])
+    ap.add_argument('exp', choices=['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E9', 'E10', 'E12', 'E13', 'E14'])
     ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
     ap.add_argument('--datasets', nargs='+', default=DATASETS)
     ap.add_argument('--threads', type=int, default=1)
+    ap.add_argument('--workers', type=int, default=4, help='E13/E14: số tiến trình song song (mỗi tiến trình 1 luồng)')
+    ap.add_argument('--repeats', type=int, default=5, help='E13: số lần lặp kiểm định chéo')
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
-    globals()[a.exp](a.seeds, a.datasets)
+    if a.exp in ('E13', 'E14'):
+        globals()[a.exp](a.seeds, a.datasets, workers=a.workers, repeats=a.repeats)
+    else:
+        globals()[a.exp](a.seeds, a.datasets)

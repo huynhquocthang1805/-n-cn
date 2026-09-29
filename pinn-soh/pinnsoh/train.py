@@ -11,6 +11,11 @@ model kinds
 Physics losses are evaluated on (N, N+h) pairs of the same cell with a random horizon
 1 <= h <= h_max cycles.  Using a horizon (instead of only consecutive cycles) keeps the
 finite-difference derivative  (u(N+h)-u(N))/(h/1000)  well above the network's own noise.
+
+Pipeline v2 (Config.v2() bật cả năm): clean='causal', norm_pool='train' (MỌI mô hình dùng CÙNG một
+normaliser fit trên đặc trưng của mọi cell train — hợp lệ vì đặc trưng không phải nhãn — nên khác biệt
+giữa MLP và PINN chỉ còn là hàm mất mát), pair_by='cycle', nhãn tuỳ chọn, EOL theo chu kỳ.
+split='cv' dùng kiểm định chéo K-fold theo cell (data.cv_split).
 """
 from __future__ import annotations
 import json, math, os, time
@@ -21,7 +26,7 @@ import torch
 import torch.nn.functional as Fnn
 from torch.autograd import grad
 
-from .data import (Normalizer, PointSet, load_dataset, split_cells, choose_labelled, make_pointset)
+from .data import (Normalizer, PointSet, load_dataset, split_cells, choose_labelled, make_pointset, cv_split)
 from .models import SOHModel
 from .metrics import evaluate as eval_metrics
 
@@ -73,14 +78,44 @@ class Config:
     transfer_to: tuple = ()
     transfer_test_only: bool = True  # đánh giá trên tập TEST của bộ đích (cùng seed) -> đường chéo của
                                      # ma trận chuyển miền trùng đúng kết quả trong miền
+    # ---- pipeline v2 (mặc định = v1 để 1 387 log cũ tái lập được)
+    clean: str = 'life3sigma'        # life3sigma (v1) | causal (v2: chỉ dùng quá khứ của cell)
+    norm_pool: str = 'model'         # model (v1: semi -> mọi cell train, còn lại -> cell có nhãn) | train (v2: mọi mô hình)
+    pair_by: str = 'row'             # row (v1: h đếm theo hàng sau lọc) | cycle (v2: h đếm theo chu kỳ gốc)
+    split: str = 'seed'              # seed (70/15/15 gieo theo seed) | cv (K-fold theo cell, lặp lại)
+    fold: int = 0
+    n_folds: int = 5
+    repeat: int = 0
+    val_frac_cv: float = 0.10
+    save_model: bool = False         # lưu trọng số + normaliser (<tên>.pt) để dùng cho demo
+
+    def v2(self) -> 'Config':
+        """Bật đủ năm sửa đổi của pipeline v2."""
+        self.clean, self.norm_pool, self.pair_by = 'causal', 'train', 'cycle'
+        return self
 
 
 def set_seed(seed: int):
     np.random.seed(seed); torch.manual_seed(seed)
 
 
-def metrics(y: np.ndarray, p: np.ndarray, cell_idx: Optional[np.ndarray] = None) -> Dict[str, float]:
-    return eval_metrics(y, p, cell_idx)
+def metrics(y: np.ndarray, p: np.ndarray, cell_idx: Optional[np.ndarray] = None,
+            cycle: Optional[np.ndarray] = None) -> Dict[str, float]:
+    return eval_metrics(y, p, cell_idx, cycle=cycle)
+
+
+_CACHE: Dict[tuple, list] = {}
+
+
+def _load(cfg: Config, name: str):
+    # chỉ truyền `clean` khi khác v1 -> các script cũ vá load_dataset(root, name) vẫn chạy.
+    # v2 được nhớ đệm trong tiến trình (Cell không bị sửa ở đâu cả; transform luôn tạo mảng mới).
+    if cfg.clean == 'life3sigma':
+        return load_dataset(cfg.root, name)
+    key = (cfg.root, name, cfg.clean)
+    if key not in _CACHE:
+        _CACHE[key] = load_dataset(cfg.root, name, clean=cfg.clean)
+    return list(_CACHE[key])
 
 
 class Trainer:
@@ -91,26 +126,34 @@ class Trainer:
     # ---------------------------------------------------------------- data
     def prepare(self):
         cfg = self.cfg
-        cells = load_dataset(cfg.root, cfg.dataset)
+        cells = _load(cfg, cfg.dataset)
         by_id = {c.cid: c for c in cells}
-        split = split_cells(cells, cfg.seed)
+        if cfg.split == 'cv':
+            split = cv_split(cells, cfg.fold, cfg.repeat, cfg.n_folds, cfg.val_frac_cv)
+        else:
+            split = split_cells(cells, cfg.seed)
         lab_ids, unl_ids = choose_labelled(split['train'], cfg.label_frac, len(cells), cfg.seed, by_id)
         self.split = dict(split, labelled=lab_ids, unlabelled=unl_ids)
         tr_lab = [by_id[i] for i in lab_ids]; tr_unl = [by_id[i] for i in unl_ids]
         va = [by_id[i] for i in split['val']]; te = [by_id[i] for i in split['test']]
         semi = cfg.model in ('pinn_semi', 'pinn_bb')
-        # Normaliser: fitted on features only (labels never used). Semi-supervised models may use all
-        # training cells' features; purely supervised models only see labelled cells.
-        self.norm = Normalizer(cfg.norm).fit(tr_lab + tr_unl if semi else tr_lab)
-        self.S_lab = make_pointset(tr_lab, self.norm, cfg.cyc)
+        # Normaliser: fitted on features only (labels never used).
+        #   v1 (norm_pool='model'): semi-supervised models use all training cells' features, purely
+        #       supervised models only labelled cells -> MLP và PINN khác nhau CẢ ở normaliser.
+        #   v2 (norm_pool='train'): mọi mô hình dùng cùng pool đặc trưng của mọi cell train.
+        pool = tr_lab + tr_unl if (semi or cfg.norm_pool == 'train') else tr_lab
+        self.norm = Normalizer(cfg.norm).fit(pool)
+        lab_only = cfg.clean != 'life3sigma'          # v2: loss dữ liệu / val / test chỉ trên hàng có nhãn
+        self.S_lab = make_pointset(tr_lab, self.norm, cfg.cyc, labelled_only=lab_only)
         self.S_unl = make_pointset(tr_unl, self.norm, cfg.cyc) if (semi and tr_unl) else None
-        self.val = make_pointset(va, self.norm, cfg.cyc)
-        self.test = make_pointset(te, self.norm, cfg.cyc)
+        self.val = make_pointset(va, self.norm, cfg.cyc, labelled_only=lab_only)
+        self.test = make_pointset(te, self.norm, cfg.cyc, labelled_only=lab_only)
+        self.test_ids = [c.cid for c in te]
         self.n_cells = dict(train_labelled=len(tr_lab), train_unlabelled=len(tr_unl), val=len(va), test=len(te),
                             all=len(cells))
         self.transfer = {}
         for tgt in cfg.transfer_to:
-            tcells = load_dataset(cfg.root, tgt)
+            tcells = _load(cfg, tgt)
             if cfg.transfer_test_only:
                 keep = set(split_cells(tcells, cfg.seed)['test'])
                 tcells = [c for c in tcells if c.cid in keep]
@@ -118,7 +161,8 @@ class Trainer:
         return self
 
     def _pairs(self, S: PointSet, rng, batch):
-        i, j = S.sample_pairs(rng, batch, self.cfg.h_min, self.cfg.h_max)
+        sampler = S.sample_pairs_cycle if self.cfg.pair_by == 'cycle' else S.sample_pairs
+        i, j = sampler(rng, batch, self.cfg.h_min, self.cfg.h_max)
         f = lambda a, idx: torch.from_numpy(a[idx]).to(self.dev)
         return dict(x1=f(S.X, i), x2=f(S.X, j), t1=f(S.T, i), t2=f(S.T, j), y1=f(S.Y, i), y2=f(S.Y, j),
                     invT=f(S.invT, i), first=torch.from_numpy(i == S.start[i]).to(self.dev))
@@ -221,28 +265,39 @@ class Trainer:
                    test=self.evaluate(model, self.test), history=hist, split=self.split)
         res['w_adapt'] = w_adapt; res['f_lab'] = f_lab
         if dyn == 'greybox':
-            res['physics_params'] = dict(lam=float(model.dyn.lam), Ea_kJ_mol=float(model.dyn.Ea) / 1e3)
+            res['physics_params'] = dict(lam=model.dyn.lam.item(), Ea_kJ_mol=model.dyn.Ea.item() / 1e3)
         for tgt, pts in self.transfer.items():
             res[f'transfer_{tgt}'] = self.evaluate(model, pts)
         if cfg.save_predictions:
             res['test_predictions'] = self.predict(model, self.test)
+            res['test_predictions']['cell_ids'] = getattr(self, 'test_ids', None)
         return res
+
+    def save_checkpoint(self, path: str):
+        """Trọng số mạng + thống kê normaliser + cấu hình: đủ để dự đoán SOH cho một cell mới."""
+        torch.save(dict(state=self.model.state_dict(), mu=self.norm.mu, sd=self.norm.sd,
+                        norm_mode=self.norm.mode, config=asdict(self.cfg)), path)
 
     @torch.no_grad()
     def predict(self, model, S: PointSet):
         model.eval()
         p = model.u(torch.from_numpy(S.X).to(self.dev), torch.from_numpy(S.T).to(self.dev)).cpu().numpy()
-        return dict(y=S.Y.ravel().tolist(), p=p.ravel().tolist(), cell=S.cell.tolist())
+        out = dict(y=S.Y.ravel().tolist(), p=p.ravel().tolist(), cell=S.cell.tolist())
+        if S.cyc is not None:
+            out['cycle'] = S.cyc.tolist()
+        return out
 
     @torch.no_grad()
     def evaluate(self, model, S: PointSet) -> Dict[str, float]:
         model.eval()
         p = model.u(torch.from_numpy(S.X).to(self.dev), torch.from_numpy(S.T).to(self.dev)).cpu().numpy()
-        return metrics(S.Y, p, S.cell)
+        return metrics(S.Y, p, S.cell, S.cyc if self.cfg.clean != 'life3sigma' else None)
 
 
 def run_name(cfg: Config) -> str:
     extra = '' if (cfg.act == 'silu' and cfg.arch == 'mlp') else f'_{cfg.act}-{cfg.arch}'
+    if cfg.split == 'cv':
+        extra += f'_cv{cfg.repeat}-{cfg.fold}of{cfg.n_folds}'
     return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{cfg.norm}_{cfg.cyc}{extra}'
 
 
@@ -254,6 +309,8 @@ def run(cfg: Config, verbose=True, skip_existing=True) -> Dict:
             return json.load(f)
     tr = Trainer(cfg).prepare()
     res = tr.fit(verbose=verbose)
+    if cfg.save_model:
+        tr.save_checkpoint(path[:-5] + '.pt')
     with open(path, 'w') as f:
         json.dump(res, f)
     t = res['test']
