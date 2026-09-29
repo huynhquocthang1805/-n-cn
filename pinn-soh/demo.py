@@ -114,15 +114,14 @@ def cmd_predict(a):
               + (f' · thực đo chạm {EOL_THRESHOLD:.2f} ở chu kỳ {cell.cycle[m][tc[0]]}' if len(tc) else ''))
 
     import matplotlib.pyplot as plt
-    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, MUTED, save
+    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, save
     apply_theme()
-    fig, ax = plt.subplots(figsize=(4.6, 2.4))
+    fig, ax = plt.subplots(figsize=(4.6, 2.4))                # không vẽ chú thích lên ảnh; tên cell nằm ở tên file
     if truth is not None:
         ax.plot(cell.cycle, truth, color=MODEL_COLOR['truth'], lw=1.6, label='thực đo')
     ax.plot(cell.cycle, soh, color=MODEL_COLOR['pinn_semi'], lw=1.1, label='PINN-semi ước lượng')
     ax.axhline(EOL_THRESHOLD, color='#c4ccc8', lw=0.8, ls=(0, (2, 2)))
     ax.set_xlabel('chu kỳ'); ax.set_ylabel('SOH')
-    ax.set_title(f'{name}' + (' — không dùng nhãn dung lượng' if a.an_nhan else ''), loc='left', fontweight='bold')
     ax.legend(loc='lower left')
     fig.tight_layout()
     save(fig, os.path.join(DEMO_DIR, f'{name}_soh'), also_pdf=False, dpi=200)

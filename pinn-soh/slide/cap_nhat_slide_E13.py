@@ -209,10 +209,12 @@ def build(src, dst):
     new.append(figure_slide('Tỉ số MAE theo cell cho mọi so sánh', [f'{R}/fig_E13_forest.png'],
                             label='KHUNG KẾT QUẢ 3 · tỉ số và KTC 95 % theo cell',
                             foot='Xanh = tốt hơn có ý nghĩa sau Holm; xám = chưa đủ bằng chứng; vạch đứt 1,10 = biên H2.',
-                            notes='Đọc theo hàng: H1 và H2 là hai giả thuyết chính; các hàng dưới là so sánh thăm dò.'))
+                            notes='Đọc theo hàng: H1 và H2 là hai giả thuyết chính; các hàng dưới là so sánh thăm dò. '
+                                  + S.CAP_FOREST))
     new.append(figure_slide('Hiệu quả theo lượng nhãn', [f'{R}/fig_E13_curve.png'],
                             label='KHUNG KẾT QUẢ 4 · MAE theo cell ở 10 / 30 / 50 / 70 % nhãn',
-                            foot='Dải = KTC 95 % bootstrap theo cell. Vạch đứt = MLP dùng 70 % nhãn (mốc của H2).'))
+                            foot='Dải = KTC 95 % bootstrap theo cell. Vạch đứt = MLP dùng 70 % nhãn (mốc của H2).',
+                            notes=S.CAP_CURVE))
     rows2 = []
     for ds in DS:
         x = F['h2'][ds]
@@ -227,12 +229,21 @@ def build(src, dst):
                            msg=h2line[0] if h2line else None,
                            foot='Không kém hơn khi p Holm < 0,05 (Wilcoxon một phía trên e_PINN − 1,1·e_MLP) VÀ cận trên '
                                 'KTC 90 % < 1,10.'))
+    # hình không mang chữ chú thích: phần giải thích nằm ở nhãn khung và chân slide, số đọc từ CSV
+    share = ', '.join(f'{ds} {pct(S._row(tests, "C vs A", ds).cell_b_tot_hon)}' for ds in DS
+                      if S._row(tests, 'C vs A', ds) is not None)
     new.append(figure_slide('Từng cell: PINN-semi so với MLP, 30% nhãn', [f'{R}/fig_E13_cells.png'],
                             label='KHUNG KẾT QUẢ 5 · MAE từng cell, trung bình 5 lần lặp',
-                            foot='Mỗi chấm là một cell; dưới đường chéo (xanh lục) = PINN-semi sai số thấp hơn.'))
+                            foot=f'Xanh lục (dưới đường chéo) = PINN-semi thấp hơn. Tỉ lệ cell: {share}.',
+                            notes=S.cap_cells(d)))
+    tr = d.get('traj')
+    tr_foot = ('MAE ×10⁻³ (MLP 30 / PINN 30 / MLP 70): ' + ' · '.join(
+        f'{r.bo} ' + ' / '.join(f(1e3 * r[c], 1) if c in r and np.isfinite(r[c]) else '—'
+                                for c in ['mae_A', 'mae_C', 'mae_F']) for _, r in tr.iterrows())
+               if tr is not None and not tr.empty else 'Quy tắc chọn cell không phụ thuộc PINN. Lần lặp 0.')
     new.append(figure_slide('Quỹ đạo SOH trên cell test', [f'{R}/fig_E13_traj.png'],
                             label='KHUNG KẾT QUẢ 6 · cell có MAE của MLP đúng trung vị mỗi bộ',
-                            foot='Quy tắc chọn cell không phụ thuộc PINN. Lần lặp 0; F = MLP dùng 70 % nhãn.'))
+                            foot=tr_foot, notes=S.cap_traj(d)))
     sec = d['sec']; mrows = []
     for ds in DS:
         for arm in ['A', 'C']:

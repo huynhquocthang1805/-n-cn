@@ -53,12 +53,45 @@ def load():
              sec=pd.read_csv(f'{R}/E13_secondary.csv'), fold=pd.read_csv(f'{R}/E13_perfold.csv'))
     d['ver'] = pd.read_csv(f'{R}/verify_pipeline.csv') if os.path.exists(f'{R}/verify_pipeline.csv') else None
     d['e14'] = pd.read_csv(f'{R}/E14_table.csv') if os.path.exists(f'{R}/E14_table.csv') else None
+    d['traj'] = pd.read_csv(f'{R}/E13_traj_cells.csv') if os.path.exists(f'{R}/E13_traj_cells.csv') else None
     return d
 
 
 def _row(t, key, ds):
     r = t[(t.so_sanh == key) & (t.bo == ds)]
     return None if r.empty else r.iloc[0]
+
+
+# ─────────────────────────────────────────── chú thích hình: KHÔNG vẽ lên ảnh, đặt ở caption / chân slide
+CAP_FOREST = ('Chấm = tỉ số MAE theo cell trung bình; vạch ngang = KTC 95 % bootstrap theo cell (H2: KTC 90 %). '
+              'Xanh = tốt hơn có ý nghĩa sau Holm; cam = tệ hơn có ý nghĩa; xám = chưa đủ bằng chứng. '
+              'Vạch dọc liền tại 1 = ngang nhau; vạch đứt tại 1,10 = biên không kém hơn của H2.')
+CAP_CURVE = ('Dải = KTC 95 % bootstrap theo cell; vạch đứt ngang = MLP dùng 70 % nhãn (mốc của H2); '
+             'trục dọc thang log. Kiểm định chéo 5 fold × 5 lần lặp, pipeline v2.')
+
+
+def cap_cells(d) -> str:
+    """Tỉ lệ cell mà PINN-semi có MAE thấp hơn MLP (30 % nhãn), từng bộ."""
+    parts = []
+    for ds in DS:
+        r = _row(d['tests'], 'C vs A', ds)
+        if r is not None:
+            parts.append(f'{ds} {pct(r.cell_b_tot_hon)}')
+    return ('Mỗi chấm là một cell (MAE trung bình 5 lần lặp); dưới đường chéo, màu xanh lục = PINN-semi sai số '
+            'thấp hơn. Tỉ lệ cell PINN-semi thấp hơn: ' + ', '.join(parts) + '.')
+
+
+def cap_traj(d) -> str:
+    """Cell được vẽ quỹ đạo và MAE của từng nhánh trên cell đó."""
+    t = d.get('traj')
+    if t is None or t.empty:
+        return 'Cell có MAE của MLP 30 % đúng trung vị mỗi bộ, lần lặp 0.'
+    parts = []
+    for _, r in t.iterrows():
+        v = ' / '.join(f(1e3 * r[c], 1) if c in r and np.isfinite(r[c]) else '—' for c in ['mae_A', 'mae_C', 'mae_F'])
+        parts.append(f'{r.bo} {r.cell.split("/")[-1]}: {v}')
+    return ('Cell có MAE của MLP 30 % đúng trung vị mỗi bộ (quy tắc chọn không phụ thuộc PINN), lần lặp 0. '
+            'MAE ×10⁻³ (MLP 30 % / PINN-semi 30 % / MLP 70 %) — ' + '; '.join(parts) + '.')
 
 
 # ─────────────────────────────────────────────────────── các khối nội dung (Markdown trung lập)
@@ -232,7 +265,8 @@ def build_markdown(d) -> str:
     md.append('## 3. H1 — PINN-semi so với MLP, cùng 30 % nhãn\n')
     md.append(md_table(['Bộ', 'Cell', 'MLP (×10⁻³)', 'PINN-semi (×10⁻³)', 'Tỉ số [KTC 95 %]', 'Cell PINN tốt hơn',
                         'p Holm (cell)', 'p Holm (fold, NB)', 'Kết luận'], table_h1(d, F)))
-    md.append('\n![](ket-qua-E13/fig_E13_forest.png)\n\n![](ket-qua-E13/fig_E13_cells.png)\n')
+    md.append(f'\n![](ket-qua-E13/fig_E13_forest.png)\n\n_{CAP_FOREST}_\n')
+    md.append(f'\n![](ket-qua-E13/fig_E13_cells.png)\n\n_{cap_cells(d)}_\n')
 
     md.append('## 4. H2 — tiết kiệm nhãn: PINN-semi 30 % so với MLP 70 %\n')
     rows = []
@@ -246,7 +280,7 @@ def build_markdown(d) -> str:
                         'p Holm (fold, NB)', 'Kết luận (δ = 10 %)'], rows))
     md.append('\nĐường cong theo lượng nhãn — MAE theo cell ×10⁻³, **MLP / PINN-semi**:\n')
     md.append(md_table(['Bộ', '10 %', '30 %', '50 %', '70 %'], table_curve(d)))
-    md.append('\n![](ket-qua-E13/fig_E13_curve.png)\n')
+    md.append(f'\n![](ket-qua-E13/fig_E13_curve.png)\n\n_{CAP_CURVE}_\n')
 
     md.append('## 5. So sánh phụ (thăm dò) — tỉ số MAE theo cell, * = p Holm < 0,05\n')
     md.append(md_table(['So sánh'] + DS, table_secondary_tests(d)))
@@ -256,7 +290,7 @@ def build_markdown(d) -> str:
                         'bỏ sót / báo giả', 'vi phạm đơn điệu /100 ck', 'jitter ×10⁻³'], table_metrics(d)))
     md.append('\n_EOL tại ngưỡng SOH 0,85, tính trên chu kỳ gốc; sai số chỉ lấy trên các cặp (cell, lần lặp) '
               'mà cả nhãn lẫn dự đoán cùng cắt ngưỡng; "bỏ sót" = nhãn cắt nhưng dự đoán không cắt._\n')
-    md.append('\n![](ket-qua-E13/fig_E13_traj.png)\n')
+    md.append(f'\n![](ket-qua-E13/fig_E13_traj.png)\n\n_{cap_traj(d)}_\n')
 
     if d['e14'] is not None:
         md.append('## 7. E14 — chuyển miền với cùng normaliser\n')
@@ -272,7 +306,7 @@ def build_markdown(d) -> str:
 
 # ─────────────────────────────────────────────────────── LaTeX (cho make_latex.py)
 def _tex_esc(s: str) -> str:
-    return (s.replace('%', r'\%').replace('_', r'\_').replace('→', r'$\to$').replace('×10⁻³', r'$\times10^{-3}$')
+    return (s.replace('%', r'\%').replace('_', r'\_').replace('#', r'\#').replace('→', r'$\to$').replace('×10⁻³', r'$\times10^{-3}$')
              .replace('≤', r'$\le$').replace('δ', r'$\delta$').replace('±', r'$\pm$').replace('L_mono', r'$L_\text{mono}$'))
 
 
@@ -318,14 +352,20 @@ cell (Wilcoxon, Holm cho bốn bộ). Phép t hiệu chỉnh Nadeau--Bengio ở 
                  'H1 --- PINN-semi so với MLP khi cùng 30\\,\\% cell có nhãn (MAE theo cell).', 'tab:e13h1') + \
         r"""
 \begin{figure}[htbp]\centering\includegraphics[width=\textwidth]{figures/fig_E13_forest.pdf}
-\caption{Tỉ số MAE theo cell cho các so sánh của E13, KTC bootstrap theo cell.}\label{fig:e13forest}\end{figure}
+\caption{Tỉ số MAE theo cell cho các so sánh của E13. """ + _tex_esc(CAP_FOREST) + r"""}\label{fig:e13forest}\end{figure}
+
+\begin{figure}[htbp]\centering\includegraphics[width=\textwidth]{figures/fig_E13_cells.pdf}
+\caption{MAE từng cell, MLP so với PINN-semi ở 30\,\% nhãn. """ + _tex_esc(cap_cells(d)) + r"""}\label{fig:e13cells}\end{figure}
 
 """ + _tex_table(['Bộ', 'MLP 70 % (×10⁻³)', 'PINN-semi 30 % (×10⁻³)', 'Tỉ số [KTC 90 %]', 'p Holm (cell)',
                   'p Holm (fold)', 'Kết luận (δ = 10 %)'], h2rows, 'lrrlrrl',
                  'H2 --- tiết kiệm nhãn: PINN-semi 30\\,\\% so với MLP 70\\,\\%, biên không kém hơn 10\\,\\%.',
                  'tab:e13h2') + r"""
 \begin{figure}[htbp]\centering\includegraphics[width=\textwidth]{figures/fig_E13_curve.pdf}
-\caption{MAE theo cell theo lượng nhãn, pipeline v2, kiểm định chéo $5\times5$.}\label{fig:e13curve}\end{figure}
+\caption{MAE theo cell theo lượng nhãn. """ + _tex_esc(CAP_CURVE) + r"""}\label{fig:e13curve}\end{figure}
+
+\begin{figure}[htbp]\centering\includegraphics[width=\textwidth]{figures/fig_E13_traj.pdf}
+\caption{Quỹ đạo SOH trên cell test. """ + _tex_esc(cap_traj(d)) + r"""}\label{fig:e13traj}\end{figure}
 
 """ + _tex_table(['So sánh'] + DS, table_secondary_tests(d), 'lrrrr',
                  'So sánh phụ (thăm dò): tỉ số MAE theo cell; * = p Holm < 0,05.', 'tab:e13phu') + \
@@ -345,7 +385,7 @@ cell (Wilcoxon, Holm cho bốn bộ). Phép t hiệu chỉnh Nadeau--Bengio ở 
 
 EXPORT = 'tai-lieu/ket-qua-E13'
 EXPORT_FILES = ['E13_tests.csv', 'E13_tests.md', 'E13_curve.csv', 'E13_secondary.csv', 'E13_perfold.csv',
-                'E13_physics_params.csv', 'E14_table.csv', 'verify_pipeline.csv',
+                'E13_physics_params.csv', 'E13_traj_cells.csv', 'E14_table.csv', 'verify_pipeline.csv',
                 'fig_E13_forest.png', 'fig_E13_curve.png', 'fig_E13_cells.png', 'fig_E13_traj.png']
 
 

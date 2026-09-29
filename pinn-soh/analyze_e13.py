@@ -240,8 +240,7 @@ def to_md(df: pd.DataFrame, path: str, fmt=None):
 # ───────────────────────────────────────────────────────────── 4. hình
 def figures(pc, tests, cur):
     import matplotlib, matplotlib.pyplot as plt
-    from pinnsoh.plotstyle import (apply_theme, MODEL_COLOR, INK, INK2, MUTED, GRID, CHEM, panel_title,
-                                   direct_label, figure_note, save, log_mae_axis)
+    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, GRID, CHEM, panel_title, save, log_mae_axis
     apply_theme()
     GOOD, BAD, NEU = '#0d6e56', '#b8531f', '#78848d'
 
@@ -265,8 +264,6 @@ def figures(pc, tests, cur):
                 col = GOOD if (r.p_holm < 0.05 and r.ti_so < 1) else (BAD if r.p_holm < 0.05 else NEU)
             ax.plot([r.ci_lo, r.ci_hi], [i, i], color=col, lw=1.6, solid_capstyle='round')
             ax.plot(r.ti_so, i, 'o', ms=4.6, color=col, mec='white', mew=0.8, zorder=3)
-            ax.annotate(f'{r.ti_so:.2f}', (r.ci_hi, i), xytext=(3, 0), textcoords='offset points',
-                        va='center', fontsize=6.3, color=INK2)
         ax.axvline(1.0, color='#c4ccc8', lw=0.8, zorder=0)
         ax.axvline(MARGIN, color='#c4ccc8', lw=0.8, ls=(0, (2, 2)), zorder=0)
         ax.set_ylim(len(order) - 0.5, -0.6)
@@ -278,10 +275,7 @@ def figures(pc, tests, cur):
             ax.set_yticks(range(len(order))); ax.set_yticklabels([o[1] for o in order])
         ax.tick_params(axis='y', length=0)
     axes[1].set_xlabel('tỉ số MAE theo cell (< 1: nhánh thứ nhất sai số thấp hơn)', x=1.05)
-    figure_note(fig, 'Chấm = tỉ số trung bình trên các cell; vạch = KTC 95 % bootstrap theo cell (H2: KTC 90 %). '
-                     'Xanh = có ý nghĩa sau Holm theo hướng tốt hơn; cam = tệ hơn; xám = chưa đủ bằng chứng. '
-                     'Vạch đứt tại 1,10 = biên không kém hơn.', y=-0.01)
-    fig.tight_layout(rect=[0, 0.05, 1, 1])
+    fig.tight_layout()
     save(fig, f'{OUT}/fig_E13_forest')
 
     # 4b. đường cong theo lượng nhãn
@@ -295,9 +289,6 @@ def figures(pc, tests, cur):
             ax.fill_between(x, 1e3 * g.lo, 1e3 * g.hi, color=MODEL_COLOR[model], alpha=0.14, lw=0)
             ax.plot(x, 1e3 * g.MAE_cell, color=MODEL_COLOR[model], lw=1.8, marker='o', ms=3.4,
                     mec='white', mew=0.6)
-            if j == 3:
-                direct_label(ax, x[-1], 1e3 * g.MAE_cell.values[-1], 'MLP' if model == 'mlp' else 'PINN-semi',
-                             MODEL_COLOR[model], dx=4, dy=5 if model == 'mlp' else -5)
         f70 = cur[(cur.bo == ds) & (cur.model == 'mlp') & (cur.frac == 0.7)]
         if len(f70):
             ax.axhline(1e3 * f70.MAE_cell.iloc[0], color=MODEL_COLOR['mlp'], lw=0.7, ls=(0, (2, 2)), alpha=0.7)
@@ -307,9 +298,13 @@ def figures(pc, tests, cur):
         if j == 0:
             ax.set_ylabel(r'MAE theo cell (×10$^{-3}$ SOH)')
     axes[1].set_xlabel('cell có nhãn (% tổng số cell)', x=1.05)
-    figure_note(fig, 'Dải = KTC 95 % bootstrap theo cell. Vạch đứt = MLP dùng 70 % nhãn. '
-                     'Kiểm định chéo 5 fold × 5 lần lặp, pipeline v2.', y=-0.02)
-    fig.tight_layout(rect=[0, 0.05, 1, 1])
+    fig.legend(handles=[plt.Line2D([], [], color=MODEL_COLOR['mlp'], lw=1.8, marker='o', ms=3.4, label='MLP'),
+                        plt.Line2D([], [], color=MODEL_COLOR['pinn_semi'], lw=1.8, marker='o', ms=3.4,
+                                   label='PINN-semi'),
+                        plt.Line2D([], [], color=MODEL_COLOR['mlp'], lw=0.9, ls=(0, (2, 2)),
+                                   label='MLP dùng 70 % nhãn')],
+               loc='lower center', ncol=3, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=[0, 0.1, 1, 1])
     save(fig, f'{OUT}/fig_E13_curve')
 
     # 4c. từng cell: MLP 30 % so với PINN-semi 30 %
@@ -331,8 +326,6 @@ def figures(pc, tests, cur):
             axis.set_major_formatter(matplotlib.ticker.FixedFormatter([f'{t:g}' for t in tk]))
             axis.set_minor_locator(matplotlib.ticker.NullLocator())
         ax.set_aspect('equal'); ax.grid(False)
-        ax.text(0.04, 0.96, f'{better.mean() * 100:.0f} % cell\nPINN thấp hơn', transform=ax.transAxes,
-                va='top', fontsize=6.4, color=MODEL_COLOR['pinn_semi'])
         panel_title(ax, ds, f'{len(x)} cell', pad=4)
         ax.tick_params(labelsize=6.5)
         if j == 0:
@@ -345,9 +338,10 @@ def figures(pc, tests, cur):
 def fig_traj(pc):
     """Một cell mỗi bộ: cell có MAE của MLP 30 % ĐÚNG TRUNG VỊ trong bộ (quy tắc chọn độc lập với PINN)."""
     import matplotlib.pyplot as plt
-    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, MUTED, panel_title, save, direct_label, CHEM
+    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, panel_title, save
     apply_theme()
     ea = cell_table(pc, 'A')
+    chosen = []                  # cell được chọn + MAE từng nhánh -> CSV cho chân slide / caption
     fig, axes = plt.subplots(1, 4, figsize=(7.2, 2.05))
     for j, (ax, ds) in enumerate(zip(axes, DATASETS)):
         if ds not in ea.index.get_level_values(0):
@@ -374,8 +368,8 @@ def fig_traj(pc):
         for arm, (c_, y_, p_) in series.items():
             col, ls = style[arm]
             ax.plot(c_, p_, color=col, lw=1.0, ls=ls, zorder=3)
-        txt = '  '.join(f'{a}: {1e3 * np.abs(series[a][2] - series[a][1]).mean():.1f}' for a in ['A', 'C', 'F'] if a in series)
-        ax.text(0.03, 0.04, r'MAE ×10$^{-3}$  ' + txt, transform=ax.transAxes, fontsize=5.6, color=MUTED)
+        chosen.append(dict(bo=ds, cell=cid, fold=fold,
+                           **{f'mae_{a}': float(np.abs(series[a][2] - series[a][1]).mean()) for a in series}))
         panel_title(ax, ds, cid.split('/')[-1], pad=4)
         ax.locator_params(axis='x', nbins=3); ax.locator_params(axis='y', nbins=4)
         ax.grid(False); ax.yaxis.grid(True, color='#eef1ef', lw=.55)
@@ -389,6 +383,7 @@ def fig_traj(pc):
                loc='lower center', ncol=4, bbox_to_anchor=(0.5, -0.04))
     fig.tight_layout(rect=[0, 0.1, 1, 1])
     save(fig, f'{OUT}/fig_E13_traj')
+    pd.DataFrame(chosen).to_csv(f'{OUT}/E13_traj_cells.csv', index=False)
 
 
 # ───────────────────────────────────────────────────────────── main
