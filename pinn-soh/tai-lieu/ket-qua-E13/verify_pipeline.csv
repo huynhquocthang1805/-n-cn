@@ -1,0 +1,22 @@
+nhom,phep_kiem,dat,chi_tiet
+P1,loại đúng ngoại lai cài sẵn,True,"giữ 399/400 hàng, hàng 200 bị loại"
+P1,phá dữ liệu tương lai không đổi quyết định quá khứ,True,số quyết định khác nhau trước điểm cắt = 0 (4 điểm cắt)
+P1,10 chu kỳ đầu (chưa đủ lịch sử) không bị phán xử,True,"giữ nguyên, chỉ loại khi không hữu hạn"
+P1,"inf trong đặc trưng bị loại, nhãn NaN không làm mất hàng",True,giữ 398/400 hàng khi TOÀN BỘ nhãn là NaN
+P2,CSV không có cột capacity nạp được,True,"350 hàng, toàn bộ soh = NaN, cùng số hàng với bản có nhãn"
+P2,thiếu 1/3 nhãn không làm mất hàng,True,119 hàng NaN vẫn giữ trong 350
+P2,"pool vật lý giữ mọi hàng, pool dữ liệu chỉ hàng có nhãn",True,vật lý 350 · dữ liệu 231
+P3,"mu, sd của normaliser trùng từng bit (3 mô hình)",True,"v2, XJTU, 30 % nhãn"
+P3,"cùng tập cell test, cùng thứ tự",True,11 cell test
+P3,đối chứng: v1 cho normaliser KHÁC nhau,True,đúng như bản rà soát chỉ ra
+P4,cùng cell và j > i,True,"200 000 cặp, 0 cặp khác cell"
+P4,khoảng cách chu kỳ >= h (trừ khi chạm cuối cell),True,"trung vị Δchu kỳ = 26, h trung vị = 27"
+P4,đối chứng v1: tỉ lệ cặp có Δchu kỳ > h,True,v1 27.60 % · v2 khớp đúng h ở 94.72 % cặp (phần còn lại do hàng bị lọc)
+P5,khớp đáp án tính tay (4 cell tổng hợp),True,"sai số -10 chu kỳ (đáp án -10), n=1, ntrue=2, miss=1, false=1"
+CV,"XJTU: mỗi cell test đúng 1 lần / lần lặp, fold ±1",True,XJTU: train/val/test = 38/6/11 cell
+CV,"TJU: mỗi cell test đúng 1 lần / lần lặp, fold ±1",True,TJU: train/val/test = 91/13/26 cell
+CV,"MIT: mỗi cell test đúng 1 lần / lần lặp, fold ±1",True,MIT: train/val/test = 88/12/25 cell
+CV,"HUST: mỗi cell test đúng 1 lần / lần lặp, fold ±1",True,HUST: train/val/test = 53/8/16 cell
+CV,hai lần lặp cho cách chia khác nhau,True,3/11 cell trùng ở fold 0
+V1,mặc định v1: đúng 304 028 hàng như báo cáo,True,XJTU 22212 · TJU 56779 · MIT 81865 · HUST 143172
+V1,v2 (lọc nhân quả): số hàng,True,XJTU 22431 · TJU 56697 · MIT 82450 · HUST 144224 · tổng 305802

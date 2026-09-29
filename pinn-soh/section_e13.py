@@ -215,6 +215,9 @@ def conclusion_lines(d, F):
     miss = [ds for ds in DS if ds not in ok]
     if miss and ok:
         L.append(f'Trên {", ".join(miss)} chưa chứng minh được tiết kiệm nhãn ở biên 10 %.')
+    if ok and set(nbok) != set(ok):
+        L.append(f'Với phép t mức fold, H2 chỉ đứng vững trên {len(nbok)}/{n} bộ'
+                 + (f' ({", ".join(nbok)})' if nbok else '') + '.')
     return L
 
 
