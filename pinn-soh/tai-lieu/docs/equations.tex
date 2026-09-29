@@ -1,0 +1,43 @@
+% Các phương trình của mô hình — dán thẳng vào báo cáo LaTeX (cần \usepackage{amsmath}).
+
+% ---------- Kiến trúc ----------
+\begin{equation}
+  u(N) = F_{\phi}\big(\mathbf{x}_N,\ \tilde N\big), \qquad \tilde N = N/1000,
+  \label{eq:solution}
+\end{equation}
+% x_N ∈ R^16: đặc trưng thống kê của đoạn sạc CC–CV tại chu kỳ N; u ∈ (0,1.2): SOH ước lượng.
+
+\begin{equation}
+  \frac{\mathrm{d}u}{\mathrm{d}\tilde N} = -\,r(\mathbf{x}, u, T), \qquad
+  r(\mathbf{x}, u, T) = \underbrace{\operatorname{softplus}\!\big(\mathrm{MLP}_{\theta}(\mathbf{x})\big)}_{\text{tốc độ cơ sở}\ \ge 0}
+  \cdot \underbrace{\exp\!\big(\lambda\,(1-u)\big)}_{\text{gia tốc (knee)},\ \lambda\ge 0}
+  \cdot \underbrace{\exp\!\Big(-\frac{E_a}{R}\Big(\frac{1}{T}-\frac{1}{T_{\mathrm{ref}}}\Big)\Big)}_{\text{Arrhenius},\ E_a \ge 0}
+  \label{eq:dynamics}
+\end{equation}
+% λ, E_a: tham số vô hướng học được, dùng chung cho cả bộ dữ liệu; T_ref = 298.15 K; R = 8.314 J/(mol K).
+% Với bộ dữ liệu đơn nhiệt độ, thừa số Arrhenius = 1 và E_a không nhận gradient.
+
+% ---------- Hàm mất mát ----------
+\begin{align}
+  \mathcal{L}_{\text{data}} &= \frac{1}{|\mathcal{D}_L|}\sum_{(N,\,c)\in\mathcal{D}_L}\big(u_c(N) - y_{c,N}\big)^2
+  \label{eq:ldata}\\[4pt]
+  \mathcal{L}_{\text{ode}}  &= \mathbb{E}_{c,\,N,\,h\sim\mathcal{U}\{5,\dots,50\}}
+      \Big[\,u_c(N{+}h) - u_c(N) + r\big(\mathbf{x}_{c,N},\,u_c(N),\,T_c\big)\,\tfrac{h}{1000}\Big]^2
+  \label{eq:lode}\\[4pt]
+  \mathcal{L}_{\text{mono}} &= \mathbb{E}_{c,\,N,\,h}\ \operatorname{ReLU}\!\big(u_c(N{+}h) - u_c(N) - \varepsilon\big), \qquad \varepsilon = 0.002
+  \label{eq:lmono}\\[4pt]
+  \mathcal{L}_{\text{range}} &= \mathbb{E}\big[\operatorname{ReLU}(u-1.15)+\operatorname{ReLU}(0.4-u)\big]
+      + \mathbb{E}_{N=N_0}\big[\operatorname{ReLU}(u-1.10)+\operatorname{ReLU}(0.85-u)\big]
+  \label{eq:lrange}\\[4pt]
+  \mathcal{L} &= \mathcal{L}_{\text{data}} + w(s)\,\big(\alpha\,\mathcal{L}_{\text{ode}} + \beta\,\mathcal{L}_{\text{mono}} + \gamma\,\mathcal{L}_{\text{range}}\big),
+  \qquad w(s)=\min\!\big(1,\ s/(0.2\,S)\big)
+  \label{eq:total}
+\end{align}
+% D_L: tập chu kỳ của các cell CÓ nhãn. Các kỳ vọng trong (4)–(6) lấy trên MỌI cell huấn luyện
+% (kể cả cell không nhãn) đối với mô hình bán giám sát (pinn_semi), chỉ trên cell có nhãn đối với pinn_sup.
+% α = 2, β = 5, γ = 1 (chọn trên validation của XJTU, cố định cho mọi bộ); s: bước hiện tại, S: tổng số bước.
+
+% ---------- Vì sao dạng Euler ----------
+% Dạng đạo hàm  [ (u(N+h)-u(N)) / (h/1000) + r ]^2  khuếch đại nhiễu của mạng theo 1000/h;
+% với h = 1, dao động 1e-3 giữa hai chu kỳ trở thành phần dư cỡ 1 ≫ |du/dÑ| ≈ 0.2–0.5.
+% Dạng Euler (4) tương đương nhân hai vế với h/1000: cặp horizon dài tự nhiên chi phối, nhiễu không bị khuếch đại.

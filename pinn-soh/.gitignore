@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Dữ liệu gốc và kết quả chạy: gửi kèm dạng zip riêng, không đẩy lên git
+PINN4SOH/data/
+runs/
+results/
+
+# Sản phẩm dựng ra
+report.html
+bao-cao-md/
+bao-cao-latex/
+bao-cao.docx
+*.pptx
+logs/
+
+# Trung gian LaTeX
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
