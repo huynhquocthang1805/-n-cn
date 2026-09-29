@@ -232,7 +232,7 @@ def build_markdown(d) -> str:
     md.append('## 3. H1 — PINN-semi so với MLP, cùng 30 % nhãn\n')
     md.append(md_table(['Bộ', 'Cell', 'MLP (×10⁻³)', 'PINN-semi (×10⁻³)', 'Tỉ số [KTC 95 %]', 'Cell PINN tốt hơn',
                         'p Holm (cell)', 'p Holm (fold, NB)', 'Kết luận'], table_h1(d, F)))
-    md.append('\n![](../results/fig_E13_forest.png)\n\n![](../results/fig_E13_cells.png)\n')
+    md.append('\n![](ket-qua-E13/fig_E13_forest.png)\n\n![](ket-qua-E13/fig_E13_cells.png)\n')
 
     md.append('## 4. H2 — tiết kiệm nhãn: PINN-semi 30 % so với MLP 70 %\n')
     rows = []
@@ -246,7 +246,7 @@ def build_markdown(d) -> str:
                         'p Holm (fold, NB)', 'Kết luận (δ = 10 %)'], rows))
     md.append('\nĐường cong theo lượng nhãn — MAE theo cell ×10⁻³, **MLP / PINN-semi**:\n')
     md.append(md_table(['Bộ', '10 %', '30 %', '50 %', '70 %'], table_curve(d)))
-    md.append('\n![](../results/fig_E13_curve.png)\n')
+    md.append('\n![](ket-qua-E13/fig_E13_curve.png)\n')
 
     md.append('## 5. So sánh phụ (thăm dò) — tỉ số MAE theo cell, * = p Holm < 0,05\n')
     md.append(md_table(['So sánh'] + DS, table_secondary_tests(d)))
@@ -256,7 +256,7 @@ def build_markdown(d) -> str:
                         'bỏ sót / báo giả', 'vi phạm đơn điệu /100 ck', 'jitter ×10⁻³'], table_metrics(d)))
     md.append('\n_EOL tại ngưỡng SOH 0,85, tính trên chu kỳ gốc; sai số chỉ lấy trên các cặp (cell, lần lặp) '
               'mà cả nhãn lẫn dự đoán cùng cắt ngưỡng; "bỏ sót" = nhãn cắt nhưng dự đoán không cắt._\n')
-    md.append('\n![](../results/fig_E13_traj.png)\n')
+    md.append('\n![](ket-qua-E13/fig_E13_traj.png)\n')
 
     if d['e14'] is not None:
         md.append('## 7. E14 — chuyển miền với cùng normaliser\n')
@@ -343,11 +343,31 @@ cell (Wilcoxon, Holm cho bốn bộ). Phép t hiệu chỉnh Nadeau--Bengio ở 
     return s
 
 
+EXPORT = 'tai-lieu/ket-qua-E13'
+EXPORT_FILES = ['E13_tests.csv', 'E13_tests.md', 'E13_curve.csv', 'E13_secondary.csv', 'E13_perfold.csv',
+                'E13_physics_params.csv', 'E14_table.csv', 'verify_pipeline.csv',
+                'fig_E13_forest.png', 'fig_E13_curve.png', 'fig_E13_cells.png', 'fig_E13_traj.png']
+
+
+def export():
+    """results/ không lên git; chép hình + bảng nhỏ sang thư mục có theo dõi để đọc được trên GitHub.
+    E13_percell.csv (dấu vết kiểm toán, đủ để tính lại mọi số) được nén gzip."""
+    import shutil, gzip
+    os.makedirs(EXPORT, exist_ok=True)
+    for fn in EXPORT_FILES:
+        if os.path.exists(f'{R}/{fn}'):
+            shutil.copy(f'{R}/{fn}', f'{EXPORT}/{fn}')
+    if os.path.exists(f'{R}/E13_percell.csv'):
+        with open(f'{R}/E13_percell.csv', 'rb') as a, gzip.open(f'{EXPORT}/E13_percell.csv.gz', 'wb') as b:
+            shutil.copyfileobj(a, b)
+
+
 if __name__ == '__main__':
     d = load()
     md = build_markdown(d)
     os.makedirs('tai-lieu', exist_ok=True)
     open('tai-lieu/ket-qua-E13.md', 'w').write(md)
-    print('đã ghi tai-lieu/ket-qua-E13.md')
+    export()
+    print(f'đã ghi tai-lieu/ket-qua-E13.md và {EXPORT}/')
     for x in conclusion_lines(d, facts(d)):
         print(' -', x)
