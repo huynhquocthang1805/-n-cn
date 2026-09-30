@@ -245,10 +245,10 @@ def figures(pc, tests, cur):
     GOOD, BAD, NEU = '#0d6e56', '#b8531f', '#78848d'
 
     # 4a. forest plot các tỉ số, mỗi bộ một cột
-    order = [('C vs A', 'H1  PINN-semi / MLP, cùng 30 %'), ('C vs F', 'H2  PINN-semi 30 % / MLP 70 %'),
-             ('B vs A', 'PINN-sup / MLP, 30 %'), ('C vs B', 'PINN-semi / PINN-sup'),
-             ('D vs C', 'chỉ L_mono / PINN-semi'), ('E vs C', 'phần dư Euler / autograd'),
-             ('G vs F', 'PINN-semi / MLP, 70 %')]
+    order = [('C vs A', 'PINN-semi / MLP (30 %)'), ('C vs F', 'PINN-semi 30 % / MLP 70 %'),
+             ('B vs A', 'PINN-sup / MLP (30 %)'), ('C vs B', 'PINN-semi / PINN-sup'),
+             ('D vs C', 'chỉ đơn điệu / PINN-semi'), ('E vs C', 'Euler / autograd'),
+             ('G vs F', 'PINN-semi / MLP (70 %)')]
     order = [o for o in order if o[0] in set(tests.so_sanh)]
     fig, axes = plt.subplots(1, 4, figsize=(7.2, 0.36 * len(order) + 0.9), sharey=True)
     for j, (ax, ds) in enumerate(zip(axes, DATASETS)):
@@ -274,7 +274,7 @@ def figures(pc, tests, cur):
         if j == 0:
             ax.set_yticks(range(len(order))); ax.set_yticklabels([o[1] for o in order])
         ax.tick_params(axis='y', length=0)
-    axes[1].set_xlabel('tỉ số MAE theo cell (< 1: nhánh thứ nhất sai số thấp hơn)', x=1.05)
+    axes[1].set_xlabel('tỉ số MAE theo cell', x=1.05)
     fig.tight_layout()
     save(fig, f'{OUT}/fig_E13_forest')
 
