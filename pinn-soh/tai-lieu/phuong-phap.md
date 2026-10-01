@@ -250,10 +250,17 @@ $$
 
 ## 5.4. Chỉ số phụ
 
-- MAE khi SOH ≤ 0,9 (giai đoạn cuối đời).
-- Sai số EOL: $\hat n_\text{EOL} - n_\text{EOL}$, với $n_\text{EOL}$ là chu kỳ đầu tiên SOH ≤ 0,85;
-  chỉ tính trên các cell mà cả giá trị đo lẫn dự đoán cùng chạm ngưỡng.
-- Tăng ngược trên 100 chu kỳ:
+MAE khi SOH ≤ 0,9 (giai đoạn cuối đời).
+
+Sai số EOL, với $n_\text{EOL}$ là chu kỳ đầu tiên SOH ≤ 0,85:
+
+$$
+\Delta_\text{EOL} = \hat n_\text{EOL} - n_\text{EOL}
+$$
+
+Sai số này chỉ tính trên các cell mà cả giá trị đo lẫn dự đoán cùng chạm ngưỡng.
+
+Tăng ngược trên 100 chu kỳ:
 
 $$
 \frac{\sum_n \max(0,\, \hat u_{n+1} - \hat u_n)}{(n_\text{cuối} - n_\text{đầu})/100}
