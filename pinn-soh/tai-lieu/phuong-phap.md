@@ -102,8 +102,7 @@ $$
 u = F_\varphi(\tilde{\mathbf{x}}, t)
 $$
 
-MLP 17 → 128 → 128 → 64 → 1, hàm kích hoạt SiLU, khởi tạo Xavier. Đầu ra $u$ là SOH dự đoán. Khi
-suy luận **chỉ dùng mạng này**.
+MLP 17 → 128 → 128 → 64 → 1, hàm kích hoạt SiLU, khởi tạo Xavier. Đầu ra $u$ là SOH dự đoán.
 
 ## 2.2. Động học suy giảm
 
@@ -202,33 +201,7 @@ dữ liệu trước. Giá trị dùng: $\alpha = 0{,}02$, $\beta = 0{,}5$, $\ga
 
 Ba mô hình dùng cùng mạng nghiệm, cùng chuẩn hoá, cùng cách chia và cùng quá trình tối ưu.
 
-# 4. Huấn luyện
-
-| Thành phần | Giá trị |
-|---|---|
-| Bộ tối ưu | AdamW, learning rate $2 \cdot 10^{-3}$, weight decay $10^{-5}$ |
-| Lịch learning rate | cosine, giảm từ $2 \cdot 10^{-3}$ về $10^{-4}$ trong 4000 bước |
-| Batch | 512 điểm có nhãn; 512 cặp chu kỳ cho loss vật lý |
-| Số bước tối đa | 4000 |
-| Cắt gradient | chuẩn L2 ≤ 5 |
-| Dừng sớm | đánh giá MAE validation mỗi 100 bước; dừng sau 12 lần không cải thiện; giữ trọng số tốt nhất |
-
-Quy trình một bước:
-
-```
-lấy 512 điểm (x, t, y) ngẫu nhiên từ cell có nhãn
-L = mean((F(x, t) − y)²)
-nếu là PINN:
-    lấy các cặp (n1, n2) cùng cell, n2 ≥ n1 + h, h ∈ [5, 50]
-    u1, u2 = F(x1, t1), F(x2, t2)
-    ∂u/∂t tại (x1, t1) bằng autograd
-    r = softplus(G(x1)) · exp(λ(1 − u1)) · A(T)
-    L += w(s) · (α·mean((∂u/∂t + r)²) + β·mean(ReLU(u2 − u1 − ε)) + γ·L_range)
-cập nhật φ, θ, λ, Ea bằng AdamW; cắt gradient; giảm learning rate
-mỗi 100 bước: tính MAE trên validation, lưu trọng số nếu tốt hơn
-```
-
-# 5. Suy luận
+# 4. Suy luận
 
 Với một cell mới, ở mỗi chu kỳ $n$:
 
@@ -239,7 +212,7 @@ Với một cell mới, ở mỗi chu kỳ $n$:
 
 Không cần dung lượng đo, không cần dữ liệu các chu kỳ tương lai.
 
-# 6. Đánh giá
+# 5. Đánh giá
 
 **MAE theo cell** (chỉ số chính), với $\mathcal{C}$ là tập cell test và $n_c$ là số chu kỳ của cell $c$:
 
