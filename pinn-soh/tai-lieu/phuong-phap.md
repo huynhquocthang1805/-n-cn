@@ -29,7 +29,7 @@ $$
 | Bộ | Hoá học | $Q_\text{danh định}$ | Nhiệt độ |
 |---|---|---|---|
 | XJTU | NCM | 2,0 Ah | 25 °C |
-| TJU | NCA / NCM / NCM+NCA | 3,5 / 3,5 / 2,5 Ah | 25, 35, 45 °C (theo tên file) |
+| TJU | NCA / NCM / NCM+NCA | 3,5 / 3,5 / 2,5 Ah | 25, 35, 45 °C |
 | MIT | LFP | 1,1 Ah | 30 °C |
 | HUST | LFP | 1,1 Ah | 30 °C |
 
@@ -38,7 +38,7 @@ Cell chưa đo dung lượng vẫn được giữ lại, nhãn để trống. C�
 ## 1.3. Lọc ngoại lai nhân quả
 
 Một chu kỳ bị loại nếu đặc trưng không hữu hạn (NaN, ±∞), hoặc nếu có đặc trưng lệch quá xa so
-với **các chu kỳ trước đó** của chính cell. Với đặc trưng thứ $j$ ở chu kỳ $n$, lấy cửa sổ 50 chu
+với các chu kỳ trước đó của chính cell. Với đặc trưng thứ $j$ ở chu kỳ $n$, lấy cửa sổ 50 chu
 kỳ liền trước:
 
 $$
@@ -67,7 +67,7 @@ theo tuổi thọ riêng của từng cell.
 
 ## 1.5. Chuẩn hoá đặc trưng
 
-Chuẩn hoá z-score, với trung bình và độ lệch chuẩn tính trên **mọi cell train** (có nhãn và
+Chuẩn hoá z-score, với trung bình và độ lệch chuẩn tính trên mọi cell train (có nhãn và
 không nhãn), dùng chung cho mọi mô hình:
 
 $$
@@ -79,11 +79,11 @@ tham gia tính thống kê.
 
 ## 1.6. Chia dữ liệu
 
-- **Chia theo cell**: toàn bộ chu kỳ của một cell nằm trọn trong train, validation hoặc test.
-- **Kiểm định chéo 5 fold, lặp 5 lần.** Cell được xáo trong từng nhóm giao thức thí nghiệm rồi chia
+- Chia theo cell: toàn bộ chu kỳ của một cell nằm trọn trong train, validation hoặc test.
+- Kiểm định chéo 5 fold, lặp 5 lần: cell được xáo trong từng nhóm giao thức thí nghiệm rồi chia
   vòng tròn vào 5 fold, nên fold nào cũng có đủ các giao thức. Mỗi lần lặp dùng một cách xáo khác.
 - Mỗi fold: 20 % cell làm test, 10 % làm validation, 70 % làm train.
-- **Lượng nhãn** tính trên tổng số cell $N$: chọn $\operatorname{round}(f \cdot N)$ cell train có
+- Lượng nhãn tính trên tổng số cell $N$: chọn $\operatorname{round}(f \cdot N)$ cell train có
   nhãn, $f \in \{0{,}1;\,0{,}3;\,0{,}5;\,0{,}7\}$, lấy luân phiên theo giao thức. Các cell train
   còn lại là cell không nhãn.
 
@@ -144,7 +144,7 @@ và $n_2$ là chu kỳ đầu tiên của cùng cell có chỉ số $\ge n_1 + h
 $u_1 = F_\varphi(\tilde{\mathbf{x}}_{n_1}, t_{n_1})$, $u_2 = F_\varphi(\tilde{\mathbf{x}}_{n_2}, t_{n_2})$,
 $\Delta t = t_{n_2} - t_{n_1}$.
 
-Ba loss dưới đây **không dùng nhãn**, nên áp được lên cả cell chưa đo dung lượng.
+Ba loss dưới đây không dùng nhãn, nên áp được lên cả cell chưa đo dung lượng.
 
 ## 3.3. Loss phương trình động học
 
@@ -214,7 +214,9 @@ Không cần dung lượng đo, không cần dữ liệu các chu kỳ tương l
 
 # 5. Đánh giá
 
-**MAE theo cell** (chỉ số chính), với $\mathcal{C}$ là tập cell test và $n_c$ là số chu kỳ của cell $c$:
+## 5.1. MAE theo cell
+
+Chỉ số chính, với $\mathcal{C}$ là tập cell test và $n_c$ là số chu kỳ của cell $c$:
 
 $$
 \mathrm{MAE}_c = \frac{1}{n_c}\sum_{n}\big|\widehat{\mathrm{SOH}}_{c,n} - \mathrm{SOH}_{c,n}\big|, \qquad
@@ -224,7 +226,7 @@ $$
 Mỗi cell có một phiếu, nên cell có vòng đời dài không lấn át kết quả. Vì mỗi cell được test một lần
 trong mỗi lần lặp, $\mathrm{MAE}_c$ được lấy trung bình qua 5 lần lặp.
 
-**Tỉ số và mức giảm sai số**
+## 5.2. Tỉ số và mức giảm sai số
 
 $$
 \rho = \frac{\overline{\mathrm{MAE}}_\text{PINN}}{\overline{\mathrm{MAE}}_\text{MLP}}, \qquad
@@ -233,7 +235,7 @@ $$
 
 Khoảng tin cậy 95 % của $\rho$: bootstrap 20 000 lần, lấy lại mẫu theo cell.
 
-**Kiểm định**
+## 5.3. Kiểm định
 
 - So sánh cùng lượng nhãn: Wilcoxon dấu–hạng hai phía trên hiệu
   $d_c = \mathrm{MAE}_c^\text{PINN} - \mathrm{MAE}_c^\text{MLP}$ qua các cell; hiệu chỉnh Holm cho 4 bộ.
@@ -246,7 +248,7 @@ $$
 t = \frac{\bar d}{\sqrt{\left(\dfrac{1}{J} + \dfrac{n_\text{test}}{n_\text{train}}\right) s_d^2}}, \qquad \text{bậc tự do } J - 1
 $$
 
-**Chỉ số phụ**
+## 5.4. Chỉ số phụ
 
 - MAE khi SOH ≤ 0,9 (giai đoạn cuối đời).
 - Sai số EOL: $\hat n_\text{EOL} - n_\text{EOL}$, với $n_\text{EOL}$ là chu kỳ đầu tiên SOH ≤ 0,85;
