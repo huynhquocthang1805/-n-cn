@@ -628,7 +628,7 @@ def ch5(d, ctx):
               ['Đối chứng học có nhãn', 'Ridge, GPR, GBDT ở 4 mức nhãn', num(rc['E16'])],
               ['Mở rộng biến thể vật lý', 'PINN-sup ở 10, 50\\,\\%; PINN hộp đen ở 4 mức', num(rc['E17'])],
               ['Kiểm toán rò rỉ', '4 cách chia/chuẩn hoá sai, MLP 70\\,\\% nhãn, 2 lần lặp', num(rc['E15'])],
-              ['Chuyển miền', '12 cặp nguồn--đích, $k \\in \\{0, 3\\}$, 5 seed', num(rc['E14'])],
+              ['Chuyển miền', '12 cặp nguồn--đích, $k \\in \\{0, 3\\}$, 5 seed; MLP, GBDT, PINN-semi', num(rc['E14'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -848,13 +848,13 @@ cell đích nào có nhãn ($k = 0$) và có $k = 3$ cell đích có nhãn. Quy 
       đánh giá; chúng không tham gia bất kỳ bước nào khác. Phần validation của bộ đích không được dùng.
 \item $k$ cell có nhãn của bộ đích được lấy từ phần train của bộ đích; các cell train còn lại của bộ đích là cell
       không nhãn.
-\item Normaliser của \emph{cả hai} mô hình (MLP và PINN-semi) fit trên cùng một tập: đặc trưng của cell train bộ
-      nguồn và cell train bộ đích. Như vậy khác biệt giữa hai mô hình chỉ còn là hàm mất mát.
+\item Normaliser của \emph{mọi} mô hình (MLP, GBDT và PINN-semi) fit trên cùng một tập: đặc trưng của cell train
+      bộ nguồn và cell train bộ đích. Như vậy khác biệt giữa các mô hình chỉ còn là mô hình và hàm mất mát.
 \item $\mathcal{L}_\text{data}$ dùng cell có nhãn của bộ nguồn và $k$ cell có nhãn của bộ đích; khi $k > 0$,
       một nửa mỗi batch lấy từ $k$ cell đích để chúng không bị dữ liệu nguồn lấn át. PINN-semi áp loss vật lý lên
       mọi cell train của cả hai bộ.
-\item Huấn luyện một số bước cố định (2\,500), không dừng sớm, không chọn mô hình theo bất kỳ nhãn nào của bộ
-      đích.
+\item MLP và PINN-semi huấn luyện một số bước cố định (2\,500), không dừng sớm; số cây của GBDT chọn trên
+      validation của bộ nguồn. Không mô hình nào được chọn theo bất kỳ nhãn nào của bộ đích.
 \end{enumerate}
 
 \begin{menhde}[Chuyển miền không rò rỉ]\label{md:transfer}
@@ -1135,6 +1135,7 @@ def ch6(d, ctx):
 
     # ---------- 6.7 chuyển miền
     tr = d['thesis_transfer']
+    tmods = [m for m in ['mlp', 'gbdt', 'gpr', 'pinn_semi'] if m in set(tr.model)]
     trows = []
     for s_ in DS:
         for t_ in DS:
@@ -1143,14 +1144,18 @@ def ch6(d, ctx):
             g = lambda m, k: tr[(tr.nguon == s_) & (tr.dich == t_) & (tr.model == m) & (tr.k == k)]
             vals = []
             for k in [0, 3]:
-                for m in ['mlp', 'pinn_semi']:
-                    x = g(m, k)
-                    vals.append(f(float(x['mean'].iloc[0]), 4) if len(x) else '--')
-            same = '✓' if CHEM[s_] == CHEM[t_] or {s_, t_} <= {'XJTU', 'TJU'} else ''
+                xs = {m: (float(g(m, k)['mean'].iloc[0]) if len(g(m, k)) else NAN) for m in tmods}
+                bk = _best(list(xs.values()))
+                for m in tmods:
+                    sv = f(xs[m], 3)
+                    vals.append(r'\textbf{' + sv + '}' if _ok(xs[m]) and xs[m] == bk else sv)
+            same = CHEM[s_] == CHEM[t_] or {s_, t_} <= {'XJTU', 'TJU'}
             trows.append([f'{s_} → {t_}', 'có' if same else 'không'] + vals)
-    tabT = table(['Nguồn → đích', 'Cùng họ', 'MLP, $k{=}0$', 'PINN, $k{=}0$', 'MLP, $k{=}3$', 'PINN, $k{=}3$'], trows,
-                 'llrrrr', 'Chuyển miền: MAE theo cell trên tập test của bộ đích, trung bình 5 hạt giống. Hai mô hình dùng '
-                 'cùng normaliser.', 'tab:transfer', size=r'\small')
+    short = {'mlp': 'MLP', 'gbdt': 'GBDT', 'gpr': 'GPR', 'pinn_semi': 'PINN'}
+    tabT = table(['Nguồn → đích', 'Cùng họ'] + [f'{short[m]}, $k{{=}}{k}$' for k in [0, 3] for m in tmods], trows,
+                 'll' + 'r' * (2 * len(tmods)),
+                 'Chuyển miền: MAE theo cell trên tập test của bộ đích, trung bình 5 hạt giống; in đậm là thấp nhất trong '
+                 'cùng một $k$. Mọi mô hình dùng cùng cách chia và cùng normaliser.', 'tab:transfer', size=r'\small')
 
     # ---------- 6.8 tham số vật lý
     php = d.get('E13_physics_params')
@@ -1308,6 +1313,14 @@ def facts(d, ctx):
     F['bb30'] = {ds: val('pinn_bb', 0.3, ds) / val('pinn_semi', 0.3, ds) for ds in DS}
     F['bb10'] = {ds: val('pinn_bb', 0.1, ds) / val('pinn_semi', 0.1, ds) for ds in DS}
     F['bb_worse'] = [ds for ds in DS if _ok(F['bb30'][ds]) and F['bb30'][ds] > 1.02]
+    F['bb_sig_semi'] = {fr: _sig(cmp_, 'pinn_bb', fr) for fr in FRS}                 # PINN-semi tốt hơn hộp đen
+    F['bb_sig_bb'] = {fr: _sig(cmp_, 'pinn_bb', fr, better=False) for fr in FRS}     # hộp đen tốt hơn
+    F['bb_nsemi'] = sum(len(v) for v in F['bb_sig_semi'].values())
+    F['bb_nsig'] = F['bb_nsemi'] + sum(len(v) for v in F['bb_sig_bb'].values())
+    cands = [(ds, fr, ratio('pinn_bb', fr, ds)) for ds in DS for fr in FRS if _ok(ratio('pinn_bb', fr, ds))]
+    F['bb_max'] = min(cands, key=lambda x: x[2]) if cands else ('--', 0.1, NAN)       # tỉ số PINN-semi / hộp đen nhỏ nhất
+    F['bb_mono_gap'] = max((abs(F['bb30'][ds] - F['mono_semi'][ds]) for ds in DS
+                            if _ok(F['bb30'][ds]) and _ok(F['mono_semi'][ds])), default=NAN)
     F['bb_have'] = [ds for ds in DS if _ok(F['bb30'][ds])]
 
     # chuyển miền
@@ -1335,6 +1348,12 @@ def facts(d, ctx):
         F['tr_dir'] = (f' Chiều chuyển cũng quan trọng: từ {a_} khó hơn (MAE trung bình nhân '
                        f'{f(max(g_ni_lfp, g_lfp_ni), 3)}) so với từ {b_} ({f(min(g_ni_lfp, g_lfp_ni), 3)}).')
     F['tr_n'] = sum(_ok(tval(*p, 0, 'pinn_semi')) for p in pairs)
+    for k in (0, 3):
+        both = [p for p in pairs if _ok(tval(*p, k, 'gbdt')) and _ok(tval(*p, k, 'pinn_semi'))]
+        F[f'tr_gb{k}_n'] = len(both)
+        F[f'tr_gb{k}_win'] = sum(tval(*p, k, 'pinn_semi') < tval(*p, k, 'gbdt') for p in both)
+        F[f'tr_gb{k}_gm'] = _gm([tval(*p, k, 'pinn_semi') / tval(*p, k, 'gbdt') for p in both])
+        F[f'tr_gb{k}_rng'] = [tval(*p, k, 'gbdt') for p in both]
     F['tr_k0_mlp'] = [tval(*p, 0, 'mlp') for p in pairs]
     F['tr_k0_pinn'] = [tval(*p, 0, 'pinn_semi') for p in pairs]
     F['tr_k3_win'] = sum(tval(*p, 3, 'pinn_semi') < tval(*p, 3, 'mlp') for p in pairs
@@ -1436,8 +1455,12 @@ def ch6_text(d, ctx):
                  f'70\\,\\% bằng {_rng(F["ridge_gain"])} lần MAE ở 10\\,\\%, so với {_rng(F["mlp_gain"])} lần của MLP. '
                  if F['ridge10_better'] else '')
     gw, gn = F['gpr_vs_gb']
+    pw, pn = F['wins']['gpr']
+    gpr_all = [ds for ds in DS if all(_ok(F['val']('gpr', fr, ds)) and F['val']('gpr', fr, ds) < F['val']('pinn_semi', fr, ds)
+                                      for fr in FRS)]
     gpr_txt = (f'GPR chỉ dùng được 1\\,500 điểm huấn luyện do chi phí $O(n^3)$ theo số điểm, và kém GBDT trong {gw}/{gn} '
-               'trường hợp (bộ × mức nhãn). ' if gn else '')
+               f'trường hợp (bộ × mức nhãn); dù vậy GPR vẫn có MAE thấp hơn PINN-semi trong {pn - pw}/{pn} trường hợp'
+               + (f', và thấp hơn ở cả bốn mức nhãn {_tren(gpr_all)}' if gpr_all else '') + '. ' if gn else '')
 
     # ---- nguồn gốc lợi ích
     sup_bad = [ds for ds in DS if _ok(F['sup10'][ds]) and F['sup10'][ds] > 1]
@@ -1445,8 +1468,10 @@ def ch6_text(d, ctx):
                'nhưng còn xa mới bằng PINN-semi' + (f', và trên {_lst(sup_bad)} còn kém MLP' if sup_bad else '') + '.')
     unl_txt = (f'tỉ số {_pairs(F["semisup10"])} ở 10\\,\\% và {_pairs(F["semisup30"])} ở 30\\,\\% nhãn. Tính theo '
                f'thang log, phần này chiếm {_rng([100 * x for x in F["share_unl10"]], 0)}\\,\\% mức giảm sai số của '
-               'PINN-semi so với MLP ở 10\\,\\% nhãn: dữ liệu không nhãn là nguồn lợi ích lớn nhất ở mức nhãn thấp, '
-               'và nó chỉ có ích khi được nối với mô hình qua loss vật lý không dùng nhãn.')
+               'PINN-semi so với MLP ở 10\\,\\% nhãn, phần còn lại đến từ vật lý trên cell có nhãn. '
+               + ('Dữ liệu không nhãn là nguồn lợi ích lớn nhất ở mức nhãn thấp' if min(F['share_unl10']) > 0.55 else
+                  'Ở mức nhãn thấp, dữ liệu không nhãn đóng góp ít nhất ngang với vật lý trên cell có nhãn')
+               + ', và nó chỉ có ích khi được nối với mô hình qua loss vật lý không dùng nhãn.')
     ms = F['mono_semi']; worst_m = max(DS, key=lambda ds: ms[ds] if _ok(ms[ds]) else 0)
     mono_txt = (f'chỉ với ràng buộc đơn điệu, mô hình đã đạt {_rng([100 * x for x in F["share_mono"]], 0)}\\,\\% mức '
                 'giảm sai số (thang log) của PINN-semi so với MLP ở 30\\,\\% nhãn. Khi bỏ $\\mathcal{L}_\\text{ode}$ và '
@@ -1461,11 +1486,22 @@ def ch6_text(d, ctx):
                                       f'kém hơn {_tren(eu_w)}' if eu_w else '',
                                       f'tốt hơn {_tren(eu_b)}' if eu_b else ''] if x) + '.')
     if F['bb_have']:
-        bb_txt = (f'tỉ số MAE so với động học xám là {_pairs(F["bb30"])} ở 30\\,\\% và {_pairs(F["bb10"])} ở 10\\,\\% nhãn'
-                  + (f'; động học hộp đen kém hơn {_tren(F["bb_worse"])}. ' if F['bb_worse'] else '. ')
-                  + 'Một giải thích là khi $G$ nhận cả $u_t$ làm đầu vào, mạng có thể học $G \\approx u_t$ và đưa phần dư '
-                  'về 0 mà không cần quỹ đạo hợp lý; động học xám không có lối thoát này vì $r$ không phụ thuộc $u_t$ '
-                  'và luôn không âm.')
+        gw = '; '.join(f'{pc(fr)} ({_lst(F["bb_sig_semi"][fr])})' for fr in FRS if F['bb_sig_semi'][fr])
+        bw = '; '.join(f'{pc(fr)} ({_lst(F["bb_sig_bb"][fr])})' for fr in FRS if F['bb_sig_bb'][fr])
+        bb_txt = (f'tỉ số MAE của PINN hộp đen so với PINN-semi là {_pairs(F["bb10"])} ở 10\\,\\% và '
+                  f'{_pairs(F["bb30"])} ở 30\\,\\% nhãn. Theo kiểm định Wilcoxon có hiệu chỉnh Holm, động học xám tốt '
+                  f'hơn có ý nghĩa ở {gw if gw else "không trường hợp nào"}'
+                  + (f', hộp đen tốt hơn có ý nghĩa ở {bw}' if bw else '')
+                  + f'; {16 - F["bb_nsig"]} trường hợp còn lại (trong 16 cặp bộ × mức nhãn) khác biệt không có ý nghĩa. '
+                  f'Khác biệt lớn nhất ở {F["bb_max"][0]} với {pc(F["bb_max"][1])} nhãn, khi MAE của PINN hộp đen bằng '
+                  f'{f(1 / F["bb_max"][2], 2)} lần PINN-semi. '
+                  + (f'Ở 30\\,\\% nhãn, sai số của PINN hộp đen gần như trùng với biến thể chỉ đơn điệu (chênh không quá '
+                     f'{f(100 * F["bb_mono_gap"], 0)}\\,\\%). Điều này phù hợp với giả thuyết: khi $G$ nhận cả $u_t$ làm '
+                     'đầu vào, mạng có thể học $G \\approx u_t$ nên phần dư động học bị thoả mãn tầm thường, chỉ còn ràng '
+                     'buộc đơn điệu và miền giá trị có tác dụng; động học xám không có lối thoát này vì $r$ không phụ thuộc '
+                     '$u_t$ và luôn không âm.' if F['bb_mono_gap'] <= 0.03 else
+                     'Một khả năng là khi $G$ nhận cả $u_t$ làm đầu vào, mạng có thể học $G \\approx u_t$ nên phần dư động '
+                     'học bị thoả mãn tầm thường; động học xám không có lối thoát này vì $r$ không phụ thuộc $u_t$.'))
     else:
         bb_txt = 'chưa có kết quả.'
 
@@ -1493,6 +1529,11 @@ def ch6_text(d, ctx):
                   'cho các cặp khác họ. Khi có 3 cell đích có nhãn, MLP cải thiện mạnh và khoảng cách thu hẹp (tỉ số '
                   f'{f(Tr[(True, 3, "ratio")], 2)} và {f(Tr[(False, 3, "ratio")], 2)}); PINN-semi vẫn tốt hơn MLP ở '
                   f'{F["tr_k3_win"]}/{F["tr_n"]} cặp. ')
+        if F['tr_gb0_n']:
+            tr_txt += (f'GBDT không ngoại suy ra ngoài miền nhãn của dữ liệu huấn luyện, nên ở $k = 0$ không lệch như MLP '
+                       f'(MAE {_rng(F["tr_gb0_rng"], 3)}); dù vậy PINN-semi vẫn tốt hơn GBDT ở {F["tr_gb0_win"]}/'
+                       f'{F["tr_gb0_n"]} cặp, với tỉ số trung bình nhân {f(F["tr_gb0_gm"], 2)}. Ở $k = 3$, PINN-semi tốt hơn '
+                       f'GBDT ở {F["tr_gb3_win"]}/{F["tr_gb3_n"]} cặp (tỉ số {f(F["tr_gb3_gm"], 2)}). ')
         if _ok(Tr[(False, 0, 'pinn')]):
             tr_txt += ((f'Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở '
                         f'$k = 0$ là {f(Tr[(True, 0, "pinn")], 3)} cho cặp cùng họ và {f(Tr[(False, 0, "pinn")], 3)} cho '
@@ -1582,7 +1623,7 @@ Mô hình có MAE thấp nhất ở từng bộ (Bảng~\ref{tab:big}): <<BEST>>
 các chế độ thí nghiệm khác hẳn nhau mà không cần chuẩn hoá cẩn thận; đây là ưu thế quen thuộc của mô hình cây trên
 dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý cải thiện rõ rệt \emph{mô hình mạng nơ-ron} khi ít nhãn và
 đưa nó tới gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT <<RGB10>>), nhưng chưa vượt được một mô hình cây
-được tinh chỉnh tốt trên phần lớn các bộ dữ liệu.
+được tinh chỉnh tốt, cũng như hồi quy Gauss, trên phần lớn các bộ dữ liệu.
 
 \section{Lợi ích đến từ đâu}
 
@@ -1664,7 +1705,8 @@ sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB
                          '75\\,\\%).', 'fig:traj', width=r'0.92\textwidth'),
              FIGERR=fig('fig_pred_error_soh', 'MAE theo từng khoảng SOH thực đo (30\\,\\% nhãn).', 'fig:errsoh'),
              TT=t['T'], FIGTR=fig('fig_thesis_transfer', 'MAE theo cell trên tập test của bộ đích (thang log); hàng: số cell '
-                                  'đích có nhãn, cột: mô hình.', 'fig:transfer', width=r'0.82\textwidth'),
+                                  'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
+                                  'fig:transfer', width=r'\textwidth'),
              TRTXT=tr_txt, TPH=t['PH'], PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
 
 
@@ -1677,11 +1719,15 @@ def ch7(d, ctx):
            + ' trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong '
            f'{w["gbdt"][1] - w["gbdt"][0]}/{w["gbdt"][1]} trường hợp, {F["n_gb_sig"]} trong đó có ý nghĩa thống kê. '
            'GBDT được tinh chỉnh tốt vẫn là mô hình mạnh nhất khi đánh giá trong cùng một bộ dữ liệu.')
-    bb = (f' Động học xám tốt hơn động học hộp đen kiểu PINN4SOH {_tren(F["bb_worse"])}.' if F['bb_worse'] else '')
+    bb = (f' Động học xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa ở {F["bb_nsemi"]} trong 16 trường hợp '
+          f'(bộ × mức nhãn) và kém hơn ở {F["bb_nsig"] - F["bb_nsemi"]}; khác biệt rõ nhất ở {F["bb_max"][0]} khi ít '
+          'nhãn.' if F['bb_have'] else '')
     Tr = F['tr']
     ch5 = (f'Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức {_rng(F["tr_k0_pinn"], 3)} trong khi MLP lệch tới '
            f'{_rng(F["tr_k0_mlp"])}; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở '
-           f'{F["tr_k3_win"]}/{F["tr_n"]} cặp.') if F['tr_n'] else ''
+           f'{F["tr_k3_win"]}/{F["tr_n"]} cặp.' + (f' So với GBDT, PINN-semi tốt hơn ở {F["tr_gb0_win"]}/{F["tr_gb0_n"]} cặp '
+                                                   f'khi $k = 0$ và {F["tr_gb3_win"]}/{F["tr_gb3_n"]} cặp khi $k = 3$.'
+                                                   if F.get('tr_gb0_n') else '')) if F['tr_n'] else ''
     return T(r"""
 \chapter{Kết luận và hướng phát triển}\label{ch:ketluan}
 
@@ -1695,9 +1741,9 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item Lợi ích lớn nhất khi ít nhãn (10\,\%: tỉ số <<R10>>, có ý nghĩa <<SIG10>>) và giảm dần khi lượng nhãn tăng
       (trung bình nhân qua bốn bộ: <<GM>>). Ở 70\,\% nhãn, khi không còn cell không nhãn, <<SIG70>><<WORSE70>>.
 \item <<CH3>>
-\item Phần lớn lợi ích ở mức nhãn thấp đến từ việc áp loss vật lý lên cell không nhãn (<<SHARE>>\,\% mức giảm
-      sai số theo thang log ở 10\,\% nhãn); vật lý chỉ trên cell có nhãn giúp ít hơn nhiều. Riêng ràng buộc đơn điệu
-      đã mang lại phần lớn lợi ích ở 30\,\% nhãn.<<BB>>
+\item Ở 10\,\% nhãn, <<SHARE>>\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
+      lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
+      mang lại <<MONO>>\,\% mức giảm đó.<<BB>>
 \item <<CH5>>
 \end{enumerate}
 
@@ -1724,7 +1770,8 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
              SIG70=('cải thiện chỉ còn có ý nghĩa ' + _tren(F['sig'][0.7])) if F['sig'][0.7]
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
-             CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), BB=bb, CH5=ch5)
+             CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
+             BB=bb, CH5=ch5)
 
 
 # ═════════════════════════════════════════════════════════════ TÓM TẮT, PHỤ LỤC, DỰNG
@@ -1742,13 +1789,15 @@ Arrhenius; ba hàm mất mát vật lý không dùng nhãn nên áp được lê
 minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5
 lần), lý giải từng con số của cách chia, đo định lượng tác động của các dạng rò rỉ thường gặp, và so sánh PINN với
 sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (<<NCELL>> cell, <<NRUN>> lượt huấn luyện).
-Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>, phần
-lớn nhờ khai thác cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số <<R70>>). Trên bộ dữ liệu mới
-không có nhãn, PINN vẫn cho sai số dùng được trong khi mạng học có nhãn thất bại. Tuy vậy, <<GB>>.
+Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>, trong
+đó khoảng một nửa đến hai phần ba mức giảm đến từ cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số <<R70>>). Trên bộ dữ liệu mới
+không có nhãn, PINN vẫn cho sai số dùng được trong khi mạng học có nhãn thất bại<<TRGB>>. Tuy vậy, <<GB>>.
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
-             R70=_rng(F['r'][0.7].values()), GB=gb)
+             R70=_rng(F['r'][0.7].values()), GB=gb,
+             TRGB=(f', và tốt hơn GBDT ở {F["tr_gb0_win"]}/{F["tr_gb0_n"]} cặp nguồn--đích'
+                   if F.get('tr_gb0_n') and F['tr_gb0_win'] > F['tr_gb0_n'] / 2 else ''))
 
 
 def build():

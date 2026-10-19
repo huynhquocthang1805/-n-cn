@@ -529,10 +529,11 @@ def figures(df, cur, cmp_, conv, lk, mats, tr, rs=None):
 
     # 6.8 ma trận chuyển miền
     if tr is not None and not tr.empty:
-        fig, axes = plt.subplots(2, 2, figsize=(6.4, 5.6))
+        tmods = [m for m in ['mlp', 'gbdt', 'gpr', 'pinn_semi'] if m in set(tr.model)]
+        fig, axes = plt.subplots(2, len(tmods), figsize=(2.1 * len(tmods) + 0.9, 4.9), squeeze=False)
         vmin, vmax = tr['mean'].min(), tr['mean'].max()
         for i, k in enumerate([0, 3]):
-            for j, m in enumerate(['mlp', 'pinn_semi']):
+            for j, m in enumerate(tmods):
                 ax = axes[i, j]
                 M = np.full((4, 4), np.nan)
                 g = tr[(tr.k == k) & (tr.model == m)]
@@ -544,7 +545,7 @@ def figures(df, cur, cmp_, conv, lk, mats, tr, rs=None):
                     ax.add_patch(plt.Rectangle((q - 0.5, q - 0.5), 1, 1, fill=False, hatch='////', ec='#d5dbe1', lw=0))
                 ax.set_xticks(range(4)); ax.set_xticklabels(DATASETS); ax.set_yticks(range(4)); ax.set_yticklabels(DATASETS)
                 ax.grid(False); ax.tick_params(length=0)
-                panel_title(ax, LABEL[m], f'{k} cell đích có nhãn', pad=4)
+                panel_title(ax, LABEL[m], f'k = {k}', pad=4)
                 if j == 0:
                     ax.set_ylabel('nguồn')
                 if i == 1:
