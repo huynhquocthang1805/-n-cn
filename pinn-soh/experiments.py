@@ -265,9 +265,47 @@ def E14(seeds, datasets, out='runs/E14', workers=4, repeats=None):
     _pool_run(jobs, workers)
 
 
+# --------------------------------------------------------------------------- E17 / E18 (bổ sung cho báo cáo đồ án)
+# E17: hoàn thiện đường cong theo lượng nhãn cho các biến thể vật lý, CÙNG giao thức, seed và cấu hình E13.
+#   B  pinn_sup ở 10 % và 50 % (30 % đã có trong E13; ở 70 % mọi cell train đều có nhãn nên PINN-sup trùng
+#      từng bit với PINN-semi = nhánh G, không chạy lại)
+#   H  pinn_bb — động học hộp đen kiểu PINN4SOH G(x, t, u, u_x, u_t), cùng loss không nhãn, ở cả 4 mức nhãn
+E17_ARMS = [('B', 'pinn_sup', 0.1, E13_PHYS), ('B', 'pinn_sup', 0.5, E13_PHYS),
+            ('H', 'pinn_bb', 0.1, E13_PHYS), ('H', 'pinn_bb', 0.3, E13_PHYS),
+            ('H', 'pinn_bb', 0.5, E13_PHYS), ('H', 'pinn_bb', 0.7, E13_PHYS)]
+
+
+def E17(seeds, datasets, out='runs/E17', workers=4, repeats=5):
+    from pinnsoh.train import run_name
+    jobs = []
+    for (tag, m, f, extra), r, ds, k in itertools.product(E17_ARMS, range(repeats), datasets, range(E13_FOLDS)):
+        kw = dict(dataset=ds, label_frac=f, model=m, seed=100 * r + k, split='cv', fold=k, repeat=r,
+                  n_folds=E13_FOLDS, tag=tag, out_dir=out, **E13_NET, **extra)
+        if not os.path.exists(os.path.join(out, run_name(Config(**kw)) + '.json')):
+            jobs.append(('train', kw))
+    print(f'E17: cần chạy {len(jobs)} lượt', flush=True)
+    _pool_run(jobs, workers)
+
+
+def E18(seeds, datasets, out='runs/E14', workers=4, repeats=None):
+    """Ma trận chuyển miền ĐẦY ĐỦ 4 × 3 cặp có hướng (E14 mới có 4 cặp cùng hoá học), cùng giao thức E14."""
+    jobs = []
+    for ds, tgt, s, k, m in itertools.product(datasets, DATASETS, seeds, [0, 3], ['mlp', 'pinn_semi']):
+        if tgt == ds:
+            continue
+        kw = dict(dataset=ds, target=tgt, model=m, k_target=k, seed=s, norm='global',
+                  norm_pool='train', tag='samenorm', out_dir=out, save_predictions=False)
+        name = f'samenorm_{ds}_to_{tgt}_{m}_k{k}_s{s}_global'
+        if not os.path.exists(os.path.join(out, name + '.json')):
+            jobs.append(('transfer', kw))
+    print(f'E18: cần chạy {len(jobs)} lượt', flush=True)
+    _pool_run(jobs, workers)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('exp', choices=['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E9', 'E10', 'E12', 'E13', 'E14'])
+    ap.add_argument('exp', choices=['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E9', 'E10', 'E12', 'E13', 'E14',
+                                    'E17', 'E18'])
     ap.add_argument('--seeds', type=int, nargs='+', default=[0, 1, 2])
     ap.add_argument('--datasets', nargs='+', default=DATASETS)
     ap.add_argument('--threads', type=int, default=1)
@@ -275,7 +313,7 @@ if __name__ == '__main__':
     ap.add_argument('--repeats', type=int, default=5, help='E13: số lần lặp kiểm định chéo')
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
-    if a.exp in ('E13', 'E14'):
+    if a.exp in ('E13', 'E14', 'E17', 'E18'):
         globals()[a.exp](a.seeds, a.datasets, workers=a.workers, repeats=a.repeats)
     else:
         globals()[a.exp](a.seeds, a.datasets)

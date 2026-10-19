@@ -28,3 +28,6 @@ logs/
 
 # checkpoint nhỏ của demo (~120 KB) được đưa lên git
 !demo/*.pt
+*.lof
+*.lot
+do-an/main.pdf
