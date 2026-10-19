@@ -1325,6 +1325,15 @@ def facts(d, ctx):
             T_[(same, k, 'pinn')] = _gm([tval(*p, k, 'pinn_semi') for p in pp])
             T_[(same, k, 'mlp')] = _gm([tval(*p, k, 'mlp') for p in pp])
     F['tr'] = T_
+    ni, lfp = {'XJTU', 'TJU'}, {'MIT', 'HUST'}
+    g_ni_lfp = _gm([tval(s_, t_, 0, 'pinn_semi') for s_, t_ in pairs if s_ in ni and t_ in lfp])
+    g_lfp_ni = _gm([tval(s_, t_, 0, 'pinn_semi') for s_, t_ in pairs if s_ in lfp and t_ in ni])
+    F['tr_dir'] = ''
+    if _ok(g_ni_lfp) and _ok(g_lfp_ni) and max(g_ni_lfp, g_lfp_ni) > 1.5 * min(g_ni_lfp, g_lfp_ni):
+        a_, b_ = ('họ niken sang LFP', 'LFP sang họ niken') if g_ni_lfp > g_lfp_ni else ('LFP sang họ niken',
+                                                                                         'họ niken sang LFP')
+        F['tr_dir'] = (f' Chiều chuyển cũng quan trọng: từ {a_} khó hơn (MAE trung bình nhân '
+                       f'{f(max(g_ni_lfp, g_lfp_ni), 3)}) so với từ {b_} ({f(min(g_ni_lfp, g_lfp_ni), 3)}).')
     F['tr_n'] = sum(_ok(tval(*p, 0, 'pinn_semi')) for p in pairs)
     F['tr_k0_mlp'] = [tval(*p, 0, 'mlp') for p in pairs]
     F['tr_k0_pinn'] = [tval(*p, 0, 'pinn_semi') for p in pairs]
@@ -1487,7 +1496,7 @@ def ch6_text(d, ctx):
         if _ok(Tr[(False, 0, 'pinn')]):
             tr_txt += ((f'Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở '
                         f'$k = 0$ là {f(Tr[(True, 0, "pinn")], 3)} cho cặp cùng họ và {f(Tr[(False, 0, "pinn")], 3)} cho '
-                        'cặp khác họ, do đặc trưng sạc của hai họ khác nhau về bản chất.') if hard else
+                        'cặp khác họ, do đặc trưng sạc của hai họ khác nhau về bản chất.' + F['tr_dir']) if hard else
                        (f'MAE trung bình nhân của PINN-semi ở $k = 0$ là {f(Tr[(True, 0, "pinn")], 3)} cho cặp cùng họ '
                         f'và {f(Tr[(False, 0, "pinn")], 3)} cho cặp khác họ.'))
     else:
