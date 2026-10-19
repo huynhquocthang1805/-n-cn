@@ -1354,6 +1354,9 @@ def facts(d, ctx):
         F[f'tr_gb{k}_win'] = sum(tval(*p, k, 'pinn_semi') < tval(*p, k, 'gbdt') for p in both)
         F[f'tr_gb{k}_gm'] = _gm([tval(*p, k, 'pinn_semi') / tval(*p, k, 'gbdt') for p in both])
         F[f'tr_gb{k}_rng'] = [tval(*p, k, 'gbdt') for p in both]
+        for fam_name, fam_set in (('lfp', lfp), ('ni', ni)):
+            pp = [p for p in both if p[0] in fam_set]
+            F[f'tr_gb{k}_{fam_name}'] = (sum(tval(*p, k, 'pinn_semi') < tval(*p, k, 'gbdt') for p in pp), len(pp))
     F['tr_k0_mlp'] = [tval(*p, 0, 'mlp') for p in pairs]
     F['tr_k0_pinn'] = [tval(*p, 0, 'pinn_semi') for p in pairs]
     F['tr_k3_win'] = sum(tval(*p, 3, 'pinn_semi') < tval(*p, 3, 'mlp') for p in pairs
@@ -1531,13 +1534,15 @@ def ch6_text(d, ctx):
                   f'{F["tr_k3_win"]}/{F["tr_n"]} cặp. ')
         if F['tr_gb0_n']:
             tr_txt += (f'GBDT không ngoại suy ra ngoài miền nhãn của dữ liệu huấn luyện, nên ở $k = 0$ không lệch như MLP '
-                       f'(MAE {_rng(F["tr_gb0_rng"], 3)}); dù vậy PINN-semi vẫn tốt hơn GBDT ở {F["tr_gb0_win"]}/'
-                       f'{F["tr_gb0_n"]} cặp, với tỉ số trung bình nhân {f(F["tr_gb0_gm"], 2)}. Ở $k = 3$, PINN-semi tốt hơn '
-                       f'GBDT ở {F["tr_gb3_win"]}/{F["tr_gb3_n"]} cặp (tỉ số {f(F["tr_gb3_gm"], 2)}). ')
+                       f'(MAE {_rng(F["tr_gb0_rng"], 3)}). So với GBDT, PINN-semi tốt hơn ở {F["tr_gb0_win"]}/'
+                       f'{F["tr_gb0_n"]} cặp, tỉ số MAE trung bình nhân {f(F["tr_gb0_gm"], 2)}. Kết quả phụ thuộc rõ vào '
+                       f'bộ nguồn: khi nguồn là LFP, PINN-semi tốt hơn GBDT ở {F["tr_gb0_lfp"][0]}/{F["tr_gb0_lfp"][1]} '
+                       f'cặp; khi nguồn thuộc họ niken, chỉ {F["tr_gb0_ni"][0]}/{F["tr_gb0_ni"][1]} cặp. Ở $k = 3$, '
+                       f'PINN-semi tốt hơn GBDT ở {F["tr_gb3_win"]}/{F["tr_gb3_n"]} cặp (tỉ số {f(F["tr_gb3_gm"], 2)}). ')
         if _ok(Tr[(False, 0, 'pinn')]):
             tr_txt += ((f'Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở '
                         f'$k = 0$ là {f(Tr[(True, 0, "pinn")], 3)} cho cặp cùng họ và {f(Tr[(False, 0, "pinn")], 3)} cho '
-                        'cặp khác họ, do đặc trưng sạc của hai họ khác nhau về bản chất.' + F['tr_dir']) if hard else
+                        'cặp khác họ, nhiều khả năng do đặc trưng sạc của hai họ khác nhau về bản chất.' + F['tr_dir']) if hard else
                        (f'MAE trung bình nhân của PINN-semi ở $k = 0$ là {f(Tr[(True, 0, "pinn")], 3)} cho cặp cùng họ '
                         f'và {f(Tr[(False, 0, "pinn")], 3)} cho cặp khác họ.'))
     else:
@@ -1663,10 +1668,12 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 
 \section{Thảo luận chung}
 
-\paragraph{Khi nào nên dùng PINN bán giám sát?} Khi số cell có nhãn ít (khoảng 10--30\,\%), khi có nhiều cell
-chưa đo dung lượng và khi cần dùng mô hình trên một bộ dữ liệu mới chưa có nhãn. Đây chính là tình huống vận
-hành thực tế của BMS. Nếu đã có đủ nhãn và chỉ cần sai số thấp nhất trên cùng một bộ dữ liệu, GBDT là lựa chọn
-đơn giản và mạnh hơn.
+\paragraph{Khi nào nên dùng PINN bán giám sát?} Khi đã chọn mạng nơ-ron làm mô hình, PINN bán giám sát nên được
+dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%), khi có nhiều cell chưa đo dung lượng, và nhất là khi
+phải chạy trên một bộ dữ liệu mới chưa có nhãn: ở đó MLP thất bại hoàn toàn còn PINN-semi vẫn cho sai số dùng
+được. So với GBDT thì khác: trong cùng một bộ dữ liệu, GBDT có sai số thấp hơn ở phần lớn các trường hợp; khi
+chuyển miền, hai mô hình thắng thua tuỳ cặp<<TRGBD>>. Nếu chỉ cần sai số thấp nhất trên cùng một bộ dữ liệu,
+GBDT là lựa chọn đơn giản và mạnh hơn.
 
 \paragraph{Khi nào lợi ích nhỏ?} <<WEAKTXT>>
 
@@ -1707,7 +1714,9 @@ sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB
              TT=t['T'], FIGTR=fig('fig_thesis_transfer', 'MAE theo cell trên tập test của bộ đích (thang log); hàng: số cell '
                                   'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
                                   'fig:transfer', width=r'\textwidth'),
-             TRTXT=tr_txt, TPH=t['PH'], PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
+             TRTXT=tr_txt, TPH=t['PH'],
+             TRGBD=(f' (PINN-semi tốt hơn ở {F["tr_gb0_win"]}/{F["tr_gb0_n"]} cặp khi không có nhãn đích)'
+                    if F.get('tr_gb0_n') else ''), PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
 
 
 # ═════════════════════════════════════════════════════════════ CHƯƠNG 7

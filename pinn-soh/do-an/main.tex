@@ -58,7 +58,7 @@ SOH từ 16 đặc trưng đoạn sạc, gắn với một động học suy gi�
 Arrhenius; ba hàm mất mát vật lý không dùng nhãn nên áp được lên cell chưa đo dung lượng. Đồ án thiết kế và chứng
 minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5
 lần), lý giải từng con số của cách chia, đo định lượng tác động của các dạng rò rỉ thường gặp, và so sánh PINN với
-sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 3.300 lượt huấn luyện).
+sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 3.420 lượt huấn luyện).
 Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là 0{,}39--0{,}90, trong
 đó khoảng một nửa đến hai phần ba mức giảm đến từ cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số 0{,}85--1{,}09). Trên bộ dữ liệu mới
 không có nhãn, PINN vẫn cho sai số dùng được trong khi mạng học có nhãn thất bại. Tuy vậy, một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu.
@@ -129,7 +129,7 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
 \item Kiểm toán rò rỉ định lượng: đo mức sai số bị đánh giá thấp giả tạo khi chia theo chu kỳ, khi chuẩn hoá
       theo cả vòng đời cell, khi lọc ngoại lai bằng dữ liệu tương lai.
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
-      (387 cell), tổng cộng 3.300 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
+      (387 cell), tổng cộng 3.420 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Thí nghiệm chuyển miền đầy đủ giữa bốn bộ dữ liệu với quy trình chuẩn hoá không dùng dữ liệu test.
 \end{enumerate}
 
@@ -742,13 +742,13 @@ cell đích nào có nhãn ($k = 0$) và có $k = 3$ cell đích có nhãn. Quy 
       đánh giá; chúng không tham gia bất kỳ bước nào khác. Phần validation của bộ đích không được dùng.
 \item $k$ cell có nhãn của bộ đích được lấy từ phần train của bộ đích; các cell train còn lại của bộ đích là cell
       không nhãn.
-\item Normaliser của \emph{cả hai} mô hình (MLP và PINN-semi) fit trên cùng một tập: đặc trưng của cell train bộ
-      nguồn và cell train bộ đích. Như vậy khác biệt giữa hai mô hình chỉ còn là hàm mất mát.
+\item Normaliser của \emph{mọi} mô hình (MLP, GBDT và PINN-semi) fit trên cùng một tập: đặc trưng của cell train
+      bộ nguồn và cell train bộ đích. Như vậy khác biệt giữa các mô hình chỉ còn là mô hình và hàm mất mát.
 \item $\mathcal{L}_\text{data}$ dùng cell có nhãn của bộ nguồn và $k$ cell có nhãn của bộ đích; khi $k > 0$,
       một nửa mỗi batch lấy từ $k$ cell đích để chúng không bị dữ liệu nguồn lấn át. PINN-semi áp loss vật lý lên
       mọi cell train của cả hai bộ.
-\item Huấn luyện một số bước cố định (2\,500), không dừng sớm, không chọn mô hình theo bất kỳ nhãn nào của bộ
-      đích.
+\item MLP và PINN-semi huấn luyện một số bước cố định (2\,500), không dừng sớm; số cây của GBDT chọn trên
+      validation của bộ nguồn. Không mô hình nào được chọn theo bất kỳ nhãn nào của bộ đích.
 \end{enumerate}
 
 \begin{menhde}[Chuyển miền không rò rỉ]\label{md:transfer}
@@ -823,8 +823,8 @@ Kiểm định chéo chính & MLP, PINN-semi ở 4 mức; PINN-sup, 2 biến th�
 Đối chứng học có nhãn & Ridge, GPR, GBDT ở 4 mức nhãn & 1.200 \\
 Mở rộng biến thể vật lý & PINN-sup ở 10, 50\,\%; PINN hộp đen ở 4 mức & 600 \\
 Kiểm toán rò rỉ & 4 cách chia/chuẩn hoá sai, MLP 70\,\% nhãn, 2 lần lặp & 160 \\
-Chuyển miền & 12 cặp nguồn--đích, $k \in \{0, 3\}$, 5 seed & 240 \\
-\textbf{Tổng} &  & \textbf{3.300} \\
+Chuyển miền & 12 cặp nguồn--đích, $k \in \{0, 3\}$, 5 seed; MLP, GBDT, PINN-semi & 360 \\
+\textbf{Tổng} &  & \textbf{3.420} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
@@ -1053,30 +1053,30 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 \section{Chuyển miền}
 
 \begin{table}[H]\centering\small
-\caption{Chuyển miền: MAE theo cell trên tập test của bộ đích, trung bình 5 hạt giống. Hai mô hình dùng cùng normaliser.}\label{tab:transfer}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
-Nguồn → đích & Cùng họ & MLP, $k{=}0$ & PINN, $k{=}0$ & MLP, $k{=}3$ & PINN, $k{=}3$ \\\midrule
-XJTU → TJU & có & 1{,}4780 & 0{,}0383 & 0{,}3219 & 0{,}0337 \\
-XJTU → MIT & không & 1{,}3110 & 0{,}1487 & 0{,}0600 & 0{,}0109 \\
-XJTU → HUST & không & 1{,}1811 & 0{,}2726 & 0{,}0364 & 0{,}0296 \\
-TJU → XJTU & có & 1{,}9983 & 0{,}0951 & 0{,}0303 & 0{,}0285 \\
-TJU → MIT & không & 2{,}0884 & 0{,}1548 & 0{,}0370 & 0{,}0120 \\
-TJU → HUST & không & 1{,}7677 & 0{,}3115 & 0{,}0385 & 0{,}0322 \\
-MIT → XJTU & không & 4{,}6490 & 0{,}0731 & 0{,}0328 & 0{,}0254 \\
-MIT → TJU & không & 3{,}6474 & 0{,}0488 & 0{,}1828 & 0{,}0265 \\
-MIT → HUST & có & 0{,}5423 & 0{,}0583 & 0{,}0306 & 0{,}0256 \\
-HUST → XJTU & không & 8{,}1251 & 0{,}0897 & 0{,}0432 & 0{,}0242 \\
-HUST → TJU & không & 4{,}3825 & 0{,}0646 & 0{,}2333 & 0{,}0274 \\
-HUST → MIT & có & 2{,}4452 & 0{,}0260 & 0{,}1365 & 0{,}0076 \\
+\caption{Chuyển miền: MAE theo cell trên tập test của bộ đích, trung bình 5 hạt giống; in đậm là thấp nhất trong cùng một $k$. Mọi mô hình dùng cùng cách chia và cùng normaliser.}\label{tab:transfer}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
+Nguồn → đích & Cùng họ & MLP, $k{=}0$ & GBDT, $k{=}0$ & PINN, $k{=}0$ & MLP, $k{=}3$ & GBDT, $k{=}3$ & PINN, $k{=}3$ \\\midrule
+XJTU → TJU & có & 1{,}478 & 0{,}074 & \textbf{0{,}038} & 0{,}322 & 0{,}034 & \textbf{0{,}034} \\
+XJTU → MIT & không & 1{,}311 & \textbf{0{,}024} & 0{,}149 & 0{,}060 & \textbf{0{,}009} & 0{,}011 \\
+XJTU → HUST & không & 1{,}181 & \textbf{0{,}084} & 0{,}273 & 0{,}036 & 0{,}030 & \textbf{0{,}030} \\
+TJU → XJTU & có & 1{,}998 & \textbf{0{,}056} & 0{,}095 & 0{,}030 & \textbf{0{,}025} & 0{,}028 \\
+TJU → MIT & không & 2{,}088 & \textbf{0{,}100} & 0{,}155 & 0{,}037 & \textbf{0{,}008} & 0{,}012 \\
+TJU → HUST & không & 1{,}768 & \textbf{0{,}215} & 0{,}312 & 0{,}039 & \textbf{0{,}027} & 0{,}032 \\
+MIT → XJTU & không & 4{,}649 & \textbf{0{,}034} & 0{,}073 & 0{,}033 & 0{,}027 & \textbf{0{,}025} \\
+MIT → TJU & không & 3{,}647 & 0{,}119 & \textbf{0{,}049} & 0{,}183 & 0{,}032 & \textbf{0{,}027} \\
+MIT → HUST & có & 0{,}542 & 0{,}061 & \textbf{0{,}058} & 0{,}031 & 0{,}028 & \textbf{0{,}026} \\
+HUST → XJTU & không & 8{,}125 & 0{,}096 & \textbf{0{,}090} & 0{,}043 & 0{,}025 & \textbf{0{,}024} \\
+HUST → TJU & không & 4{,}382 & 0{,}264 & \textbf{0{,}065} & 0{,}233 & 0{,}040 & \textbf{0{,}027} \\
+HUST → MIT & có & 2{,}445 & 0{,}052 & \textbf{0{,}026} & 0{,}136 & 0{,}009 & \textbf{0{,}008} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \begin{figure}[H]\centering
-\includegraphics[width=0.82\textwidth]{hinh/fig_thesis_transfer.pdf}
-\caption{MAE theo cell trên tập test của bộ đích (thang log); hàng: số cell đích có nhãn, cột: mô hình.}\label{fig:transfer}
+\includegraphics[width=\textwidth]{hinh/fig_thesis_transfer.pdf}
+\caption{MAE theo cell trên tập test của bộ đích (thang log); hàng: số cell đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.}\label{fig:transfer}
 \end{figure}
 
 
-Khi bộ đích không có nhãn ($k = 0$), MLP gần như không dùng được: MAE theo cell 0{,}54--8{,}13 (đơn vị SOH), tức dự đoán lệch hẳn khỏi miền giá trị. PINN-semi giữ sai số ở mức 0{,}026--0{,}312 nhờ loss vật lý áp lên dữ liệu sạc của bộ đích và ràng buộc miền giá trị, và tốt hơn MLP ở 12/12 cặp. Trung bình nhân của tỉ số PINN/MLP ở $k = 0$ là 0{,}034 cho các cặp cùng họ hoá học và 0{,}043 cho các cặp khác họ. Khi có 3 cell đích có nhãn, MLP cải thiện mạnh và khoảng cách thu hẹp (tỉ số 0{,}26 và 0{,}36); PINN-semi vẫn tốt hơn MLP ở 12/12 cặp. Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở $k = 0$ là 0{,}048 cho cặp cùng họ và 0{,}119 cho cặp khác họ, do đặc trưng sạc của hai họ khác nhau về bản chất. Chiều chuyển cũng quan trọng: từ họ niken sang LFP khó hơn (MAE trung bình nhân 0{,}210) so với từ LFP sang họ niken (0{,}067).
+Khi bộ đích không có nhãn ($k = 0$), MLP gần như không dùng được: MAE theo cell 0{,}54--8{,}13 (đơn vị SOH), tức dự đoán lệch hẳn khỏi miền giá trị. PINN-semi giữ sai số ở mức 0{,}026--0{,}312 nhờ loss vật lý áp lên dữ liệu sạc của bộ đích và ràng buộc miền giá trị, và tốt hơn MLP ở 12/12 cặp. Trung bình nhân của tỉ số PINN/MLP ở $k = 0$ là 0{,}034 cho các cặp cùng họ hoá học và 0{,}043 cho các cặp khác họ. Khi có 3 cell đích có nhãn, MLP cải thiện mạnh và khoảng cách thu hẹp (tỉ số 0{,}26 và 0{,}36); PINN-semi vẫn tốt hơn MLP ở 12/12 cặp. GBDT không ngoại suy ra ngoài miền nhãn của dữ liệu huấn luyện, nên ở $k = 0$ không lệch như MLP (MAE 0{,}024--0{,}264). So với GBDT, PINN-semi tốt hơn ở 6/12 cặp, tỉ số MAE trung bình nhân 1{,}12. Kết quả phụ thuộc rõ vào bộ nguồn: khi nguồn là LFP, PINN-semi tốt hơn GBDT ở 5/6 cặp; khi nguồn thuộc họ niken, chỉ 1/6 cặp. Ở $k = 3$, PINN-semi tốt hơn GBDT ở 8/12 cặp (tỉ số 0{,}99). Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở $k = 0$ là 0{,}048 cho cặp cùng họ và 0{,}119 cho cặp khác họ, nhiều khả năng do đặc trưng sạc của hai họ khác nhau về bản chất. Chiều chuyển cũng quan trọng: từ họ niken sang LFP khó hơn (MAE trung bình nhân 0{,}210) so với từ LFP sang họ niken (0{,}067).
 
 \section{Tham số vật lý học được}\label{sec:physparams}
 
@@ -1095,10 +1095,12 @@ Cả hai tham số vật lý gần như không rời giá trị khởi tạo: $\
 
 \section{Thảo luận chung}
 
-\paragraph{Khi nào nên dùng PINN bán giám sát?} Khi số cell có nhãn ít (khoảng 10--30\,\%), khi có nhiều cell
-chưa đo dung lượng và khi cần dùng mô hình trên một bộ dữ liệu mới chưa có nhãn. Đây chính là tình huống vận
-hành thực tế của BMS. Nếu đã có đủ nhãn và chỉ cần sai số thấp nhất trên cùng một bộ dữ liệu, GBDT là lựa chọn
-đơn giản và mạnh hơn.
+\paragraph{Khi nào nên dùng PINN bán giám sát?} Khi đã chọn mạng nơ-ron làm mô hình, PINN bán giám sát nên được
+dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%), khi có nhiều cell chưa đo dung lượng, và nhất là khi
+phải chạy trên một bộ dữ liệu mới chưa có nhãn: ở đó MLP thất bại hoàn toàn còn PINN-semi vẫn cho sai số dùng
+được. So với GBDT thì khác: trong cùng một bộ dữ liệu, GBDT có sai số thấp hơn ở phần lớn các trường hợp; khi
+chuyển miền, hai mô hình thắng thua tuỳ cặp (PINN-semi tốt hơn ở 6/12 cặp khi không có nhãn đích). Nếu chỉ cần sai số thấp nhất trên cùng một bộ dữ liệu,
+GBDT là lựa chọn đơn giản và mạnh hơn.
 
 \paragraph{Khi nào lợi ích nhỏ?} Khi đã có đủ nhãn (70\,\%), và trên TJU, nơi tỉ số so với MLP chỉ ở mức 0{,}90--1{,}09 trên mọi mức nhãn. TJU gộp ba nhóm hoá học và chín nhóm điều kiện; có thể phần biến thiên giữa các nhóm lớn hơn phần mà ràng buộc vật lý dùng chung cho mọi cell giải thích được.
 
@@ -1123,7 +1125,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item Ở 10\,\% nhãn, 50--64\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
       mang lại 62--95\,\% mức giảm đó. Động học xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa ở 4 trong 16 trường hợp (bộ × mức nhãn) và kém hơn ở 1; khác biệt rõ nhất ở MIT khi ít nhãn.
-\item Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức 0{,}026--0{,}312 trong khi MLP lệch tới 0{,}54--8{,}13; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở 12/12 cặp.
+\item Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức 0{,}026--0{,}312 trong khi MLP lệch tới 0{,}54--8{,}13; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở 12/12 cặp. So với GBDT, PINN-semi tốt hơn ở 6/12 cặp khi $k = 0$ và 8/12 cặp khi $k = 3$.
 \end{enumerate}
 
 Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng

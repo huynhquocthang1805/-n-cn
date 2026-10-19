@@ -548,6 +548,8 @@ def figures(df, cur, cmp_, conv, lk, mats, tr, rs=None):
                 panel_title(ax, LABEL[m], f'k = {k}', pad=4)
                 if j == 0:
                     ax.set_ylabel('nguồn')
+                else:
+                    ax.set_yticklabels([])
                 if i == 1:
                     ax.set_xlabel('đích')
         cb = fig.colorbar(im, ax=axes, fraction=0.04, pad=0.03); cb.set_label('MAE theo cell trên test đích (thang log)')
