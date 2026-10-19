@@ -58,7 +58,7 @@ SOH từ 16 đặc trưng đoạn sạc, gắn với một động học suy gi�
 Arrhenius; ba hàm mất mát vật lý không dùng nhãn nên áp được lên cell chưa đo dung lượng. Đồ án thiết kế và chứng
 minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5
 lần), lý giải từng con số của cách chia, đo định lượng tác động của các dạng rò rỉ thường gặp, và so sánh PINN với
-sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 2.268 lượt huấn luyện).
+sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 3.009 lượt huấn luyện).
 Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là 0{,}39--0{,}90, phần
 lớn nhờ khai thác cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số 0{,}85--1{,}09). Trên bộ dữ liệu mới
 không có nhãn, PINN vẫn cho sai số dùng được trong khi mạng học có nhãn thất bại. Tuy vậy, một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu.
@@ -129,7 +129,7 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
 \item Kiểm toán rò rỉ định lượng: đo mức sai số bị đánh giá thấp giả tạo khi chia theo chu kỳ, khi chuẩn hoá
       theo cả vòng đời cell, khi lọc ngoại lai bằng dữ liệu tương lai.
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
-      (387 cell), tổng cộng 2.268 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
+      (387 cell), tổng cộng 3.009 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Thí nghiệm chuyển miền đầy đủ giữa bốn bộ dữ liệu với quy trình chuẩn hoá không dùng dữ liệu test.
 \end{enumerate}
 
@@ -820,11 +820,11 @@ kiểm định.
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llr}\toprule
 Thí nghiệm & Nội dung & Lượt \\\midrule
 Kiểm định chéo chính & MLP, PINN-semi ở 4 mức; PINN-sup, 2 biến thể cắt bỏ ở 30\,\% & 1.100 \\
-Đối chứng học có nhãn & Ridge, GPR, GBDT ở 4 mức nhãn & 784 \\
-Mở rộng biến thể vật lý & PINN-sup ở 10, 50\,\%; PINN hộp đen ở 4 mức & 119 \\
+Đối chứng học có nhãn & Ridge, GPR, GBDT ở 4 mức nhãn & 1.200 \\
+Mở rộng biến thể vật lý & PINN-sup ở 10, 50\,\%; PINN hộp đen ở 4 mức & 309 \\
 Kiểm toán rò rỉ & 4 cách chia/chuẩn hoá sai, MLP 70\,\% nhãn, 2 lần lặp & 160 \\
-Chuyển miền & 12 cặp nguồn--đích, $k \in \{0, 3\}$, 5 seed & 105 \\
-\textbf{Tổng} &  & \textbf{2.268} \\
+Chuyển miền & 12 cặp nguồn--đích, $k \in \{0, 3\}$, 5 seed & 240 \\
+\textbf{Tổng} &  & \textbf{3.009} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
@@ -877,36 +877,36 @@ mọi mô hình ở bốn mức nhãn.
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
 Bộ & Mô hình & 10\,\% & 30\,\% & 50\,\% & 70\,\% \\\midrule
 XJTU & Ridge & 18{,}22 & 15{,}54 & 14{,}81 & 14{,}09 \\
- & GPR & -- & 13{,}68 & -- & -- \\
+ & GPR & 14{,}85 & 12{,}11 & 14{,}86 & 19{,}18 \\
  & GBDT & \textbf{14{,}49} & \textbf{10{,}85} & \textbf{10{,}19} & \textbf{9{,}51} \\
  & MLP & 24{,}72 & 15{,}95 & 14{,}58 & 12{,}74 \\
- & PINN-sup & 20{,}25 & 14{,}54 & 12{,}87 & 12{,}19 \\
- & PINN hộp đen & -- & -- & -- & -- \\
+ & PINN-sup & 20{,}25 & 14{,}54 & 13{,}21 & 12{,}19 \\
+ & PINN hộp đen & 15{,}68 & -- & -- & -- \\
  & PINN-semi & 14{,}93 & 13{,}44 & 13{,}52 & 12{,}19 \\
 \addlinespace[3pt]
 TJU & Ridge & 23{,}01 & 21{,}60 & 20{,}50 & 20{,}74 \\
- & GPR & -- & -- & -- & -- \\
+ & GPR & 13{,}50 & 9{,}22 & 8{,}01 & 8{,}17 \\
  & GBDT & \textbf{12{,}68} & \textbf{8{,}14} & \textbf{7{,}21} & \textbf{6{,}77} \\
  & MLP & 15{,}50 & 11{,}33 & 9{,}99 & 9{,}64 \\
- & PINN-sup & 14{,}73 & 10{,}67 & 10{,}04 & 10{,}52 \\
- & PINN hộp đen & -- & -- & -- & -- \\
+ & PINN-sup & 14{,}73 & 10{,}67 & 10{,}20 & 10{,}52 \\
+ & PINN hộp đen & 13{,}90 & -- & -- & -- \\
  & PINN-semi & 13{,}91 & 10{,}85 & 10{,}46 & 10{,}52 \\
 \addlinespace[3pt]
 MIT & Ridge & 3{,}53 & 3{,}24 & 3{,}17 & 3{,}13 \\
- & GPR & -- & -- & -- & -- \\
+ & GPR & 3{,}21 & 2{,}14 & 1{,}84 & 1{,}79 \\
  & GBDT & \textbf{3{,}09} & \textbf{1{,}99} & \textbf{1{,}73} & \textbf{1{,}58} \\
  & MLP & 8{,}54 & 3{,}40 & 3{,}04 & 2{,}86 \\
- & PINN-sup & 5{,}34 & 2{,}69 & 2{,}36 & 2{,}44 \\
- & PINN hộp đen & -- & -- & -- & -- \\
+ & PINN-sup & 5{,}34 & 2{,}69 & 2{,}54 & 2{,}44 \\
+ & PINN hộp đen & 4{,}19 & -- & -- & -- \\
  & PINN-semi & 3{,}34 & 2{,}58 & 2{,}48 & 2{,}44 \\
 \addlinespace[3pt]
 HUST & Ridge & \textbf{22{,}88} & 18{,}85 & 18{,}32 & 18{,}10 \\
- & GPR & -- & 21{,}75 & -- & -- \\
- & GBDT & 24{,}13 & 18{,}63 & \textbf{15{,}47} & -- \\
+ & GPR & 28{,}82 & 21{,}24 & 18{,}50 & 17{,}22 \\
+ & GBDT & 24{,}13 & 18{,}63 & \textbf{15{,}65} & \textbf{14{,}45} \\
  & MLP & 37{,}95 & 19{,}80 & 17{,}73 & 16{,}94 \\
- & PINN-sup & 31{,}67 & 17{,}82 & 17{,}21 & \textbf{15{,}99} \\
- & PINN hộp đen & -- & -- & -- & -- \\
- & PINN-semi & 22{,}98 & \textbf{17{,}30} & 16{,}11 & \textbf{15{,}99} \\
+ & PINN-sup & 31{,}67 & 17{,}82 & 16{,}11 & 15{,}99 \\
+ & PINN hộp đen & 23{,}65 & -- & -- & -- \\
+ & PINN-semi & 22{,}98 & \textbf{17{,}30} & 16{,}11 & 15{,}99 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \begin{figure}[H]\centering
@@ -955,33 +955,33 @@ HUST & 25\,\% & $\le 10\,\%$ & 61\,\% & 38\,\% \\
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
 Bộ & Nhãn & so với MLP: tỉ số [KTC] & cell tốt hơn & $p_\text{Holm}$ & so với GBDT: tỉ số [KTC] & cell tốt hơn & $p_\text{Holm}$ \\\midrule
 XJTU & 10\,\% & 0{,}60 [0{,}54; 0{,}68]$^{*}$ & 91\,\% & $<10^{-4}$ & 1{,}03 [0{,}93; 1{,}15] & 47\,\% & 0{,}8210 \\
- & 30\,\% & 0{,}84 [0{,}77; 0{,}93]$^{*}$ & 65\,\% & 0{,}0047 & 1{,}24 [1{,}11; 1{,}42]$^{*}$ & 31\,\% & 0{,}0004 \\
+ & 30\,\% & 0{,}84 [0{,}76; 0{,}93]$^{*}$ & 65\,\% & 0{,}0047 & 1{,}24 [1{,}11; 1{,}42]$^{*}$ & 31\,\% & 0{,}0004 \\
  & 50\,\% & 0{,}93 [0{,}81; 1{,}06] & 45\,\% & 0{,}7502 & 1{,}33 [1{,}17; 1{,}54]$^{*}$ & 20\,\% & $<10^{-4}$ \\
- & 70\,\% & 0{,}96 [0{,}90; 1{,}03] & 53\,\% & 0{,}4712 & 1{,}28 [1{,}11; 1{,}54]$^{*}$ & 33\,\% & 0{,}0005 \\
+ & 70\,\% & 0{,}96 [0{,}90; 1{,}02] & 53\,\% & 0{,}4712 & 1{,}28 [1{,}10; 1{,}54]$^{*}$ & 33\,\% & 0{,}0010 \\
 TJU & 10\,\% & 0{,}90 [0{,}87; 0{,}93]$^{*}$ & 75\,\% & $<10^{-4}$ & 1{,}10 [1{,}02; 1{,}18]$^{*}$ & 38\,\% & 0{,}0340 \\
  & 30\,\% & 0{,}96 [0{,}93; 0{,}99]$^{*}$ & 68\,\% & 0{,}0041 & 1{,}33 [1{,}24; 1{,}44]$^{*}$ & 28\,\% & $<10^{-4}$ \\
  & 50\,\% & 1{,}05 [1{,}01; 1{,}09] & 43\,\% & 0{,}2363 & 1{,}45 [1{,}33; 1{,}58]$^{*}$$^{\dagger}$ & 22\,\% & $<10^{-4}$ \\
- & 70\,\% & 1{,}09 [1{,}05; 1{,}14]$^{*}$ & 41\,\% & 0{,}0086 & 1{,}55 [1{,}40; 1{,}71]$^{*}$$^{\dagger}$ & 20\,\% & $<10^{-4}$ \\
+ & 70\,\% & 1{,}09 [1{,}05; 1{,}14]$^{*}$ & 41\,\% & 0{,}0086 & 1{,}55 [1{,}40; 1{,}72]$^{*}$$^{\dagger}$ & 20\,\% & $<10^{-4}$ \\
 MIT & 10\,\% & 0{,}39 [0{,}32; 0{,}48]$^{*}$ & 90\,\% & $<10^{-4}$ & 1{,}08 [1{,}00; 1{,}16] & 45\,\% & 0{,}1991 \\
  & 30\,\% & 0{,}76 [0{,}69; 0{,}83]$^{*}$$^{\dagger}$ & 82\,\% & $<10^{-4}$ & 1{,}30 [1{,}21; 1{,}40]$^{*}$$^{\dagger}$ & 18\,\% & $<10^{-4}$ \\
- & 50\,\% & 0{,}81 [0{,}75; 0{,}88]$^{*}$ & 79\,\% & $<10^{-4}$ & 1{,}43 [1{,}34; 1{,}54]$^{*}$$^{\dagger}$ & 9\,\% & $<10^{-4}$ \\
- & 70\,\% & 0{,}85 [0{,}79; 0{,}92]$^{*}$ & 74\,\% & $<10^{-4}$ & 1{,}54 [1{,}43; 1{,}67]$^{*}$$^{\dagger}$ & 6\,\% & $<10^{-4}$ \\
+ & 50\,\% & 0{,}81 [0{,}75; 0{,}88]$^{*}$ & 79\,\% & $<10^{-4}$ & 1{,}43 [1{,}33; 1{,}54]$^{*}$$^{\dagger}$ & 9\,\% & $<10^{-4}$ \\
+ & 70\,\% & 0{,}85 [0{,}79; 0{,}92]$^{*}$ & 74\,\% & $<10^{-4}$ & 1{,}54 [1{,}44; 1{,}67]$^{*}$$^{\dagger}$ & 6\,\% & $<10^{-4}$ \\
 HUST & 10\,\% & 0{,}61 [0{,}55; 0{,}67]$^{*}$ & 92\,\% & $<10^{-4}$ & 0{,}95 [0{,}89; 1{,}02] & 61\,\% & 0{,}0720 \\
  & 30\,\% & 0{,}87 [0{,}82; 0{,}92]$^{*}$ & 71\,\% & $<10^{-4}$ & 0{,}93 [0{,}86; 1{,}00]$^{*}$ & 69\,\% & 0{,}0042 \\
- & 50\,\% & 0{,}91 [0{,}87; 0{,}95]$^{*}$ & 68\,\% & 0{,}0008 & 1{,}04 [0{,}95; 1{,}14] & 53\,\% & 0{,}7742 \\
- & 70\,\% & 0{,}94 [0{,}90; 0{,}99] & 65\,\% & 0{,}0526 & -- & -- & -- \\
+ & 50\,\% & 0{,}91 [0{,}87; 0{,}95]$^{*}$ & 68\,\% & 0{,}0008 & 1{,}03 [0{,}94; 1{,}12] & 56\,\% & 0{,}9939 \\
+ & 70\,\% & 0{,}94 [0{,}90; 0{,}99] & 65\,\% & 0{,}0526 & 1{,}11 [1{,}01; 1{,}22] & 43\,\% & 0{,}0923 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
 \section{So với các mô hình học có nhãn khác}
 
-Mô hình có MAE thấp nhất ở từng bộ (Bảng~\ref{tab:big}): XJTU: GBDT ở cả bốn mức nhãn; TJU: GBDT ở cả bốn mức nhãn; MIT: GBDT ở cả bốn mức nhãn; HUST: Ridge ở 10\,\%, PINN-semi ở 30\,\%, 70\,\%, GBDT ở 50\,\%.
+Mô hình có MAE thấp nhất ở từng bộ (Bảng~\ref{tab:big}): XJTU: GBDT ở cả bốn mức nhãn; TJU: GBDT ở cả bốn mức nhãn; MIT: GBDT ở cả bốn mức nhãn; HUST: Ridge ở 10\,\%, PINN-semi ở 30\,\%, GBDT ở 50--70\,\%.
 
-Ridge, dù chỉ là mô hình tuyến tính, tốt hơn MLP ở 10\,\% nhãn trên XJTU, MIT và HUST: khi rất ít nhãn, mô hình đơn giản ít quá khớp hơn. Nhưng Ridge cải thiện chậm khi thêm nhãn: MAE ở 70\,\% bằng 0{,}77--0{,}90 lần MAE ở 10\,\%, so với 0{,}33--0{,}62 lần của MLP. GPR chỉ dùng được 1\,500 điểm huấn luyện do chi phí $O(n^3)$ theo số điểm, và kém GBDT trong 2/2 trường hợp (bộ × mức nhãn). GBDT là đối thủ mạnh nhất: mô hình này tốt hơn PINN-semi có ý nghĩa thống kê ở 10\,\% (TJU); 30\,\% (XJTU, TJU và MIT); 50\,\% (XJTU, TJU và MIT); 70\,\% (XJTU, TJU và MIT); ngược lại PINN-semi tốt hơn GBDT có ý nghĩa ở 30\,\% (HUST). Ở 10\,\% nhãn, tỉ số MAE của PINN-semi so với GBDT là XJTU 1{,}03, TJU 1{,}10, MIT 1{,}08, HUST 0{,}95. Cây quyết định xử lý tốt các đặc trưng có phân phối lệch và
+Ridge, dù chỉ là mô hình tuyến tính, tốt hơn MLP ở 10\,\% nhãn trên XJTU, MIT và HUST: khi rất ít nhãn, mô hình đơn giản ít quá khớp hơn. Nhưng Ridge cải thiện chậm khi thêm nhãn: MAE ở 70\,\% bằng 0{,}77--0{,}90 lần MAE ở 10\,\%, so với 0{,}33--0{,}62 lần của MLP. GPR chỉ dùng được 1\,500 điểm huấn luyện do chi phí $O(n^3)$ theo số điểm, và kém GBDT trong 16/16 trường hợp (bộ × mức nhãn). GBDT là đối thủ mạnh nhất: mô hình này tốt hơn PINN-semi có ý nghĩa thống kê ở 10\,\% (TJU); 30\,\% (XJTU, TJU và MIT); 50\,\% (XJTU, TJU và MIT); 70\,\% (XJTU, TJU và MIT); ngược lại PINN-semi tốt hơn GBDT có ý nghĩa ở 30\,\% (HUST). Ở 10\,\% nhãn, tỉ số MAE của PINN-semi so với GBDT là XJTU 1{,}03, TJU 1{,}10, MIT 1{,}08, HUST 0{,}95. Cây quyết định xử lý tốt các đặc trưng có phân phối lệch và
 các chế độ thí nghiệm khác hẳn nhau mà không cần chuẩn hoá cẩn thận; đây là ưu thế quen thuộc của mô hình cây trên
 dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý cải thiện rõ rệt \emph{mô hình mạng nơ-ron} khi ít nhãn và
-đưa nó tới gần mô hình cây ở 10\,\% nhãn, nhưng chưa vượt được một mô hình cây được tinh chỉnh tốt trên phần lớn
-các bộ dữ liệu.
+đưa nó tới gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT 0{,}95--1{,}10), nhưng chưa vượt được một mô hình cây
+được tinh chỉnh tốt trên phần lớn các bộ dữ liệu.
 
 \section{Lợi ích đến từ đâu}
 
@@ -1057,16 +1057,16 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
 Nguồn → đích & Cùng họ & MLP, $k{=}0$ & PINN, $k{=}0$ & MLP, $k{=}3$ & PINN, $k{=}3$ \\\midrule
 XJTU → TJU & có & 1{,}4780 & 0{,}0383 & 0{,}3219 & 0{,}0337 \\
-XJTU → MIT & không & 1{,}3110 & 0{,}1487 & 0{,}0600 & 0{,}0119 \\
-XJTU → HUST & không & -- & -- & -- & -- \\
+XJTU → MIT & không & 1{,}3110 & 0{,}1487 & 0{,}0600 & 0{,}0109 \\
+XJTU → HUST & không & 1{,}1811 & 0{,}2726 & 0{,}0364 & 0{,}0296 \\
 TJU → XJTU & có & 1{,}9983 & 0{,}0951 & 0{,}0303 & 0{,}0285 \\
-TJU → MIT & không & -- & -- & -- & -- \\
-TJU → HUST & không & -- & -- & -- & -- \\
-MIT → XJTU & không & -- & -- & -- & -- \\
-MIT → TJU & không & -- & -- & -- & -- \\
+TJU → MIT & không & 2{,}0884 & 0{,}1548 & 0{,}0370 & 0{,}0120 \\
+TJU → HUST & không & 1{,}7677 & 0{,}3115 & 0{,}0385 & 0{,}0322 \\
+MIT → XJTU & không & 4{,}6490 & 0{,}0731 & 0{,}0328 & 0{,}0254 \\
+MIT → TJU & không & 3{,}6474 & 0{,}0488 & 0{,}1828 & 0{,}0265 \\
 MIT → HUST & có & 0{,}5423 & 0{,}0583 & 0{,}0306 & 0{,}0256 \\
-HUST → XJTU & không & -- & -- & -- & -- \\
-HUST → TJU & không & -- & -- & -- & -- \\
+HUST → XJTU & không & 8{,}1251 & 0{,}0897 & 0{,}0432 & 0{,}0242 \\
+HUST → TJU & không & 4{,}3825 & 0{,}0646 & 0{,}2333 & 0{,}0274 \\
 HUST → MIT & có & 2{,}4452 & 0{,}0260 & 0{,}1365 & 0{,}0076 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
@@ -1076,7 +1076,7 @@ HUST → MIT & có & 2{,}4452 & 0{,}0260 & 0{,}1365 & 0{,}0076 \\
 \end{figure}
 
 
-Khi bộ đích không có nhãn ($k = 0$), MLP gần như không dùng được: MAE theo cell 0{,}54--2{,}45 (đơn vị SOH), tức dự đoán lệch hẳn khỏi miền giá trị. PINN-semi giữ sai số ở mức 0{,}026--0{,}149 nhờ loss vật lý áp lên dữ liệu sạc của bộ đích và ràng buộc miền giá trị, và tốt hơn MLP ở 5/5 cặp. Trung bình nhân của tỉ số PINN/MLP ở $k = 0$ là 0{,}034 cho các cặp cùng họ hoá học và 0{,}113 cho các cặp khác họ. Khi có 3 cell đích có nhãn, MLP cải thiện mạnh và khoảng cách thu hẹp (tỉ số 0{,}26 và 0{,}20); PINN-semi vẫn tốt hơn MLP ở 5/5 cặp. Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở $k = 0$ là 0{,}048 cho cặp cùng họ và 0{,}149 cho cặp khác họ, do đặc trưng sạc của hai họ khác nhau về bản chất.
+Khi bộ đích không có nhãn ($k = 0$), MLP gần như không dùng được: MAE theo cell 0{,}54--8{,}13 (đơn vị SOH), tức dự đoán lệch hẳn khỏi miền giá trị. PINN-semi giữ sai số ở mức 0{,}026--0{,}312 nhờ loss vật lý áp lên dữ liệu sạc của bộ đích và ràng buộc miền giá trị, và tốt hơn MLP ở 12/12 cặp. Trung bình nhân của tỉ số PINN/MLP ở $k = 0$ là 0{,}034 cho các cặp cùng họ hoá học và 0{,}043 cho các cặp khác họ. Khi có 3 cell đích có nhãn, MLP cải thiện mạnh và khoảng cách thu hẹp (tỉ số 0{,}26 và 0{,}36); PINN-semi vẫn tốt hơn MLP ở 12/12 cặp. Chuyển giữa hai họ hoá học (NCM/NCA và LFP) khó hơn hẳn: MAE trung bình nhân của PINN-semi ở $k = 0$ là 0{,}048 cho cặp cùng họ và 0{,}119 cho cặp khác họ, do đặc trưng sạc của hai họ khác nhau về bản chất. Chiều chuyển cũng quan trọng: từ họ niken sang LFP khó hơn (MAE trung bình nhân 0{,}210) so với từ LFP sang họ niken (0{,}067).
 
 \section{Tham số vật lý học được}\label{sec:physparams}
 
@@ -1119,11 +1119,11 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item Cùng 30\,\% nhãn, PINN-semi có sai số thấp hơn MLP có ý nghĩa thống kê trên cả bốn bộ (tỉ số MAE 0{,}76--0{,}96).
 \item Lợi ích lớn nhất khi ít nhãn (10\,\%: tỉ số 0{,}39--0{,}90, có ý nghĩa trên cả bốn bộ) và giảm dần khi lượng nhãn tăng
       (trung bình nhân qua bốn bộ: 10\,\%: 0{,}60, 30\,\%: 0{,}86, 50\,\%: 0{,}92, 70\,\%: 0{,}96). Ở 70\,\% nhãn, khi không còn cell không nhãn, cải thiện chỉ còn có ý nghĩa trên MIT, và trên TJU MLP tốt hơn.
-\item PINN-semi có MAE thấp hơn MLP trong 14/16, thấp hơn Ridge trong 15/16 và GPR trong 2/2 trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong 13/15 trường hợp, 10 trong đó có ý nghĩa thống kê. GBDT được tinh chỉnh tốt vẫn là mô hình mạnh nhất khi đánh giá trong cùng một bộ dữ liệu.
+\item PINN-semi có MAE thấp hơn MLP trong 14/16, thấp hơn Ridge trong 15/16 và GPR trong 6/16 trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong 14/16 trường hợp, 10 trong đó có ý nghĩa thống kê. GBDT được tinh chỉnh tốt vẫn là mô hình mạnh nhất khi đánh giá trong cùng một bộ dữ liệu.
 \item Phần lớn lợi ích ở mức nhãn thấp đến từ việc áp loss vật lý lên cell không nhãn (50--64\,\% mức giảm
       sai số theo thang log ở 10\,\% nhãn); vật lý chỉ trên cell có nhãn giúp ít hơn nhiều. Riêng ràng buộc đơn điệu
       đã mang lại phần lớn lợi ích ở 30\,\% nhãn.
-\item Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức 0{,}026--0{,}149 trong khi MLP lệch tới 0{,}54--2{,}45; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở 5/5 cặp.
+\item Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức 0{,}026--0{,}312 trong khi MLP lệch tới 0{,}54--8{,}13; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở 12/12 cặp.
 \end{enumerate}
 
 Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng

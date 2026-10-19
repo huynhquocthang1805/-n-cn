@@ -1581,8 +1581,8 @@ Mô hình có MAE thấp nhất ở từng bộ (Bảng~\ref{tab:big}): <<BEST>>
 <<RIDGE>><<GPR>>GBDT là đối thủ mạnh nhất: <<GBTXT>>. Cây quyết định xử lý tốt các đặc trưng có phân phối lệch và
 các chế độ thí nghiệm khác hẳn nhau mà không cần chuẩn hoá cẩn thận; đây là ưu thế quen thuộc của mô hình cây trên
 dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý cải thiện rõ rệt \emph{mô hình mạng nơ-ron} khi ít nhãn và
-đưa nó tới gần mô hình cây ở 10\,\% nhãn, nhưng chưa vượt được một mô hình cây được tinh chỉnh tốt trên phần lớn
-các bộ dữ liệu.
+đưa nó tới gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT <<RGB10>>), nhưng chưa vượt được một mô hình cây
+được tinh chỉnh tốt trên phần lớn các bộ dữ liệu.
 
 \section{Lợi ích đến từ đâu}
 
@@ -1655,7 +1655,7 @@ sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB
              EQTXT=eq_txt, TEQ=t['EQ'], TC=t['C'],
              FIGRATIO=fig('fig_thesis_ratio', 'Tỉ số MAE theo cell của PINN-semi so với MLP, GBDT và PINN-sup theo lượng '
                           'nhãn (vạch: khoảng tin cậy 95\\,\\%). Dưới 1: PINN-semi tốt hơn.', 'fig:ratio'),
-             BEST=F['best_txt'], RIDGE=ridge_txt, GPR=gpr_txt, GBTXT=gb_txt,
+             BEST=F['best_txt'], RIDGE=ridge_txt, RGB10=_rng(F['r_gb10'].values()), GPR=gpr_txt, GBTXT=gb_txt,
              TS=t['S'], SUPTXT=sup_txt, UNLTXT=unl_txt, MONOTXT=mono_txt, EUTXT=eu_txt, BBTXT=bb_txt,
              TP=t['P'], R2TXT=r2_txt,
              FIGPAR=fig('fig_pred_parity', 'SOH dự đoán so với thực đo trên tập test (30\\,\\% nhãn). Hàng trên: MLP; '
