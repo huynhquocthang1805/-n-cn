@@ -31,3 +31,7 @@ logs/
 *.lof
 *.lot
 do-an/main.pdf
+
+# bộ nhớ đệm dữ liệu và kết quả phân tích (dựng lại được)
+.cache/
+*.tmp

@@ -22,6 +22,9 @@ Hai chỉ số: MAE gộp hàng (khớp phần còn lại của báo cáo) và M
 mục 07-E11 đề xuất làm chính).
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import argparse, glob, json, os
 import numpy as np
 import pandas as pd

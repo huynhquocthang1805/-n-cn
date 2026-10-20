@@ -1,8 +1,8 @@
 """
 Kiểm chứng bằng số năm sửa đổi của pipeline v2 (bản rà soát 29/09, slide 16) và giao thức CV.
 
-    python verify_pipeline.py          # in bảng kết quả
-    python verify_pipeline.py --csv    # kèm ghi results/verify_pipeline.csv
+    python analysis/verify_pipeline.py         # in bảng kết quả
+    python analysis/verify_pipeline.py--csv    # kèm ghi results/verify_pipeline.csv
 
 Mỗi nhóm phép kiểm ứng với một phát hiện của bản rà soát:
   P1  lọc ngoại lai nhân quả      — quyết định ở chu kỳ N không đổi khi sửa dữ liệu tương lai
@@ -14,11 +14,13 @@ Mỗi nhóm phép kiểm ứng với một phát hiện của bản rà soát:
   V1  tương thích ngược           — cấu hình mặc định cho đúng số hàng của báo cáo (304 028)
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import argparse, os, sys, tempfile
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, '.')
 from pinnsoh.data import (FEATURES, _clean_causal_features, load_cell_csv, load_dataset, cv_split,
                           Normalizer, make_pointset, choose_labelled, CAUSAL_MIN_HIST)
 from pinnsoh.metrics import eol_cycle

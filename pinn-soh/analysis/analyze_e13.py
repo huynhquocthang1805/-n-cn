@@ -1,7 +1,7 @@
 """
 Phân tích E13 (và E14) đúng theo đề cương ấn định trước — tai-lieu/de-cuong-E13.md.
 
-    python analyze_e13.py            # runs/E13/*.json, runs/E14/*.json -> results/E13_*, E14_*, fig_E13_*
+    python analysis/analyze_e13.py           # runs/E13/*.json, runs/E14/*.json -> results/E13_*, E14_*, fig_E13_*
 
 Mọi chỉ số được TÍNH LẠI từ test_predictions đã lưu (y, p, chu kỳ gốc, id cell), không đọc số tóm tắt.
 Bảng trung gian results/E13_percell.csv (một hàng = một cell × một lượt huấn luyện) đủ để kiểm lại
@@ -10,12 +10,14 @@ mọi con số mà không cần 1 100 file JSON.
 Đơn vị phân tích chính là CELL: e_a(c) = trung bình qua R lần lặp của MAE cell c dưới nhánh a.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import glob, json, os, sys
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pinnsoh.metrics import EOL_THRESHOLD, LATE_SOH
 
 RUNS, OUT = 'runs/E13', 'results'
@@ -43,42 +45,48 @@ def _first(v, thr):
     return int(i[0]) if len(i) else None
 
 
-def build_percell() -> pd.DataFrame:
+def _parse(f):
+    """Một file kết quả -> (các hàng theo cell, một hàng theo fold); None nếu không thuộc nhánh nào."""
     rows, folds = [], []
+    r = json.load(open(f))
+    c = r['config']
+    arm = ARM.get((c['tag'], c['model'], c['label_frac']))
+    if arm is None:
+        return None
+    tp = r['test_predictions']
+    y = np.asarray(tp['y'], float); p = np.asarray(tp['p'], float)
+    cell = np.asarray(tp['cell']); cyc = np.asarray(tp['cycle'])
+    ids = tp['cell_ids']
+    base = dict(arm=arm, dataset=c['dataset'], repeat=c['repeat'], fold=c['fold'])
+    folds.append(dict(base, n_train=r['n_cells']['train_labelled'] + r['n_cells']['train_unlabelled'],
+                      n_lab=r['n_cells']['train_labelled'], n_test=r['n_cells']['test'],
+                      steps=r['steps'], mae_row=float(np.abs(p - y).mean()),
+                      lam=r.get('physics_params', {}).get('lam', np.nan),
+                      Ea=r.get('physics_params', {}).get('Ea_kJ_mol', np.nan)))
+    for k in np.unique(cell):
+        m = cell == k
+        yy, pp, cc = y[m], p[m], cyc[m]
+        e = pp - yy; d = np.diff(pp)
+        late = yy <= LATE_SOH
+        a, b = _first(yy, EOL_THRESHOLD), _first(pp, EOL_THRESHOLD)
+        rows.append(dict(base, cell=ids[k], n=int(m.sum()),
+                         mae=float(np.abs(e).mean()), rmse=float(np.sqrt((e ** 2).mean())),
+                         bias=float(e.mean()), sse=float((e ** 2).sum()), sae=float(np.abs(e).sum()),
+                         sae_late=float(np.abs(e[late]).sum()), n_late=int(late.sum()),
+                         mono100=float(d[d > 0].sum()) / (max(1.0, float(cc[-1] - cc[0])) / 100.0),
+                         jitter=float(np.abs(d).mean()),
+                         eol_true=float(cc[a]) if a is not None else np.nan,
+                         eol_pred=float(cc[b]) if b is not None else np.nan,
+                         last_cycle=float(cc[-1])))
+    return rows, folds[0]
+
+
+def build_percell() -> pd.DataFrame:
+    from pinnsoh.runcache import cached_map
     files = sorted(glob.glob(f'{RUNS}/*.json'))
-    for f in files:
-        r = json.load(open(f))
-        c = r['config']
-        arm = ARM.get((c['tag'], c['model'], c['label_frac']))
-        if arm is None:
-            continue
-        tp = r['test_predictions']
-        y = np.asarray(tp['y'], float); p = np.asarray(tp['p'], float)
-        cell = np.asarray(tp['cell']); cyc = np.asarray(tp['cycle'])
-        ids = tp['cell_ids']
-        base = dict(arm=arm, dataset=c['dataset'], repeat=c['repeat'], fold=c['fold'])
-        folds.append(dict(base, n_train=r['n_cells']['train_labelled'] + r['n_cells']['train_unlabelled'],
-                          n_lab=r['n_cells']['train_labelled'], n_test=r['n_cells']['test'],
-                          steps=r['steps'], mae_row=float(np.abs(p - y).mean()),
-                          lam=r.get('physics_params', {}).get('lam', np.nan),
-                          Ea=r.get('physics_params', {}).get('Ea_kJ_mol', np.nan)))
-        for k in np.unique(cell):
-            m = cell == k
-            yy, pp, cc = y[m], p[m], cyc[m]
-            e = pp - yy; d = np.diff(pp)
-            late = yy <= LATE_SOH
-            a, b = _first(yy, EOL_THRESHOLD), _first(pp, EOL_THRESHOLD)
-            rows.append(dict(base, cell=ids[k], n=int(m.sum()),
-                             mae=float(np.abs(e).mean()), rmse=float(np.sqrt((e ** 2).mean())),
-                             bias=float(e.mean()), sse=float((e ** 2).sum()), sae=float(np.abs(e).sum()),
-                             sae_late=float(np.abs(e[late]).sum()), n_late=int(late.sum()),
-                             mono100=float(d[d > 0].sum()) / (max(1.0, float(cc[-1] - cc[0])) / 100.0),
-                             jitter=float(np.abs(d).mean()),
-                             eol_true=float(cc[a]) if a is not None else np.nan,
-                             eol_pred=float(cc[b]) if b is not None else np.nan,
-                             last_cycle=float(cc[-1])))
+    parsed = [x for x in cached_map(files, _parse, 'e13_records_v1') if x is not None]
     print(f'đọc {len(files)} lượt huấn luyện')
-    return pd.DataFrame(rows), pd.DataFrame(folds)
+    return pd.DataFrame([row for rows, _ in parsed for row in rows]), pd.DataFrame([fold for _, fold in parsed])
 
 
 # ───────────────────────────────────────────────────────────── 2. công cụ thống kê
@@ -200,10 +208,17 @@ def curve(pc: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
+SAME_CHEM = {'HUST': 'MIT', 'MIT': 'HUST', 'XJTU': 'TJU', 'TJU': 'XJTU'}
+
+
 def e14() -> pd.DataFrame:
+    """Bảng E14: 4 cặp cùng hoá học, MLP và PINN-semi. runs/E14 còn chứa các cặp khác (E18) và GBDT (E19),
+    nên lọc đúng phạm vi E14."""
     rows = []
-    for f in glob.glob('runs/E14/*.json'):
+    for f in glob.glob('runs/E14/samenorm_*_mlp_*.json') + glob.glob('runs/E14/samenorm_*_pinn_semi_*.json'):
         r = json.load(open(f)); c = r['config']
+        if SAME_CHEM.get(c['dataset']) != c['target']:
+            continue
         rows.append(dict(cap=f'{c["dataset"]} → {c["target"]}', k=c['k_target'], model=c['model'],
                          seed=c['seed'], MAE_cell=r['target_test']['MAE_cell'], MAE=r['target_test']['MAE']))
     if not rows:
@@ -211,7 +226,7 @@ def e14() -> pd.DataFrame:
     d = pd.DataFrame(rows)
     t = d.groupby(['cap', 'k', 'model']).agg(MAE_cell=('MAE_cell', 'mean'), sd=('MAE_cell', 'std'),
                                              MAE=('MAE', 'mean'), n=('seed', 'size')).reset_index()
-    w = t.pivot_table(index=['cap', 'k'], columns='model', values=['MAE_cell', 'sd']).reset_index()
+    w = t.pivot_table(index=['cap', 'k'], columns='model', values=['MAE_cell', 'sd'], dropna=False).reset_index()
     w.columns = ['cap', 'k', 'mlp', 'pinn_semi', 'sd_mlp', 'sd_pinn']
     w['ti_so'] = w.pinn_semi / w.mlp
     # thắng theo seed (ghép cặp: cùng seed, cùng cặp, cùng k)

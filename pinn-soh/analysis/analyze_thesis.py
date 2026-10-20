@@ -1,12 +1,15 @@
 """
 Phân tích và hình cho báo cáo dạng đồ án.
 
-    python analyze_thesis.py          # -> results/thesis_*.csv, results/fig_thesis_*.png|pdf
+    python analysis/analyze_thesis.py         # -> results/thesis_*.csv, results/fig_thesis_*.png|pdf
 
 Gom các thí nghiệm theo giao thức kiểm định chéo theo cell (E13, E16, E17), kiểm toán rò rỉ (E15) và
 chuyển miền (E14/E18). Mọi chỉ số tính lại từ dự đoán test đã lưu. Hình không mang chữ chú thích.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import glob, itertools, json, os
 import numpy as np
 import pandas as pd
@@ -51,9 +54,9 @@ def percell(refresh=False):
     path = f'{OUT}/thesis_percell.csv.gz'
     if os.path.exists(path) and not refresh:
         return pd.read_csv(path)
-    rows = []
-    for f in sorted(glob.glob('runs/E13/*.json') + glob.glob('runs/E16/*.json') + glob.glob('runs/E17/*.json')):
-        rows += _records(f)
+    from pinnsoh.runcache import cached_map
+    files = sorted(glob.glob('runs/E13/*.json') + glob.glob('runs/E16/*.json') + glob.glob('runs/E17/*.json'))
+    rows = [x for recs in cached_map(files, _records, 'thesis_records_v1') for x in recs]
     df = pd.DataFrame(rows, columns=['model', 'frac', 'dataset', 'repeat', 'fold', 'cell', 'mae', 'n', 'n_train', 'n_test'])
     # ở 70 % nhãn mọi cell train đều có nhãn -> PINN-sup trùng từng bit với PINN-semi (không chạy lại)
     g = df[(df.model == 'pinn_semi') & (df.frac == 0.7)].copy(); g['model'] = 'pinn_sup'

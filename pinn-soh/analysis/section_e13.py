@@ -1,13 +1,16 @@
 """
 Sinh mục "Thí nghiệm xác nhận E13" (kèm E14) từ results/E13_*.csv, E14_table.csv, verify_pipeline.csv.
 
-    python section_e13.py        # -> tai-lieu/ket-qua-E13.md  (bản Markdown, đọc trên GitHub)
+    python analysis/section_e13.py       # -> tai-lieu/ket-qua-E13.md  (bản Markdown, đọc trên GitHub)
     make_latex.py import build_section() để chèn mục này vào báo cáo LaTeX.
 
 Không gõ tay số nào: mọi con số và mọi câu kết luận có điều kiện đều tính từ CSV. Câu chữ kết luận
 đi theo đúng quy tắc quyết định đã ấn định ở tai-lieu/de-cuong-E13.md.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import os, subprocess
 import numpy as np
 import pandas as pd

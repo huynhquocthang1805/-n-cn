@@ -1,9 +1,12 @@
 """
 Sơ đồ kiến trúc mô hình cho báo cáo đồ án.
 
-    python fig_thesis_diagrams.py     # -> results/fig_thesis_arch.png|pdf
+    python report/diagrams.py         # -> results/fig_thesis_arch.png|pdf
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 from pinnsoh.plotstyle import apply_theme, save

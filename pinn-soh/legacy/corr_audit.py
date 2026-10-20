@@ -15,6 +15,9 @@ cell), rồi lấy TRUNG VỊ trên các cell của bộ đó. Gộp cell sẽ t
 giữa-cell với biến thiên trong-cell và cho ra con số vô nghĩa.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import numpy as np, pandas as pd
 from scipy import stats
 from pinnsoh.data import load_dataset, FEATURES

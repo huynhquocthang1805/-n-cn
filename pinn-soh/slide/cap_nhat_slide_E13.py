@@ -23,6 +23,7 @@ from pptx.util import Inches, Pt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'analysis'))       # section_e13
 import pptx_tools as T
 import section_e13 as S
 

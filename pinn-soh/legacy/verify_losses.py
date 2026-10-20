@@ -9,12 +9,14 @@ kiểm chứng SỐ cho một chứng minh đã có, không thay thế chứng m
 (sai dấu, quên softplus, nhãn lọt vào loss) chứ không chứng minh mệnh đề.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import argparse, math, sys
 import numpy as np
 import torch
 import torch.nn.functional as Fnn
 
-sys.path.insert(0, '.')
 from pinnsoh.models import GreyBoxDynamics, MonotoneHead, SolutionNet, mlp
 from pinnsoh.data import FEATURES
 

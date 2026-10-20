@@ -6,6 +6,9 @@ results/verify_table.csv, stats_table*.csv, stats_perseed*.csv, stats_power.csv 
 không gõ tay số nào.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import os
 import numpy as np
 import pandas as pd

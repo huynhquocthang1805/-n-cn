@@ -6,6 +6,10 @@ Mọi con số trong báo cáo đều lấy tự động — không gõ tay ch�
     cd bao-cao-latex && make        -> biên dịch ra main.pdf
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
+_sys.path.insert(1, _os.path.join(_sys.path[0], 'analysis'))   # section_e13
 import os, re, shutil, glob
 import numpy as np, pandas as pd
 from section_proofs import build_section

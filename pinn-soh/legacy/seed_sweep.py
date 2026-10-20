@@ -12,6 +12,9 @@ Với cùng một seed, hai mô hình dùng ĐÚNG một cách chia cell (split_
 seed), nên cặp (MLP, PINN) trên mỗi cell test là cặp hợp lệ để ghép.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import functools, os, sys, time
 import pinnsoh.data as D
 from pinnsoh.train import Config, run, run_name

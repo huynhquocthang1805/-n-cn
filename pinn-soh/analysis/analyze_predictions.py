@@ -1,13 +1,16 @@
 """
 Chỉ số mở rộng và hình dự đoán SOH, tính lại từ dự đoán test đã lưu của E13.
 
-    python analyze_predictions.py      # -> results/pred_metrics.csv|md, results/fig_pred_*.png|pdf
+    python analysis/analyze_predictions.py     # -> results/pred_metrics.csv|md, results/fig_pred_*.png|pdf
 
 Mô hình: MLP và PINN-semi ở 30 % và 70 % nhãn. Mỗi cell được dự đoán 5 lần (5 lần lặp kiểm định
 chéo); bảng chỉ số gộp toàn bộ, hình dùng lần lặp 0 (mỗi cell xuất hiện đúng một lần).
 Hình không mang chữ chú thích.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import glob, json, os
 import numpy as np
 import pandas as pd

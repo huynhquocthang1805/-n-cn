@@ -1,225 +1,192 @@
-# Ước lượng SOH pin lithium-ion đơn với ràng buộc vật lý không cần nhãn
+# Ước lượng SOH pin lithium-ion bằng PINN bán giám sát
 
-Mã nguồn và dữ liệu của Đồ án chuyên ngành HK261 — nhóm 15.
+Mã nguồn của Đồ án chuyên ngành HK261 — nhóm 15.
 Huỳnh Quốc Thắng, Khoa KH&KT Máy tính, Trường ĐH Bách khoa — ĐHQG-HCM.
 
-Bài toán: ước lượng SOH (dung lượng hiện tại chia dung lượng danh định) của **một cell
-lithium-ion đơn**, từ 16 đặc trưng thống kê của đoạn sạc CC–CV, tại từng chu kỳ. Điểm khác
-biệt so với PINN4SOH: động học suy giảm có **cấu trúc vật lý** thay vì mạng đen; mọi hàm
-mất mát vật lý đều **không dùng nhãn** nên áp được lên cả cell chưa đo dung lượng; và
-pipeline **không rò rỉ thông tin**.
+Bài toán: ước lượng SOH (dung lượng hiện tại / dung lượng danh định) của từng cell lithium-ion, tại từng
+chu kỳ, từ 16 đặc trưng của đoạn sạc CC–CV. Mô hình là một mạng nơ-ron có thông tin vật lý (PINN): mạng
+nghiệm dự đoán SOH, gắn với động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn
+nên áp được lên cả cell chưa đo dung lượng. Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
-Toàn bộ kết quả trong báo cáo dựa trên **1 363 lượt huấn luyện thật** trên **387 cell** của
-bốn bộ dữ liệu công khai (XJTU, TJU, MIT, HUST).
-
-**Cập nhật 29/09/2026 — pipeline v2 và thí nghiệm xác nhận E13.** Sửa năm điểm của bản rà soát
-(lọc ngoại lai nhân quả, nhãn tuỳ chọn, cùng normaliser cho mọi mô hình, lấy cặp theo chu kỳ gốc,
-EOL theo chu kỳ có kiểm duyệt), rồi chạy lại phép so MLP–PINN theo một đề cương **ấn định trước**
-(`tai-lieu/de-cuong-E13.md`) bằng kiểm định chéo 5 fold theo cell × 5 lần lặp. Kết quả:
-`tai-lieu/ket-qua-E13.md`. Chế độ v1 vẫn là mặc định và tái lập từng bit các log cũ.
+Kết quả của báo cáo dựa trên **3 420 lượt huấn luyện** (E13–E19) trên **387 cell** của bốn bộ dữ liệu công
+khai XJTU, TJU, MIT, HUST.
 
 ---
 
 ## 1. Cài đặt
 
-Cần Python ≥ 3.10. Phiên bản đã dùng để sinh mọi kết quả: **Python 3.11.15**.
+Cần Python ≥ 3.10 (đã dùng 3.11.15). XeLaTeX (TeX Live / MiKTeX) chỉ cần cho bước dựng báo cáo PDF.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Chỉ cần Node.js nếu muốn dựng lại slide (`slide/`):
+## 2. Chạy lại trên máy cá nhân
+
+Mọi bước đều qua một lệnh `python run.py <lệnh>`, chạy từ thư mục nào cũng được.
 
 ```bash
-npm install -g pptxgenjs@4.0.1
+python run.py check          # kiểm tra Python, thư viện, dữ liệu, XeLaTeX, số lõi CPU
+python run.py data           # tải 387 file CSV (~94 MB) từ repo gốc và dựng bộ nhớ đệm
+python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
+python run.py bench          # đo tốc độ máy để ước lượng thời gian chính xác hơn
+python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, không chạy gì
+python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-Chỉ cần XeLaTeX (TeX Live / MiKTeX) nếu muốn biên dịch báo cáo ra PDF.
-
-## 2. Giải nén dữ liệu
-
-Repo này đi kèm bốn zip riêng. Giải nén **vào đúng thư mục** dưới đây:
-
-| Zip | Giải nén vào | Nội dung |
-|---|---|---|
-| `du-lieu-XJTU.zip`, `du-lieu-TJU.zip`, `du-lieu-MIT.zip`, `du-lieu-HUST.zip` | `PINN4SOH/data/` | 387 file CSV, mỗi file là một cell — dữ liệu gốc bốn bộ |
-| `ket-qua-runs-E1-{XJTU,TJU,MIT,HUST}.zip`, `ket-qua-runs-E9-TUNED.zip`, `ket-qua-runs-con-lai.zip` | thư mục gốc repo | 1 387 file JSON — kết quả từng lượt huấn luyện (1 363 lượt dùng trong báo cáo + 24 lượt quét `CYCLE_SCALE` ở `runs/SCALE`). Các zip này đã chứa sẵn đường dẫn `runs/...` nên giải nén thẳng vào thư mục gốc. |
-| `ket-qua-bang-hinh.zip` | thư mục gốc repo | 36 bảng CSV + 13 bảng MD + 13 hình PNG + 11 hình PDF (zip đã chứa sẵn `results/`) |
-
-Sau khi giải nén, cây thư mục phải như sau:
-
-```
-pinn-soh/
-├── PINN4SOH/data/
-│   ├── XJTU data/*.csv                              (55 file, phẳng)
-│   ├── TJU data/Dataset_{1_NCA,2_NCM,3_NCM_NCA}_battery/*.csv   (130 file)
-│   ├── MIT data/{2017-05-12, 2017-06-30, 2018-04-12}/*.csv      (125 file)
-│   └── HUST data/*.csv                              (77 file, phẳng)
-├── runs/{E1, E2, ..., E12, TUNED, SCALE}/*.json
-└── results/*.{csv, md, png, pdf}
-```
-
-Kiểm nhanh:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
-python -c "from pinnsoh.data import load_dataset; \
-print({d: len(load_dataset('PINN4SOH/data', d)) for d in ['XJTU','TJU','MIT','HUST']})"
-# mong đợi: {'XJTU': 55, 'TJU': 130, 'MIT': 125, 'HUST': 77}   (tổng 387 cell)
+python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
+python run.py E16 --datasets XJTU      # chỉ một bộ dữ liệu
+python run.py experiments --quick      # chạy thử: 1 lần lặp thay vì 5, 1 hạt giống thay vì 5
+python run.py analyze                  # runs/ -> results/ (bảng CSV/MD, hình PNG/PDF)
+python run.py thesis                   # results/ -> do-an/bao-cao-do-an.pdf
 ```
 
-> **Mọi lệnh Python bên dưới phải chạy từ thư mục gốc của repo** — các script dùng đường
-> dẫn tương đối `PINN4SOH/data`, `runs/`, `results/`.
+* **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/`, ghi nguyên tử;
+  chạy lại đúng lệnh cũ sẽ bỏ qua lượt đã xong và chạy tiếp.
+* `--workers N`: mặc định bằng số lõi CPU. Mỗi tiến trình dùng 1 luồng — với mạng nhỏ thế này, N tiến
+  trình × 1 luồng nhanh hơn nhiều so với 1 tiến trình × N luồng.
+* `--quick` cho tập con của bản đầy đủ (lần lặp 0, hạt giống 0); chạy bản đầy đủ sau đó sẽ không phải chạy
+  lại phần đã có. Kết quả `--quick` đi trọn được tới PDF nhưng chỉ để kiểm tra, không phải số liệu của báo cáo.
+* `--device cuda`: dùng GPU. Kết quả lệch ở mức làm tròn số thực nên không tái lập từng bit.
+* Dữ liệu để ở chỗ khác: đặt biến môi trường `PINNSOH_DATA=<thư mục chứa "XJTU data", "TJU data", ...>`.
+  Không tải tự động được (mạng chặn GitHub): tải zip của repo `wang-fujin/PINN4SOH` rồi
+  `python tools/tai_du_lieu.py --zip <file.zip>`.
 
----
+### Thời gian
+
+Ước lượng trên CPU của máy chạy thử, 1 luồng mỗi tiến trình. `python run.py bench` đo hệ số cho máy của bạn
+và `--dry-run` sẽ dùng hệ số đó.
+
+| Thí nghiệm | Nội dung | Lượt | Giờ CPU | Giờ, 4 lõi | Giờ, 8 lõi |
+|---|---|---:|---:|---:|---:|
+| E13 | MLP, PINN-semi ở 4 mức nhãn; PINN-sup, 2 biến thể cắt bỏ ở 30 % (CV 5 fold × 5 lần lặp) | 1 100 | 7,0 | 1,8 | 0,9 |
+| E15 | Kiểm toán rò rỉ: 4 cách chia/chuẩn hoá sai | 160 | 0,5 | 0,1 | 0,1 |
+| E16 | Ridge, GPR, GBDT, cùng cách chia và tập nhãn | 1 200 | 2,7 | 0,7 | 0,3 |
+| E17 | PINN-sup ở 10, 50 %; PINN hộp đen ở 4 mức nhãn | 600 | 6,5 | 1,6 | 0,8 |
+| E18 | Chuyển miền 12 cặp, MLP và PINN-semi, k ∈ {0, 3} | 240 | 1,0 | 0,3 | 0,1 |
+| E19 | GBDT trên 12 cặp chuyển miền | 120 | 2,3 | 0,6 | 0,3 |
+| **Tổng** | | **3 420** | **≈ 20** | **≈ 5** | **≈ 2,5** |
+
+`--quick` cần khoảng 1/5 thời gian trên. Phân tích (`analyze`) mất ~2 phút lần đầu, ~1 phút các lần sau;
+dựng PDF ~10 giây.
+
+### Đã có sẵn `runs/`?
+
+Nếu đã có thư mục `runs/` của lần chạy công bố (ví dụ nhận kèm dạng zip, giải nén vào thư mục gốc) thì
+không cần huấn luyện: `python run.py analyze && python run.py thesis` dựng lại đúng từng byte các bảng,
+hình và file PDF của báo cáo.
 
 ## 3. Cấu trúc
 
-### Thư viện lõi — `pinnsoh/`
+```
+pinn-soh/
+├── run.py                  lệnh duy nhất cho mọi bước
+├── pinnsoh/                thư viện
+│   ├── data.py             đọc 387 CSV -> Cell; lọc ngoại lai nhân quả; chia theo cell (cv_split);
+│   │                       chuẩn hoá; bộ nhớ đệm .cache/
+│   ├── models.py           mạng nghiệm F_φ; động học xám r = softplus(G_θ(x))·e^{λ(1-u)}·A(T); hộp đen
+│   ├── train.py            Config, bốn hàm mất mát, huấn luyện + dừng sớm
+│   ├── transfer.py         huấn luyện chuyển miền nguồn -> đích
+│   ├── baselines.py        Ridge, GBDT, GPR (E16, E19)
+│   ├── leakage.py          các cách chia/chuẩn hoá sai cho kiểm toán rò rỉ (E15)
+│   ├── metrics.py          MAE theo cell, R², EOL, vi phạm đơn điệu, ...
+│   ├── experiments.py      định nghĩa E13–E19 thành danh sách lượt chạy
+│   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
+│   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
+│   └── plotstyle.py        khuôn vẽ hình
+├── analysis/               runs/ -> results/
+│   ├── analyze_e13.py      bảng và kiểm định của E13, E14
+│   ├── analyze_predictions.py  R², MAPE, hình dự đoán
+│   ├── analyze_thesis.py   chọn số chia, mô phỏng, so sánh theo lượng nhãn, rò rỉ, chuyển miền
+│   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
+│   └── section_e13.py      mục kết quả E13 (Markdown, slide)
+├── report/                 results/ -> báo cáo
+│   ├── make_thesis.py      do-an/main.tex + PDF; mọi con số đọc từ results/
+│   └── diagrams.py         sơ đồ kiến trúc
+├── tools/
+│   ├── tai_du_lieu.py      tải dữ liệu
+│   ├── kiem_tai_lap.py     kiểm tra tái lập từng bit (python run.py reproduce)
+│   └── demo.py             ước lượng SOH cho một cell (python run.py demo ...)
+├── legacy/                 script giai đoạn đầu (E1–E12, pipeline v1, báo cáo HTML/LaTeX cũ)
+├── slide/  tai-lieu/  do-an/  demo/
+├── PINN4SOH/data/          dữ liệu (tải bằng python run.py data, không đưa lên git)
+├── runs/                   kết quả từng lượt (JSON, không đưa lên git)
+└── results/                bảng + hình tổng hợp (không đưa lên git)
+```
 
-| File | Vai trò |
+## 4. Tối ưu và tái lập
+
+Code được tối ưu mà **không đổi một bit kết quả nào** — `python run.py reproduce` kiểm đúng điều đó:
+
+| Thay đổi | Tác dụng |
 |---|---|
-| `data.py` | Đọc 387 file CSV thành `Cell`; chuẩn hoá **nhân quả** (`global` / `first_cycle`) và bản rò rỉ để đối chứng (`per_cell_minmax`); chia cell 70/15/15; sinh cặp điểm cho loss vật lý. `CYCLE_SCALE = 1000` là **đơn vị thời gian**, không phải siêu tham số. |
-| `models.py` | Mạng nghiệm $F_\varphi(\mathbf{x},t)$ (4 kiến trúc: `mlp`, `res`, `fourier`, `mono`) và động học xám $r = \mathrm{softplus}(\mathrm{MLP}_\theta(\mathbf{x}))\,e^{\lambda(1-u)}\,e^{-\frac{E_a}{R}(\frac{1}{T}-\frac{1}{T_\mathrm{ref}})}$. |
-| `train.py` | `Config` (mọi siêu tham số) + `run()`; bốn hàm mất mát; lịch hâm nóng $w(s)$; early stopping theo validation. |
-| `transfer.py` | Huấn luyện nguồn → thích nghi sang bộ đích với $k$ cell có nhãn. |
-| `metrics.py` | MAE gộp hàng, MAE theo cell, MAE giai đoạn cuối, sai số EOL, chỉ số vi phạm đơn điệu, nhiễu quỹ đạo. |
-| `plotstyle.py` | Khuôn vẽ hình cho báo cáo. |
+| Bộ nhớ đệm dữ liệu đã lọc (`.cache/`, tự dựng lại khi file nguồn hoặc tham số lọc đổi) | nạp 4 bộ dữ liệu 10,8 s → 0,02 s ở mỗi tiến trình và mỗi script |
+| Tensor dựng một lần cho cả lượt; batch lấy bằng `index_select` | bỏ chép numpy → torch ở mỗi bước |
+| Dừng sớm chỉ tính MAE validation (chỉ số đầy đủ tính một lần ở cuối) | bỏ phần tính theo cell/EOL 40 lần mỗi lượt |
+| AdamW và cắt gradient dạng `foreach` | gộp phép tính trên các tensor tham số |
+| Lượt dài chạy trước, mỗi tiến trình 1 luồng | các tiến trình kết thúc gần cùng lúc |
+| Ghi kết quả nguyên tử | dừng giữa chừng không để lại file dở |
+| Phân tích chỉ đọc file JSON mới hoặc đã đổi | `analyze` lần hai ~1 phút thay vì ~2 phút |
+| Hình và PDF không ghi thời điểm tạo | dựng lại cho file giống từng byte, git không báo đổi |
 
-Các tuỳ chọn của pipeline v2 nằm trong `Config` (mặc định = v1): `clean='causal'`,
-`norm_pool='train'`, `pair_by='cycle'`, `split='cv'` (+ `fold`, `repeat`, `n_folds`),
-`save_model`. `Config(...).v2()` bật cả ba sửa đổi dữ liệu cùng lúc.
+Đo trên cùng máy, 1 luồng: một lượt MLP 13,6 s → 10,7 s, PINN-semi 34,6 s → 32,1 s, PINN hộp đen
+28,5 s → 26,3 s. Bước huấn luyện của mạng nhỏ này đã bị giới hạn bởi chính phép tính (lan truyền xuôi/ngược
+và đạo hàm bậc hai của ∂u/∂t), nên cách tăng tốc chính trên máy cá nhân là chạy song song nhiều tiến trình.
+Hai hướng đã thử nhưng không dùng: gộp ba lần lan truyền xuôi thành một (chậm hơn gấp đôi vì đạo hàm bậc hai
+phải đi qua cả batch gộp) và tính ∂u/∂t bằng đạo hàm xuôi (nhanh hơn ~10 % nhưng lệch ở mức làm tròn, mất
+tính tái lập từng bit).
 
-### Thí nghiệm
+**Tái lập từng bit** được bảo đảm khi cùng phiên bản thư viện (`requirements.txt`) và cùng loại CPU. Khác
+CPU (ví dụ AVX-512 so với AVX2, Apple Silicon) hoặc khác phiên bản torch có thể lệch ở mức làm tròn số thực;
+khi đó `reproduce` báo độ lệch, các con số trong bảng có thể khác ở chữ số thứ ba–thứ tư nhưng kết luận
+không đổi.
 
-| Lệnh | Thí nghiệm | Số lượt |
-|---|---|---|
-| `python experiments.py E1` | Hiệu quả theo lượng nhãn — 4 mức nhãn × 3 mô hình | 200 |
-| `python experiments.py E2` | Chuyển miền zero-shot, cặp cùng hoá học | 48 |
-| `python experiments.py E3` | Ablation — bỏ từng loss / từng số hạng vật lý | 57 |
-| `python experiments.py E4` | **Kiểm toán rò rỉ** — chuẩn hoá per-cell so với nhân quả | 30 |
-| `python experiments.py E5` | Thích nghi miền với $k \in \{0,3\}$ cell nhãn ở bộ đích | 48 |
-| `python experiments.py E6` | Chọn trọng số vật lý theo validation, ở 30 % nhãn | 48 |
-| `python experiments.py E7` | Như E6 nhưng quét ở **mọi** mức nhãn | 240 |
-| `python experiments.py E9` | Kiến trúc × hàm kích hoạt, cho **cả** baseline lẫn PINN | 180 |
-| `python experiments.py E10` | Ma trận chuyển miền đầy đủ 4×4 | 48 |
-| `python experiments.py E12` | **Ngân sách tinh chỉnh cân bằng** — cùng một lưới cho cả hai mô hình | 384 |
-| `python decode.py` | E8 — giải mã đơn điệu hậu kỳ (PAVA), không huấn luyện lại | — |
-| `python experiments.py E13 --workers 4` | **Xác nhận, pipeline v2** — CV 5 fold × 5 lần lặp theo cell, 11 nhánh chỉ khác hàm mất mát | 1 100 |
-| `python experiments.py E14 --workers 4 --seeds 0 1 2 3 4` | E5 lặp lại với **cùng normaliser** cho MLP và PINN, pipeline v2 | 80 |
-
-Tham số chung: `--seeds 0 1 2`, `--datasets XJTU TJU MIT HUST`, `--threads N`.
-Kết quả ghi vào `runs/<E?>/` dạng JSON, đặt tên theo cấu hình nên **chạy lại được từ giữa
-chừng** (lượt đã có file thì bỏ qua).
-
-E11 (bộ chỉ số mở rộng) đọc lại dự đoán đã lưu của E1, không cần huấn luyện — nó chạy bên
-trong `analyze.py`.
-
-E13/E14 chạy song song `--workers` tiến trình (mỗi tiến trình 1 luồng) — ~2 giờ trên 4 lõi CPU.
-
-### Tổng hợp và vẽ hình
+## 5. Demo — ước lượng SOH cho một cell
 
 ```bash
-python analyze.py     # runs/**/*.json  ->  results/E?_table.csv + .md
-python figures.py     # results/*.csv   ->  results/fig_*.png và .pdf
-python analyze_e13.py # runs/E13, runs/E14 -> results/E13_*.csv|md, E14_table.*, fig_E13_*
-python section_e13.py # results/E13_*   -> tai-lieu/ket-qua-E13.md (cũng được make_latex.py chèn thành mục 10c)
+python run.py demo train --dataset XJTU          # PINN-semi, 30 % nhãn -> demo/XJTU.pt (~1 phút)
+python run.py demo predict --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv"
+python run.py demo predict --model demo/XJTU.pt --csv "..." --an-nhan   # coi như cell chưa đo dung lượng
 ```
 
-`results/E13_percell.csv` (một hàng = một cell × một lượt) đủ để kiểm lại mọi con số của E13 mà
-không cần 1 100 file JSON.
+Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. Đầu ra:
+`demo/<cell>_soh.csv` và `.png`.
 
-`figures.py` dùng phông **TeX Gyre Heros** (gói `tex-gyre` của TeX Live, hoặc
-`fonts-texgyre` trên Debian/Ubuntu). Thiếu phông thì matplotlib tự lùi về DejaVu Sans —
-hình vẫn vẽ ra, chỉ khác kiểu chữ.
+## 6. Giai đoạn đầu
 
-### Kiểm định và chứng minh
+Các thí nghiệm E1–E12 (pipeline v1), báo cáo HTML/LaTeX cũ và các script kiểm toán của tháng 9/2026 nằm ở
+`legacy/` — xem `legacy/README.md`. Chúng vẫn chạy được (`python legacy/<tên>.py`) nhưng không thuộc báo cáo
+đồ án.
 
-```bash
-python verify_losses.py --csv     # 24 phép kiểm tính chất của các loss -> results/verify_table.csv
-python verify_pipeline.py --csv   # 21 phép kiểm cho pipeline v2 và CV -> results/verify_pipeline.csv
-python seed_sweep.py              # nâng phép so chính ở 30 % nhãn lên 10 seed   (~14 phút)
-python seed_sweep_tuned.py        # như trên, cấu hình đã tinh chỉnh            (~26 phút)
-python stats_test.py                                              # kiểm định cấu hình E1
-python stats_test.py --runs runs/TUNED --tag wide --suffix _tuned  # kiểm định cấu hình tinh chỉnh
-python power_test.py              # ước lượng số seed cần thiết
-```
+## 7. Nguyên tắc của repo
 
-Ba script kiểm toán độc lập:
+1. **Không có số nào gõ tay.** Mọi bảng và mọi con số trong báo cáo đều sinh từ `results/*.csv`, và các CSV
+   đó sinh từ `runs/**/*.json`.
+2. **Chia theo cell, không theo chu kỳ.** Cell test không bao giờ xuất hiện trong train ở bất kỳ chu kỳ
+   nào; chuẩn hoá chỉ dùng đặc trưng của cell train; bộ lọc ngoại lai chỉ dùng quá khứ của chính cell.
+   E15 đo định lượng mức sai lệch khi vi phạm từng điều.
+3. **So sánh ghép cặp.** Mọi mô hình dùng đúng cùng cách chia, cùng tập cell có nhãn, cùng normaliser và
+   cùng hạt giống; khác biệt duy nhất là mô hình và hàm mất mát.
+4. **Chốt tiêu chí trước khi xem test.** Đề cương E13 (`tai-lieu/de-cuong-E13.md`) được commit trước lượt
+   huấn luyện đầu tiên; cấu hình E13 trong `pinnsoh/experiments.py` không sửa sau đó.
+5. **Phát biểu đúng mức.** Báo cáo nêu cả kết quả bất lợi: GBDT tinh chỉnh tốt có sai số thấp hơn PINN-semi
+   trong cùng một bộ dữ liệu ở phần lớn trường hợp; lợi ích của vật lý lớn ở mức nhãn thấp và nhỏ dần khi
+   nhiều nhãn.
 
-```bash
-python corr_audit.py    # tính lại bảng tương quan Spearman  -> results/corr_table.csv
-python leak_demo.py     # chứng minh rò rỉ chuẩn hoá theo ba bước
-python scale_sweep.py   # quét CYCLE_SCALE in {1, 100, 1000, 10000}
-```
+## 8. Nguồn dữ liệu
 
-Chứng minh toán học đầy đủ (8 mệnh đề + 1 nhận xét) nằm ở `tai-lieu/chung-minh.md`, và
-được sinh vào báo cáo LaTeX bởi `section_proofs.py`.
-
-### Dựng tài liệu
-
-```bash
-python make_report.py     # results/  -> report.html   (nguồn duy nhất của nội dung)
-python make_markdown.py   # report.html -> bao-cao-md/bao-cao.md + hinh/
-python make_latex.py      # results/  -> bao-cao-latex/  (xelatex + bibtex)
-cd bao-cao-latex && xelatex main && bibtex main && xelatex main && xelatex main
-cd slide && node make_slides_bk.js    # slide theo khuôn BK
-python slide/cap_nhat_slide_E13.py <bản-29-09.pptx> <bản-mới.pptx>   # điền kết quả E13 vào bộ slide 29/09
-```
-
-### Demo — ước lượng SOH cho một cell
-
-```bash
-python demo.py train --dataset XJTU                     # PINN-semi, 30 % nhãn, v2 -> demo/XJTU.pt (~1 phút)
-python demo.py predict --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv"
-python demo.py predict --model demo/XJTU.pt --csv "..." --an-nhan   # bỏ cột capacity: cell chưa đo dung lượng
-```
-
-Ước lượng ở chu kỳ N chỉ dùng dữ liệu đến chu kỳ N, nên chạy trực tuyến được. Đầu ra:
-`demo/<cell>_soh.csv` và `.png`; lệnh `train` in danh sách cell test (chưa từng thấy khi huấn luyện).
-
-`section_proofs.py` được `make_latex.py` import, sinh mục 15 "Tính đúng đắn: chứng minh và
-kiểm định" thẳng từ `results/stats_*.csv` và `results/verify_table.csv`.
-
----
-
-## 4. Nguyên tắc của repo
-
-1. **Không có số nào gõ tay.** Mọi bảng và mọi con số trong báo cáo đều sinh từ
-   `results/*.csv`, và các CSV đó sinh từ `runs/**/*.json`. Muốn kiểm chứng một con số thì
-   lần ngược theo đúng chuỗi đó.
-2. **Chuẩn hoá nhân quả.** Thống kê chuẩn hoá chỉ tính trên tập train. Chuẩn hoá min–max
-   theo từng cell bằng thống kê cả vòng đời là **rò rỉ** — E4 và `leak_demo.py` đo đúng mức
-   rò rỉ đó thay vì chỉ nói suông.
-3. **Chia theo cell, không theo hàng.** Cell test không bao giờ xuất hiện trong train ở bất
-   kỳ chu kỳ nào.
-4. **So sánh công bằng.** E12 áp đúng một lưới siêu tham số tổng quát cho cả baseline lẫn
-   PINN. Trước E12 thì PINN được quét còn MLP chạy cấu hình cố định — tức là thiên vị.
-5. **Phát biểu đúng mức.** Với 10 seed, ở cấu hình đã tinh chỉnh có bằng chứng nhất quán
-   rằng PINN giảm MAE 10–28 % trên ba trong bốn bộ, **nhưng chưa đạt mức có ý nghĩa thống kê
-   sau hiệu chỉnh đa so sánh**. Chi tiết ở `tai-lieu/chung-minh.md` mục 5. E13 kiểm lại câu
-   hỏi này bằng giao thức mạnh hơn — xem `tai-lieu/ket-qua-E13.md`.
-6. **Chốt tiêu chí trước khi xem test.** Đề cương E13 được commit trước lượt huấn luyện đầu
-   tiên; phân tích chạy đúng các phép kiểm đã ấn định, không thêm hay bớt sau khi thấy kết quả.
-
-## 5. Nguồn dữ liệu
-
-Bốn bộ dữ liệu là dữ liệu công khai, lấy qua repo `wang-fujin/PINN4SOH` (bản clone
-05/09/2026). Bản quyền thuộc về nhóm tác giả gốc của từng bộ:
+Bốn bộ dữ liệu công khai, lấy qua repo [`wang-fujin/PINN4SOH`](https://github.com/wang-fujin/PINN4SOH)
+(commit `cc3cc50`). Bản quyền thuộc nhóm tác giả gốc của từng bộ.
 
 | Bộ | Cell | Hoá học | Dung lượng danh định | Nhiệt độ |
-|---|---|---|---|---|
+|---|---:|---|---|---|
 | XJTU | 55 | NCM | 2,0 Ah | 25 °C |
-| TJU | 130 | NCA/NCM | — | — |
+| TJU | 130 | NCA, NCM, NCM+NCA | 3,5 / 2,5 Ah | 25, 35, 45 °C |
 | MIT | 125 | LFP | 1,1 Ah | 30 °C |
 | HUST | 77 | LFP | 1,1 Ah | 30 °C |
 | **Tổng** | **387** | | | |
-
-TJU là bộ **duy nhất** có nhiệt độ thay đổi giữa các cell (đọc từ tên file theo từng batch).
-Ba bộ còn lại chỉ có một nhiệt độ duy nhất, nên số hạng Arrhenius không có gradient ở đó —
-$E_a$ đứng yên ở giá trị khởi tạo. Vì vậy ablation `no_arrh` của E3 chỉ chạy trên TJU: đó là
-chỗ duy nhất việc bỏ Arrhenius có thể đổi kết quả.
-
-Mã nguồn trong repo này là của tác giả đồ án; phần `PINN4SOH/data` giữ nguyên dữ liệu gốc
-để kết quả tái lập được.

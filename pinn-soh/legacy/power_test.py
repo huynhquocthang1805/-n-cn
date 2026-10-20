@@ -1,4 +1,7 @@
 """Cần bao nhiêu seed để kết luận vững? Ước lượng lực thống kê từ hiệu đã quan sát."""
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import numpy as np, pandas as pd
 from scipy import stats
 rng = np.random.default_rng(7)

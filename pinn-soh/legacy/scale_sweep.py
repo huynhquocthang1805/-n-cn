@@ -14,6 +14,9 @@ Quét S ∈ {1, 100, 1000, 10000} để kiểm chứng: trong vùng hợp lý k�
 không đổi, còn ở hai đầu cực đoan thì điều kiện số học hỏng.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import functools, json, os, sys
 import numpy as np, pandas as pd
 import pinnsoh.data as D

@@ -1,7 +1,6 @@
 """
 E15 — kiểm toán rò rỉ thông tin: cùng mô hình (MLP, 70 % nhãn), chỉ đổi cách chia / chuẩn hoá / lọc.
-
-    python run_leakage.py --workers 2      # -> runs/E15/<thiết_lập>_<bộ>_cv<r>-<k>.json
+Kết quả: runs/E15/<thiết_lập>_<bộ>_cv<r>-<k>.json. Chạy qua `python run.py E15`.
 
 Thiết lập (so với giao thức chuẩn = nhánh F của E13, cùng lần lặp và fold):
     row        chia theo HÀNG: mỗi chu kỳ được gán ngẫu nhiên vào train / val / test, nên các chu kỳ kề
@@ -12,20 +11,17 @@ Thiết lập (so với giao thức chuẩn = nhánh F của E13, cùng lần l�
     normtest   chia theo cell, nhưng normaliser fit trên cả đặc trưng của cell validation và test
 """
 from __future__ import annotations
-import argparse, dataclasses, itertools, json, os, sys, time
+import dataclasses, json, os, time
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-DATASETS = ['XJTU', 'TJU', 'MIT', 'HUST']
 SETTINGS = ['row', 'minmax', 'life3s', 'normtest']
 OUT = 'runs/E15'
 NET = dict(hidden=(128, 128, 64))
 
 
 def _make_trainer(setting, cfg):
-    import torch
-    from pinnsoh.train import Trainer, _load
-    from pinnsoh.data import Normalizer, make_pointset, cv_split, choose_labelled
+    from .train import Trainer, _load
+    from .data import Normalizer, make_pointset, cv_split, choose_labelled
 
     class RowSplit(Trainer):
         def prepare(self):
@@ -72,15 +68,17 @@ def _make_trainer(setting, cfg):
     return {'row': RowSplit, 'normtest': NormTest}.get(setting, Trainer)(cfg)
 
 
-def run_one(setting, ds, r, k):
-    import torch
-    torch.set_num_threads(1)
-    from pinnsoh.train import Config
-    path = f'{OUT}/{setting}_{ds}_cv{r}-{k}.json'
+def leak_path(setting, ds, r, k, out_dir=OUT):
+    return f'{out_dir}/{setting}_{ds}_cv{r}-{k}.json'
+
+
+def run_one(setting, ds, r, k, out_dir=OUT):
+    from .train import Config, write_json
+    path = leak_path(setting, ds, r, k, out_dir)
     if os.path.exists(path):
-        return path, None
+        return json.load(open(path))['test']['MAE_cell']
     kw = dict(dataset=ds, label_frac=0.7, model='mlp', seed=100 * r + k, split='cv', fold=k, repeat=r, n_folds=5,
-              tag=setting, out_dir=OUT, **NET)
+              tag=setting, out_dir=out_dir, **NET)
     cfg = Config(**kw).v2()
     if setting == 'minmax':
         cfg.norm, cfg.cyc = 'per_cell_minmax', 'per_cell_minmax'
@@ -90,27 +88,5 @@ def run_one(setting, ds, r, k):
     tr = _make_trainer(setting, cfg).prepare()
     res = tr.fit(verbose=False)
     res['train_time_s'] = time.time() - t0
-    json.dump(res, open(path, 'w'))
-    return path, res['test']['MAE_cell']
-
-
-if __name__ == '__main__':
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--workers', type=int, default=2)
-    ap.add_argument('--repeats', type=int, default=2)
-    a = ap.parse_args()
-    os.makedirs(OUT, exist_ok=True)
-    jobs = [(s, ds, r, k) for s, ds, r, k in itertools.product(SETTINGS, DATASETS, range(a.repeats), range(5))
-            if not os.path.exists(f'{OUT}/{s}_{ds}_cv{r}-{k}.json')]
-    print(f'E15: cần chạy {len(jobs)} lượt', flush=True)
-    from concurrent.futures import ProcessPoolExecutor, as_completed
-    import multiprocessing as mp
-    t0 = time.time()
-    with ProcessPoolExecutor(max_workers=a.workers, mp_context=mp.get_context('spawn')) as ex:
-        futs = {ex.submit(run_one, *j): j for j in jobs}
-        for i, fu in enumerate(as_completed(futs), 1):
-            j = futs[fu]; _, mae = fu.result()
-            el = time.time() - t0
-            print(f'[{i:4d}/{len(jobs)}] {j[0]:<8s} {j[1]:<4s} cv{j[2]}-{j[3]} MAE_cell {mae:.4f} '
-                  f'(đã {el/60:.1f} ph, còn ~{el/i*(len(jobs)-i)/60:.0f} ph)', flush=True)
-    print('xong', flush=True)
+    write_json(res, path)
+    return res['test']['MAE_cell']

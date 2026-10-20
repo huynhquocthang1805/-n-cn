@@ -11,6 +11,9 @@ PINN. Cấu hình được ẤN ĐỊNH TRƯỚC, không chọn lại theo 10 se
 do chọn mô hình.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import functools, os, time
 import pinnsoh.data as D
 from pinnsoh.train import Config, run, run_name

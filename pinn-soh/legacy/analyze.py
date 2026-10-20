@@ -1,4 +1,7 @@
 """Aggregate run JSONs -> tables (CSV/Markdown) + figures.   usage: python analyze.py"""
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import json, glob, os, sys
 import numpy as np, pandas as pd
 import matplotlib

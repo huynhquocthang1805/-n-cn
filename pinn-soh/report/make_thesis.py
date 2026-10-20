@@ -1,12 +1,15 @@
 """
 Dựng báo cáo dạng đồ án (LaTeX → PDF) từ results/*.csv.
 
-    python make_thesis.py            # -> do-an/main.tex, do-an/hinh/, do-an/bao-cao-do-an.pdf
+    python report/make_thesis.py         # -> do-an/main.tex, do-an/hinh/, do-an/bao-cao-do-an.pdf
 
-Chạy sau: analyze_e13.py, analyze_predictions.py, analyze_thesis.py, verify_pipeline.py --csv.
+Chạy sau `python run.py analyze` (hoặc gọi thẳng `python run.py thesis`).
 Mọi con số trong văn bản đọc từ results/, không gõ tay.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import math, os, shutil, subprocess
 import numpy as np
 import pandas as pd
@@ -1825,7 +1828,10 @@ def build():
             + ch6_text(d, ctx) + ch7(d, ctx) + REFS + r'\end{document}' + '\n')
     open(f'{OUT}/main.tex', 'w').write(body)
     for _ in range(2):
-        p = subprocess.run(['xelatex', '-interaction=nonstopmode', 'main.tex'], cwd=OUT, capture_output=True, text=True)
+        # SOURCE_DATE_EPOCH cố định: PDF dựng lại từ cùng dữ liệu giống từng byte
+        env = dict(os.environ, SOURCE_DATE_EPOCH='1792800000', FORCE_SOURCE_DATE='1')
+        p = subprocess.run(['xelatex', '-interaction=nonstopmode', 'main.tex'], cwd=OUT, capture_output=True, text=True,
+                           env=env)
     log = open(f'{OUT}/main.log', encoding='utf-8', errors='replace').read()
     errs = [l for l in log.splitlines() if l.startswith('!')]
     print('lỗi LaTeX:', errs[:10] if errs else 'không')

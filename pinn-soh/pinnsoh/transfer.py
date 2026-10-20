@@ -26,7 +26,7 @@ import torch.nn.functional as Fnn
 
 from .data import Normalizer, load_dataset, split_cells, choose_labelled, make_pointset
 from .models import SOHModel
-from .train import Config, Trainer, metrics, set_seed, _load
+from .train import Config, Trainer, metrics, set_seed, _load, write_json
 
 
 @dataclass
@@ -70,7 +70,7 @@ class TransferTrainer(Trainer):
         model = SOHModel(dyn=dyn, hidden=cfg.hidden, dropout=cfg.dropout, use_cycle=cfg.use_cycle,
                          use_knee=cfg.use_knee, use_arrhenius=cfg.use_arrhenius,
                          act=cfg.act, arch=cfg.arch).to(self.dev)
-        opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd)
+        opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd, foreach=True)   # gộp phép tính, kết quả như cũ
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg.steps, eta_min=cfg.lr * 0.05)
         rng = np.random.RandomState(cfg.seed)
         t0 = time.time()
@@ -78,18 +78,18 @@ class TransferTrainer(Trainer):
             model.train()
             nb = cfg.batch // 2 if self.T_lab is not None else cfg.batch
             idx = rng.randint(0, len(self.S_lab), size=nb)
-            xb = [self.S_lab.X[idx]]; tb = [self.S_lab.T[idx]]; yb = [self.S_lab.Y[idx]]
+            xb, tb, yb = self._gather(self.S_lab, idx)
             if self.T_lab is not None:                       # oversample the few labelled target cells
                 j = rng.randint(0, len(self.T_lab), size=cfg.batch - nb)
-                xb.append(self.T_lab.X[j]); tb.append(self.T_lab.T[j]); yb.append(self.T_lab.Y[j])
-            cat = lambda l: torch.from_numpy(np.concatenate(l, 0)).to(self.dev)
-            loss = Fnn.mse_loss(model.u(cat(xb), cat(tb)), cat(yb))
+                xj, tj, yj = self._gather(self.T_lab, j)
+                xb, tb, yb = torch.cat([xb, xj]), torch.cat([tb, tj]), torch.cat([yb, yj])
+            loss = Fnn.mse_loss(model.u(xb, tb), yb)
             if dyn == 'greybox':
                 w = min(1.0, step / max(1, cfg.warmup_frac * cfg.steps))
                 ph = self.physics(model, self._pairs(self.S_unl, rng, cfg.batch))
                 loss = loss + w * (cfg.alpha_ode * ph['ode'] + cfg.beta_mono * ph['mono'] + cfg.gamma_range * ph['range'])
             opt.zero_grad(); loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0, foreach=True)
             opt.step(); sched.step()
         self.model = model
         res = dict(config=asdict(cfg), n_cells=self.n_cells, steps=cfg.steps, train_time_s=time.time() - t0,
@@ -100,8 +100,7 @@ class TransferTrainer(Trainer):
         return res
 
 
-def run_transfer(cfg: TransferConfig, skip_existing=True):
-    os.makedirs(cfg.out_dir, exist_ok=True)
+def run_transfer(cfg: TransferConfig, skip_existing=True, log=True):
     name = f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_to_{cfg.target}_{cfg.model}_k{cfg.k_target}_s{cfg.seed}_{cfg.norm}'
     path = os.path.join(cfg.out_dir, name + '.json')
     if skip_existing and os.path.exists(path):
@@ -109,7 +108,9 @@ def run_transfer(cfg: TransferConfig, skip_existing=True):
     set_seed(cfg.seed)
     tr = TransferTrainer(cfg).prepare()
     res = tr.fit()
-    json.dump(res, open(path, 'w'))
+    write_json(res, path)
+    if not log:
+        return res
     t = res['target_test']
     print(f'[{name}] target-test MAE {t["MAE"]:.4f} MAPE {t["MAPE"]:.1f}% (source val {res["source_val"]["MAE"]:.4f}, {res["train_time_s"]:.0f}s)', flush=True)
     return res

@@ -1,4 +1,7 @@
 """Build the research-design report (HTML, Vietnamese) from results/.  usage: python make_report.py"""
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import base64, glob, json, os, re
 import numpy as np, pandas as pd
 

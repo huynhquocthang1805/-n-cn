@@ -16,6 +16,9 @@ Ba phép thử, không dùng mạng nơ-ron nào cho hai phép đầu:
      thay bằng ước lượng. Đo xem sai số bung ra bao nhiêu.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import numpy as np
 from sklearn.isotonic import IsotonicRegression
 from pinnsoh.data import load_dataset

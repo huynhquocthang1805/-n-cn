@@ -118,10 +118,37 @@ def _load(cfg: Config, name: str):
     return list(_CACHE[key])
 
 
+def default_device() -> str:
+    """'cpu' trừ khi đặt PINNSOH_DEVICE (ví dụ 'cuda'). Mọi kết quả trong báo cáo chạy trên CPU một luồng;
+    GPU cho kết quả lệch ở mức làm tròn số thực, không tái lập từng bit."""
+    return os.environ.get('PINNSOH_DEVICE', 'cpu')
+
+
+class _Tensors:
+    """Các cột của một PointSet dưới dạng tensor, dựng MỘT lần cho cả lượt huấn luyện (trên CPU là view
+    không sao chép của mảng numpy). Lấy batch bằng index_select cho đúng các giá trị mà cách cũ
+    torch.from_numpy(a[idx]) cho ra, nên kết quả không đổi."""
+    __slots__ = ('X', 'T', 'Y', 'invT')
+
+    def __init__(self, S: PointSet, dev):
+        self.X, self.T, self.Y, self.invT = (torch.from_numpy(a).to(dev) for a in (S.X, S.T, S.Y, S.invT))
+
+
 class Trainer:
-    def __init__(self, cfg: Config, device='cpu'):
-        self.cfg, self.dev = cfg, device
+    def __init__(self, cfg: Config, device=None):
+        self.cfg, self.dev = cfg, device or default_device()
+        self._tcache = {}
         set_seed(cfg.seed)
+
+    def _t(self, S: PointSet) -> _Tensors:
+        key = id(S)
+        if key not in self._tcache:
+            self._tcache[key] = (S, _Tensors(S, self.dev))     # giữ tham chiếu S để id không bị tái dùng
+        return self._tcache[key][1]
+
+    def _gather(self, S: PointSet, idx: np.ndarray):
+        tt, ix = self._t(S), torch.from_numpy(idx).to(self.dev)
+        return tt.X.index_select(0, ix), tt.T.index_select(0, ix), tt.Y.index_select(0, ix)
 
     # ---------------------------------------------------------------- data
     def prepare(self):
@@ -163,9 +190,11 @@ class Trainer:
     def _pairs(self, S: PointSet, rng, batch):
         sampler = S.sample_pairs_cycle if self.cfg.pair_by == 'cycle' else S.sample_pairs
         i, j = sampler(rng, batch, self.cfg.h_min, self.cfg.h_max)
-        f = lambda a, idx: torch.from_numpy(a[idx]).to(self.dev)
-        return dict(x1=f(S.X, i), x2=f(S.X, j), t1=f(S.T, i), t2=f(S.T, j), y1=f(S.Y, i), y2=f(S.Y, j),
-                    invT=f(S.invT, i), first=torch.from_numpy(i == S.start[i]).to(self.dev))
+        tt = self._t(S)
+        ii, jj = torch.from_numpy(i).to(self.dev), torch.from_numpy(j).to(self.dev)
+        return dict(x1=tt.X.index_select(0, ii), x2=tt.X.index_select(0, jj), t1=tt.T.index_select(0, ii),
+                    t2=tt.T.index_select(0, jj), y1=tt.Y.index_select(0, ii), y2=tt.Y.index_select(0, jj),
+                    invT=tt.invT.index_select(0, ii), first=torch.from_numpy(i == S.start[i]).to(self.dev))
 
     # ---------------------------------------------------------------- losses
     def physics(self, model: SOHModel, b: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -211,7 +240,7 @@ class Trainer:
         model = SOHModel(dyn=dyn, hidden=cfg.hidden, dropout=cfg.dropout, use_cycle=cfg.use_cycle,
                          use_knee=cfg.use_knee, use_arrhenius=cfg.use_arrhenius,
                          act=cfg.act, arch=cfg.arch).to(self.dev)
-        opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd)
+        opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd, foreach=True)   # gộp phép tính, kết quả như cũ
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg.max_steps, eta_min=cfg.lr * 0.05)
         rng = np.random.RandomState(cfg.seed)
         n_lab = len(self.S_lab)
@@ -225,8 +254,7 @@ class Trainer:
             model.train()
             # ----- data loss on labelled points
             idx = rng.randint(0, n_lab, size=min(cfg.batch, n_lab))
-            xb = torch.from_numpy(self.S_lab.X[idx]).to(self.dev); tb = torch.from_numpy(self.S_lab.T[idx]).to(self.dev)
-            yb = torch.from_numpy(self.S_lab.Y[idx]).to(self.dev)
+            xb, tb, yb = self._gather(self.S_lab, idx)
             loss_data = Fnn.mse_loss(model.u(xb, tb), yb)
             loss = loss_data
             logs = dict(data=loss_data.item())
@@ -243,18 +271,18 @@ class Trainer:
                 logs.update(ode=float(ph['ode'].detach()) if 'ode' in ph else 0.0,
                             mono=float(ph['mono'].detach()), range=float(ph['range'].detach()))
             opt.zero_grad(); loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0, foreach=True)
             opt.step(); sched.step()
             if step % cfg.eval_every == 0:
-                vm = self.evaluate(model, self.val)
-                hist.append(dict(step=step, val_MAE=vm['MAE'], **logs))
-                if vm['MAE'] < best - 1e-6:
-                    best, bad = vm['MAE'], 0
+                vmae = self.val_mae(model, self.val)
+                hist.append(dict(step=step, val_MAE=vmae, **logs))
+                if vmae < best - 1e-6:
+                    best, bad = vmae, 0
                     best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
                 else:
                     bad += 1
                 if verbose and step % (cfg.eval_every * 5) == 0:
-                    print(f'  step {step:5d} val MAE {vm["MAE"]:.4f} best {best:.4f} ' +
+                    print(f'  step {step:5d} val MAE {vmae:.4f} best {best:.4f} ' +
                           ' '.join(f'{k}={v:.2e}' for k, v in logs.items()), flush=True)
                 if bad >= cfg.patience:
                     break
@@ -279,9 +307,23 @@ class Trainer:
                         norm_mode=self.norm.mode, config=asdict(self.cfg)), path)
 
     @torch.no_grad()
-    def predict(self, model, S: PointSet):
+    def _forward(self, model, S: PointSet) -> np.ndarray:
         model.eval()
-        p = model.u(torch.from_numpy(S.X).to(self.dev), torch.from_numpy(S.T).to(self.dev)).cpu().numpy()
+        tt = self._t(S)
+        return model.u(tt.X, tt.T).cpu().numpy()
+
+    def val_mae(self, model, S: PointSet) -> float:
+        """Chỉ MAE gộp — đủ cho dừng sớm, và tính đúng như metrics.evaluate (float64, bỏ nhãn không hữu
+        hạn) nên quyết định dừng không đổi; bỏ phần tính chỉ số theo cell/EOL vốn chỉ cần ở cuối."""
+        y = np.asarray(S.Y, dtype=float).ravel(); p = np.asarray(self._forward(model, S), dtype=float).ravel()
+        keep = np.isfinite(y)
+        if not keep.all():
+            y, p = y[keep], p[keep]
+        return float(np.abs(p - y).mean())
+
+    @torch.no_grad()
+    def predict(self, model, S: PointSet):
+        p = self._forward(model, S)
         out = dict(y=S.Y.ravel().tolist(), p=p.ravel().tolist(), cell=S.cell.tolist())
         if S.cyc is not None:
             out['cycle'] = S.cyc.tolist()
@@ -289,8 +331,7 @@ class Trainer:
 
     @torch.no_grad()
     def evaluate(self, model, S: PointSet) -> Dict[str, float]:
-        model.eval()
-        p = model.u(torch.from_numpy(S.X).to(self.dev), torch.from_numpy(S.T).to(self.dev)).cpu().numpy()
+        p = self._forward(model, S)
         return metrics(S.Y, p, S.cell, S.cyc if self.cfg.clean != 'life3sigma' else None)
 
 
@@ -301,8 +342,17 @@ def run_name(cfg: Config) -> str:
     return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{cfg.norm}_{cfg.cyc}{extra}'
 
 
-def run(cfg: Config, verbose=True, skip_existing=True) -> Dict:
-    os.makedirs(cfg.out_dir, exist_ok=True)
+def write_json(res: Dict, path: str):
+    """Ghi nguyên tử (file tạm rồi đổi tên): bị ngắt giữa chừng không để lại file dở dang mà lần chạy sau
+    tưởng là đã xong."""
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    tmp = f'{path}.{os.getpid()}.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(res, f)
+    os.replace(tmp, path)
+
+
+def run(cfg: Config, verbose=True, skip_existing=True, log=True) -> Dict:
     path = os.path.join(cfg.out_dir, run_name(cfg) + '.json')
     if skip_existing and os.path.exists(path):
         with open(path) as f:
@@ -310,9 +360,11 @@ def run(cfg: Config, verbose=True, skip_existing=True) -> Dict:
     tr = Trainer(cfg).prepare()
     res = tr.fit(verbose=verbose)
     if cfg.save_model:
+        os.makedirs(cfg.out_dir, exist_ok=True)
         tr.save_checkpoint(path[:-5] + '.pt')
-    with open(path, 'w') as f:
-        json.dump(res, f)
+    write_json(res, path)
+    if not log:
+        return res
     t = res['test']
     extra = ' '.join(f'{k[9:]}:MAE={v["MAE"]:.4f}' for k, v in res.items() if k.startswith('transfer_'))
     print(f'[{run_name(cfg)}] test MAE {t["MAE"]:.4f} RMSE {t["RMSE"]:.4f} MAPE {t["MAPE"]:.2f}% '

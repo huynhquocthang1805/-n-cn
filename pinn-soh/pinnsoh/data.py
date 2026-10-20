@@ -31,7 +31,7 @@ Pipeline v2 (E13 trở đi) sửa năm điểm mà bản rà soát 29/09 chỉ r
                       mỗi cell được test đúng một lần mỗi lần lặp.
 """
 from __future__ import annotations
-import os, re, json
+import hashlib, os, pickle, re, json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 import numpy as np
@@ -126,7 +126,59 @@ def load_cell_csv(path: str, nominal: float, temp_c: float = 25.0, chem: str = '
     return _read_cell(path, f'user/{name}', 'user', 'user', chem, nominal, 273.15 + temp_c, clean)
 
 
-def load_dataset(root: str, name: str, clean: str = 'life3sigma') -> List[Cell]:
+# --------------------------------------------------------------------------- đường dẫn và bộ nhớ đệm
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_ROOT = 'PINN4SOH/data'
+CACHE_DIR = os.environ.get('PINNSOH_CACHE', os.path.join(PROJECT_ROOT, '.cache'))
+_CACHE_VERSION = 1             # tăng khi đổi cách đọc/lọc để bộ đệm cũ tự bị bỏ
+
+
+def resolve_root(root: str = DEFAULT_ROOT) -> str:
+    """Thư mục dữ liệu: biến môi trường PINNSOH_DATA (nếu đặt) thay cho mặc định 'PINN4SOH/data';
+    đường dẫn tương đối tính từ gốc dự án, nên script chạy từ thư mục nào cũng được."""
+    if root == DEFAULT_ROOT and os.environ.get('PINNSOH_DATA'):
+        root = os.environ['PINNSOH_DATA']
+    return root if os.path.isabs(root) else os.path.join(PROJECT_ROOT, root)
+
+
+def _signature(root: str, name: str, clean: str) -> str:
+    """Băm danh sách file nguồn (tên, kích thước, thời điểm sửa) + tham số bộ lọc: đổi bất kỳ thứ gì thì
+    bộ đệm cũ không còn khớp và được dựng lại."""
+    h = hashlib.sha1(repr((_CACHE_VERSION, name, clean, CAUSAL_WINDOW, CAUSAL_MIN_HIST, CAUSAL_K, CAUSAL_FLOOR,
+                           FEATURES)).encode())
+    d = os.path.join(root, f'{name} data')
+    for dirpath, dirnames, files in sorted(os.walk(d)):
+        dirnames.sort()
+        for f in sorted(files):
+            st = os.stat(os.path.join(dirpath, f))
+            h.update(f'{os.path.relpath(os.path.join(dirpath, f), d)}|{st.st_size}|{st.st_mtime_ns}'.encode())
+    return h.hexdigest()[:16]
+
+
+def load_dataset(root: str, name: str, clean: str = 'life3sigma', cache: bool = True) -> List[Cell]:
+    """Đọc một bộ dữ liệu thành danh sách Cell. Kết quả đã lọc được lưu ở .cache/ (pickle), nên chỉ lần
+    đầu phải đọc 387 CSV và chạy bộ lọc; các tiến trình và script sau nạp lại trong ~0,1 s. Mảng nạp từ bộ
+    đệm giống từng bit mảng đọc trực tiếp. Tắt bằng cache=False hoặc biến môi trường PINNSOH_NO_CACHE=1."""
+    root = resolve_root(root)
+    if not cache or os.environ.get('PINNSOH_NO_CACHE'):
+        return _load_dataset_csv(root, name, clean)
+    path = os.path.join(CACHE_DIR, f'{name}_{clean}_{_signature(root, name, clean)}.pkl')
+    if os.path.exists(path):
+        try:
+            with open(path, 'rb') as fh:
+                return pickle.load(fh)
+        except Exception:                          # file hỏng (ví dụ bị ngắt giữa chừng) -> dựng lại
+            pass
+    cells = _load_dataset_csv(root, name, clean)
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    tmp = f'{path}.{os.getpid()}.tmp'
+    with open(tmp, 'wb') as fh:
+        pickle.dump(cells, fh, protocol=pickle.HIGHEST_PROTOCOL)
+    os.replace(tmp, path)                          # nguyên tử: nhiều tiến trình cùng ghi vẫn an toàn
+    return cells
+
+
+def _load_dataset_csv(root: str, name: str, clean: str = 'life3sigma') -> List[Cell]:
     cells: List[Cell] = []
     _read = lambda *a: _read_cell(*a, clean=clean)
     if name == 'XJTU':

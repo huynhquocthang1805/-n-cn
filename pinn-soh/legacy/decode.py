@@ -17,6 +17,9 @@ Thêm biến thể `iso+ma`: trung bình trượt (window w) trước khi chiế
 nhiễu tần số cao mà PAVA một mình không xử lý.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import glob, json, os
 import numpy as np, pandas as pd
 from sklearn.isotonic import IsotonicRegression

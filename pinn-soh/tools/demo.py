@@ -2,13 +2,13 @@
 Demo: ước lượng SOH theo từng chu kỳ cho MỘT cell, chỉ từ 16 đặc trưng đường sạc.
 
     # 1) huấn luyện mô hình demo (PINN-semi, 30 % cell có nhãn, pipeline v2) — ~1 phút
-    python demo.py train --dataset XJTU
+    python tools/demo.py train --dataset XJTU
 
     # 2) ước lượng cho một cell. Cell này KHÔNG được dùng khi huấn luyện (nằm trong fold test).
-    python demo.py predict --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-1.csv"
+    python tools/demo.py predict --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-1.csv"
 
     # 3) giả lập cell CHƯA ĐO dung lượng: bỏ cột capacity trước khi đưa vào mô hình
-    python demo.py predict --model demo/XJTU.pt --csv "..." --an-nhan
+    python tools/demo.py predict --model demo/XJTU.pt --csv "..." --an-nhan
 
 Mô hình chạy nhân quả: ước lượng ở chu kỳ N chỉ dùng đặc trưng của chu kỳ N và chỉ số N; bộ lọc
 ngoại lai chỉ dùng các chu kỳ trước N. Vì vậy cùng một mô hình dùng được trực tuyến trong BMS.
@@ -16,12 +16,14 @@ ngoại lai chỉ dùng các chu kỳ trước N. Vì vậy cùng một mô hìn
 Đầu ra: demo/<tên cell>_soh.csv (chu kỳ, SOH ước lượng, SOH thực đo nếu có) và .png.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import argparse, os, sys, tempfile
 import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pinnsoh.data import Normalizer, load_cell_csv, cycle_input, DATASET_INFO, TJU_NOMINAL
 from pinnsoh.models import SOHModel
 from pinnsoh.metrics import EOL_THRESHOLD

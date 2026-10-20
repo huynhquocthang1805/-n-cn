@@ -8,6 +8,9 @@ Xuất bản báo cáo (artifact "PINN-SOH Ít Nhãn") ra Markdown.
 (một file .md chứa 2,4 MB base64 thì không trình soạn thảo nào mở nổi).
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import base64, html as htmlmod, os, re, shutil
 
 SRC = 'report.html'

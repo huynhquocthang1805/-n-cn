@@ -6,8 +6,10 @@ Vẽ lại toàn bộ hình kết quả theo khuôn báo khoa học (pinnsoh/plo
 Đọc trực tiếp results/*.csv và runs/**/*.json — không có số nào gõ tay.
 """
 from __future__ import annotations
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
+_os.chdir(_sys.path[0])                                    # đường dẫn runs/, results/ tính từ gốc
 import glob, json, os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np, pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
