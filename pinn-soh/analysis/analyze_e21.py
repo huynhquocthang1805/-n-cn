@@ -47,8 +47,10 @@ def per_cell(y, p, cell, ids):
             continue
         k = m & np.isfinite(y)
         e = p[k] - y[k]
+        # chẩn đoán: nếu biết dung lượng ở 5 chu kỳ có nhãn đầu tiên của cell, trừ độ lệch đó rồi đo trên phần còn lại
+        ea = e[5:] - e[:5].mean() if len(e) > 10 else e - e.mean()
         rows[ids[c]] = (np.abs(e).mean(), np.sqrt((e ** 2).mean()), e.mean(), int(k.sum()), float((e ** 2).sum()),
-                   float(y[k].sum()), float((y[k] ** 2).sum()))
+                   float(y[k].sum()), float((y[k] ** 2).sum()), float(np.abs(ea).mean()))
     return rows
 
 
@@ -86,13 +88,15 @@ def base_table():
                         pcs = per_cell(base['y'], p, base['cell'], base['ids'])
                         for c, v in pcs.items():
                             cells.append(dict(proto=proto, src=src, tgt=tgt, seed=s, model=m, cell=c, mae=v[0],
-                                              rmse=v[1], bias=v[2], n=v[3], sse=v[4], sy=v[5], syy=v[6]))
+                                              rmse=v[1], bias=v[2], n=v[3], sse=v[4], sy=v[5], syy=v[6], mae_anchor=v[7]))
     cdf = pd.DataFrame(cells)
     g = cdf.groupby(['proto', 'src', 'tgt', 'seed', 'model'])
     agg = g.agg(MAE_cell=('mae', 'mean'), RMSE_cell=('rmse', 'mean'), bias=('bias', 'mean'), n=('n', 'sum'),
-                sse=('sse', 'sum'), sy=('sy', 'sum'), syy=('syy', 'sum')).reset_index()
+                sse=('sse', 'sum'), sy=('sy', 'sum'), syy=('syy', 'sum'), MAE_anchor=('mae_anchor', 'mean'),
+                absbias=('bias', lambda x: np.abs(x).mean())).reset_index()
     agg['R2'] = 1 - agg.sse / (agg.syy - agg.sy ** 2 / agg.n)
-    summ = agg.groupby(['proto', 'src', 'tgt', 'model'])[['MAE_cell', 'RMSE_cell', 'bias', 'R2']].mean().reset_index()
+    summ = agg.groupby(['proto', 'src', 'tgt', 'model'])[['MAE_cell', 'RMSE_cell', 'bias', 'absbias', 'R2',
+                                                         'MAE_anchor']].mean().reset_index()
     return cdf, summ
 
 
@@ -124,12 +128,12 @@ def chain_table():
                         for m, p in pr.items():
                             for c, v in per_cell(base['y'], p, base['cell'], base['ids']).items():
                                 rows.append(dict(src=src, tgt=tgt, seed=s, half=h, round=rnd, model=m, cell=c,
-                                                 mae=v[0], bias=v[2]))
+                                                 mae=v[0], bias=v[2], mae_anchor=v[7]))
                         if rnd == 0:                       # mô hình không thích nghi trên đúng các cell test này
                             for m, p in bpr.items():
                                 for c, v in per_cell(bb['y'][keep], p[keep], bb['cell'][keep], bb['ids']).items():
                                     rows.append(dict(src=src, tgt=tgt, seed=s, half=h, round=-1, model=m, cell=c,
-                                                     mae=v[0], bias=v[2]))
+                                                     mae=v[0], bias=v[2], mae_anchor=v[7]))
     return pd.DataFrame(rows)
 
 
@@ -145,6 +149,8 @@ def main():
     if len(ch):
         cs = ch.groupby(['src', 'tgt', 'round', 'model']).mae.mean().unstack('round')
         cs.to_csv(f'{OUT}/e21_chain.csv')
+        ca = ch.groupby(['src', 'tgt', 'round', 'model']).mae_anchor.mean().unstack('round')
+        ca.to_csv(f'{OUT}/e21_chain_anchor.csv')
         print((1e3 * cs).round(1).to_string())
         tests = chain_tests(ch)
         tests.to_csv(f'{OUT}/e21_chain_tests.csv', index=False)
@@ -218,7 +224,11 @@ def figures(summ, ch):
                 ax.plot(h['round'] + 1, 1e3 * h.mae, marker='o', ms=3.4, lw=1.4, color=cols[src], mec='white',
                         mew=0.4, label=src)
             ax.set_xticks([0, 1, 2, 3]); ax.set_xticklabels(['không', '0', '1', '2'], fontsize=6.6)
-            ax.set_yscale('log'); ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'))
+            ax.set_yscale('log')
+            lo_, hi_ = ax.get_ylim()
+            ax.set_yticks([t for t in (20, 30, 40, 60, 100, 150, 200, 300, 400) if lo_ <= t <= hi_])
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'))
+            ax.yaxis.set_minor_formatter(plt.NullFormatter())
             ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
             panel_title(ax, f'→ {tgt}', CHEM[tgt], pad=4)
         axes[0].set_ylabel('MAE theo cell (×10$^{-3}$)')
@@ -243,7 +253,7 @@ def fig_traj(pairs=(('MIT', 'HUST'), ('XJTU', 'TJU'), ('HUST', 'MIT'), ('TJU', '
         cf = lambda r, m, mem=0: f'{ROOT}/chain_{src}_to_{tgt}_s0_h0_r{r}_{m}' + (f'_m{mem}' if mem else '') + '.json'
         need = [bf('gbdt')] + [bf('pinn_semi', i) for i in range(3)] + [cf(r, 'gbdt') for r in (0, 2)] \
             + [cf(r, 'pinn', i) for r in (0, 2) for i in range(3)]
-        if not all(os.path.exists(x) for x in need):
+        if not all(_os.path.exists(x) for x in need):
             ax.axis('off'); continue
         bb, bpr = combine([_load(bf('pinn_semi', i))['preds'] for i in range(3)], _load(bf('gbdt'))['preds'], tgt)
         res = {r: combine([_load(cf(r, 'pinn', i))['preds'] for i in range(3)], _load(cf(r, 'gbdt'))['preds'], 'test')

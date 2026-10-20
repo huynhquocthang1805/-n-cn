@@ -2640,8 +2640,8 @@ def abstract_e21(d):
     t = (f' Khi học trên một bộ dữ liệu và kiểm tra trên ba bộ còn lại, sai số tăng {f(E["gap"]["ket_hop"], 1)} lần so '
          f'với trong cùng bộ, chủ yếu do lệch mức')
     if 'r0' in E:
-        t += (f'; chuẩn hoá theo từng bộ cùng ràng buộc vật lý trên dữ liệu đích không nhãn giảm sai số còn '
-              f'{f(E["r0"], 2)} lần, còn học lặp bằng nhãn giả cho {f(E["r2"], 2)} lần')
+        t += (f'; thích nghi không nhãn giúp ở {E["r0_better"]}/12 cặp nhưng làm kém đi ở {E["r0_worse"]} cặp, '
+              f'còn học lặp bằng nhãn giả hội tụ về chính dự đoán ban đầu')
     return t + '.'
 
 
@@ -2691,8 +2691,9 @@ def e21_concl(d):
          f'sai số trong bộ (GBDT: {f(E["gap"]["gbdt"], 1)} lần, MLP: {f(E["gap"]["mlp"], 1)} lần); phần lớn là lệch mức '
          f'của cả quỹ đạo.')
     if 'r0' in E:
-        t += (f' Chuẩn hoá theo từng bộ cùng loss vật lý trên cell đích đưa tỉ số sai số xuống {f(E["r0"], 2)}; hai vòng '
-              f'học lặp bằng nhãn giả cho tỉ số {f(E["r2"], 2)} so với chưa thích nghi.')
+        t += (f' Chuẩn hoá theo từng bộ cùng loss vật lý trên cell đích giảm sai số có ý nghĩa ở {E["r0_better"]} cặp '
+              f'nhưng làm tăng ở {E["r0_worse"]} cặp (tỉ số trung bình nhân {f(E["r0"], 2)}); hai vòng học lặp bằng nhãn '
+              f'giả hội tụ về đúng dự đoán của vòng đầu (tỉ số {f(E["r2v0"], 3)}), nên không cải thiện thêm.')
     return t
 
 

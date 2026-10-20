@@ -376,6 +376,9 @@ def e21_facts(d):
     E['kh_vs_p3'] = gm([v('a7030', s, t, 'ket_hop') / v('a7030', s, t, 'pinn3') for s, t in pairs])
     E['bias'] = [v('a7030', s, t, 'ket_hop', 'bias') for s, t in pairs]
     E['mae'] = [v('a7030', s, t, 'ket_hop') for s, t in pairs]
+    E['n_level'] = sum(1 for s, t in pairs if v('a7030', s, t, 'ket_hop', 'absbias') > 0.8 * v('a7030', s, t, 'ket_hop'))
+    E['anchor'] = [v('a7030', s, t, 'ket_hop', 'MAE_anchor') for s, t in pairs]
+    E['in_kh'] = E['in_dom']['ket_hop']
     if 'e21_chain' in d:
         c = d['e21_chain']
         cv = lambda s, t, m, r: float(c[(c.src == s) & (c.tgt == t) & (c.model == m)][str(r)].iloc[0])
@@ -390,6 +393,13 @@ def e21_facts(d):
         E['r0_better'], E['r0_worse'] = sig(0, True), sig(0, False)
         E['r2_better'], E['r2_worse'] = sig(2, True), sig(2, False)
         E['r2_over_r0'] = sum(1 for s, t in pairs if cv(s, t, 'ket_hop', 2) < cv(s, t, 'ket_hop', 0))
+        E['r1v0'] = {m: gm([cv(s, t, m, 1) / cv(s, t, m, 0) for s, t in pairs]) for m in ('pinn3', 'gbdt', 'ket_hop')}
+        E['r0_up'] = [f'{s} $\\to$ {t}' for s, t in pairs if E['ct'](s, t, 0).p < 0.05 and E['ct'](s, t, 0).ti_so > 1]
+        E['r0_down'] = [f'{s} $\\to$ {t}' for s, t in pairs if E['ct'](s, t, 0).p < 0.05 and E['ct'](s, t, 0).ti_so < 1]
+    if 'thesis_transfer' in d:
+        tr = d['thesis_transfer']
+        med = lambda m, k: float(tr[(tr.model == m) & (tr.k == k)]['mean'].median())
+        E['k3'] = dict(p0=med('pinn_semi', 0), p3=med('pinn_semi', 3), g0=med('gbdt', 0), g3=med('gbdt', 3))
     return E
 
 
@@ -425,9 +435,13 @@ Bảng~\ref{tab:e21a} cho sai số khi mô hình học trên bộ nguồn theo g
 từng bộ đích, chưa có bước thích nghi nào. Mô hình có sai số thấp nhất là <<WIN>>. So với GBDT, mô hình kết hợp có
 tỉ số MAE trung bình nhân <<KHGB>> trên 12 cặp; so với trung bình ba PINN là <<KHP3>>. Sai số trên bộ khác lớn hơn
 nhiều so với trong cùng bộ: cặp cùng nhóm hoá học (XJTU--TJU, MIT--HUST) có MAE trung bình nhân của mô hình kết hợp
-<<SAME>>, cặp khác hoá học <<DIFF>> (đơn vị $10^{-3}$). Phần lớn sai số này là lệch mức: độ lệch trung bình của mô
-hình kết hợp trên từng cặp nằm trong khoảng <<BIAS>>, cùng bậc với chính MAE (<<MAE>>). Mô hình không biết dung lượng
-ban đầu và mốc SOH của bộ đích, nên dù bắt được hình dạng quỹ đạo, cả quỹ đạo bị dịch lên hoặc xuống.
+<<SAME>>, cặp khác hoá học <<DIFF>> (đơn vị $10^{-3}$), trong khi sai số trong bộ chỉ <<INKH>>.<<CHEMTXT>> Mạng nơ-ron hỏng nặng
+nhất: sau khi chuẩn hoá bằng thống kê của bộ nguồn, đặc trưng của bộ đích nằm xa miền đã học, mạng ngoại suy và dự đoán
+chạm biên của miền giới hạn ở phần lớn chu kỳ; GBDT tự nhiên bị chặn trong miền nhãn đã thấy nên ít hỏng hơn. Ở
+<<NLEV>>/12 cặp, độ lệch trung bình theo cell chiếm trên 80\,\% MAE của mô hình kết hợp, tức cả quỹ đạo bị dịch lên
+hoặc xuống. Tuy vậy, ngay cả khi biết dung lượng ở 5 chu kỳ đầu của mỗi cell đích và trừ đi độ lệch tương ứng, MAE vẫn
+còn <<ANCH>> ($\times10^{-3}$): ngoài mức ban đầu, quan hệ giữa đặc trưng sạc và tốc độ suy giảm cũng khác giữa các
+bộ dữ liệu.
 
 <<TABA>>
 
@@ -439,8 +453,12 @@ nhau (chênh trung bình <<AB>>), tức 15\,\% cell giữ lại để test trong
 <<TABB>>
 <<FIGM>>
 """, WIN=win_txt, KHGB=f(E['kh_vs_gb'], 2), KHP3=f(E['kh_vs_p3'], 2), SAME=f(1e3 * E['same']['ket_hop'], 1),
-             DIFF=f(1e3 * E['diff']['ket_hop'], 1), BIAS=rng([1e3 * x for x in E['bias']], 1) + r'$\times10^{-3}$',
-             MAE=rng([1e3 * x for x in E['mae']], 1) + r'$\times10^{-3}$', TABA=tab_a,
+             DIFF=f(1e3 * E['diff']['ket_hop'], 1), INKH=rng([1e3 * x for x in E['in_kh']], 1), NLEV=E['n_level'],
+             CHEMTXT=(' Cùng hệ hoá học không làm việc chuyển dễ hơn: hai bộ LFP (MIT, HUST) khác nhau về giao thức sạc, '
+                      'dải tuổi thọ và mức SOH ban đầu, nên khoảng cách giữa chúng không nhỏ hơn khoảng cách giữa hai hệ '
+                      'hoá học khác nhau.' if E['same']['ket_hop'] >= E['diff']['ket_hop'] else
+                      ' Cặp cùng hệ hoá học dễ chuyển hơn, nhưng sai số vẫn gấp nhiều lần sai số trong bộ.'),
+             ANCH=rng([1e3 * x for x in E['anchor']], 1), TABA=tab_a,
              GAPKH=f(E['gap']['ket_hop'], 1), GAPGB=f(E['gap']['gbdt'], 1), GAPMLP=f(E['gap']['mlp'], 1),
              AB=pc(E['ab'], 1), TABB=tab_b,
              FIGM=fig('fig_e21_matrix', 'Giao thức B: MAE theo cell (thang log) khi học trên bộ ở hàng và kiểm tra trên '
@@ -463,24 +481,38 @@ nhau (chênh trung bình <<AB>>), tức 15\,\% cell giữ lại để test trong
 
 Bảng~\ref{tab:e21chain} và Hình~\ref{fig:e21rounds} theo dõi sai số của mô hình kết hợp qua từng vòng của quy trình ở
 Mục~\ref{sec:selftrain}, luôn trên nửa bộ đích không dùng để thích nghi. Vòng 0, gồm chuẩn hoá theo từng bộ và loss vật
-lý trên cell đích, đưa tỉ số MAE so với chưa thích nghi xuống <<R0>> (trung bình nhân trên 12 cặp); giảm có ý nghĩa
-thống kê ở <<R0B>> cặp và tăng có ý nghĩa ở <<R0W>> cặp. Sau hai vòng tự huấn luyện, tỉ số là <<R2>>, giảm có ý nghĩa ở
-<<R2B>> cặp và tăng có ý nghĩa ở <<R2W>> cặp. So riêng với vòng 0, hai vòng học lặp cho tỉ số <<R2V0>>, và sai số
-vòng 2 thấp hơn vòng 0 ở <<R2O>>/12 cặp.
+lý trên cell đích, cho tỉ số MAE so với chưa thích nghi là <<R0>> (trung bình nhân trên 12 cặp), nhưng kết quả chia hai
+chiều rõ rệt: giảm có ý nghĩa thống kê ở <<R0B>> cặp (<<R0DOWN>>) và tăng có ý nghĩa ở <<R0W>> cặp (<<R0UP>>). Chuẩn hoá
+theo từng bộ đưa đặc trưng của bộ đích về cùng miền giá trị với bộ nguồn nên mạng nơ-ron không còn ngoại suy; đổi lại,
+nó ngầm giả định cell trung bình của bộ đích có cùng SOH với cell trung bình của bộ nguồn. Khi hai bộ khác nhau về mức
+SOH, chẳng hạn HUST có SOH ban đầu trung vị 1,08 trong khi ba bộ còn lại chỉ 0,93--0,98, giả định này đẩy dự
+đoán lệch thêm;
+nhiều khả năng đó là lý do mọi cặp có đích HUST đều kém đi.
+
+Hai vòng tự huấn luyện gần như không làm thay đổi sai số của mô hình kết hợp: tỉ số vòng 2 so với vòng 0 là <<R2V0>>,
+sau hai vòng tỉ số so với chưa thích nghi là <<R2>> (giảm có ý nghĩa ở <<R2B>> cặp, tăng có ý nghĩa ở <<R2W>> cặp).
+Nguyên nhân nằm ở cấu trúc của quy trình. Ở vòng 1, mỗi mạng PINN và GBDT học khớp nhãn giả, tức chính dự đoán của mô
+hình kết hợp ở vòng 0; các thành phần vì vậy hội tụ về nhãn giả (sai số của trung bình ba PINN đổi <<P31>> lần, của GBDT
+<<G31>> lần giữa vòng 0 và vòng 1), còn mô hình kết hợp ở vòng sau trùng với vòng trước, một điểm bất động. Học lặp chỉ
+có ích khi mỗi vòng đưa vào một thông tin mà nhãn giả chưa chứa.
 
 <<TABC>>
 <<FIGR>>
 
-Kết quả này cho thấy giới hạn của việc học lặp bằng nhãn giả. Nhãn giả đã qua bộ lọc nên không còn đoạn đi lên, tức
-đúng về hình dạng; nhưng nếu cả quỹ đạo dự đoán của một cell bị lệch mức, nhãn giả mang đúng độ lệch đó, và vòng sau
-học lại nó. Hình~\ref{fig:e21traj} minh hoạ trên một cell của mỗi bộ đích: bước chuẩn hoá theo bộ ở vòng 0 kéo quỹ
-đạo về gần thực đo hơn nhiều, còn các vòng tự huấn luyện chủ yếu làm quỹ đạo trơn hơn chứ không sửa được phần lệch
-mức còn lại. Muốn sửa phần này cần một chút thông tin về mức SOH của bộ đích, ví dụ dung lượng đo ở chu kỳ đầu của
-mỗi cell, vốn thường có sẵn khi xuất xưởng.
+Hình~\ref{fig:e21traj} minh hoạ trên một cell của bốn cặp. Đường vòng 0 và vòng 2 gần như trùng nhau; vòng 0 kéo
+quỹ đạo về gần thực đo ở các cặp có sai số giảm và đẩy xa hơn ở cặp có sai số tăng, đúng như Bảng~\ref{tab:e21chain}.
+Nhãn giả đã qua bộ lọc nên đúng về hình dạng, nhưng mang nguyên độ lệch mức của mô hình, và vòng sau học lại độ lệch đó.
+Thông tin còn thiếu là mức SOH của bộ đích. Một thí nghiệm bổ sung trên cùng bốn bộ (mô hình học trên bộ nguồn, thêm 3
+cell đích có nhãn) cho thấy chỉ ba cell có nhãn đã đưa MAE trung vị qua 12 cặp của PINN-semi từ <<K0P>> xuống <<K3P>>,
+của GBDT từ <<K0G>> xuống <<K3G>>. Khi triển khai, cách rẻ nhất để có thông tin này là đo dung lượng của một vài cell ở
+bộ đích, hoặc dùng dung lượng đo khi xuất xưởng.
 
 <<FIGT>>
 """, R0=f(E['r0'], 3), R0B=E['r0_better'], R0W=E['r0_worse'], R2=f(E['r2'], 3), R2B=E['r2_better'], R2W=E['r2_worse'],
-             R2V0=f(E['r2v0'], 3), R2O=E['r2_over_r0'], TABC=tab_c,
+             R2V0=f(E['r2v0'], 3), R2O=E['r2_over_r0'], TABC=tab_c, R0DOWN=lst(E['r0_down']), R0UP=lst(E['r0_up']),
+             P31=f(E['r1v0']['pinn3'], 2), G31=f(E['r1v0']['gbdt'], 2),
+             K0P=m3(E['k3']['p0'], 1) + r'$\times10^{-3}$', K3P=m3(E['k3']['p3'], 1) + r'$\times10^{-3}$',
+             K0G=m3(E['k3']['g0'], 1) + r'$\times10^{-3}$', K3G=m3(E['k3']['g3'], 1) + r'$\times10^{-3}$',
              FIGR=fig('fig_e21_rounds', 'MAE theo cell của mô hình kết hợp trên bộ đích qua các vòng thích nghi (thang log); '
                       'mỗi đường là một bộ nguồn.', 'fig:e21rounds'),
              FIGT=fig('fig_e21_traj', 'Quỹ đạo SOH của một cell bộ đích (cell có sai số trung vị khi chưa thích nghi) với '
