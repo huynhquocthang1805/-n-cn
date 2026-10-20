@@ -6,7 +6,8 @@ Một lệnh cho mọi bước của đồ án. Chạy từ thư mục nào cũn
     python run.py bench                       đo tốc độ máy này để ước lượng thời gian chạy
     python run.py E13 [tuỳ chọn]              một thí nghiệm: E13 E14 E15 E16 E17 E18 E19
     python run.py experiments [tuỳ chọn]      mọi thí nghiệm của báo cáo, theo thứ tự
-    python run.py analyze                     bảng + hình từ runs/ -> results/
+    python run.py analyze                     bảng + hình từ runs/ -> results/ (lần đầu thêm ~40 phút CPU để
+                                              huấn luyện lại 120 lượt cho phân tích phần vật lý)
     python run.py thesis                      dựng báo cáo do-an/bao-cao-do-an.pdf (cần XeLaTeX)
     python run.py all [tuỳ chọn]              experiments -> analyze -> thesis
     python run.py reproduce                   chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
@@ -30,7 +31,8 @@ sys.path.insert(0, ROOT)
 os.chdir(ROOT)
 
 ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['analysis/verify_pipeline.py', '--csv'],
-            ['analysis/analyze_thesis.py'], ['report/diagrams.py']]
+            ['analysis/analyze_thesis.py'], ['analysis/analyze_metrics.py'], ['analysis/analyze_physics.py'],
+            ['report/diagrams.py']]
 
 
 def sh(args):

@@ -72,8 +72,10 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E19 | GBDT trên 12 cặp chuyển miền | 120 | 2,3 | 0,6 | 0,3 |
 | **Tổng** | | **3 420** | **≈ 20** | **≈ 5** | **≈ 2,5** |
 
-`--quick` cần khoảng 1/5 thời gian trên. Phân tích (`analyze`) mất ~2 phút lần đầu, ~1 phút các lần sau;
-dựng PDF ~10 giây.
+`--quick` cần khoảng 1/5 thời gian trên. Phân tích (`analyze`) mất ~5 phút lần đầu cộng ~40 phút CPU để
+`analyze_physics.py` huấn luyện lại 120 lượt (đo đạo hàm và tốc độ suy giảm cần chính mô hình, mà trọng số không
+được lưu; huấn luyện tất định nên mô hình giống từng bit lượt đã công bố); các lần sau ~2 phút nhờ bộ nhớ đệm.
+Dựng PDF ~10 giây.
 
 ### Đã có sẵn `runs/`?
 
@@ -103,6 +105,8 @@ pinn-soh/
 │   ├── analyze_e13.py      bảng và kiểm định của E13, E14
 │   ├── analyze_predictions.py  R², MAPE, hình dự đoán
 │   ├── analyze_thesis.py   chọn số chia, mô phỏng, so sánh theo lượng nhãn, rò rỉ, chuyển miền
+│   ├── analyze_metrics.py  RMSE, R² cho mọi mô hình; tỉ lệ dự đoán tăng ngược (tính đơn điệu)
+│   ├── analyze_physics.py  phần vật lý tác động ở đâu: ∂F/∂t, phần dư ODE, tốc độ suy giảm học được
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo

@@ -378,6 +378,40 @@ PINN-semi lấy một nửa số cặp chu kỳ từ cell có nhãn và một n�
 $y$ (Mệnh đề~\ref{md:labelfree}), nên gradient của chúng theo $\varphi$ trên cell không nhãn là tín hiệu học
 thật sự: mạng nghiệm bị buộc phải cho quỹ đạo hợp lý vật lý trên chính những cell mà nó sẽ phải tổng quát tới.
 
+\section{Phần vật lý nằm ở đâu}\label{sec:wherephys}
+
+Mạng nghiệm $F_\varphi$ tự nó là một perceptron nhiều lớp bình thường, giống hệt MLP đối chứng. Điều làm mô hình
+trở thành PINN nằm ở hàm mất mát và ở các điểm mà hàm mất mát được tính, không nằm ở kiến trúc mạng hay ở bước
+suy luận. Vật lý ở đây là vật lý ở mức hiện tượng: những quy luật định tính đã biết về lão hoá pin (dung lượng
+không tự hồi phục, suy giảm nhanh dần khi pin già, phản ứng phụ tăng theo nhiệt độ), được viết thành phương trình
+và bất đẳng thức. Đồ án không giải mô hình điện hoá chi tiết (P2D, mô hình hạt đơn) và không mô hình hoá đặc
+trưng sạc bằng phương trình nào. Bảng~\ref{tab:physmap} nối từng hiểu biết vật lý với thành phần tương ứng.
+
+\begin{table}[H]\centering\small
+\caption{Hiểu biết vật lý và thành phần mô hình tương ứng.}\label{tab:physmap}
+\begin{tabularx}{\textwidth}{>{\raggedright}p{3.6cm}>{\raggedright}p{3.4cm}>{\raggedright}X c}
+\toprule
+Hiểu biết vật lý & Biểu diễn & Tác động vào đâu & Cần nhãn \\
+\midrule
+Dung lượng không tăng theo thời gian vận hành & $\partial u/\partial t = -r$, $r \ge 0$ & đạo hàm riêng
+$\partial F_\varphi/\partial t$ tại điểm $(\tilde{\mathbf{x}}_{n_1}, t_{n_1})$, qua $\mathcal{L}_\text{ode}$ & không \\
+Quỹ đạo SOH thực tế không tăng (cho phép hồi phục nhỏ $\varepsilon$) & $u_2 \le u_1 + \varepsilon$ & cặp chu kỳ
+$(n_1, n_2)$ thật của cùng cell, qua $\mathcal{L}_\text{mono}$ & không \\
+Suy giảm nhanh dần khi pin già (đầu gối) & $g(u) = e^{\lambda(1-u)}$ & thừa số trong $r$ & không \\
+Phản ứng phụ tăng theo nhiệt độ & $A(T)$ dạng Arrhenius & thừa số trong $r$ & không \\
+SOH nằm trong miền hợp lý, cell mới gần 1 & các hàm ReLU chặn & giá trị $u_1$, qua $\mathcal{L}_\text{range}$ & không \\
+Dung lượng đo được & $(u - y)^2$ & chu kỳ có nhãn, qua $\mathcal{L}_\text{data}$ & có \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Có ba điểm cần phân biệt. Thứ nhất, các ràng buộc được tính tại \emph{điểm collocation}: mọi chu kỳ của mọi cell
+train, kể cả cell chưa đo dung lượng, ghép thành cặp $(n_1, n_2)$; đây là chỗ dữ liệu không nhãn đi vào mô hình.
+Thứ hai, $\mathcal{L}_\text{ode}$ ràng buộc đạo hàm riêng theo $t$ khi giữ nguyên đặc trưng sạc, còn
+$\mathcal{L}_\text{mono}$ ràng buộc tổng biến thiên dọc quỹ đạo thật, nơi cả $\mathbf{x}$ lẫn $t$ cùng đổi; hai
+ràng buộc này tác động vào hai hướng khác nhau của hàm $F_\varphi$, và Mục~\ref{sec:physcheck} đo riêng từng hướng.
+Thứ ba, khi suy luận chỉ dùng $F_\varphi$: vật lý định hình hàm được học, chứ không tham gia vào việc tính dự đoán.
+
 \section{Tính chất của mô hình}
 
 \begin{menhde}[Tốc độ suy giảm không âm]\label{md:rate}
@@ -983,7 +1017,7 @@ dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý c�
 đưa nó tới gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT 0{,}95--1{,}10), nhưng chưa vượt được một mô hình cây
 được tinh chỉnh tốt, cũng như hồi quy Gauss, trên phần lớn các bộ dữ liệu.
 
-\section{Lợi ích đến từ đâu}
+\section{Lợi ích đến từ đâu}\label{sec:source}
 
 \begin{table}[H]\centering\small
 \caption{Tách nguồn gốc lợi ích ở 30\,\% nhãn: MAE theo cell (×$10^{-3}$), trong ngoặc là tỉ số so với MLP.}\label{tab:source}
@@ -1050,7 +1084,80 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 \end{figure}
 
 
-\section{Chuyển miền}
+\section{\texorpdfstring{RMSE và $R^2$ cho mọi mô hình}{RMSE và R2 cho mọi mô hình}}\label{sec:rmser2}
+
+MAE theo cell ở các mục trên cho mỗi cell một phiếu. Bảng~\ref{tab:rmser2} và Hình~\ref{fig:rmser2} bổ sung hai
+chỉ số quen thuộc: RMSE theo cell, nhạy với sai số lớn hơn MAE, và hệ số xác định $R^2$. $R^2$ được tính trên toàn
+bộ bộ dữ liệu: trong một lần lặp, năm fold phủ mỗi cell đúng một lần, nên dự đoán của năm fold ghép lại thành dự
+đoán cho mọi chu kỳ của mọi cell; $R^2$ tính trên đó rồi lấy trung bình qua năm lần lặp. Bảng dùng $R^2$ tính từ
+chu kỳ thứ 10 của mỗi cell, vì vài chu kỳ đầu của một số cell XJTU có đặc trưng bất thường và riêng chúng đã đủ
+kéo $R^2$ gộp xuống rất thấp: tính cả các chu kỳ đó, $R^2$ của MLP trên XJTU ở 10\,\% nhãn chỉ còn
+−0{,}18, tức kém hơn cả việc đoán bằng giá trị trung bình.
+
+\begin{table}[H]\centering\footnotesize
+\caption{RMSE theo cell (×$10^{-3}$, bốn cột đầu) và $R^2$ tính từ chu kỳ thứ 10 (bốn cột sau) theo lượng nhãn; in đậm là tốt nhất trong cột của mỗi bộ. $R^2$ ghép dự đoán của 5 fold thành toàn bộ bộ dữ liệu, trung bình qua 5 lần lặp.}\label{tab:rmser2}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrrrr}\toprule
+ & & \multicolumn{4}{c}{RMSE theo cell} & \multicolumn{4}{c}{$R^2$} \\ \cmidrule(lr){3-6}\cmidrule(lr){7-10}
+Bộ & Mô hình & 10\,\% & 30\,\% & 50\,\% & 70\,\% & 10\,\% & 30\,\% & 50\,\% & 70\,\% \\\midrule
+XJTU & Ridge & 23{,}13 & 20{,}97 & 19{,}67 & 18{,}90 & 0{,}733 & 0{,}803 & 0{,}810 & 0{,}822 \\
+ & GPR & 19{,}65 & 16{,}28 & 19{,}64 & 25{,}46 & 0{,}796 & 0{,}852 & 0{,}733 & 0{,}545 \\
+ & GBDT & \textbf{19{,}15} & \textbf{14{,}54} & \textbf{13{,}73} & \textbf{12{,}81} & 0{,}794 & \textbf{0{,}862} & \textbf{0{,}879} & \textbf{0{,}885} \\
+ & MLP & 37{,}49 & 24{,}21 & 22{,}58 & 19{,}89 & 0{,}451 & 0{,}804 & 0{,}831 & 0{,}863 \\
+ & PINN-sup & 30{,}71 & 21{,}89 & 20{,}34 & 18{,}82 & 0{,}679 & 0{,}844 & 0{,}867 & 0{,}882 \\
+ & PINN hộp đen & 23{,}20 & 21{,}61 & 19{,}16 & 19{,}15 & 0{,}816 & 0{,}852 & 0{,}867 & 0{,}883 \\
+ & PINN-semi & 20{,}92 & 19{,}91 & 19{,}76 & 18{,}82 & \textbf{0{,}819} & 0{,}858 & 0{,}859 & 0{,}882 \\
+TJU & Ridge & 27{,}40 & 26{,}01 & 24{,}85 & 25{,}13 & 0{,}834 & 0{,}862 & 0{,}871 & 0{,}869 \\
+ & GPR & 16{,}42 & 11{,}12 & 9{,}77 & 10{,}03 & 0{,}923 & \textbf{0{,}971} & \textbf{0{,}978} & \textbf{0{,}979} \\
+ & GBDT & \textbf{15{,}31} & \textbf{9{,}89} & \textbf{8{,}75} & \textbf{8{,}23} & 0{,}924 & 0{,}969 & 0{,}975 & 0{,}979 \\
+ & MLP & 18{,}57 & 13{,}54 & 12{,}06 & 11{,}72 & 0{,}910 & 0{,}957 & 0{,}965 & 0{,}969 \\
+ & PINN-sup & 17{,}55 & 12{,}75 & 12{,}22 & 12{,}67 & 0{,}925 & 0{,}961 & 0{,}965 & 0{,}965 \\
+ & PINN hộp đen & 16{,}56 & 13{,}12 & 12{,}39 & 12{,}27 & 0{,}932 & 0{,}959 & 0{,}964 & 0{,}966 \\
+ & PINN-semi & 16{,}51 & 12{,}96 & 12{,}56 & 12{,}67 & \textbf{0{,}933} & 0{,}960 & 0{,}964 & 0{,}965 \\
+MIT & Ridge & 4{,}49 & 4{,}19 & 4{,}07 & 4{,}02 & 0{,}972 & 0{,}971 & 0{,}980 & 0{,}981 \\
+ & GPR & 4{,}63 & 3{,}23 & 2{,}71 & 2{,}67 & 0{,}965 & 0{,}979 & 0{,}989 & 0{,}990 \\
+ & GBDT & \textbf{4{,}24} & \textbf{2{,}97} & \textbf{2{,}59} & \textbf{2{,}36} & \textbf{0{,}973} & 0{,}984 & \textbf{0{,}990} & \textbf{0{,}992} \\
+ & MLP & 10{,}65 & 4{,}64 & 4{,}12 & 3{,}90 & 0{,}688 & 0{,}952 & 0{,}966 & 0{,}970 \\
+ & PINN-sup & 6{,}82 & 3{,}63 & 3{,}40 & 3{,}23 & 0{,}841 & 0{,}978 & 0{,}982 & 0{,}984 \\
+ & PINN hộp đen & 5{,}46 & 3{,}67 & 3{,}43 & 3{,}32 & 0{,}941 & 0{,}977 & 0{,}982 & 0{,}983 \\
+ & PINN-semi & 4{,}41 & 3{,}41 & 3{,}29 & 3{,}23 & 0{,}972 & \textbf{0{,}984} & 0{,}985 & 0{,}984 \\
+HUST & Ridge & \textbf{29{,}31} & 25{,}04 & 24{,}30 & 24{,}10 & \textbf{0{,}838} & 0{,}888 & 0{,}896 & 0{,}898 \\
+ & GPR & 38{,}52 & 30{,}22 & 26{,}95 & 25{,}46 & 0{,}620 & 0{,}804 & 0{,}850 & 0{,}869 \\
+ & GBDT & 33{,}32 & 25{,}97 & 22{,}23 & \textbf{20{,}63} & 0{,}773 & 0{,}860 & 0{,}898 & \textbf{0{,}911} \\
+ & MLP & 49{,}02 & 26{,}12 & 23{,}50 & 22{,}54 & 0{,}166 & 0{,}862 & 0{,}884 & 0{,}897 \\
+ & PINN-sup & 41{,}27 & 23{,}87 & 21{,}84 & 21{,}66 & 0{,}436 & 0{,}884 & 0{,}904 & 0{,}908 \\
+ & PINN hộp đen & 31{,}89 & 23{,}54 & 22{,}08 & 21{,}62 & 0{,}743 & 0{,}887 & 0{,}902 & 0{,}908 \\
+ & PINN-semi & 30{,}37 & \textbf{23{,}18} & \textbf{21{,}74} & 21{,}66 & 0{,}781 & \textbf{0{,}890} & \textbf{0{,}906} & 0{,}908 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_metrics_rmse_r2.pdf}
+\caption{RMSE theo cell (hàng trên, thang log) và $R^2$ tính từ chu kỳ thứ 10 (hàng dưới) theo lượng nhãn.}\label{fig:rmser2}
+\end{figure}
+
+
+Thứ hạng của các mô hình theo RMSE gần như trùng với theo MAE: hệ số tương quan hạng Spearman giữa hai chỉ số là
+0{,}99 trên 120 tổ hợp bộ × mô hình × mức nhãn (XJTU 0{,}84, TJU 1{,}00, MIT 0{,}99, HUST 0{,}97). Vì vậy các kết luận ở Mục~\ref{sec:labels} giữ
+nguyên khi đổi thước đo. Ở 10\,\% nhãn, $R^2$ của PINN-semi so với MLP là XJTU 0{,}82 so với 0{,}45, TJU 0{,}93 so với 0{,}91, MIT 0{,}97 so với 0{,}69, HUST 0{,}78 so với 0{,}17; RMSE theo cell của PINN-semi
+bằng 0{,}41--0{,}89 lần MLP, có ý nghĩa thống kê trên cả bốn bộ (Wilcoxon theo cell, hiệu chỉnh Holm). So với GBDT, theo RMSE
+GBDT tốt hơn có ý nghĩa ở 30\,\% (XJTU, TJU và MIT); 50\,\% (XJTU, TJU và MIT); 70\,\% (XJTU, TJU và MIT); PINN-semi tốt hơn có ý nghĩa ở 10\,\% (HUST); 30\,\% (HUST). Mô hình có $R^2$ cao nhất ở 10\,\% nhãn là XJTU: PINN-semi (0{,}819); TJU: PINN-semi (0{,}933); MIT: GBDT (0{,}973); HUST: Ridge (0{,}838).
+
+Với chuyển miền (Bảng~\ref{tab:transr2}), $R^2$ trên bộ đích âm với mọi mô hình khi bộ đích không có nhãn: trung vị
+−2800 cho MLP, −2{,}1 cho GBDT và −3{,}1 cho PINN-semi. Khi chuyển sang bộ khác, dự đoán lệch đều một khoảng
+lớn hơn cả độ biến thiên của SOH trong bộ đích, nên $R^2$ không phân biệt được một mô hình lệch ít với một mô hình
+lệch nhiều; MAE ở Mục~\ref{sec:transferres} là thước đo phù hợp hơn. Với 3 cell đích có nhãn, độ lệch này được
+hiệu chỉnh và $R^2$ trung vị lên 0{,}57 cho PINN-semi, 0{,}55 cho GBDT, trong khi MLP vẫn ở −2{,}5.
+
+\begin{table}[H]\centering\small
+\caption{$R^2$ trên tập test của bộ đích qua 12 cặp chuyển miền (mỗi cặp trung bình 5 hạt giống).}\label{tab:transr2}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrr}\toprule
+Mô hình & trung vị, $k{=}0$ & nhỏ nhất ; lớn nhất & trung vị, $k{=}3$ & nhỏ nhất ; lớn nhất \\\midrule
+MLP & −2799{,}78 & −33005{,}70 ; −82{,}87 & −2{,}53 & −86{,}17 ; 0{,}51 \\
+GBDT & −2{,}12 & −20{,}40 ; 0{,}16 & 0{,}55 & −0{,}38 ; 0{,}89 \\
+PINN-semi & −3{,}08 & −30{,}09 ; 0{,}31 & 0{,}57 & −0{,}27 ; 0{,}84 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+
+\section{Chuyển miền}\label{sec:transferres}
 
 \begin{table}[H]\centering\small
 \caption{Chuyển miền: MAE theo cell trên tập test của bộ đích, trung bình 5 hạt giống; in đậm là thấp nhất trong cùng một $k$. Mọi mô hình dùng cùng cách chia và cùng normaliser.}\label{tab:transfer}
@@ -1093,6 +1200,99 @@ HUST & 0{,}97 ± 0{,}02 & 28{,}9 ± 0{,}1 & không \\
 
 Cả hai tham số vật lý gần như không rời giá trị khởi tạo: $\lambda$ nằm trong khoảng 0{,}96--0{,}97 trên mọi bộ (khởi tạo 1), $E_a$ dịch XJTU 0{,}0, TJU 1{,}1, MIT 1{,}0, HUST 1{,}1\,kJ/mol. Trên XJTU, nhiệt độ thí nghiệm trùng $T_\text{ref} = 25$\,\textdegree C nên $A(T) = 1$ và gradient theo $E_a$ bằng 0; trên MIT và HUST, mọi cell cùng 30\,\textdegree C nên $A(T)$ chỉ là một hằng số nhân, không tách được khỏi $k(\mathbf{x})$. Ngay cả trên TJU, nơi có ba mức nhiệt độ, $E_a$ cũng chỉ dịch chừng 1\,kJ/mol: với trọng số $\alpha = 0{,}02$, tín hiệu từ $\mathcal{L}_\text{ode}$ quá yếu để ước lượng $E_a$, và mạng $k(\mathbf{x})$ có thể tự hấp thụ ảnh hưởng của nhiệt độ qua đặc trưng sạc. Vì vậy hai tham số này nên được hiểu là phần cấu trúc của ràng buộc (dấu và dạng hàm của tốc độ suy giảm), không phải đại lượng vật lý được ước lượng từ dữ liệu.
 
+\section{Kiểm tra phần vật lý}\label{sec:physcheck}
+
+Mục~\ref{sec:wherephys} chỉ ra rằng ba hàm mất mát vật lý tác động vào hai hướng khác nhau của hàm $F_\varphi$:
+$\mathcal{L}_\text{mono}$ tác động lên tổng biến thiên dọc quỹ đạo thật của cell, $\mathcal{L}_\text{ode}$ tác động
+lên đạo hàm riêng theo thời gian khi giữ nguyên đặc trưng sạc. Mục này đo riêng từng hướng trên các cell test.
+
+\paragraph{Dọc quỹ đạo: tính đơn điệu của dự đoán.} Với mỗi cell test, đếm các cặp chu kỳ cách nhau ít nhất 10 chu
+kỳ mà SOH dự đoán ở chu kỳ sau cao hơn chu kỳ trước quá 0,002, tức đúng ngưỡng của $\mathcal{L}_\text{mono}$. Phép
+đếm này không cần nhãn, nên làm được với mọi mô hình; làm trên chính nhãn thật cho mức tham chiếu, vì dung lượng
+thật có thể hồi phục nhẹ sau thời gian nghỉ (Bảng~\ref{tab:mono}, Hình~\ref{fig:mono}). Ở 30\,\% nhãn, dự đoán của
+MLP tăng ngược ở 13{,}6--31{,}1\,\% số cặp, của PINN-semi chỉ 3{,}0--12{,}0\,\%, trong khi nhãn thật là 0{,}1--7{,}7\,\%.
+Biến thể chỉ đơn điệu cho tỉ lệ gần như bằng PINN-semi (3{,}1--12{,}4\,\%): chính $\mathcal{L}_\text{mono}$, áp lên cặp chu kỳ của cả cell không nhãn, làm quỹ đạo dự đoán đơn điệu.
+
+\begin{table}[H]\centering\small
+\caption{Tỉ lệ cặp chu kỳ cách nhau ít nhất 10 chu kỳ mà SOH dự đoán tăng quá 0,002 (\%), 30\,\% nhãn, mọi cell test của 5 lần lặp; cột đầu là cùng phép đếm trên chính nhãn thật.}\label{tab:mono}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrr}\toprule
+Bộ & Nhãn thật & MLP & GBDT & PINN-sup & PINN hộp đen & chỉ đơn điệu & PINN-semi \\\midrule
+XJTU & 7{,}7 & 28{,}0 & 19{,}4 & 14{,}9 & 11{,}5 & 10{,}8 & 10{,}7 \\
+TJU & 0{,}1 & 15{,}7 & 5{,}2 & 5{,}0 & 5{,}6 & 5{,}7 & 5{,}5 \\
+MIT & 0{,}5 & 13{,}6 & 3{,}2 & 3{,}9 & 3{,}0 & 3{,}1 & 3{,}0 \\
+HUST & 0{,}1 & 31{,}1 & 12{,}9 & 14{,}3 & 12{,}5 & 12{,}4 & 12{,}0 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_metrics_mono.pdf}
+\caption{Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược ở 30\,\% nhãn; vạch ngang là cùng phép đếm trên nhãn thật.}\label{fig:mono}
+\end{figure}
+
+
+\paragraph{Theo thời gian: đạo hàm riêng và phần dư ODE.} Đại lượng mà $\mathcal{L}_\text{ode}$ ràng buộc là
+$\partial F_\varphi/\partial t$, chỉ tính được từ chính mô hình. Trọng số mô hình không được lưu, nhưng huấn luyện
+là tất định, nên đồ án huấn luyện lại các lượt của MLP, PINN-semi, các biến thể cắt bỏ và PINN hộp đen ở 30\,\% nhãn,
+lần lặp đầu, cả 5 fold trên 4 bộ: 120/120 lượt cho MAE trùng từng bit với lượt đã báo cáo. Trên cell test của
+từng lượt, đo $\partial F_\varphi/\partial t$ bằng vi phân tự động, tốc độ $r$ của động học xám, và tách tổng mức
+giảm SOH dự đoán trên vòng đời cell thành phần do biến thời gian
+$\sum_i [F_\varphi(\tilde{\mathbf{x}}_i, t_{i+1}) - F_\varphi(\tilde{\mathbf{x}}_i, t_i)]$ và phần do đặc trưng sạc
+$\sum_i [F_\varphi(\tilde{\mathbf{x}}_{i+1}, t_{i+1}) - F_\varphi(\tilde{\mathbf{x}}_i, t_{i+1})]$; hai phần cộng lại
+đúng bằng tổng (Bảng~\ref{tab:physcheck}).
+
+\begin{table}[H]\centering\footnotesize
+\caption{Đo trên cell test của mô hình đã huấn luyện (30\,\% nhãn, lần lặp đầu, 5 fold). Bốn cột đầu: tỉ lệ điểm có $\partial F_\varphi/\partial t > 0$ (\%). Ba cột giữa: trung vị qua các cell của phần giảm SOH dự đoán do riêng biến thời gian (\%). Ba cột cuối: tốc độ suy giảm trung bình (SOH trên 1\,000 chu kỳ).}\label{tab:physcheck}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrrrr}\toprule
+ & \multicolumn{4}{c}{$\partial F_\varphi/\partial t > 0$ (\%)} & \multicolumn{3}{c}{phần do thời gian (\%)} & \multicolumn{3}{c}{tốc độ suy giảm} \\ \cmidrule(lr){2-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
+Bộ & MLP & chỉ đ.điệu & PINN-semi & Euler & MLP & PINN-semi & Euler & $r$ PINN-semi & $r$ Euler & thực đo \\\midrule
+XJTU & 11{,}8 & 0{,}1 & 0{,}8 & 0{,}0 & 15 & 18 & 27 & 0{,}061 & 0{,}348 & 0{,}300 \\
+TJU & 32{,}6 & 13{,}4 & 2{,}6 & 25{,}1 & 9 & 15 & 19 & 0{,}058 & 0{,}331 & 0{,}356 \\
+MIT & 30{,}3 & 14{,}3 & 23{,}9 & 12{,}8 & 3 & 2 & 7 & 0{,}001 & 0{,}213 & 0{,}137 \\
+HUST & 17{,}4 & 6{,}3 & 4{,}8 & 6{,}2 & 36 & 49 & 48 & 0{,}063 & 0{,}128 & 0{,}137 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+
+Ba nhận xét. Thứ nhất, MLP có $\partial F_\varphi/\partial t > 0$, tức SOH tăng theo thời gian khi đặc trưng giữ
+nguyên, ở 12--33\,\% số điểm test; PINN-semi giảm tỉ lệ này xuống 1--24\,\%, giảm rõ trên XJTU, TJU và HUST. Riêng MIT, ràng buộc được thoả theo cách tầm thường: $r$ học được gần bằng 0 (MIT 0{,}001) và đạo hàm theo thời gian cũng gần bằng 0, nên dấu của đạo hàm chỉ còn là nhiễu quanh 0. Thứ hai, ở mọi
+mô hình, phần lớn mức giảm SOH dự đoán đi qua đặc trưng sạc chứ không qua biến thời gian: phần do thời gian chỉ
+chiếm 3--36\,\% với MLP và 2--49\,\% với PINN-semi; với PINN-semi, phần này dưới 25\,\% trên XJTU, TJU và MIT và cao
+nhất trên HUST (49\,\%). Mạng nghiệm nhận ra pin đã già chủ yếu nhờ đường sạc đã đổi dạng, và $\mathcal{L}_\text{ode}$ chỉ
+ràng buộc phần còn lại. Thứ ba, phần dư ODE nhỏ so với chính đạo hàm
+($|\partial_t F_\varphi + r|$ bằng XJTU 14, TJU 16, HUST 22\,\% của $|\partial_t F_\varphi|$), nghĩa là ràng buộc được thoả trên cell chưa từng thấy.
+
+\paragraph{Tốc độ suy giảm học được.} Hình~\ref{fig:ratecell} so tốc độ suy giảm thực đo của từng cell test (độ
+dốc của SOH theo chu kỳ) với tốc độ của mô hình. Độ dốc của SOH dự đoán bám sát thực đo ở cả MLP lẫn PINN-semi
+(tương quan hạng Spearman 0{,}30--0{,}99 với MLP, 0{,}31--0{,}99 với PINN-semi); trên HUST tương quan thấp hơn vì tốc độ của các cell gần như nhau (hệ số biến thiên 0{,}19, so với 0{,}39--1{,}66 ở các bộ khác). Tốc độ $r$ của
+PINN-semi thì không: trung bình chỉ 0{,}001--0{,}063 so với 0{,}137--0{,}356 thực đo, và gần như không tương quan với tốc độ của từng
+cell (Spearman XJTU −0{,}26, TJU 0{,}10, MIT −0{,}14, HUST 0{,}09). Lý do nằm ở nhận xét thứ hai: ở dạng đạo hàm riêng, $r$ được khớp với
+$-\partial F_\varphi/\partial t$, tức chỉ với phần suy giảm mà mạng gán cho biến thời gian. Dạng Euler khớp $r$ với
+tổng biến thiên dọc quỹ đạo, nên $r$ của nó xấp xỉ tốc độ thật (trung bình 0{,}128--0{,}348) và tương quan với tốc độ từng cell
+(Spearman XJTU 0{,}72, TJU 0{,}88, MIT 0{,}66, HUST −0{,}22), rõ trên XJTU, TJU và MIT. Đổi lại, dạng Euler có MAE cao hơn dạng đạo hàm riêng trên TJU và MIT (Mục~\ref{sec:source}).
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_physics_rate_cell.pdf}
+\caption{Tốc độ suy giảm của từng cell test: thực đo (trục ngang) so với độ dốc dự đoán và tốc độ $r$ học được (trục dọc); đường chéo là trùng khớp.}\label{fig:ratecell}
+\end{figure}
+
+
+Hình~\ref{fig:ratesoh} xếp tốc độ suy giảm theo khoảng SOH thực đo. Trên XJTU, MIT và HUST, tốc độ thực đo ở khoảng SOH thấp nhất cao gấp 2--175 lần ở khoảng SOH cao nhất: đây là hiện tượng đầu gối. Trên TJU, đường trung bình không đi lên đều theo SOH. Mỗi khoảng SOH gồm một tập cell khác
+nhau, nên đây là đường trung bình chứ không phải đường của một cell. Độ dốc dự đoán của PINN-semi theo sát đường
+thực đo trên cả bốn bộ, nhưng $r$ gần như phẳng: giữa các khoảng SOH, $r$ chỉ thay đổi 1{,}4--1{,}9 lần (bỏ qua MIT, nơi $r \approx 0$), trong khi
+tốc độ thực đo thay đổi 3--175 lần. Với $\lambda \approx 0{,}96$ (Mục~\ref{sec:physparams}), thừa số $g(u) = e^{\lambda(1-u)}$ chỉ tăng khoảng
+1,2 lần khi SOH giảm từ 1 xuống 0,8. Đầu gối trong dự đoán đến từ đặc trưng sạc, không đến từ thừa số đầu gối của
+động học.
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_physics_rate_soh.pdf}
+\caption{Tốc độ suy giảm theo khoảng SOH thực đo (trục ngang giảm dần): thực đo, độ dốc dự đoán và tốc độ $r$ học được.}\label{fig:ratesoh}
+\end{figure}
+
+
+Tóm lại, phần vật lý giúp mô hình chủ yếu qua ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn
+thật, và đây cũng là phần mang lại phần lớn lợi ích về sai số (Mục~\ref{sec:source}). Ràng buộc ODE dạng đạo hàm riêng
+giữ cho SOH không tăng theo thời gian, nhưng tốc độ $r$ của nó không phải là ước lượng tốc độ suy giảm của cell; muốn
+$r$ diễn giải được theo nghĩa vật lý cần dạng Euler.
+
+
 \section{Thảo luận chung}
 
 \paragraph{Khi nào nên dùng PINN bán giám sát?} Khi đã chọn mạng nơ-ron làm mô hình, PINN bán giám sát nên được
@@ -1108,7 +1308,8 @@ GBDT là lựa chọn đơn giản và mạnh hơn.
 lại. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
 (iii) GBDT là đối thủ mạnh và chưa được kết hợp với ràng buộc vật lý. (iv) Cell validation cần nhãn ngoài ngân
 sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững trên MIT. (vi) Tham số vật lý $\lambda, E_a$ chưa
-ước lượng được từ dữ liệu hiện có.
+ước lượng được từ dữ liệu hiện có. (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
+mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}).
 
 \chapter{Kết luận và hướng phát triển}\label{ch:ketluan}
 
@@ -1124,7 +1325,9 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item PINN-semi có MAE thấp hơn MLP trong 14/16, thấp hơn Ridge trong 15/16 và GPR trong 6/16 trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong 14/16 trường hợp, 10 trong đó có ý nghĩa thống kê. GBDT được tinh chỉnh tốt vẫn là mô hình mạnh nhất khi đánh giá trong cùng một bộ dữ liệu.
 \item Ở 10\,\% nhãn, 50--64\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
-      mang lại 62--95\,\% mức giảm đó. Động học xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa ở 4 trong 16 trường hợp (bộ × mức nhãn) và kém hơn ở 1; khác biệt rõ nhất ở MIT khi ít nhãn.
+      mang lại 62--95\,\% mức giảm đó. Động học xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa ở 4 trong 16 trường hợp (bộ × mức nhãn) và kém hơn ở 1; khác biệt rõ nhất ở MIT khi ít nhãn. Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
+      ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn thật; tốc độ $r$ ở dạng đạo hàm riêng chỉ
+      phản ánh phần suy giảm gán cho biến thời gian, còn dạng Euler cho $r$ sát tốc độ thật (Mục~\ref{sec:physcheck}).
 \item Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức 0{,}026--0{,}312 trong khi MLP lệch tới 0{,}54--8{,}13; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở 12/12 cặp. So với GBDT, PINN-semi tốt hơn ở 6/12 cặp khi $k = 0$ và 8/12 cặp khi $k = 3$.
 \end{enumerate}
 
@@ -1144,6 +1347,8 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
 \item Ước lượng độ bất định (tổ hợp nhiều mô hình hoặc dự đoán phù hợp) để BMS biết khi nào tin được dự đoán.
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item Tăng trọng số của phần dư động học và dùng dữ liệu nhiều mức nhiệt độ để ước lượng được $\lambda$ và $E_a$.
+\item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, để vừa giữ sai số thấp vừa có tốc độ suy giảm
+      $r$ diễn giải được theo nghĩa vật lý.
 \end{enumerate}
 
 \begin{thebibliography}{99}\small

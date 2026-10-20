@@ -27,7 +27,8 @@ def f(x, n=3):
         return '--'
     if isinstance(x, float) and math.isinf(x):
         return '$>70$'
-    return f'{x:.{n}f}'.replace('.', '{,}')
+    s = f'{x:.{n}f}'.replace('.', '{,}')
+    return '−' + s[1:] if s.startswith('-') else s                 # dấu trừ thật, không phải gạch nối
 
 
 def pc(x, n=0):
@@ -53,7 +54,9 @@ def load():
     d = {}
     for k in ['thesis_split_design', 'thesis_strat', 'thesis_repeats', 'thesis_curve', 'thesis_compare',
               'thesis_equivalence', 'thesis_leakage', 'thesis_transfer', 'E13_tests', 'E13_secondary',
-              'pred_metrics', 'verify_pipeline', 'E13_physics_params', 'thesis_rowbound', 'thesis_leakage_raw', 'thesis_rowsim']:
+              'pred_metrics', 'verify_pipeline', 'E13_physics_params', 'thesis_rowbound', 'thesis_leakage_raw', 'thesis_rowsim',
+              'metrics_summary', 'metrics_tests', 'metrics_transfer', 'physics_summary', 'physics_rate_soh',
+              'physics_cells', 'physics_check']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -491,6 +494,40 @@ chu kỳ đầu của cell. Đạo hàm $\partial_t u$ tính bằng vi phân t�
 PINN-semi lấy một nửa số cặp chu kỳ từ cell có nhãn và một nửa từ cell không nhãn. Ba loss vật lý không chứa
 $y$ (Mệnh đề~\ref{md:labelfree}), nên gradient của chúng theo $\varphi$ trên cell không nhãn là tín hiệu học
 thật sự: mạng nghiệm bị buộc phải cho quỹ đạo hợp lý vật lý trên chính những cell mà nó sẽ phải tổng quát tới.
+
+\section{Phần vật lý nằm ở đâu}\label{sec:wherephys}
+
+Mạng nghiệm $F_\varphi$ tự nó là một perceptron nhiều lớp bình thường, giống hệt MLP đối chứng. Điều làm mô hình
+trở thành PINN nằm ở hàm mất mát và ở các điểm mà hàm mất mát được tính, không nằm ở kiến trúc mạng hay ở bước
+suy luận. Vật lý ở đây là vật lý ở mức hiện tượng: những quy luật định tính đã biết về lão hoá pin (dung lượng
+không tự hồi phục, suy giảm nhanh dần khi pin già, phản ứng phụ tăng theo nhiệt độ), được viết thành phương trình
+và bất đẳng thức. Đồ án không giải mô hình điện hoá chi tiết (P2D, mô hình hạt đơn) và không mô hình hoá đặc
+trưng sạc bằng phương trình nào. Bảng~\ref{tab:physmap} nối từng hiểu biết vật lý với thành phần tương ứng.
+
+\begin{table}[H]\centering\small
+\caption{Hiểu biết vật lý và thành phần mô hình tương ứng.}\label{tab:physmap}
+\begin{tabularx}{\textwidth}{>{\raggedright}p{3.6cm}>{\raggedright}p{3.4cm}>{\raggedright}X c}
+\toprule
+Hiểu biết vật lý & Biểu diễn & Tác động vào đâu & Cần nhãn \\
+\midrule
+Dung lượng không tăng theo thời gian vận hành & $\partial u/\partial t = -r$, $r \ge 0$ & đạo hàm riêng
+$\partial F_\varphi/\partial t$ tại điểm $(\tilde{\mathbf{x}}_{n_1}, t_{n_1})$, qua $\mathcal{L}_\text{ode}$ & không \\
+Quỹ đạo SOH thực tế không tăng (cho phép hồi phục nhỏ $\varepsilon$) & $u_2 \le u_1 + \varepsilon$ & cặp chu kỳ
+$(n_1, n_2)$ thật của cùng cell, qua $\mathcal{L}_\text{mono}$ & không \\
+Suy giảm nhanh dần khi pin già (đầu gối) & $g(u) = e^{\lambda(1-u)}$ & thừa số trong $r$ & không \\
+Phản ứng phụ tăng theo nhiệt độ & $A(T)$ dạng Arrhenius & thừa số trong $r$ & không \\
+SOH nằm trong miền hợp lý, cell mới gần 1 & các hàm ReLU chặn & giá trị $u_1$, qua $\mathcal{L}_\text{range}$ & không \\
+Dung lượng đo được & $(u - y)^2$ & chu kỳ có nhãn, qua $\mathcal{L}_\text{data}$ & có \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Có ba điểm cần phân biệt. Thứ nhất, các ràng buộc được tính tại \emph{điểm collocation}: mọi chu kỳ của mọi cell
+train, kể cả cell chưa đo dung lượng, ghép thành cặp $(n_1, n_2)$; đây là chỗ dữ liệu không nhãn đi vào mô hình.
+Thứ hai, $\mathcal{L}_\text{ode}$ ràng buộc đạo hàm riêng theo $t$ khi giữ nguyên đặc trưng sạc, còn
+$\mathcal{L}_\text{mono}$ ràng buộc tổng biến thiên dọc quỹ đạo thật, nơi cả $\mathbf{x}$ lẫn $t$ cùng đổi; hai
+ràng buộc này tác động vào hai hướng khác nhau của hàm $F_\varphi$, và Mục~\ref{sec:physcheck} đo riêng từng hướng.
+Thứ ba, khi suy luận chỉ dùng $F_\varphi$: vật lý định hình hàm được học, chứ không tham gia vào việc tính dự đoán.
 
 \section{Tính chất của mô hình}
 
@@ -1373,6 +1410,243 @@ def facts(d, ctx):
     return ctx
 
 
+def ch6_metrics(d, ctx):
+    """Mục RMSE và R² cho mọi mô hình (đọc results/metrics_*.csv)."""
+    from scipy.stats import spearmanr
+    sm, ts, tr = d['metrics_summary'], d['metrics_tests'], d['metrics_transfer']
+    MODS = ['ridge', 'gpr', 'gbdt', 'mlp', 'pinn_sup', 'pinn_bb', 'pinn_semi']
+    get = lambda ds, m, fr, col: (lambda g: float(g[col].iloc[0]) if len(g) else NAN)(
+        sm[(sm.dataset == ds) & (sm.model == m) & (sm.frac == fr)])
+    rows = []
+    for ds in DS:
+        for i, m in enumerate(MODS):
+            cells = []
+            for col, best, fmt in [('RMSE_cell', min, lambda v: m3(v, 2)), ('R2_10', max, lambda v: f(v, 3))]:
+                for fr in FRS:
+                    v = get(ds, m, fr, col)
+                    bv = best([x for x in (get(ds, mm, fr, col) for mm in MODS) if _ok(x)])
+                    s = fmt(v) if _ok(v) else '--'
+                    cells.append(r'\textbf{' + s + '}' if _ok(v) and v == bv else s)
+            rows.append([ds if i == 0 else '', LBL[m]] + cells)
+    head = ['Bộ', 'Mô hình'] + [f'{int(100 * fr)}\\,\\%' for fr in FRS] * 2
+    tab = table(head, rows, 'll' + 'r' * 8,
+                'RMSE theo cell (×$10^{-3}$, bốn cột đầu) và $R^2$ tính từ chu kỳ thứ 10 (bốn cột sau) theo lượng nhãn; '
+                'in đậm là tốt nhất trong cột của mỗi bộ. $R^2$ ghép dự đoán của 5 fold thành toàn bộ bộ dữ liệu, '
+                'trung bình qua 5 lần lặp.', 'tab:rmser2', size=r'\footnotesize')
+    tab = tab.replace(r'\toprule' + '\n', r'\toprule' + '\n' + r' & & \multicolumn{4}{c}{RMSE theo cell} & '
+                      r'\multicolumn{4}{c}{$R^2$} \\ \cmidrule(lr){3-6}\cmidrule(lr){7-10}' + '\n', 1)
+    c = d['thesis_curve'].rename(columns={'bo': 'dataset'})
+    mm = sm.merge(c, on=['dataset', 'model', 'frac'])
+    rho_all = spearmanr(mm.MAE_cell, mm.RMSE_cell).statistic
+    rho_ds = {ds: spearmanr(g.MAE_cell, g.RMSE_cell).statistic for ds, g in mm.groupby('dataset')}
+    sig = lambda other, fr, better: [ds for ds in DS if ((ts.doi_chung == other) & (ts.frac == fr) & (ts.bo == ds)
+                                                          & (ts.p_holm < 0.05) & ((ts.ti_so < 1) if better else (ts.ti_so > 1))).any()]
+    rr = lambda other, fr: {ds: (lambda g: float(g.ti_so.iloc[0]) if len(g) else NAN)(
+        ts[(ts.doi_chung == other) & (ts.frac == fr) & (ts.bo == ds)]) for ds in DS}
+    gb_w = [f'{pc(fr)} ({_lst(sig("gbdt", fr, False))})' for fr in FRS if sig('gbdt', fr, False)]
+    pn_w = [f'{pc(fr)} ({_lst(sig("gbdt", fr, True))})' for fr in FRS if sig('gbdt', fr, True)]
+    r2_10 = {ds: (get(ds, 'pinn_semi', 0.1, 'R2_10'), get(ds, 'mlp', 0.1, 'R2_10')) for ds in DS}
+    worst = min(DS, key=lambda ds: get(ds, 'mlp', 0.1, 'R2'))
+    best10 = {ds: max(MODS, key=lambda m: get(ds, m, 0.1, 'R2_10')) for ds in DS}
+    # chuyển miền
+    trs = tr.groupby(['k', 'model']).R2.agg(['median', 'min', 'max']).reset_index()
+    trows = []
+    for m in ['mlp', 'gbdt', 'pinn_semi']:
+        row = [LBL[m]]
+        for k in [0, 3]:
+            g = trs[(trs.k == k) & (trs.model == m)]
+            row += [f(float(g['median'].iloc[0]), 2), f'{f(float(g["min"].iloc[0]), 2)} ; {f(float(g["max"].iloc[0]), 2)}'] \
+                if len(g) else ['--', '--']
+        trows.append(row)
+    ttab = table(['Mô hình', 'trung vị, $k{=}0$', 'nhỏ nhất ; lớn nhất', 'trung vị, $k{=}3$', 'nhỏ nhất ; lớn nhất'],
+                 trows, 'lrrrr', '$R^2$ trên tập test của bộ đích qua 12 cặp chuyển miền (mỗi cặp trung bình 5 hạt giống).',
+                 'tab:transr2')
+    med = lambda m, k: float(trs[(trs.k == k) & (trs.model == m)]['median'].iloc[0])
+    return T(r"""
+\section{\texorpdfstring{RMSE và $R^2$ cho mọi mô hình}{RMSE và R2 cho mọi mô hình}}\label{sec:rmser2}
+
+MAE theo cell ở các mục trên cho mỗi cell một phiếu. Bảng~\ref{tab:rmser2} và Hình~\ref{fig:rmser2} bổ sung hai
+chỉ số quen thuộc: RMSE theo cell, nhạy với sai số lớn hơn MAE, và hệ số xác định $R^2$. $R^2$ được tính trên toàn
+bộ bộ dữ liệu: trong một lần lặp, năm fold phủ mỗi cell đúng một lần, nên dự đoán của năm fold ghép lại thành dự
+đoán cho mọi chu kỳ của mọi cell; $R^2$ tính trên đó rồi lấy trung bình qua năm lần lặp. Bảng dùng $R^2$ tính từ
+chu kỳ thứ 10 của mỗi cell, vì vài chu kỳ đầu của một số cell XJTU có đặc trưng bất thường và riêng chúng đã đủ
+kéo $R^2$ gộp xuống rất thấp: tính cả các chu kỳ đó, $R^2$ của MLP trên <<WORST>> ở 10\,\% nhãn chỉ còn
+<<WORSTV>>, tức kém hơn cả việc đoán bằng giá trị trung bình.
+
+<<TAB>>
+<<FIG>>
+
+Thứ hạng của các mô hình theo RMSE gần như trùng với theo MAE: hệ số tương quan hạng Spearman giữa hai chỉ số là
+<<RHO>> trên <<N>> tổ hợp bộ × mô hình × mức nhãn (<<RHODS>>). Vì vậy các kết luận ở Mục~\ref{sec:labels} giữ
+nguyên khi đổi thước đo. Ở 10\,\% nhãn, $R^2$ của PINN-semi so với MLP là <<R210>>; RMSE theo cell của PINN-semi
+bằng <<RR10>> lần MLP, có ý nghĩa thống kê <<SIG10>> (Wilcoxon theo cell, hiệu chỉnh Holm). So với GBDT, theo RMSE
+<<GBTXT>>. Mô hình có $R^2$ cao nhất ở 10\,\% nhãn là <<BEST10>>.
+
+Với chuyển miền (Bảng~\ref{tab:transr2}), $R^2$ trên bộ đích âm với mọi mô hình khi bộ đích không có nhãn: trung vị
+<<TRM0>> cho MLP, <<TRG0>> cho GBDT và <<TRP0>> cho PINN-semi. Khi chuyển sang bộ khác, dự đoán lệch đều một khoảng
+lớn hơn cả độ biến thiên của SOH trong bộ đích, nên $R^2$ không phân biệt được một mô hình lệch ít với một mô hình
+lệch nhiều; MAE ở Mục~\ref{sec:transferres} là thước đo phù hợp hơn. Với 3 cell đích có nhãn, độ lệch này được
+hiệu chỉnh và $R^2$ trung vị lên <<TRP3>> cho PINN-semi, <<TRG3>> cho GBDT, trong khi MLP vẫn ở <<TRM3>>.
+
+<<TTAB>>
+""", WORST=worst, WORSTV=f(get(worst, 'mlp', 0.1, 'R2'), 2), TAB=tab,
+             FIG=fig('fig_metrics_rmse_r2', 'RMSE theo cell (hàng trên, thang log) và $R^2$ tính từ chu kỳ thứ 10 (hàng '
+                     'dưới) theo lượng nhãn.', 'fig:rmser2'),
+             RHO=f(rho_all, 2), N=len(mm), RHODS=', '.join(f'{ds} {f(rho_ds[ds], 2)}' for ds in DS),
+             R210=', '.join(f'{ds} {f(r2_10[ds][0], 2)} so với {f(r2_10[ds][1], 2)}' for ds in DS),
+             RR10=_rng(rr('mlp', 0.1).values()), SIG10=_tren(sig('mlp', 0.1, True)) or 'trên không bộ nào',
+             GBTXT=('GBDT tốt hơn có ý nghĩa ở ' + '; '.join(gb_w) if gb_w else 'GBDT không tốt hơn có ý nghĩa ở mức nào')
+             + ('; PINN-semi tốt hơn có ý nghĩa ở ' + '; '.join(pn_w) if pn_w else '; PINN-semi không tốt hơn có ý nghĩa ở mức nào'),
+             BEST10='; '.join(f'{ds}: {LBL[best10[ds]]} ({f(get(ds, best10[ds], 0.1, "R2_10"), 3)})' for ds in DS),
+             TRM0=f(med('mlp', 0), 0), TRG0=f(med('gbdt', 0), 1), TRP0=f(med('pinn_semi', 0), 1),
+             TRM3=f(med('mlp', 3), 1), TRG3=f(med('gbdt', 3), 2), TRP3=f(med('pinn_semi', 3), 2), TTAB=ttab)
+
+
+def ch6_physcheck(d, ctx):
+    """Mục kiểm tra phần vật lý (đọc results/metrics_summary.csv, results/physics_*.csv)."""
+    sm, ph, bins = d['metrics_summary'], d['physics_summary'], d['physics_rate_soh']
+    mono = lambda ds, m: float(sm[(sm.dataset == ds) & (sm.model == m) & (sm.frac == 0.3)].vi_pham_don_dieu_pct.iloc[0])
+    true = {ds: float(sm[(sm.dataset == ds) & (sm.model == 'mlp') & (sm.frac == 0.3)].vi_pham_nhan_that_pct.iloc[0])
+            for ds in DS}
+    MM = ['mlp', 'gbdt', 'pinn_sup', 'pinn_bb', 'mono_only', 'pinn_semi']
+    mrows = [[ds, f(true[ds], 1)] + [f(mono(ds, m), 1) for m in MM] for ds in DS]
+    tabM = table(['Bộ', 'Nhãn thật'] + [LBL[m] for m in MM], mrows, 'l' + 'r' * 7,
+                 'Tỉ lệ cặp chu kỳ cách nhau ít nhất 10 chu kỳ mà SOH dự đoán tăng quá 0,002 (\\%), 30\\,\\% nhãn, mọi '
+                 'cell test của 5 lần lặp; cột đầu là cùng phép đếm trên chính nhãn thật.', 'tab:mono')
+    P = lambda ds, tag, col: float(ph[(ph.bo == ds) & (ph.nhanh == tag)][col].iloc[0])
+    prows = [[ds] + [f(P(ds, t, 'dudt_duong_pct'), 1) for t in 'ADCE']
+             + [f(100 * P(ds, t, 'phan_thoi_gian_trung_vi'), 0) for t in 'ACE']
+             + [f(P(ds, 'C', 'toc_do_r'), 3), f(P(ds, 'E', 'toc_do_r'), 3), f(P(ds, 'C', 'toc_do_that'), 3)] for ds in DS]
+    tabP = table(['Bộ', 'MLP', 'chỉ đ.điệu', 'PINN-semi', 'Euler', 'MLP', 'PINN-semi', 'Euler', '$r$ PINN-semi',
+                  '$r$ Euler', 'thực đo'], prows, 'l' + 'r' * 10,
+                 'Đo trên cell test của mô hình đã huấn luyện (30\\,\\% nhãn, lần lặp đầu, 5 fold). Bốn cột đầu: tỉ lệ '
+                 'điểm có $\\partial F_\\varphi/\\partial t > 0$ (\\%). Ba cột giữa: trung vị qua các cell của phần giảm SOH '
+                 'dự đoán do riêng biến thời gian (\\%). Ba cột cuối: tốc độ suy giảm trung bình (SOH trên 1\\,000 chu kỳ).',
+                 'tab:physcheck', size=r'\footnotesize')
+    tabP = tabP.replace(r'\toprule' + '\n', r'\toprule' + '\n' + r' & \multicolumn{4}{c}{$\partial F_\varphi/\partial t > 0$ (\%)}'
+                        r' & \multicolumn{3}{c}{phần do thời gian (\%)} & \multicolumn{3}{c}{tốc độ suy giảm} \\'
+                        r' \cmidrule(lr){2-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}' + '\n', 1)
+    # số liệu cho văn bản
+    m_mlp = [mono(ds, 'mlp') for ds in DS]; m_semi = [mono(ds, 'pinn_semi') for ds in DS]
+    m_only = [mono(ds, 'mono_only') for ds in DS]
+    close = all(abs(a - b) <= 1.5 for a, b in zip(m_only, m_semi))
+    dpos = {t: {ds: P(ds, t, 'dudt_duong_pct') for ds in DS} for t in 'ACE'}
+    lower = [ds for ds in DS if dpos['C'][ds] < 0.5 * dpos['A'][ds]]
+    trivial = [ds for ds in DS if P(ds, 'C', 'toc_do_r') < 0.01]
+    share = {t: [100 * P(ds, t, 'phan_thoi_gian_trung_vi') for ds in DS] for t in 'ACE'}
+    rel = {ds: P(ds, 'C', 'phan_du_tuong_doi') for ds in DS if ds not in trivial}
+    rhoC = {ds: P(ds, 'C', 'rho_r') for ds in DS}; rhoE = {ds: P(ds, 'E', 'rho_r') for ds in DS}
+    good_E = [ds for ds in DS if rhoE[ds] > 0.5]
+    rt = {ds: P(ds, 'C', 'rho_tong') for ds in DS}; rtA = {ds: P(ds, 'A', 'rho_tong') for ds in DS}
+
+    def curve(ds, tag, col):
+        return bins[(bins.ds == ds) & (bins.tag == tag) & (bins.n >= 200)].sort_values('bin')[col].to_numpy()
+    span = lambda v: float(v.max() / v.min()) if len(v) >= 2 and v.min() > 0 else NAN
+    kt = {ds: span(curve(ds, 'A', 'rate_true')) for ds in DS}
+    kr = {ds: span(curve(ds, 'C', 'r')) for ds in DS if ds not in trivial}
+    rise = {ds: curve(ds, 'A', 'rate_true')[0] / curve(ds, 'A', 'rate_true')[-1] for ds in DS}  # SOH thấp / SOH cao
+    knee_ds = [ds for ds in DS if rise[ds] > 1.5]; no_knee = [ds for ds in DS if ds not in knee_ds]
+    cells_ = d['physics_cells'][d['physics_cells'].tag == 'A']
+    cv = (cells_.groupby('ds').rate_true.std() / cells_.groupby('ds').rate_true.mean()).to_dict()
+    flat = min(DS, key=cv.get)
+    shC = {ds: 100 * P(ds, 'C', 'phan_thoi_gian_trung_vi') for ds in DS}
+    low25 = [ds for ds in DS if shC[ds] < 25]; top = max(DS, key=shC.get)
+    pc = d.get('physics_check')
+    n_same = f'{int(pc.n_same.iloc[0])}/{int(pc.n_ref.iloc[0])}' if pc is not None else '--'
+    return T(r"""
+\section{Kiểm tra phần vật lý}\label{sec:physcheck}
+
+Mục~\ref{sec:wherephys} chỉ ra rằng ba hàm mất mát vật lý tác động vào hai hướng khác nhau của hàm $F_\varphi$:
+$\mathcal{L}_\text{mono}$ tác động lên tổng biến thiên dọc quỹ đạo thật của cell, $\mathcal{L}_\text{ode}$ tác động
+lên đạo hàm riêng theo thời gian khi giữ nguyên đặc trưng sạc. Mục này đo riêng từng hướng trên các cell test.
+
+\paragraph{Dọc quỹ đạo: tính đơn điệu của dự đoán.} Với mỗi cell test, đếm các cặp chu kỳ cách nhau ít nhất 10 chu
+kỳ mà SOH dự đoán ở chu kỳ sau cao hơn chu kỳ trước quá 0,002, tức đúng ngưỡng của $\mathcal{L}_\text{mono}$. Phép
+đếm này không cần nhãn, nên làm được với mọi mô hình; làm trên chính nhãn thật cho mức tham chiếu, vì dung lượng
+thật có thể hồi phục nhẹ sau thời gian nghỉ (Bảng~\ref{tab:mono}, Hình~\ref{fig:mono}). Ở 30\,\% nhãn, dự đoán của
+MLP tăng ngược ở <<MMLP>>\,\% số cặp, của PINN-semi chỉ <<MSEMI>>\,\%, trong khi nhãn thật là <<MTRUE>>\,\%.
+<<CLOSE>>
+
+<<TABM>>
+<<FIGM>>
+
+\paragraph{Theo thời gian: đạo hàm riêng và phần dư ODE.} Đại lượng mà $\mathcal{L}_\text{ode}$ ràng buộc là
+$\partial F_\varphi/\partial t$, chỉ tính được từ chính mô hình. Trọng số mô hình không được lưu, nhưng huấn luyện
+là tất định, nên đồ án huấn luyện lại các lượt của MLP, PINN-semi, các biến thể cắt bỏ và PINN hộp đen ở 30\,\% nhãn,
+lần lặp đầu, cả 5 fold trên 4 bộ: <<NSAME>> lượt cho MAE trùng từng bit với lượt đã báo cáo. Trên cell test của
+từng lượt, đo $\partial F_\varphi/\partial t$ bằng vi phân tự động, tốc độ $r$ của động học xám, và tách tổng mức
+giảm SOH dự đoán trên vòng đời cell thành phần do biến thời gian
+$\sum_i [F_\varphi(\tilde{\mathbf{x}}_i, t_{i+1}) - F_\varphi(\tilde{\mathbf{x}}_i, t_i)]$ và phần do đặc trưng sạc
+$\sum_i [F_\varphi(\tilde{\mathbf{x}}_{i+1}, t_{i+1}) - F_\varphi(\tilde{\mathbf{x}}_i, t_{i+1})]$; hai phần cộng lại
+đúng bằng tổng (Bảng~\ref{tab:physcheck}).
+
+<<TABP>>
+
+Ba nhận xét. Thứ nhất, MLP có $\partial F_\varphi/\partial t > 0$, tức SOH tăng theo thời gian khi đặc trưng giữ
+nguyên, ở <<DPA>>\,\% số điểm test; PINN-semi giảm tỉ lệ này xuống <<DPC>>\,\%<<LOWER>>. <<TRIVIAL>>Thứ hai, ở mọi
+mô hình, phần lớn mức giảm SOH dự đoán đi qua đặc trưng sạc chứ không qua biến thời gian: phần do thời gian chỉ
+chiếm <<SHA>>\,\% với MLP và <<SHC>>\,\% với PINN-semi; với PINN-semi, phần này dưới 25\,\% <<LOW25>> và cao
+nhất <<SHMAX>>. Mạng nghiệm nhận ra pin đã già chủ yếu nhờ đường sạc đã đổi dạng, và $\mathcal{L}_\text{ode}$ chỉ
+ràng buộc phần còn lại. Thứ ba, phần dư ODE nhỏ so với chính đạo hàm
+(<<REL>>), nghĩa là ràng buộc được thoả trên cell chưa từng thấy.
+
+\paragraph{Tốc độ suy giảm học được.} Hình~\ref{fig:ratecell} so tốc độ suy giảm thực đo của từng cell test (độ
+dốc của SOH theo chu kỳ) với tốc độ của mô hình. Độ dốc của SOH dự đoán bám sát thực đo ở cả MLP lẫn PINN-semi
+(tương quan hạng Spearman <<RT>>)<<FLAT>>. Tốc độ $r$ của
+PINN-semi thì không: trung bình chỉ <<RC>> so với <<RTRUE>> thực đo, và gần như không tương quan với tốc độ của từng
+cell (<<RHOC>>). Lý do nằm ở nhận xét thứ hai: ở dạng đạo hàm riêng, $r$ được khớp với
+$-\partial F_\varphi/\partial t$, tức chỉ với phần suy giảm mà mạng gán cho biến thời gian. Dạng Euler khớp $r$ với
+tổng biến thiên dọc quỹ đạo, nên $r$ của nó xấp xỉ tốc độ thật (trung bình <<RE>>) và tương quan với tốc độ từng cell
+(<<RHOE>>)<<GOODE>>. Đổi lại, dạng Euler có MAE cao hơn dạng đạo hàm riêng trên TJU và MIT (Mục~\ref{sec:source}).
+
+<<FIGRC>>
+
+Hình~\ref{fig:ratesoh} xếp tốc độ suy giảm theo khoảng SOH thực đo. <<KNEE>> Mỗi khoảng SOH gồm một tập cell khác
+nhau, nên đây là đường trung bình chứ không phải đường của một cell. Độ dốc dự đoán của PINN-semi theo sát đường
+thực đo trên cả bốn bộ, nhưng $r$ gần như phẳng: giữa các khoảng SOH, $r$ chỉ thay đổi <<KR>> lần<<KRX>>, trong khi
+tốc độ thực đo thay đổi <<KT>> lần. Với $\lambda \approx 0{,}96$ (Mục~\ref{sec:physparams}), thừa số $g(u) = e^{\lambda(1-u)}$ chỉ tăng khoảng
+1,2 lần khi SOH giảm từ 1 xuống 0,8. Đầu gối trong dự đoán đến từ đặc trưng sạc, không đến từ thừa số đầu gối của
+động học.
+
+<<FIGRS>>
+
+Tóm lại, phần vật lý giúp mô hình chủ yếu qua ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn
+thật, và đây cũng là phần mang lại phần lớn lợi ích về sai số (Mục~\ref{sec:source}). Ràng buộc ODE dạng đạo hàm riêng
+giữ cho SOH không tăng theo thời gian, nhưng tốc độ $r$ của nó không phải là ước lượng tốc độ suy giảm của cell; muốn
+$r$ diễn giải được theo nghĩa vật lý cần dạng Euler.
+""", MMLP=_rng(m_mlp, 1), MSEMI=_rng(m_semi, 1), MTRUE=_rng(true.values(), 1),
+             CLOSE=(f'Biến thể chỉ đơn điệu cho tỉ lệ gần như bằng PINN-semi ({_rng(m_only, 1)}\\,\\%): chính '
+                    '$\\mathcal{L}_\\text{mono}$, áp lên cặp chu kỳ của cả cell không nhãn, làm quỹ đạo dự đoán đơn điệu.'
+                    if close else ''),
+             TABM=tabM, FIGM=fig('fig_metrics_mono', 'Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược ở 30\\,\\% nhãn; vạch '
+                                 'ngang là cùng phép đếm trên nhãn thật.', 'fig:mono'),
+             NSAME=n_same, TABP=tabP, DPA=_rng(dpos['A'].values(), 0), DPC=_rng(dpos['C'].values(), 0),
+             LOWER=(f', giảm rõ {_tren(lower)}' if lower else ''),
+             TRIVIAL=(f'Riêng {_lst(trivial)}, ràng buộc được thoả theo cách tầm thường: $r$ học được gần bằng 0 '
+                      f'({_pairs({ds: P(ds, "C", "toc_do_r") for ds in trivial}, 3)}) và đạo hàm theo thời gian cũng gần '
+                      'bằng 0, nên dấu của đạo hàm chỉ còn là nhiễu quanh 0. ' if trivial else ''),
+             SHA=_rng(share['A'], 0), SHC=_rng(share['C'], 0),
+             REL=('$|\\partial_t F_\\varphi + r|$ bằng ' + _pairs({ds: 100 * v for ds, v in rel.items()}, 0)
+                  + '\\,\\% của $|\\partial_t F_\\varphi|$'),
+             RT=f'{_rng(rtA.values(), 2)} với MLP, {_rng(rt.values(), 2)} với PINN-semi',
+             RC=_rng([P(ds, 'C', 'toc_do_r') for ds in DS], 3), RTRUE=_rng([P(ds, 'C', 'toc_do_that') for ds in DS], 3),
+             RHOC='Spearman ' + _pairs(rhoC, 2), RE=_rng([P(ds, 'E', 'toc_do_r') for ds in DS], 3),
+             RHOE='Spearman ' + _pairs(rhoE, 2),
+             GOODE=(f', rõ trên {_lst(good_E)}' if good_E and len(good_E) < len(DS) else ''),
+             FIGRC=fig('fig_physics_rate_cell', 'Tốc độ suy giảm của từng cell test: thực đo (trục ngang) so với độ dốc '
+                       'dự đoán và tốc độ $r$ học được (trục dọc); đường chéo là trùng khớp.', 'fig:ratecell'),
+             KT=_rng(kt.values(), 0), KR=_rng(kr.values(), 1),
+             KRX=(f' (bỏ qua {_lst(trivial)}, nơi $r \\approx 0$)' if trivial else ''),
+             KNEE=((f'Trên {_lst(knee_ds)}, tốc độ thực đo ở khoảng SOH thấp nhất cao gấp '
+                    f'{_rng([rise[ds] for ds in knee_ds], 0)} lần ở khoảng SOH cao nhất: đây là hiện tượng đầu gối.')
+                   + (f' Trên {_lst(no_knee)}, đường trung bình không đi lên đều theo SOH.' if no_knee else '')),
+             LOW25=_tren(low25) if low25 else '', SHMAX=f'trên {top} ({f(shC[top], 0)}\\,\\%)',
+             FLAT=(f'; trên {flat} tương quan thấp hơn vì tốc độ của các cell gần như nhau (hệ số biến thiên '
+                   f'{f(cv[flat], 2)}, so với {_rng([cv[ds] for ds in DS if ds != flat], 2)} ở các bộ khác)'),
+             FIGRS=fig('fig_physics_rate_soh', 'Tốc độ suy giảm theo khoảng SOH thực đo (trục ngang giảm dần): thực đo, '
+                       'độ dốc dự đoán và tốc độ $r$ học được.', 'fig:ratesoh'))
+
+
 def ch6_text(d, ctx):
     t, F = ctx['_tables'], ctx['F']
     st = ctx['stats'].set_index('bo')
@@ -1633,7 +1907,7 @@ dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý c�
 đưa nó tới gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT <<RGB10>>), nhưng chưa vượt được một mô hình cây
 được tinh chỉnh tốt, cũng như hồi quy Gauss, trên phần lớn các bộ dữ liệu.
 
-\section{Lợi ích đến từ đâu}
+\section{Lợi ích đến từ đâu}\label{sec:source}
 
 <<TS>>
 
@@ -1655,8 +1929,8 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 <<FIGPAR>>
 <<FIGTRAJ>>
 <<FIGERR>>
-
-\section{Chuyển miền}
+<<METRICS>>
+\section{Chuyển miền}\label{sec:transferres}
 
 <<TT>>
 <<FIGTR>>
@@ -1668,6 +1942,7 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 <<TPH>>
 
 <<PHTXT>>
+<<PHYSCHECK>>
 
 \section{Thảo luận chung}
 
@@ -1684,7 +1959,8 @@ GBDT là lựa chọn đơn giản và mạnh hơn.
 lại. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
 (iii) GBDT là đối thủ mạnh và chưa được kết hợp với ràng buộc vật lý. (iv) Cell validation cần nhãn ngoài ngân
 sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ chưa
-ước lượng được từ dữ liệu hiện có.
+ước lượng được từ dữ liệu hiện có. (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
+mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}).
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
                                            'và chuẩn hoá khác nhau.', 'fig:leak'),
              RMIN=f(1 / max(row_r.values()), 1), RMAX=f(1 / min(row_r.values()), 1), MMTXT=mm_txt, SMALL=small_txt,
@@ -1717,7 +1993,7 @@ sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB
              TT=t['T'], FIGTR=fig('fig_thesis_transfer', 'MAE theo cell trên tập test của bộ đích (thang log); hàng: số cell '
                                   'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
                                   'fig:transfer', width=r'\textwidth'),
-             TRTXT=tr_txt, TPH=t['PH'],
+             TRTXT=tr_txt, TPH=t['PH'], METRICS=ch6_metrics(d, ctx), PHYSCHECK=ch6_physcheck(d, ctx),
              TRGBD=(f' (PINN-semi tốt hơn ở {F["tr_gb0_win"]}/{F["tr_gb0_n"]} cặp khi không có nhãn đích)'
                     if F.get('tr_gb0_n') else ''), PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
 
@@ -1755,7 +2031,9 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item <<CH3>>
 \item Ở 10\,\% nhãn, <<SHARE>>\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
-      mang lại <<MONO>>\,\% mức giảm đó.<<BB>>
+      mang lại <<MONO>>\,\% mức giảm đó.<<BB>> Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
+      ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn thật; tốc độ $r$ ở dạng đạo hàm riêng chỉ
+      phản ánh phần suy giảm gán cho biến thời gian, còn dạng Euler cho $r$ sát tốc độ thật (Mục~\ref{sec:physcheck}).
 \item <<CH5>>
 \end{enumerate}
 
@@ -1775,6 +2053,8 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
 \item Ước lượng độ bất định (tổ hợp nhiều mô hình hoặc dự đoán phù hợp) để BMS biết khi nào tin được dự đoán.
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item Tăng trọng số của phần dư động học và dùng dữ liệu nhiều mức nhiệt độ để ước lượng được $\lambda$ và $E_a$.
+\item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, để vừa giữ sai số thấp vừa có tốc độ suy giảm
+      $r$ diễn giải được theo nghĩa vật lý.
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
              R10=_rng(F['r'][0.1].values()), SIG10=_tren(F['sig'][0.1]) or 'trên không bộ nào',
@@ -1818,7 +2098,7 @@ def build():
     ctx['ncell'] = int(ctx['stats'].N.sum())
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
-        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_')) and fn.endswith('.pdf'):
+        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_')) and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
     ctx = ch6(d, ctx)
