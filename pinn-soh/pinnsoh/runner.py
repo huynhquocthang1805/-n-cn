@@ -37,6 +37,12 @@ def _execute(kind: str, args: dict):
     if kind == 'baseline_transfer':
         from .baselines import run_transfer
         return run_transfer(**args)
+    if kind == 'cross_base':
+        from .crossds import run_base
+        return run_base(**args)
+    if kind == 'cross_chain':
+        from .crossds import run_chain
+        return run_chain(**args)
     raise ValueError(kind)
 
 

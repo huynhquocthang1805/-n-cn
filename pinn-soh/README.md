@@ -7,7 +7,8 @@ Bài toán: ước lượng SOH (dung lượng hiện tại / dung lượng danh
 chu kỳ, từ 16 đặc trưng của đoạn sạc CC–CV. Mô hình là một mạng nơ-ron có thông tin vật lý (PINN): mạng
 nghiệm dự đoán SOH, gắn với động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn
 nên áp được lên cả cell chưa đo dung lượng. Mô hình cải tiến PINN-lai (E20) lấy trung bình ba mạng PINN với
-GBDT rồi qua một bộ lọc quỹ đạo nhân quả không cho SOH tăng, kèm khoảng dự đoán 90 %.
+GBDT rồi qua một bộ lọc quỹ đạo nhân quả không cho SOH tăng, kèm khoảng dự đoán 90 %. E21 huấn luyện trên một bộ
+dữ liệu (70/30 hoặc 70/15/15), kiểm tra trên ba bộ còn lại, rồi thích nghi không nhãn và tự huấn luyện hai vòng.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
 Kết quả của báo cáo dựa trên **5 100 lượt huấn luyện** (E13–E20) trên **387 cell** của bốn bộ dữ liệu công
@@ -38,7 +39,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -74,7 +75,8 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E19 | GBDT trên 12 cặp chuyển miền | 120 | 2,3 | 0,6 | 0,3 |
 | E20dev | 9 hướng cải tiến, chọn trên validation (lần lặp 0, nhãn 10 và 50 %) | 400 | 2,2 | 0,6 | 0,3 |
 | E20 | PINN-lai: 3 PINN-semi, 2 MLP thêm, GBDT lưu dự đoán validation (3 lần lặp) | 1 280 | 7,2 | 1,8 | 0,9 |
-| **Tổng** | | **5 100** | **≈ 29** | **≈ 7,3** | **≈ 3,7** |
+| E21 | Huấn luyện một bộ, kiểm tra bộ khác (2 giao thức, 3 hạt giống) + 48 chuỗi thích nghi, 2 vòng học lặp | 168 | 12 | 3 | 1,5 |
+| **Tổng** | | **5 268** | **≈ 41** | **≈ 10** | **≈ 5,2** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
@@ -106,6 +108,7 @@ pinn-soh/
 │   ├── metrics.py          MAE theo cell, R², EOL, vi phạm đơn điệu, ...
 │   ├── experiments.py      định nghĩa E13–E20 thành danh sách lượt chạy
 │   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
+│   ├── crossds.py          E21: huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
@@ -118,10 +121,12 @@ pinn-soh/
 │   ├── error_decomp.py     phân rã sai số theo cell: lệch mức, trôi chậm, dao động nhanh
 │   ├── dev_e20.py          E20dev: so 9 hướng cải tiến trên validation
 │   ├── analyze_e20.py      E20: PINN-lai trên test, phân rã lợi ích, khoảng dự đoán phù hợp
+│   ├── analyze_e21.py      E21: ma trận nguồn → đích, sai số qua các vòng học lặp
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo
 │   ├── make_thesis.py      do-an/main.tex + PDF; mọi con số đọc từ results/
+│   ├── thesis_bk.py        khuôn đồ án Bách Khoa: bìa, lời cam đoan, sắp xếp 7 chương
 │   ├── make_physics_doc.py tai-lieu/phan-tich-vat-ly-PINN (vật lý nằm ở đâu, R², RMSE)
 │   └── diagrams.py         sơ đồ kiến trúc
 ├── tools/

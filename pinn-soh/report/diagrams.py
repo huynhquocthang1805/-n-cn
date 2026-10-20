@@ -91,5 +91,67 @@ def arch():
     save(fig, 'results/fig_thesis_arch')
 
 
+def protocol():
+    """Sơ đồ giao thức E21: chia bộ nguồn (A: 70/30, B: 70/15/15), kiểm tra trên ba bộ đích, và chuỗi thích nghi."""
+    import numpy as np
+    apply_theme()
+    fig = plt.figure(figsize=(7.2, 3.3))
+    ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(0, 4.6); ax.axis('off')
+    C_TR, C_VA, C_TE, C_AD = '#2a78d6', '#9aa5ad', '#eb6834', '#b9ded3'
+    def bar(x, y, w, parts, label):
+        x0 = x
+        for frac, col, txt in parts:
+            ax.add_patch(FancyBboxPatch((x0, y), w * frac - 0.02, 0.42, boxstyle='square,pad=0', fc=col, ec='white',
+                                        lw=0.8))
+            if txt:
+                ax.text(x0 + w * frac / 2, y + 0.21, txt, ha='center', va='center', fontsize=6.6, color='white',
+                        weight='bold')
+            x0 += w * frac
+        ax.text(x - 0.08, y + 0.21, label, ha='right', va='center', fontsize=7.2, color=INK, weight='bold')
+    ax.text(0.1, 4.35, 'Bộ nguồn S', fontsize=7.6, color=MUTED, weight='bold')
+    bar(1.25, 3.55, 3.2, [(0.7, C_TR, 'train 70 %'), (0.3, C_VA, 'valid 30 %')], 'A')
+    bar(1.25, 2.85, 3.2, [(0.7, C_TR, 'train 70 %'), (0.15, C_VA, 'valid'), (0.15, C_TE, 'test')], 'B')
+    ax.text(2.85, 2.55, 'nhãn của S: train để học, valid để dừng sớm và chọn mô hình',
+            ha='center', fontsize=6.4, color=MUTED)
+    # ba bộ đích
+    ax.text(5.6, 4.35, 'Ba bộ đích T ≠ S (không dùng nhãn khi học)', fontsize=7.6, color=MUTED, weight='bold')
+    for i, lab in enumerate(['$T_1$', '$T_2$', '$T_3$']):
+        y = 3.75 - 0.5 * i
+        ax.add_patch(FancyBboxPatch((6.6, y), 3.2, 0.36, boxstyle='square,pad=0', fc=C_TE, ec='white', lw=0.8,
+                                    alpha=0.85))
+        ax.text(8.2, y + 0.18, 'test: mọi cell', ha='center', va='center', fontsize=6.6, color='white', weight='bold')
+        ax.text(6.52, y + 0.18, lab, ha='right', va='center', fontsize=7.2, color=INK, weight='bold')
+    G = '#6b7680'
+    ax.plot([4.5, 5.2], [3.76, 3.76], color=G, lw=0.9); ax.plot([4.5, 5.2], [3.06, 3.06], color=G, lw=0.9)
+    ax.plot([5.2, 5.2], [3.06, 3.76], color=G, lw=0.9); ax.plot([5.2, 5.75], [3.41, 3.41], color=G, lw=0.9)
+    ax.plot([5.75, 5.75], [2.93, 3.93], color=G, lw=0.9)
+    for y in (3.93, 3.43, 2.93):
+        arrow(ax, (5.75, y), (6.3, y), color=G)
+    ax.text(8.2, 2.55, '$S, T \\in$ {XJTU, TJU, MIT, HUST}: 4 × 3 = 12 cặp', ha='center', fontsize=6.4, color=MUTED)
+    # chuỗi thích nghi
+    ax.plot([0.1, 9.9], [2.2, 2.2], color='#dfe5e8', lw=0.8)
+    ax.text(0.1, 1.95, 'Thích nghi không nhãn và học lặp (giao thức A, với từng cặp S → T)', fontsize=7.6, color=MUTED,
+            weight='bold')
+    ax.add_patch(FancyBboxPatch((0.25, 1.05), 1.55, 0.42, boxstyle='square,pad=0', fc=C_AD, ec='white'))
+    ax.add_patch(FancyBboxPatch((1.8, 1.05), 1.55, 0.42, boxstyle='square,pad=0', fc=C_TE, ec='white'))
+    ax.text(1.02, 1.26, 'nửa thích nghi', ha='center', va='center', fontsize=6.4, color=INK)
+    ax.text(2.57, 1.26, 'nửa test', ha='center', va='center', fontsize=6.4, color='white', weight='bold')
+    ax.text(1.8, 0.82, 'T chia đôi; đổi vai hai nửa', ha='center', fontsize=6.3, color=MUTED)
+    steps = [('Vòng 0', 'chuẩn hoá theo bộ\n+ vật lý trên nửa thích nghi'),
+             ('Nhãn giả', 'kết hợp PINN + GBDT\nqua bộ lọc quỹ đạo'),
+             ('Vòng 1, 2', 'học lại với nhãn giả\n+ vật lý')]
+    xs = [4.1, 6.05, 8.0]
+    for (t, sub), x in zip(steps, xs):
+        box(ax, x, 0.85, 1.75, 0.85, t, sub, C_PHY if t != 'Nhãn giả' else C_LOSS, E_PHY if t != 'Nhãn giả' else E_LOSS,
+            fs=7.0)
+    arrow(ax, (3.4, 1.26), (4.1, 1.26), color='#6b7680')
+    arrow(ax, (5.85, 1.27), (6.05, 1.27), color=E_PHY)
+    arrow(ax, (7.8, 1.27), (8.0, 1.27), color=E_LOSS)
+    poly(ax, [(8.87, 0.85), (8.87, 0.45), (6.92, 0.45), (6.92, 0.85)], E_PHY, ls=(0, (3, 2)))
+    ax.text(7.9, 0.28, 'lặp lại', ha='center', fontsize=6.3, color=MUTED)
+    save(fig, 'results/fig_e21_protocol')
+
+
 if __name__ == '__main__':
     arch()
+    protocol()

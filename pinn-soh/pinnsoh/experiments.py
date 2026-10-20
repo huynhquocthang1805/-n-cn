@@ -185,7 +185,35 @@ def E20(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E20') -> L
     return jobs
 
 
+# E21: huấn luyện trên một bộ, kiểm tra trên các bộ khác (pinnsoh/crossds.py)
+#   base   2 giao thức (70/30 và 70/15/15) × 4 bộ nguồn × 3 hạt giống × {MLP, GBDT, 3 PINN}
+#   chain  giao thức 70/30, 12 cặp nguồn–đích × 2 hạt giống × 2 nửa bộ đích; vòng 0 thích nghi không nhãn,
+#          vòng 1–2 tự huấn luyện bằng nhãn giả của mô hình kết hợp
+E21_SEEDS = (0, 1, 2)
+E21_CHAIN_SEEDS = (0, 1)
+E21_ROUNDS = 2
+
+
+def E21(repeats=None, datasets=DATASETS, seeds=None, out='runs/E21') -> List[Job]:
+    from .crossds import base_path, chain_path, PROTOCOLS
+    sd = E21_SEEDS if seeds is None else tuple(seeds)
+    cs = E21_CHAIN_SEEDS if seeds is None else tuple(seeds)
+    jobs = []
+    for proto, src, s in itertools.product(PROTOCOLS, datasets, sd):
+        for model, mem, cost in [('mlp', 0, 40), ('gbdt', 0, 30)] + [('pinn_semi', m, 90) for m in range(3)]:
+            jobs.append(Job('cross_base', dict(proto=proto, src=src, seed=s, model=model, member=mem),
+                            base_path(proto, src, s, model, mem), cost, f'{proto} {src} s{s} {model} m{mem}',
+                            tuple(DATASETS)))
+    for src, tgt, s, h in itertools.product(datasets, DATASETS, cs, (0, 1)):
+        if src == tgt:
+            continue
+        jobs.append(Job('cross_chain', dict(src=src, tgt=tgt, seed=s, half=h, rounds=E21_ROUNDS),
+                        chain_path(src, tgt, s, h, E21_ROUNDS, 'gbdt'), (E21_ROUNDS + 1) * 300,
+                        f'chain {src}->{tgt} s{s} h{h}', (src, tgt)))
+    return jobs
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
-                                                        E20dev=E20dev, E20=E20)
+                                                        E20dev=E20dev, E20=E20, E21=E21)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21']

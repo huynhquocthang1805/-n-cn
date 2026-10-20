@@ -32,7 +32,7 @@ os.chdir(ROOT)
 
 ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['analysis/verify_pipeline.py', '--csv'],
             ['analysis/analyze_thesis.py'], ['analysis/analyze_metrics.py'], ['analysis/analyze_physics.py'],
-            ['analysis/error_decomp.py'], ['analysis/dev_e20.py'], ['analysis/analyze_e20.py'],
+            ['analysis/error_decomp.py'], ['analysis/dev_e20.py'], ['analysis/analyze_e20.py'], ['analysis/analyze_e21.py'],
             ['report/diagrams.py']]
 
 
@@ -122,7 +122,7 @@ def main():
         return
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'thesis', 'all', 'reproduce',
-                                        'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20'])
+                                        'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21'])
     ap.add_argument('--workers', type=int, default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--datasets', nargs='+', default=['XJTU', 'TJU', 'MIT', 'HUST'],
