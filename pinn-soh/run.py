@@ -8,7 +8,7 @@ Một lệnh cho mọi bước của đồ án. Chạy từ thư mục nào cũn
     python run.py experiments [tuỳ chọn]      mọi thí nghiệm của báo cáo, theo thứ tự
     python run.py analyze                     bảng + hình từ runs/ -> results/ (lần đầu thêm ~40 phút CPU để
                                               huấn luyện lại 120 lượt cho phân tích phần vật lý)
-    python run.py thesis                      dựng báo cáo do-an/bao-cao-do-an.pdf (cần XeLaTeX)
+    python run.py thesis                      dựng do-an/bao-cao-do-an.pdf và tai-lieu/phan-tich-vat-ly-PINN.pdf
     python run.py all [tuỳ chọn]              experiments -> analyze -> thesis
     python run.py reproduce                   chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
     python run.py demo train|predict ...      demo ước lượng SOH cho một cell (xem tools/demo.py)
@@ -100,6 +100,7 @@ def cmd_thesis(_):
     if not shutil.which('xelatex'):
         print('Cảnh báo: không thấy xelatex — chỉ ghi được do-an/main.tex, chưa biên dịch ra PDF.')
     sh(['report/make_thesis.py'])
+    sh(['report/make_physics_doc.py'])
 
 
 def cmd_all(a):

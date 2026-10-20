@@ -43,7 +43,7 @@ python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình so
 python run.py E16 --datasets XJTU      # chỉ một bộ dữ liệu
 python run.py experiments --quick      # chạy thử: 1 lần lặp thay vì 5, 1 hạt giống thay vì 5
 python run.py analyze                  # runs/ -> results/ (bảng CSV/MD, hình PNG/PDF)
-python run.py thesis                   # results/ -> do-an/bao-cao-do-an.pdf
+python run.py thesis                   # results/ -> do-an/bao-cao-do-an.pdf, tai-lieu/phan-tich-vat-ly-PINN.pdf
 ```
 
 * **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/`, ghi nguyên tử;
@@ -111,6 +111,7 @@ pinn-soh/
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo
 │   ├── make_thesis.py      do-an/main.tex + PDF; mọi con số đọc từ results/
+│   ├── make_physics_doc.py tai-lieu/phan-tich-vat-ly-PINN (vật lý nằm ở đâu, R², RMSE)
 │   └── diagrams.py         sơ đồ kiến trúc
 ├── tools/
 │   ├── tai_du_lieu.py      tải dữ liệu
