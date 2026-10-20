@@ -333,7 +333,7 @@ số hạng thứ hai đóng vai trò tín hiệu học bổ sung không cần n
 biết chính xác, nên một phần của $\mathcal{N}$ phải học từ dữ liệu: đây là chỗ khác nhau giữa động học hộp đen
 (học hoàn toàn) và động học xám (giữ cấu trúc vật lý, chỉ học phần chưa biết).
 
-Huấn luyện PINN không đơn giản như huấn luyện mạng thường. Wang, Teng và Perdikaris~\cite{wang2021grad} cho thấy
+Huấn luyện PINN khó hơn huấn luyện mạng thường. Nghiên cứu của Wang, Teng và Perdikaris~\cite{wang2021grad} cho thấy
 gradient của các số hạng trong hàm mất mát có thể chênh nhau nhiều bậc, khiến mạng bỏ qua một số hạng; họ đề
 xuất cân lại trọng số trong lúc học. Krishnapriyan và cộng sự~\cite{krishnapriyan2021} chỉ ra rằng ràng buộc
 mềm làm mặt mất mát khó tối ưu khi hệ số của phương trình lớn. Hai kết quả này giải thích vì sao đồ án tăng dần
@@ -2272,11 +2272,20 @@ def ch7_improve(d, ctx):
     bc = d['e20_biascorr']
     chk = d['e20_check']
     worse_gb = E['gbdt_worse_list']
+    gb10 = [ds for ds in DS if t('gbdt', 0.1, ds).ti_so < 1 and t('gbdt', 0.1, ds).p_holm < 0.05]
+    gb10_txt = ('; riêng ở 10\\,\\% nhãn, PINN-lai tốt hơn GBDT có ý nghĩa ' + _tren(gb10)) if gb10 else ''
+    lose = {}
+    for ds in DS:
+        for fr in FRS:
+            if t('gbdt', fr, ds).ti_so > 1:
+                lose.setdefault(ds, []).append(fr)
+    gblose_txt = ('GBDT có sai số thấp hơn PINN-lai ở ' + _lst([f'{ds} ({_levels(frs)})' for ds, frs in lose.items()])
+                  + ', phần lớn các trường hợp này không có ý nghĩa thống kê.') if lose else ''
     worse_txt = (('GBDT vẫn tốt hơn có ý nghĩa ở ' + _lst([f'{ds} {pc(fr)}' for ds, fr in worse_gb]) + '.')
                  if worse_gb else 'Không có trường hợp nào GBDT tốt hơn PINN-lai có ý nghĩa thống kê.')
-    rmax = float(bc.rho.max())
-    rho_word = ('tương quan yếu' if rmax < 0.4 else 'chỉ tương quan ở mức vừa' if rmax < 0.7 else 'tương quan khá chặt')
-    rho_word2 = ('gần như không tương quan' if rmax < 0.4 else 'chỉ tương quan ở mức vừa' if rmax < 0.7
+    rmed = float(bc.rho.median())
+    rho_word = ('tương quan yếu' if rmed < 0.4 else 'chỉ tương quan ở mức vừa' if rmed < 0.75 else 'tương quan khá chặt')
+    rho_word2 = ('gần như không tương quan' if rmed < 0.4 else 'chỉ tương quan ở mức vừa' if rmed < 0.75
                  else 'tương quan khá chặt nhưng vẫn khác nhau ở nhiều cell')
     rho_conc = ('Vì hai mô hình không lệch cùng một kiểu, lấy trung bình của chúng triệt tiêu được một phần lệch mức mà '
                 r'Mục~\ref{sec:errdecomp} chỉ ra.')
@@ -2296,9 +2305,12 @@ def ch7_improve(d, ctx):
                      'việc kết hợp chứ không từ vật lý trong hàm mất mát.')
         phys_disc = ', nhưng trong mô hình lai đóng góp này không còn đo được'
     cb = [x for x in cf[cf.kieu == 'thich_nghi'].phu]
-    cov_conc = (', quanh mức 90\\,\\% đặt ra' if min(cb) >= 0.85 and max(cb) <= 0.95 else
-                ', nhìn chung gần mức 90\\,\\% đặt ra nhưng thấp hơn ở một số bộ' if np.mean(cb) >= 0.85 else
-                ', thấp hơn mức 90\\,\\% đặt ra')
+    cov_conc = (', sát mức 90\\,\\% đặt ra' if np.mean(cb) >= 0.895 else
+                (f', trung bình {f(100 * np.mean(cb), 1)}\\,\\%, tức thấp hơn mức 90\\,\\% đặt ra vài điểm phần trăm. '
+                 'Thiếu hụt này có nguyên nhân rõ: tập hiệu chỉnh của mỗi fold chỉ gồm vài đến mười mấy cell, và phần dư '
+                 'của các chu kỳ trong cùng một cell tương quan rất mạnh, nên số mẫu hiệu chỉnh thực chất là số cell chứ '
+                 'không phải số chu kỳ; phân vị ước lượng từ chừng ấy cell dao động nhiều giữa các fold') if np.mean(cb) >= 0.85
+                else ', thấp hơn rõ mức 90\\,\\% đặt ra')
     return T(r"""
 \chapter{Cải tiến mô hình}\label{ch:caitien}
 
@@ -2425,7 +2437,8 @@ hình cũ, được tính lại trên đúng ba lần lặp đó. Thành viên t
 <<FIGCURVE>>
 
 PINN-lai có MAE thấp hơn PINN-semi ở <<B_PINN>>/<<N_PINN>> trường hợp (bộ × mức nhãn), <<S_PINN>> trong đó có ý nghĩa
-thống kê, với tỉ số <<R_PINN>>. So với GBDT, PINN-lai tốt hơn ở <<B_GB>>/<<N_GB>> trường hợp, <<S_GB>> có ý nghĩa. <<WORSE_GB>>
+thống kê, với tỉ số <<R_PINN>>. So với GBDT, PINN-lai tốt hơn ở <<B_GB>>/<<N_GB>> trường hợp, <<S_GB>> có ý nghĩa<<GB10>>.
+<<GBLOSE>> <<WORSE_GB>>
 So với MLP, tỉ số là <<R_MLP>>; ở 10\,\% nhãn sai số chỉ còn <<R_MLP10>> của MLP. Trên hai mức nhãn đã dùng khi phát
 triển (10 và 50\,\%), tỉ số so với PINN-semi trên test là <<TESTDEV>>, gần với <<DEVSEL>> trên validation, nên việc
 chọn trên validation không làm kết quả test bị lạc quan đáng kể.
@@ -2470,9 +2483,10 @@ validation; khoảng khi đó rộng ở những chu kỳ hai mô hình không �
 pháp là bảo đảm trung bình: nếu các cell hiệu chỉnh và cell test hoán đổi được cho nhau thì tỉ lệ chu kỳ nằm trong
 khoảng xấp xỉ 90\,\%, nhưng không phải cell nào cũng được phủ 90\,\%. Cột cuối của Bảng~\ref{tab:conformal} cho thấy
 một phần không nhỏ cell có độ phủ dưới 80\,\%: đó là các cell bị lệch mức cả đời, đúng loại sai số chiếm phần lớn
-MSE. Hình~\ref{fig:e20traj} đặt PINN-lai cạnh PINN-semi trên đúng các cell của Hình~\ref{fig:traj}: ở mức nhãn nào
-dự đoán của PINN-lai cũng trơn hơn và không có đoạn đi lên, còn khoảng 90\,\% rộng ra ở những đoạn nhóm mạng và GBDT
-không đồng ý với nhau, thường là đầu đời và quanh đầu gối.
+MSE. Hình~\ref{fig:e20traj} đặt PINN-lai cạnh PINN-semi trên đúng các cell của Hình~\ref{fig:traj}. Ở cả ba mức
+nhãn, dự đoán của PINN-lai trơn hơn và ít đoạn đi lên hơn; trên TJU và HUST nó kéo phần lệch mức về gần thực đo hơn,
+còn trên MIT hai mô hình gần như trùng nhau vì sai số vốn đã rất nhỏ. Dải tô quanh PINN-lai hẹp lại khi lượng nhãn
+tăng, đúng như cột độ rộng của Bảng~\ref{tab:conformal}.
 
 <<FIGTRAJ>>
 
@@ -2504,7 +2518,8 @@ với trên validation. Cuối cùng, PINN-lai phụ thuộc vào GBDT: nếu ch
                           'fig:e20curve'),
              B_PINN=E['pinn_better'], N_PINN=E['pinn_n'], S_PINN=E['pinn_sig'],
              R_PINN=_rng([x for fr in FRS for x in E['pinn_r'][fr]]),
-             B_GB=E['gbdt_better'], N_GB=E['gbdt_n'], S_GB=E['gbdt_sig'], WORSE_GB=worse_txt,
+             B_GB=E['gbdt_better'], N_GB=E['gbdt_n'], S_GB=E['gbdt_sig'], WORSE_GB=worse_txt, GB10=gb10_txt,
+             GBLOSE=gblose_txt,
              R_MLP=_rng([x for fr in FRS for x in E['mlp_r'][fr]]), R_MLP10=_rng(E['mlp_r'][0.1]),
              TESTDEV=f(E['test_dev'], 3), DEVSEL=f(dev['ENS3+GBDT|trend10']['all'], 3),
              TABT=tab_t, R2LAI=_rng(r2['pinn_lai'], 3), R2GB=_rng(r2['gbdt'], 3), R2PINN=_rng(r2['pinn'], 3),
@@ -2512,18 +2527,20 @@ với trên validation. Cuối cùng, PINN-lai phụ thuộc vào GBDT: nếu ch
              ST_ENS=f(steps['pinn3'], 3), ST_LAI=f(steps['lai_tho'], 3), ST_FIN=f(steps['pinn_lai'], 3),
              ST_GB=f(gb_alone, 3),
              FIGSTEPS=fig('fig_e20_steps', 'Tỉ số MAE theo cell so với PINN-semi qua từng bước của PINN-lai; mỗi đường là '
-                          'một mức nhãn, hình thoi bên phải là GBDT đứng một mình.', 'fig:e20steps'),
+                          'một mức nhãn; cột bên phải là GBDT đứng một mình, mỗi hình thoi một mức nhãn (nhạt: 10\\,\\%, đậm: 70\\,\\%).',
+                          'fig:e20steps'),
              RHO=_rng(bc.rho, 2), NGC=_rng([100 * x for x in bc.ti_le_ngc_dau], 0) + r'\,\%',
              RHOWORD=rho_word, RHOWORD2=rho_word2, RHOCONC=rho_conc, PHYSCONC=phys_conc, PHYSDISC=phys_disc,
              COVCONC=cov_conc,
              PHYS_SIG=phys_sig, PHYS_WORSE=phys_worse, PHYS10=f(lowfr_ml, 3), PHYS70=f(hifr_ml, 3),
              TABCF=tab_cf,
-             FIGCF=fig('fig_e20_conformal', 'Độ phủ (trái) và độ rộng trung bình (phải) của khoảng dự đoán 90\\,\\% trên '
-                       'test; mỗi điểm là một bộ dữ liệu, vạch đứt là mức 90\\,\\%.', 'fig:conformal'),
+             FIGCF=fig('fig_e20_conformal', 'Độ phủ thực tế (hàng trên) và độ rộng trung bình (hàng dưới) của khoảng dự đoán '
+                       '90\\,\\% trên test theo lượng nhãn; vạch đứt là mức 90\\,\\% đặt ra.', 'fig:conformal'),
              COVA=_rng([100 * x for x in cov_a], 1) + r'\,\%', COVB=_rng([100 * x for x in cov_b], 1) + r'\,\%',
              WIDA=_rng([100 * x for x in wid_a], 2), WIDB=_rng([100 * x for x in wid_b], 2),
-             FIGTRAJ=fig('fig_e20_traj', 'Quỹ đạo SOH thực đo, dự đoán của PINN-semi và của PINN-lai kèm khoảng 90\\,\\% '
-                         'thích nghi, trên cùng các cell của Hình~\\ref{fig:traj} ở 10, 30 và 70\\,\\% nhãn (lần lặp 0).',
+             FIGTRAJ=fig('fig_e20_traj', 'Quỹ đạo SOH thực đo, dự đoán của PINN-semi và của PINN-lai trên cùng các cell '
+                         'của Hình~\\ref{fig:traj} ở 10, 30 và 70\\,\\% nhãn (lần lặp 0). Dải tô là khoảng 90\\,\\% dạng '
+                         'độ rộng cố định; trục dọc theo dải SOH thực đo.',
                          'fig:e20traj', width=r'0.92\textwidth'))
 
 
@@ -2533,12 +2550,13 @@ def ch6_concl(d):
     E = e20_facts(d)
     cf = E['cf']; tb = cf[cf.kieu == 'thich_nghi']
     return T(r"""\item Có. PINN-lai, nhóm ba PINN-semi kết hợp GBDT và bộ lọc quỹ đạo, có MAE thấp hơn PINN-semi ở
-      <<B>>/<<N>> trường hợp (tỉ số <<R>>) và thấp hơn GBDT ở <<BG>>/<<N>> trường hợp, <<SG>> có ý nghĩa thống kê.
-      Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell gần như độc lập; phần vật lý vẫn giúp khi ít
+      <<B>>/<<N>> trường hợp (tỉ số <<R>>) và thấp hơn GBDT ở <<BG>>/<<N>> trường hợp, <<SG>> có ý nghĩa thống kê;
+      GBDT chỉ còn tốt hơn có ý nghĩa ở <<WG>> trường hợp.
+      Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell chỉ tương quan ở mức vừa; phần vật lý vẫn giúp khi ít
       nhãn (so với cùng công thức dùng MLP, tỉ số <<PH>> ở 10\,\% nhãn). Khoảng dự đoán phù hợp 90\,\% đạt độ phủ
       <<COV>> trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell.
 """, B=E['pinn_better'], N=E['pinn_n'], R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]), BG=E['gbdt_better'],
-             SG=E['gbdt_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2), COV=_rng([100 * x for x in tb.phu], 0) + r'\,\%')
+             SG=E['gbdt_sig'], WG=E['gbdt_worse_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2), COV=_rng([100 * x for x in tb.phu], 0) + r'\,\%')
 
 
 def ch8(d, ctx):

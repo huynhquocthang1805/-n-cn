@@ -272,9 +272,9 @@ def figures(s, g, cf, P):
         panel_title(ax, ds, CHEM[ds], pad=4)
     axes[0].set_ylabel('MAE theo cell (×10$^{-3}$)')
     h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.01))
-    fig.tight_layout(rect=[0, 0.12, 1, 1])
-    fig.text(0.5, 0.085, 'cell có nhãn (% tổng số cell)', ha='center', fontsize=8.5)
+    fig.legend(h, l, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=[0, 0.15, 1, 1])
+    fig.text(0.5, 0.105, 'cell có nhãn (% tổng số cell)', ha='center', fontsize=8.5)
     save(fig, f'{OUT}/fig_e20_curve')
 
     # 2. phân rã: tỉ số MAE so với PINN-semi qua từng bước, trung bình nhân trên 4 bộ
@@ -287,10 +287,12 @@ def figures(s, g, cf, P):
             ax.plot(range(4), v, color=plt.cm.Greens(0.45 + 0.17 * j), lw=1.4, marker='o', ms=3, mec='white', mew=0.4,
                     label=f'{int(100 * f)} %')
             gb = s[(s.dataset == ds) & (s.frac == f) & (s.model == 'gbdt')].MAE_cell.iloc[0] / base
-            ax.plot([3.25], [gb], marker='D', ms=3, color=plt.cm.Purples(0.45 + 0.17 * j), ls='none')
+            ax.plot([4.1 + 0.12 * (j - 1.5)], [gb], marker='D', ms=3.2, color=plt.cm.Purples(0.45 + 0.17 * j), ls='none',
+                    mec='white', mew=0.4)
         ax.axhline(1, color='#9aa5ad', lw=0.7, ls=(0, (2, 2)))
-        ax.set_xticks(range(4)); ax.set_xticklabels(['PINN', '×3', '+GBDT', '+lọc'], fontsize=7)
-        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5); ax.set_xlim(-0.3, 3.5)
+        ax.axvline(3.55, color='#e3e8e6', lw=0.8)
+        ax.set_xticks([0, 1, 2, 3, 4.1]); ax.set_xticklabels(['PINN', '×3', '+GBDT', '+lọc', 'GBDT'], fontsize=6.6)
+        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5); ax.set_xlim(-0.3, 4.5)
         panel_title(ax, ds, CHEM[ds], pad=4)
     axes[0].set_ylabel('MAE / MAE của PINN-semi')
     h, l = axes[0].get_legend_handles_labels()
@@ -298,27 +300,28 @@ def figures(s, g, cf, P):
     fig.tight_layout(rect=[0, 0.1, 1, 1])
     save(fig, f'{OUT}/fig_e20_steps')
 
-    # 3. khoảng dự đoán: độ phủ và độ rộng
-    fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.4))
-    for kind, mk, col in (('co_dinh', 's', '#9aa5ad'), ('thich_nghi', 'o', '#0b4f3c')):
-        h = cf[cf.kieu == kind]
-        for j, ds in enumerate(DS):
-            hh = h[h.dataset == ds].sort_values('frac')
-            off = (j - 1.5) * 0.9 + (0.25 if kind == 'thich_nghi' else -0.25)
-            axes[0].plot(np.array(x) + off, 100 * hh.phu, mk, ms=3.4, color=col, mec='white', mew=0.4,
-                         label=('độ rộng cố định' if kind == 'co_dinh' else 'độ rộng thích nghi') if j == 0 else None)
-            axes[1].plot(np.array(x) + off, 1e2 * hh.rong, mk, ms=3.4, color=col, mec='white', mew=0.4)
-    axes[0].axhline(90, color='#1b2330', lw=0.8, ls=(0, (3, 2)))
-    axes[0].set_ylabel('độ phủ trên test (%)'); axes[1].set_ylabel('độ rộng trung bình (% SOH)')
-    for ax in axes:
-        ax.set_xticks(x); ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
-    axes[1].set_yscale('log'); axes[1].yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'))
-    fig.legend(loc='lower center', ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.02))
-    fig.tight_layout(rect=[0, 0.16, 1, 1])
-    fig.text(0.5, 0.11, 'cell có nhãn (% tổng số cell)', ha='center', fontsize=8.5)
+    # 3. khoảng dự đoán: hàng trên độ phủ, hàng dưới độ rộng; mỗi cột một bộ
+    fig, axes = plt.subplots(2, 4, figsize=(7.2, 3.7), sharex=True)
+    for j, ds in enumerate(DS):
+        for kind, mk, col, lab in (('co_dinh', 's', '#9aa5ad', 'độ rộng cố định'),
+                                   ('thich_nghi', 'o', '#0b4f3c', 'độ rộng thích nghi')):
+            hh = cf[(cf.kieu == kind) & (cf.dataset == ds)].sort_values('frac')
+            axes[0, j].plot(x, 100 * hh.phu, marker=mk, ms=3.6, lw=1.2, color=col, mec='white', mew=0.4,
+                            label=lab if j == 0 else None)
+            axes[1, j].plot(x, 100 * hh.rong, marker=mk, ms=3.6, lw=1.2, color=col, mec='white', mew=0.4)
+        axes[0, j].axhline(90, color='#1b2330', lw=0.8, ls=(0, (3, 2)))
+        axes[0, j].set_ylim(80, 95)
+        axes[1, j].set_ylim(bottom=0)
+        panel_title(axes[0, j], ds, CHEM[ds], pad=4)
+        for ax in axes[:, j]:
+            ax.set_xticks(x); ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5); ax.locator_params(axis='y', nbins=4)
+    axes[0, 0].set_ylabel('độ phủ (%)'); axes[1, 0].set_ylabel('độ rộng (% SOH)')
+    fig.legend(loc='lower center', ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.01))
+    fig.tight_layout(rect=[0, 0.1, 1, 1])
+    fig.text(0.5, 0.075, 'cell có nhãn (% tổng số cell)', ha='center', fontsize=8.5)
     save(fig, f'{OUT}/fig_e20_conformal')
 
-    # 4. quỹ đạo của cùng một cell ở 10, 30, 70 % nhãn (lần lặp 0), kèm khoảng 90 % thích nghi. Cell chọn như
+    # 4. quỹ đạo của cùng một cell ở 10, 30, 70 % nhãn (lần lặp 0), kèm khoảng 90 % độ rộng cố định. Cell chọn như
     #    hình quỹ đạo của Chương 6: MAE của MLP 30 % ở trung vị, bỏ cell có nhãn nhảy quá 0,02.
     fig, axes = plt.subplots(4, 3, figsize=(7.2, 7.6), sharey='row')
     for i, ds in enumerate(DS):
@@ -336,10 +339,9 @@ def figures(s, g, cf, P):
             sel = t['cell'] == c; o = np.argsort(t['cyc'][sel])
             cyc = t['cyc'][sel][o]; y = t['y'][sel][o]
             pl = t['pred']['pinn_lai'][sel][o]; pp = t['pred']['pinn'][sel][o]
-            rv = np.abs(v['pred']['pinn_lai'] - v['y']); sv = v['pred']['sigma']; d0 = np.median(sv) + 1e-6
-            n = len(rv); qs = np.quantile(rv / (sv + d0), min(1, np.ceil((n + 1) * 0.9) / n), method='higher')
-            half = qs * (t['pred']['sigma'][sel][o] + d0)
-            ax.fill_between(cyc, pl - half, pl + half, color='#0b4f3c', alpha=0.13, lw=0)
+            rv = np.abs(v['pred']['pinn_lai'] - v['y'])
+            n = len(rv); half = np.quantile(rv, min(1, np.ceil((n + 1) * 0.9) / n), method='higher')
+            ax.fill_between(cyc, pl - half, pl + half, color='#0b4f3c', alpha=0.12, lw=0)
             ax.plot(cyc, y, color=MODEL_COLOR['truth'], lw=1.6, zorder=3)
             ax.plot(cyc, pp, color=COL['pinn'], lw=0.75, alpha=0.85, zorder=2)
             ax.plot(cyc, pl, color=COL['pinn_lai'], lw=1.1, zorder=4)
@@ -360,5 +362,12 @@ def figures(s, g, cf, P):
     save(fig, f'{OUT}/fig_e20_traj')
 
 
+def figs_only():
+    """Vẽ lại hình từ results/e20_*.csv và dự đoán đã nhớ đệm, không in lại bảng."""
+    P, _ = build()
+    s = pd.read_csv(f'{OUT}/e20_summary.csv'); cf = pd.read_csv(f'{OUT}/e20_conformal.csv')
+    figures(s, None, cf, P)
+
+
 if __name__ == '__main__':
-    main()
+    figs_only() if '--fig' in _sys.argv else main()

@@ -81,7 +81,7 @@ chiếu. Số liệu ở 30 % nhãn, mọi cell test của 5 lần lặp.
 | MIT | 0,5 | 13,6 | 3,2 | 3,9 | 3,0 | 3,1 | 3,0 |
 | HUST | 0,1 | 31,1 | 12,9 | 14,3 | 12,5 | 12,4 | 12,0 |
 
-![Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược; vạch ngang là nhãn thật.](phan-tich-vat-ly/fig_metrics_mono.png){width=100%}
+![Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược; vạch đứt là nhãn thật.](phan-tich-vat-ly/fig_metrics_mono.png){width=100%}
 
 Dự đoán của MLP tăng ngược ở 13,6–31,1 % số cặp, của PINN-semi chỉ
 3,0–12,0 %, gần mức của nhãn thật

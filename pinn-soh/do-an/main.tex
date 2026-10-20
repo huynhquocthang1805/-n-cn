@@ -34,6 +34,7 @@
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\E}{\mathbb{E}}
 \setlist{itemsep=2pt,topsep=4pt}
+\emergencystretch=1.5em
 \begin{document}
 \begin{titlepage}
 \centering
@@ -58,12 +59,17 @@ SOH từ 16 đặc trưng đoạn sạc, gắn với một động học suy gi�
 Arrhenius; ba hàm mất mát vật lý không dùng nhãn nên áp được lên cell chưa đo dung lượng. Đồ án thiết kế và chứng
 minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5
 lần), lý giải từng con số của cách chia, đo định lượng tác động của các dạng rò rỉ thường gặp, và so sánh PINN với
-sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 3.420 lượt huấn luyện).
+sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 5.100 lượt huấn luyện).
 Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là 0{,}39--0{,}90, trong
 đó khoảng một nửa đến hai phần ba mức giảm đến từ cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số 0{,}85--1{,}09). Trên bộ dữ liệu mới
 không có nhãn, PINN vẫn cho sai số dùng được trong khi mạng học có nhãn thất bại. Tuy vậy, một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu.
+Từ phân tích sai số, đồ án đề xuất mô hình PINN-lai: ba mạng PINN bán giám sát kết hợp với GBDT, rồi qua
+một bộ lọc quỹ đạo nhân quả không cho SOH tăng. Cấu hình được chọn chỉ trên tập validation; trên test, PINN-lai có
+sai số bằng 0{,}67--0{,}95 lần PINN ban đầu và thấp hơn GBDT ở 10/16 trường hợp bộ dữ liệu × mức nhãn, kèm khoảng
+dự đoán 90\,\% có độ phủ thực tế 86--93\,\% trên test.
 
-\noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo.
+\noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
+kết hợp mô hình, dự đoán phù hợp.
 \tableofcontents\listoffigures\listoftables
 \clearpage\pagenumbering{arabic}
 
@@ -113,6 +119,8 @@ của chu kỳ hiện tại, nên có thể chạy trực tuyến trong BMS.
       phương trình động học hay chỉ từ ràng buộc đơn điệu?
 \item Mô hình có chuyển được từ bộ dữ liệu này sang bộ khác mà không cần (hoặc chỉ cần rất ít) nhãn của bộ
       đích không?
+\item Có thể giảm sai số thêm mà không dùng thêm nhãn nào không, và mô hình có cho biết dự đoán của nó đáng tin
+      tới đâu không?
 \end{enumerate}
 
 Mọi câu hỏi trên chỉ có ý nghĩa nếu giao thức đánh giá không rò rỉ thông tin. Vì vậy một phần lớn của đồ án
@@ -129,8 +137,11 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
 \item Kiểm toán rò rỉ định lượng: đo mức sai số bị đánh giá thấp giả tạo khi chia theo chu kỳ, khi chuẩn hoá
       theo cả vòng đời cell, khi lọc ngoại lai bằng dữ liệu tương lai.
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
-      (387 cell), tổng cộng 3.420 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
+      (387 cell), tổng cộng 5.100 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Thí nghiệm chuyển miền đầy đủ giữa bốn bộ dữ liệu với quy trình chuẩn hoá không dùng dữ liệu test.
+\item Mô hình cải tiến PINN-lai: nhóm ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả mang giả
+      định SOH không tăng vào bước suy luận, được chọn chỉ trên tập validation theo đề cương ấn định trước, kèm
+      khoảng dự đoán phù hợp 90\,\%.
 \end{enumerate}
 
 \section{Bố cục}
@@ -139,7 +150,8 @@ Chương~\ref{ch:lythuyet} trình bày cơ sở lý thuyết và các công trì
 bốn bộ dữ liệu và cách tiền xử lý. Chương~\ref{ch:phuongphap} trình bày mô hình, các hàm mất mát và các mô
 hình đối chứng. Chương~\ref{ch:thietke} là thiết kế thí nghiệm: cách chọn số chia, cách chống rò rỉ khi đánh
 giá trong cùng bộ và khi chuyển miền, cùng các phương pháp thống kê. Chương~\ref{ch:ketqua} trình bày và
-thảo luận kết quả. Chương~\ref{ch:ketluan} kết luận và nêu hướng phát triển.
+thảo luận kết quả. Chương~\ref{ch:caitien} phân tích sai số còn lại, thử sáu hướng cải tiến và đánh giá mô hình
+PINN-lai cùng khoảng dự đoán. Chương~\ref{ch:ketluan} kết luận và nêu hướng phát triển.
 
 \chapter{Cơ sở lý thuyết và các công trình liên quan}\label{ch:lythuyet}
 
@@ -153,6 +165,18 @@ tốc độ suy giảm tăng nhanh~\cite{attia2022knee}. Các phản ứng phụ
 Arrhenius: nhiệt độ cao làm SEI phát triển nhanh hơn~\cite{waldmann2014}. Hai quan sát này là cơ sở cho
 phần động học xám ở Chương~\ref{ch:phuongphap}: tốc độ suy giảm luôn không âm, tăng khi SOH giảm và tăng theo
 nhiệt độ.
+
+\paragraph{Các quy luật thực nghiệm.} Trước khi có học máy, tuổi thọ pin thường được mô tả bằng các hàm đóng
+khớp trên dữ liệu thử nghiệm. Khi SEI dày lên và quá trình bị giới hạn bởi khuếch tán dung môi qua lớp SEI,
+lượng lithium mất đi tỉ lệ với căn bậc hai của thời gian~\cite{broussely2001,pinson2013}. Wang và cộng
+sự~\cite{wang2011lfp} khớp mất mát dung lượng của cell graphite/LFP bằng một hàm luỹ thừa của lượng điện tích
+trao đổi nhân với thừa số Arrhenius, với số mũ khoảng 0,5. Schmalstieg và cộng sự~\cite{schmalstieg2014} tách lão
+hoá theo lịch và theo chu kỳ của cell NMC 18650, mỗi phần là một hàm luỹ thừa có hệ số phụ thuộc nhiệt độ, điện
+áp và độ sâu xả. Các mô hình này gọn và dễ diễn giải, nhưng mỗi hệ hoá học và mỗi chế độ vận hành cần một bộ
+hệ số riêng, và chúng không mô tả được đoạn đầu gối. Fermín-Cueto và cộng sự~\cite{fermin2020} định nghĩa điểm
+đầu gối và điểm bắt đầu đầu gối trên đường suy giảm rồi dùng học máy dự đoán hai điểm này từ các chu kỳ đầu.
+Phương trình xám của đồ án đi theo cùng tinh thần: giữ dạng nhân của các quy luật trên (thừa số theo trạng
+thái và thừa số Arrhenius), còn phần phụ thuộc vào từng cell để mạng học.
 
 \section{Các hướng ước lượng SOH}
 
@@ -173,7 +197,18 @@ học trực tiếp từ chuỗi đo. Các mô hình này mạnh khi có nhiều
 
 \paragraph{Học chuyển giao.} Ma và cộng sự~\cite{ma2022} dùng học chuyển giao sâu để cá nhân hoá dự báo
 sức khoẻ cho từng cell và công bố bộ dữ liệu HUST. Hướng này giảm nhu cầu nhãn ở miền đích nhưng vẫn cần một
-phần nhãn để thích nghi.
+phần nhãn để thích nghi. Lu và cộng sự~\cite{lu2023} đi xa hơn: một nhóm mạng sâu kết hợp thích nghi miền ước
+lượng SOH cho pin đích không có nhãn nào, thử trên 65 cell của 5 nhà sản xuất. Kết quả này cho thấy dữ liệu
+không nhãn của chính pin đích mang nhiều thông tin, và cũng là lý do đồ án đưa cell không nhãn vào huấn luyện.
+
+\paragraph{Dữ liệu thực tế và dữ liệu dạng bảng.} Sulzer và cộng sự~\cite{sulzer2021} chỉ ra rằng dữ liệu
+ngoài hiện trường có điều kiện vận hành không kiểm soát, cảm biến kém chính xác và rất ít lần đo dung lượng
+chuẩn; họ cho rằng kết hợp học máy với mô hình vật lý là hướng triển vọng vì giúp suy luận từ dữ liệu nhiễu và
+ngoại suy sang điều kiện mới. Một điểm ít được nhắc trong các bài về PINN cho pin là đặc trưng trích từ đường
+sạc là dữ liệu dạng bảng. Grinsztajn, Oyallon và Varoquaux~\cite{grinsztajn2022} so sánh trên 45 bộ dữ liệu
+bảng cỡ vừa và thấy mô hình cây như gradient boosting vẫn vượt mạng nơ-ron; mạng nơ-ron khó học các hàm mục tiêu
+không trơn và bị ảnh hưởng nhiều hơn bởi đặc trưng không mang thông tin. Vì vậy đồ án luôn đặt GBDT làm đối
+chứng, và kết quả ở Chương~\ref{ch:ketqua} xác nhận đây là đối thủ khó nhất khi có đủ nhãn.
 
 \paragraph{Mô hình lai và PINN.} Mạng nơ-ron có thông tin vật lý (PINN) của Raissi, Perdikaris và
 Karniadakis~\cite{raissi2019} đưa phần dư của phương trình vi phân vào hàm mất mát; phần dư này được tính tại
@@ -196,6 +231,20 @@ số hạng thứ hai đóng vai trò tín hiệu học bổ sung không cần n
 biết chính xác, nên một phần của $\mathcal{N}$ phải học từ dữ liệu: đây là chỗ khác nhau giữa động học hộp đen
 (học hoàn toàn) và động học xám (giữ cấu trúc vật lý, chỉ học phần chưa biết).
 
+Huấn luyện PINN khó hơn huấn luyện mạng thường. Nghiên cứu của Wang, Teng và Perdikaris~\cite{wang2021grad} cho thấy
+gradient của các số hạng trong hàm mất mát có thể chênh nhau nhiều bậc, khiến mạng bỏ qua một số hạng; họ đề
+xuất cân lại trọng số trong lúc học. Krishnapriyan và cộng sự~\cite{krishnapriyan2021} chỉ ra rằng ràng buộc
+mềm làm mặt mất mát khó tối ưu khi hệ số của phương trình lớn. Hai kết quả này giải thích vì sao đồ án tăng dần
+trọng số vật lý trong 20\,\% số bước đầu và giữ hệ số của $\mathcal{L}_\text{ode}$ nhỏ.
+
+Braun, Raible và Huber~\cite{braun2026} tổng hợp 212 công trình học máy có thông tin vật lý trong lĩnh vực dự báo
+và quản lý sức khoẻ thiết bị, xếp chúng thành bốn nhóm: đưa vật lý vào dữ liệu (thiên lệch quan sát), vào kiến
+trúc (thiên lệch quy nạp), vào hàm mất mát (thiên lệch học), và kết hợp. Pin lithium-ion là đối tượng được nghiên
+cứu nhiều nhất. Theo cách xếp này, PINN của đồ án thuộc nhóm thứ ba; bộ lọc quỹ đạo ở Chương~\ref{ch:caitien}
+đưa cùng giả định đơn điệu vào bước suy luận. Navidi và cộng sự~\cite{navidi2024} so sánh bốn cách xây mô hình
+lai cho chẩn đoán suy giảm trên 24 cell theo dõi bốn năm, theo độ chính xác, độ phức tạp và khả năng ngoại suy;
+không có cách nào thắng ở mọi tiêu chí.
+
 \section{Học bán giám sát}
 
 Học bán giám sát tận dụng dữ liệu không nhãn qua một giả định về cấu trúc của dữ liệu, ví dụ tính trơn của
@@ -203,6 +252,31 @@ hàm cần học hoặc tính nhất quán của dự đoán. Trong đồ án, g
 của mọi cell, kể cả cell chưa đo dung lượng, phải thoả phương trình suy giảm, không tăng theo thời gian và nằm
 trong miền giá trị hợp lý. Các ràng buộc này tính được chỉ từ đặc trưng sạc, nên mỗi cell không nhãn đều
 đóng góp gradient cho mạng nghiệm.
+
+Hai họ phương pháp bán giám sát phổ biến khác dựa trên chính dự đoán của mô hình. Gán nhãn giả~\cite{lee2013}
+dùng dự đoán của mô hình trên mẫu không nhãn làm nhãn để huấn luyện tiếp; chưng cất tri thức~\cite{hinton2015}
+dùng dự đoán của một mô hình thầy làm mục tiêu mềm cho mô hình trò. Mean Teacher~\cite{tarvainen2017} giữ một
+bản trung bình trượt của trọng số làm thầy và phạt độ lệch giữa thầy và trò. Điểm chung là nhãn giả chỉ tốt
+bằng mô hình sinh ra nó; nếu thầy sai có hệ thống trên một nhóm cell, trò học lại đúng sai số đó. Ràng buộc vật
+lý không có nhược điểm này vì nó không phụ thuộc vào mô hình nào, nhưng bù lại nó chỉ cho biết dạng của quỹ đạo
+chứ không cho biết mức SOH. Chương~\ref{ch:caitien} thử kết hợp hai nguồn tín hiệu này.
+
+\section{Kết hợp mô hình và độ bất định}
+
+Trung bình dự đoán của nhiều mô hình là cách đơn giản nhất để giảm phương sai. Bagging~\cite{breiman1996} huấn
+luyện cùng một mô hình trên các mẫu bootstrap; stacking~\cite{wolpert1992} học trọng số kết hợp các mô hình khác
+loại trên dữ liệu không dùng để huấn luyện chúng. Với mạng nơ-ron, Lakshminarayanan, Pritzel và
+Blundell~\cite{lakshminarayanan2017} cho thấy chỉ cần huấn luyện vài mạng giống nhau với khởi tạo ngẫu nhiên khác
+nhau rồi lấy trung bình là đủ cải thiện độ chính xác, và độ phân tán giữa các mạng là một ước lượng độ bất định
+dùng được.
+
+Độ phân tán đó lại không đảm bảo khoảng tin cậy có độ phủ đúng. Dự đoán phù hợp (conformal
+prediction)~\cite{vovk2005,lei2018} giải quyết việc này mà không cần giả định về phân phối: trên một tập hiệu
+chỉnh tách riêng, tính phần dư của mô hình, lấy phân vị phù hợp làm nửa độ rộng khoảng. Nếu các mẫu hiệu chỉnh
+và mẫu mới hoán đổi được cho nhau, khoảng thu được có độ phủ ít nhất bằng mức đặt ra~\cite{angelopoulos2023}.
+Thelen và cộng sự~\cite{thelen2024} tổng quan học máy xác suất cho chẩn đoán và dự báo pin, nhấn mạnh rằng
+phần lớn công trình vẫn chỉ đưa ra một con số, bỏ qua biến động giữa các cell, trong khi các quyết định như
+thay pin hay giới hạn công suất cần biết độ tin cậy của con số đó.
 
 \section{Đánh giá mô hình và rò rỉ dữ liệu}
 
@@ -231,20 +305,31 @@ Richardson 2017~\cite{richardson2017} & hồi quy Gauss & không & không & có 
 Roman 2021~\cite{roman2021} & quy trình học máy & không & không & so sánh nhiều mô hình\\
 Zhu 2022~\cite{zhu2022} & điện áp hồi phục + học máy & không & không & bộ TJU\\
 Ma 2022~\cite{ma2022} & học chuyển giao sâu & không & một phần & bộ HUST\\
+Lu 2023~\cite{lu2023} & nhóm mạng sâu + thích nghi miền & không & có & không cần nhãn pin đích\\
+Wang 2011~\cite{wang2011lfp} & hàm luỹ thừa + Arrhenius & có & không & mô hình thực nghiệm, cell LFP\\
 Raissi 2019~\cite{raissi2019} & PINN tổng quát & có & có & phương trình đã biết\\
+Navidi 2024~\cite{navidi2024} & so sánh bốn cách lai & có & không & chẩn đoán suy giảm\\
 Wang 2024~\cite{wang2024} & PINN, động học hộp đen & có & không & cùng bốn bộ dữ liệu\\
-Đồ án & PINN bán giám sát, động học xám & có & có & loss vật lý không dùng nhãn\\
+Thelen 2024~\cite{thelen2024} & học máy xác suất (tổng quan) & một phần & -- & độ bất định\\
+Đồ án & PINN bán giám sát, động học xám, nhóm mạng + lọc quỹ đạo & có & có & loss vật lý không dùng nhãn,
+khoảng dự đoán phù hợp\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Từ các công trình trên có thể rút ra ba khoảng trống. Thứ nhất, các mô hình học có nhãn phụ thuộc mạnh vào
+Từ các công trình trên có thể rút ra bốn khoảng trống. Thứ nhất, các mô hình học có nhãn phụ thuộc mạnh vào
 lượng nhãn, trong khi dữ liệu sạc không nhãn hầu như chưa được khai thác. Thứ hai, các PINN cho pin hiện có
 dùng nhãn trong phần vật lý hoặc chỉ áp vật lý lên cell có nhãn, nên vật lý chỉ đóng vai trò chuẩn hoá chứ
 không thay được nhãn. Thứ ba, kết quả công bố thường dựa trên một cách chia duy nhất, ít khi kiểm định
-thống kê và ít khi kiểm tra rò rỉ. Đồ án nhắm vào cả ba điểm này.
+thống kê, ít khi kiểm tra rò rỉ và ít khi so với mô hình cây, vốn mạnh trên dữ liệu dạng bảng. Thứ tư, hầu hết
+chỉ đưa ra một giá trị SOH mà không kèm khoảng tin cậy có độ phủ được kiểm chứng. Đồ án nhắm vào cả bốn điểm này.
 
 \chapter{Dữ liệu}\label{ch:dulieu}
+
+Bốn bộ dữ liệu được chọn vì chúng phủ ba hệ hoá học khác nhau, nhiều chế độ sạc--xả và nhiệt độ, và vì chúng đã
+được dùng trong công trình gốc của PINN4SOH, nên kết quả của đồ án so được với tài liệu. Chương này mô tả nguồn
+gốc, đặc trưng đầu vào và cách làm sạch dữ liệu; mọi bước làm sạch chỉ dùng quá khứ của chính cell để không đưa
+thông tin tương lai vào mô hình.
 
 \section{Nguồn dữ liệu}
 
@@ -858,11 +943,18 @@ Kiểm định chéo chính & MLP, PINN-semi ở 4 mức; PINN-sup, 2 biến th�
 Mở rộng biến thể vật lý & PINN-sup ở 10, 50\,\%; PINN hộp đen ở 4 mức & 600 \\
 Kiểm toán rò rỉ & 4 cách chia/chuẩn hoá sai, MLP 70\,\% nhãn, 2 lần lặp & 160 \\
 Chuyển miền & 12 cặp nguồn--đích, $k \in \{0, 3\}$, 5 seed; MLP, GBDT, PINN-semi & 360 \\
-\textbf{Tổng} &  & \textbf{3.420} \\
+Cải tiến mô hình (Chương~\ref{ch:caitien}) & 9 hướng trên validation; PINN-lai, 3 lần lặp, 4 mức nhãn & 1.680 \\
+\textbf{Tổng} &  & \textbf{5.100} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
 \chapter{Kết quả và thảo luận}\label{ch:ketqua}
+
+Trước khi so mô hình, cần biết những con số sắp đọc có đáng tin không. Vì vậy chương này mở đầu bằng kiểm toán
+rò rỉ: cùng một mô hình được đánh giá dưới các cách chia đúng và sai để thấy cách chia sai làm sai số trông tốt hơn
+thực tế bao nhiêu. Sau đó các mục đi lần lượt theo câu hỏi nghiên cứu: PINN so với MLP ở 30\,\% nhãn, rồi khi
+lượng nhãn thay đổi, so với các mô hình học có nhãn khác, lợi ích đến từ phần nào của hàm mất mát, chuyển miền
+giữa các bộ dữ liệu, và cuối cùng là kiểm tra trực tiếp xem phần vật lý tác động lên mô hình đã huấn luyện ra sao.
 
 \section{Kiểm toán rò rỉ}\label{sec:leakres}
 
@@ -880,7 +972,7 @@ Chia theo chu kỳ, chép nhãn & 1{,}82 (0{,}14) & 0{,}99 (0{,}10) & 0{,}43 (0{
 
 \begin{figure}[H]\centering
 \includegraphics[width=\textwidth]{hinh/fig_thesis_leakage.pdf}
-\caption{MAE theo cell của cùng một mô hình (MLP, 70\,\% nhãn) dưới các cách chia và chuẩn hoá khác nhau.}\label{fig:leak}
+\caption{MAE theo cell của cùng một mô hình (MLP, 70\,\% nhãn) dưới các cách chia và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai số càng bị đánh giá thấp giả tạo.}\label{fig:leak}
 \end{figure}
 
 
@@ -1073,9 +1165,14 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 \caption{SOH dự đoán so với thực đo trên tập test (30\,\% nhãn). Hàng trên: MLP; hàng dưới: PINN-semi.}\label{fig:parity}
 \end{figure}
 
+Hình~\ref{fig:traj} đặt cạnh nhau dự đoán cho cùng một cell khi lượng nhãn tăng từ 10 lên 30 và 70\,\%. Khi ít nhãn,
+cả hai mô hình bám được hình dạng của quỹ đạo nhưng lệch mức, rõ nhất ở TJU và HUST; thêm nhãn chủ yếu làm giảm phần
+lệch mức này chứ không làm thay đổi hình dạng. Ở 10\,\% nhãn, dự đoán của MLP dao động mạnh hơn và có những đoạn đi
+lên, còn PINN-semi giữ được xu hướng giảm; khoảng cách giữa hai mô hình thu hẹp dần khi nhãn tăng.
+
 \begin{figure}[H]\centering
 \includegraphics[width=0.92\textwidth]{hinh/fig_pred_traj.pdf}
-\caption{Quỹ đạo SOH trên ba cell test mỗi bộ (cell có sai số MLP ở phân vị 25, 50 và 75\,\%).}\label{fig:traj}
+\caption{Quỹ đạo SOH của cùng một cell test mỗi bộ khi có 10, 30 và 70\,\% số cell mang nhãn (lần lặp 0). Cell được chọn là cell có sai số MLP ở trung vị của bộ tại 30\,\% nhãn, bỏ qua các cell có nhãn nhảy bất thường giữa hai chu kỳ; trục dọc theo dải SOH thực đo nên vài chu kỳ đầu của XJTU vượt khỏi khung.}\label{fig:traj}
 \end{figure}
 
 \begin{figure}[H]\centering
@@ -1225,7 +1322,7 @@ HUST & 0{,}1 & 31{,}1 & 12{,}9 & 14{,}3 & 12{,}5 & 12{,}4 & 12{,}0 \\
 
 \begin{figure}[H]\centering
 \includegraphics[width=\textwidth]{hinh/fig_metrics_mono.pdf}
-\caption{Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược ở 30\,\% nhãn; vạch ngang là cùng phép đếm trên nhãn thật.}\label{fig:mono}
+\caption{Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược ở 30\,\% nhãn; vạch đứt và vùng tô xám là cùng phép đếm trên nhãn thật.}\label{fig:mono}
 \end{figure}
 
 
@@ -1299,17 +1396,325 @@ $r$ diễn giải được theo nghĩa vật lý cần dạng Euler.
 dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%), khi có nhiều cell chưa đo dung lượng, và nhất là khi
 phải chạy trên một bộ dữ liệu mới chưa có nhãn: ở đó MLP thất bại hoàn toàn còn PINN-semi vẫn cho sai số dùng
 được. So với GBDT thì khác: trong cùng một bộ dữ liệu, GBDT có sai số thấp hơn ở phần lớn các trường hợp; khi
-chuyển miền, hai mô hình thắng thua tuỳ cặp (PINN-semi tốt hơn ở 6/12 cặp khi không có nhãn đích). Nếu chỉ cần sai số thấp nhất trên cùng một bộ dữ liệu,
-GBDT là lựa chọn đơn giản và mạnh hơn.
+chuyển miền, hai mô hình thắng thua tuỳ cặp (PINN-semi tốt hơn ở 6/12 cặp khi không có nhãn đích). Trong số các mô hình đơn lẻ, nếu chỉ cần
+sai số thấp nhất trên cùng một bộ dữ liệu thì GBDT là lựa chọn đơn giản và mạnh hơn; Chương~\ref{ch:caitien} cho thấy
+ghép GBDT với nhóm PINN còn tốt hơn cả hai.
 
 \paragraph{Khi nào lợi ích nhỏ?} Khi đã có đủ nhãn (70\,\%), và trên TJU, nơi tỉ số so với MLP chỉ ở mức 0{,}90--1{,}09 trên mọi mức nhãn. TJU gộp ba nhóm hoá học và chín nhóm điều kiện; có thể phần biến thiên giữa các nhóm lớn hơn phần mà ràng buộc vật lý dùng chung cho mọi cell giải thích được.
 
 \paragraph{Hạn chế.} (i) Mô hình ước lượng SOH tại chu kỳ hiện tại, chưa dự báo SOH tương lai hay tuổi thọ còn
 lại. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
-(iii) GBDT là đối thủ mạnh và chưa được kết hợp với ràng buộc vật lý. (iv) Cell validation cần nhãn ngoài ngân
+(iii) GBDT là đối thủ mạnh; Chương~\ref{ch:caitien} kết hợp nó với PINN ở mức dự đoán, nhưng ràng buộc vật lý
+chưa được đưa vào chính mô hình cây. (iv) Cell validation cần nhãn ngoài ngân
 sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững trên MIT. (vi) Tham số vật lý $\lambda, E_a$ chưa
 ước lượng được từ dữ liệu hiện có. (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
 mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}).
+
+\chapter{Cải tiến mô hình}\label{ch:caitien}
+
+Chương~\ref{ch:ketqua} để lại hai kết quả trái chiều. PINN-semi giảm rõ sai số so với mạng cùng kiến trúc khi ít
+nhãn, nhưng GBDT, một mô hình không biết gì về vật lý, vẫn có sai số thấp nhất ở phần lớn các trường hợp có từ
+30\,\% nhãn trở lên. Mục~\ref{sec:physcheck} cũng cho thấy vật lý giúp chủ yếu bằng cách giữ quỹ đạo dự đoán gần
+đơn điệu. Chương này tìm cách giảm sai số thêm mà không dùng thêm nhãn nào và không đổi giao thức đánh giá. Quy
+trình gồm hai giai đoạn tách bạch: chọn hướng cải tiến chỉ trên tập validation, chốt cấu hình bằng một đề cương
+được commit trước, rồi mới đánh giá trên test.
+
+\section{Sai số còn lại nằm ở đâu}\label{sec:errdecomp}
+
+Trước khi thử cải tiến, cần biết sai số hiện tại có dạng gì. Với mỗi cell test, sai số theo chu kỳ
+$e_n = \hat y_n - y_n$ được tách thành ba phần:
+\begin{equation}
+e_n = \underbrace{b}_{\text{lệch mức}} + \underbrace{s_n}_{\text{trôi chậm}} + \underbrace{f_n}_{\text{dao động nhanh}},
+\end{equation}
+trong đó $b$ là trung bình của $e_n$ trên cả cell, $s_n$ là trung bình trượt căn giữa 21 điểm của $e_n - b$, còn $f_n$
+là phần còn lại. Bảng~\ref{tab:decomp} cho tỉ lệ của từng phần trong MSE ở 30\,\% nhãn.
+
+\begin{table}[H]\centering\small
+\caption{Phân rã MSE theo cell ở 30\,\% nhãn thành ba phần (tỉ lệ trên tổng MSE).}\label{tab:decomp}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
+Bộ & Mô hình & MAE theo cell ($\times10^{-3}$) & lệch mức & trôi chậm & dao động nhanh \\\midrule
+XJTU & MLP & 15{,}95 & 14\,\% & 55\,\% & 17\,\% \\
+ & PINN-semi & 13{,}44 & 20\,\% & 56\,\% & 13\,\% \\
+ & GBDT & 10{,}85 & 36\,\% & 49\,\% & 11\,\% \\
+TJU & MLP & 11{,}33 & 54\,\% & 32\,\% & 12\,\% \\
+ & PINN-semi & 10{,}85 & 58\,\% & 34\,\% & 7\,\% \\
+ & GBDT & 8{,}14 & 54\,\% & 36\,\% & 8\,\% \\
+MIT & MLP & 3{,}40 & 36\,\% & 38\,\% & 27\,\% \\
+ & PINN-semi & 2{,}58 & 36\,\% & 41\,\% & 25\,\% \\
+ & GBDT & 1{,}99 & 19\,\% & 47\,\% & 34\,\% \\
+HUST & MLP & 19{,}80 & 44\,\% & 53\,\% & 4\,\% \\
+ & PINN-semi & 17{,}30 & 47\,\% & 52\,\% & 1\,\% \\
+ & GBDT & 18{,}63 & 41\,\% & 57\,\% & 2\,\% \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+
+Phần dao động nhanh, tức nhiễu giữa các chu kỳ liền nhau, chỉ chiếm 1--17\,\% tổng MSE ngoài bộ MIT; trên MIT, nơi
+sai số tuyệt đối rất nhỏ, phần này lên tới 25--34\,\%. Phần lớn sai số là lệch mức và trôi chậm: mô hình đoán sai
+SOH của cả một cell, hoặc đoán sai tốc độ suy giảm trên một đoạn dài. Hai hệ quả rút ra. Một là làm trơn dự đoán chỉ
+giúp được một phần nhỏ. Hai là muốn giảm sai số đáng kể phải giảm phần lệch theo từng cell, và cách đơn giản nhất là
+lấy trung bình những mô hình có lệch theo cell khác nhau.
+
+\section{Các hướng thử}\label{sec:candidates}
+
+Sáu hướng được thử, mỗi hướng dựa trên một kết quả đã công bố hoặc một quan sát ở Chương~\ref{ch:ketqua}.
+
+\paragraph{Nhóm mạng.} Huấn luyện $M = 3$ mạng PINN-semi giống hệt nhau, chỉ khác hạt giống khởi tạo và thứ tự lấy
+batch, rồi lấy trung bình $\bar F = \frac{1}{M}\sum_m F^{(m)}$~\cite{lakshminarayanan2017}. Cả ba mạng dùng đúng
+cùng cách chia và cùng tập cell có nhãn, nên không có nhãn nào được thêm vào.
+
+\paragraph{Chưng cất từ GBDT.} GBDT học trên cell có nhãn rồi dự đoán cho mọi chu kỳ của cell không nhãn; dự đoán
+này làm mục tiêu mềm cho mạng~\cite{hinton2015,lee2013}, thêm số hạng
+$\lambda_\text{KD}\,\overline{(F_\varphi(\tilde{\mathbf{x}}, t) - g(\tilde{\mathbf{x}}, t))^2}$ trên cell không nhãn.
+
+\paragraph{Kết hợp với GBDT.} Lấy trung bình dự đoán của nhóm mạng và của GBDT, $\hat y = \omega \bar F + (1-\omega) g$.
+Đây là dạng đơn giản nhất của kết hợp mô hình khác loại~\cite{wolpert1992}. Lý do để kỳ vọng nó giúp là hai mô hình
+có thiên lệch quy nạp khác hẳn nhau: cây quyết định học tốt các hàm không trơn trên dữ liệu bảng~\cite{grinsztajn2022},
+còn PINN-semi dùng được cell không nhãn và cho quỹ đạo trơn, gần đơn điệu.
+
+\paragraph{Bộ lọc quỹ đạo.} Vật lý cũng có thể được đưa vào ở bước suy luận chứ không chỉ khi huấn luyện. Tại chu kỳ
+$n$ của một cell, lấy $w$ dự đoán gần nhất $\hat y_{n-w+1}, \dots, \hat y_n$, khớp một đường thẳng bằng bình phương
+tối thiểu~\cite{cleveland1979} với ràng buộc độ dốc không dương, rồi lấy giá trị đường thẳng tại $n$:
+\begin{equation}\label{eq:trend}
+\tilde y_n = \bar y + \min(0, \hat\beta)\,(t_n - \bar t), \qquad
+\hat\beta = \frac{\sum_i (t_i - \bar t)(\hat y_i - \bar y)}{\sum_i (t_i - \bar t)^2},
+\end{equation}
+với $\bar t, \bar y$ là trung bình trên cửa sổ. Bộ lọc chỉ dùng dự đoán của các chu kỳ đã qua, không dùng nhãn,
+nên chạy được trực tuyến. Một lựa chọn tự nhiên khác là hồi quy đơn điệu~\cite{barlow1972} trên toàn bộ quá khứ,
+nhưng Mệnh đề~\ref{prop:filter} cho thấy nó lệch xuống.
+
+\paragraph{Ràng buộc vật lý mạnh hơn.} Tăng trọng số đơn điệu lên $\beta = 2$, hoặc thêm phần dư Euler dọc quỹ đạo
+(Mục~\ref{sec:physcheck}) với hệ số $\alpha_E = 2$ bên cạnh phần dư dạng đạo hàm riêng.
+
+\paragraph{Đặc trưng tương đối.} Nối thêm vào đầu vào độ thay đổi tương đối của đặc trưng so với trung bình ba chu
+kỳ đầu của chính cell, $(\mathbf{x}_n - \mathbf{x}_\text{ref})/|\mathbf{x}_\text{ref}|$, theo tinh thần của đặc
+trưng $\Delta Q(V)$ trong~\cite{severson2019}: suy giảm thể hiện ở chỗ đường sạc đã đổi bao nhiêu so với lúc mới.
+
+\section{Chọn hướng trên tập validation}\label{sec:devproto}
+
+Giai đoạn phát triển dùng lần lặp 0, cả 5 fold, hai mức nhãn 10\,\% và 50\,\%. Mỗi fold có khoảng 10\,\% số cell
+làm validation, tách khỏi cả train lẫn test; mọi quyết định chỉ dựa trên MAE theo cell của tập này. Bảng~\ref{tab:dev}
+tóm tắt kết quả.
+
+\begin{table}[H]\centering\small
+\caption{Giai đoạn phát triển: MAE theo cell trên tập validation chia cho MAE của PINN-semi đơn lẻ, trung bình nhân trên bốn bộ (lần lặp 0, 5 fold). Nhỏ hơn 1 là tốt hơn.}\label{tab:dev}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrr}\toprule
+Hướng thử & 10\,\% nhãn & 50\,\% nhãn & chung \\\midrule
+3 PINN-semi + GBDT, lọc quỹ đạo ($w = 10$) & 0{,}843 & 0{,}804 & 0{,}823 \\
+3 PINN-semi + GBDT & 0{,}847 & 0{,}810 & 0{,}828 \\
+1 PINN-semi + GBDT & 0{,}861 & 0{,}841 & 0{,}851 \\
+GBDT & 0{,}967 & 0{,}848 & 0{,}906 \\
+chưng cất từ GBDT, $\lambda_\text{KD} = 0{,}3$ & 0{,}940 & 0{,}982 & 0{,}961 \\
+3 PINN-semi, lọc quỹ đạo & 0{,}970 & 0{,}947 & 0{,}958 \\
+3 PINN-semi & 0{,}974 & 0{,}952 & 0{,}963 \\
+chưng cất từ GBDT, $\lambda_\text{KD} = 1$ & 0{,}946 & 1{,}007 & 0{,}976 \\
+1 PINN-semi, lọc quỹ đạo & 0{,}989 & 0{,}986 & 0{,}987 \\
+1 PINN-semi, hồi quy đơn điệu & 0{,}993 & 0{,}997 & 0{,}995 \\
+đơn điệu mạnh hơn, $\beta = 2$ & 1{,}062 & 1{,}068 & 1{,}065 \\
+thêm phần dư Euler, $\alpha_E = 2$ & 1{,}279 & 1{,}299 & 1{,}289 \\
+thêm đặc trưng tương đối & 2{,}408 & 1{,}189 & 1{,}692 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+
+Ba nhóm kết quả hiện ra. Kết hợp với GBDT cho mức giảm lớn nhất: ở 10\,\% nhãn tỉ số chỉ còn 0{,}843, ở 50\,\%
+nhãn còn 0{,}804, thấp hơn cả GBDT đứng một mình (0{,}906). Nhóm mạng và chưng cất cho mức giảm vừa phải, khoảng
+0{,}963 và 0{,}961; khi đã kết hợp với GBDT, chưng cất không còn thêm lợi ích (tỉ số 0{,}849 so với 0{,}851
+của một mạng PINN-semi kết hợp GBDT), nên bị bỏ để mô hình gọn hơn. Ba hướng còn lại làm sai số tăng: ràng buộc đơn điệu mạnh hơn
+(1{,}065), thêm phần dư Euler (1{,}289) và nhất là đặc trưng tương đối (1{,}692). Phần dư Euler buộc $r$ bằng tốc
+độ dọc quỹ đạo trong khi phần dư dạng đạo hàm riêng buộc $\partial F/\partial t = -r$, nên hai số hạng kéo mạng
+nghiệm về hai phía. Đặc trưng tương đối chia cho $|\mathbf{x}_\text{ref}|$, nên khuếch đại các đặc trưng có giá trị
+ban đầu gần 0 và làm phân phối đầu vào khác hẳn giữa các cell; trường hợp tệ nhất là HUST ở 10\,\% nhãn, sai số tăng
+3{,}4 lần.
+
+Trọng số $\omega = 0{,}5$ và $0{,}4$ cho GBDT trọng số $0{,}5$ và $0{,}6$, kết quả gần như nhau trên validation
+(0{,}828 và 0{,}824), nên chọn $\omega = 0{,}5$
+để không phải ước lượng thêm tham số. Cửa sổ lọc $w = 5, 10, 20$ cũng gần như nhau; chọn $w = 10$ vì nó gần tốt nhất
+với mọi mô hình nền đã thử. Cấu hình cuối được ghi vào đề cương E20 và commit trước khi đọc bất kỳ dự đoán test nào.
+
+\section{Mô hình PINN-lai}\label{sec:pinnlai}
+
+Mô hình cải tiến, gọi là PINN-lai, gồm ba bước:
+\begin{align}
+\bar F(\mathbf{x}, t) &= \tfrac{1}{3}\textstyle\sum_{m=1}^{3} F_{\varphi_m}(\tilde{\mathbf{x}}, t), \\
+\hat y_n &= \tfrac{1}{2}\,\bar F(\mathbf{x}_n, t_n) + \tfrac{1}{2}\,g(\mathbf{x}_n, t_n), \\
+\tilde y_n &= \text{bộ lọc \eqref{eq:trend} với } w = 10 \text{ trên } \hat y_{n-9}, \dots, \hat y_n,
+\end{align}
+trong đó $F_{\varphi_m}$ là ba mạng PINN-semi cấu hình E13 và $g$ là GBDT cấu hình E16, cùng học trên đúng các cell
+có nhãn của fold. Huấn luyện tốn gấp ba PINN-semi cộng một GBDT; suy luận vẫn chỉ cần đặc trưng sạc của chu kỳ hiện
+tại và chín dự đoán trước đó của chính cell.
+
+\begin{menhde}\label{prop:filter}
+Xét một cửa sổ $w$ điểm cách đều.
+(i) Nếu $\hat y_i = a - c\,t_i$ với $c \ge 0$ thì $\tilde y_n = \hat y_n$: bộ lọc không làm lệch một quỹ đạo giảm
+tuyến tính.
+(ii) Nếu $\hat y_i = a - c\,t_i + \epsilon_i$ với $\epsilon_i$ độc lập, kỳ vọng 0, phương sai $\sigma^2$, và ràng
+buộc độ dốc không kích hoạt, thì $\tilde y_n$ không chệch và
+$\operatorname{Var}(\tilde y_n) = \sigma^2\,\dfrac{2(2w-1)}{w(w+1)}$; với $w = 10$ là $0{,}345\,\sigma^2$.
+(iii) Giá trị cuối của hồi quy đơn điệu giảm trên $\hat y_1, \dots, \hat y_n$ luôn không lớn hơn $\hat y_n$, nên
+khi $\hat y$ có nhiễu nó lệch xuống.
+\end{menhde}
+\begin{proof}
+(i) Đường thẳng khớp đúng dữ liệu, độ dốc $-c \le 0$ nên ràng buộc không tác động. (ii) Đây là phương sai của giá
+trị dự đoán bình phương tối thiểu tại đầu mút: $\sigma^2\big(\frac{1}{w} + \frac{(t_n - \bar t)^2}{S_{tt}}\big)$
+với $t_n - \bar t = \frac{w-1}{2}$ và $S_{tt} = \frac{w(w^2-1)}{12}$ khi bước bằng 1; rút gọn được biểu thức trên.
+(iii) Với hồi quy đơn điệu giảm, giá trị tại điểm cuối bằng $\min_{j \le n}$ trung bình của $\hat y_j, \dots, \hat y_n$
+\cite{barlow1972}; chọn $j = n$ cho thấy nó không vượt $\hat y_n$.
+\end{proof}
+
+\section{Kết quả trên tập test}\label{sec:e20res}
+
+Đánh giá cuối dùng lần lặp 0, 1 và 2, cả 5 fold, 4 bộ và 4 mức nhãn. Mọi mô hình trong chương này, kể cả các mô
+hình cũ, được tính lại trên đúng ba lần lặp đó. Thành viên thứ nhất của nhóm mạng chạy lại đúng cấu hình E13 và cho dự
+đoán trùng từng bit với E13 ở 240/240 lượt; GBDT trùng E16 ở 240/240 lượt.
+
+\begin{table}[H]\centering\small
+\caption{MAE theo cell ($\times10^{-3}$) trên test, lần lặp 0--2; in đậm là thấp nhất ở mỗi bộ và mức nhãn.}\label{tab:e20}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
+Bộ & Mô hình & 10\,\% & 30\,\% & 50\,\% & 70\,\% \\\midrule
+XJTU & MLP & 23{,}27 & 15{,}61 & 14{,}10 & 12{,}48 \\
+ & GBDT & 14{,}01 & \textbf{10{,}87} & \textbf{10{,}18} & \textbf{9{,}64} \\
+ & PINN-semi & 14{,}65 & 13{,}35 & 13{,}20 & 12{,}53 \\
+ & PINN-lai & \textbf{12{,}83} & 11{,}43 & 10{,}65 & 10{,}00 \\
+TJU & MLP & 15{,}81 & 11{,}71 & 9{,}96 & 9{,}71 \\
+ & GBDT & 12{,}60 & \textbf{8{,}06} & \textbf{7{,}17} & \textbf{6{,}96} \\
+ & PINN-semi & 14{,}01 & 11{,}39 & 10{,}74 & 10{,}80 \\
+ & PINN-lai & \textbf{11{,}79} & 8{,}52 & 7{,}77 & 7{,}76 \\
+MIT & MLP & 9{,}02 & 3{,}39 & 3{,}06 & 2{,}85 \\
+ & GBDT & 3{,}15 & 1{,}97 & 1{,}74 & 1{,}59 \\
+ & PINN-semi & 3{,}29 & 2{,}50 & 2{,}45 & 2{,}38 \\
+ & PINN-lai & \textbf{2{,}52} & \textbf{1{,}79} & \textbf{1{,}67} & \textbf{1{,}59} \\
+HUST & MLP & 41{,}62 & 20{,}00 & 18{,}13 & 17{,}19 \\
+ & GBDT & 23{,}84 & 18{,}73 & 15{,}82 & 14{,}60 \\
+ & PINN-semi & 22{,}76 & 17{,}10 & 16{,}42 & 16{,}38 \\
+ & PINN-lai & \textbf{20{,}52} & \textbf{16{,}19} & \textbf{14{,}29} & \textbf{13{,}78} \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_e20_curve.pdf}
+\caption{MAE theo cell trên test theo lượng nhãn (thang log, lần lặp 0--2).}\label{fig:e20curve}
+\end{figure}
+
+
+PINN-lai có MAE thấp hơn PINN-semi ở 16/16 trường hợp (bộ × mức nhãn), 16 trong đó có ý nghĩa
+thống kê, với tỉ số 0{,}67--0{,}95. So với GBDT, PINN-lai tốt hơn ở 10/16 trường hợp, 8 có ý nghĩa; riêng ở 10\,\% nhãn, PINN-lai tốt hơn GBDT có ý nghĩa trên cả bốn bộ.
+GBDT có sai số thấp hơn PINN-lai ở XJTU (30--70\,\%) và TJU (30--70\,\%), phần lớn các trường hợp này không có ý nghĩa thống kê. GBDT vẫn tốt hơn có ý nghĩa ở TJU 70\,\%.
+So với MLP, tỉ số là 0{,}28--0{,}81; ở 10\,\% nhãn sai số chỉ còn 0{,}28--0{,}75 của MLP. Trên hai mức nhãn đã dùng khi phát
+triển (10 và 50\,\%), tỉ số so với PINN-semi trên test là 0{,}805, gần với 0{,}823 trên validation, nên việc
+chọn trên validation không làm kết quả test bị lạc quan đáng kể.
+
+\begin{table}[H]\centering\small
+\caption{Tỉ số MAE theo cell của PINN-lai so với từng mô hình (nhỏ hơn 1 là PINN-lai tốt hơn). $^{*}$: Wilcoxon ghép cặp theo cell có ý nghĩa sau hiệu chỉnh Holm trên bốn bộ ($p < 0{,}05$).}\label{tab:e20tests}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
+Bộ & Nhãn & so với PINN-semi & so với GBDT & so với MLP & so với MLP-lai \\\midrule
+XJTU & 10\,\% & 0{,}88$^{*}$ & 0{,}92$^{*}$ & 0{,}55$^{*}$ & 0{,}80$^{*}$ \\
+ & 30\,\% & 0{,}86$^{*}$ & 1{,}05 & 0{,}73$^{*}$ & 0{,}99 \\
+ & 50\,\% & 0{,}81$^{*}$ & 1{,}05 & 0{,}76$^{*}$ & 1{,}02 \\
+ & 70\,\% & 0{,}80$^{*}$ & 1{,}04 & 0{,}80$^{*}$ & 1{,}02 \\
+TJU & 10\,\% & 0{,}84$^{*}$ & 0{,}94$^{*}$ & 0{,}75$^{*}$ & 0{,}95$^{*}$ \\
+ & 30\,\% & 0{,}75$^{*}$ & 1{,}06 & 0{,}73$^{*}$ & 1{,}02 \\
+ & 50\,\% & 0{,}72$^{*}$ & 1{,}08 & 0{,}78$^{*}$ & 1{,}03 \\
+ & 70\,\% & 0{,}72$^{*}$ & 1{,}11$^{*}$ & 0{,}80$^{*}$ & 1{,}06$^{*}$ \\
+MIT & 10\,\% & 0{,}77$^{*}$ & 0{,}80$^{*}$ & 0{,}28$^{*}$ & 0{,}49$^{*}$ \\
+ & 30\,\% & 0{,}71$^{*}$ & 0{,}91$^{*}$ & 0{,}53$^{*}$ & 0{,}87$^{*}$ \\
+ & 50\,\% & 0{,}68$^{*}$ & 0{,}96 & 0{,}54$^{*}$ & 0{,}90$^{*}$ \\
+ & 70\,\% & 0{,}67$^{*}$ & 1{,}00 & 0{,}56$^{*}$ & 0{,}93$^{*}$ \\
+HUST & 10\,\% & 0{,}90$^{*}$ & 0{,}86$^{*}$ & 0{,}49$^{*}$ & 0{,}71$^{*}$ \\
+ & 30\,\% & 0{,}95$^{*}$ & 0{,}86$^{*}$ & 0{,}81$^{*}$ & 1{,}01 \\
+ & 50\,\% & 0{,}87$^{*}$ & 0{,}90$^{*}$ & 0{,}79$^{*}$ & 0{,}98 \\
+ & 70\,\% & 0{,}84$^{*}$ & 0{,}94$^{*}$ & 0{,}80$^{*}$ & 1{,}00 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+
+Các chỉ số khác cho cùng một bức tranh. Ở 30\,\% nhãn, $R^2$ tính từ chu kỳ 10 của PINN-lai là 0{,}867--0{,}992 trên bốn bộ,
+so với 0{,}858--0{,}985 của GBDT và 0{,}860--0{,}986 của PINN-semi. Tỉ lệ cặp chu kỳ có dự đoán tăng ngược của PINN-lai là
+0{,}7--8{,}4\,\%, thấp hơn PINN-semi (2{,}8--12{,}8\,\%) và GBDT (3{,}2--19{,}1\,\%).
+
+\section{Phân rã lợi ích}\label{sec:e20steps}
+
+Hình~\ref{fig:e20steps} đi qua từng bước. Tính trung bình nhân trên 16 trường hợp, nhóm ba mạng đưa tỉ số so với
+PINN-semi xuống 0{,}961, kết hợp với GBDT xuống 0{,}798, và bộ lọc quỹ đạo xuống 0{,}793; GBDT đứng một mình
+là 0{,}823. Bước kết hợp mang lại phần lớn lợi ích.
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_e20_steps.pdf}
+\caption{Tỉ số MAE theo cell so với PINN-semi qua từng bước của PINN-lai; mỗi đường là một mức nhãn; cột bên phải là GBDT đứng một mình, mỗi hình thoi một mức nhãn (nhạt: 10\,\%, đậm: 70\,\%).}\label{fig:e20steps}
+\end{figure}
+
+
+Lệch mức theo cell của trung bình ba PINN-semi và của GBDT chỉ tương quan ở mức vừa: hệ số Pearson 0{,}50--0{,}80 tùy bộ và mức nhãn,
+và ở 16--31\,\% số cell hai mô hình lệch ngược dấu nhau. Vì hai mô hình không lệch cùng một kiểu, lấy trung bình của chúng triệt tiêu được một phần lệch mức mà Mục~\ref{sec:errdecomp} chỉ ra.
+
+Câu hỏi còn lại là vật lý có còn cần khi đã có GBDT không. Để trả lời, cùng công thức được áp với ba mạng MLP thay
+cho ba mạng PINN-semi (MLP-lai): cùng GBDT, cùng bộ lọc. PINN-lai tốt hơn MLP-lai có ý nghĩa ở 7/16 trường
+hợp và kém hơn có ý nghĩa ở 1; tỉ số trung bình nhân là 0{,}716 ở 10\,\% nhãn và 1{,}002 ở
+70\,\% nhãn. Phần vật lý vẫn đóng góp khi đã có GBDT, rõ nhất khi ít nhãn, và đóng góp ít dần khi nhãn nhiều lên, cùng xu hướng như ở Chương~\ref{ch:ketqua}.
+
+\section{Khoảng dự đoán}\label{sec:conformal}
+
+Một con số SOH đơn lẻ chưa đủ cho các quyết định như thay pin hay giảm công suất~\cite{thelen2024}. PINN-lai được
+gắn thêm khoảng dự đoán bằng phương pháp dự đoán phù hợp tách tập~\cite{vovk2005,lei2018}. Trong mỗi fold, phần dư
+$|\tilde y - y|$ được tính trên tập validation của chính fold đó; với mức $1 - \alpha = 90\,\%$, lấy phân vị
+$\lceil (n+1)(1-\alpha) \rceil / n$ của các phần dư làm nửa độ rộng $q$, và khoảng cho một chu kỳ test là
+$[\tilde y - q, \tilde y + q]$. Dạng thích nghi chia phần dư cho $\sigma_n + \delta$, với
+$\sigma_n = |\bar F - g|$ là độ vênh giữa nhóm mạng và GBDT tại chu kỳ đó và $\delta$ là trung vị của $\sigma$ trên
+validation; khoảng khi đó rộng ở những chu kỳ hai mô hình không đồng ý với nhau.
+
+\begin{table}[H]\centering\small
+\caption{Khoảng dự đoán 90\,\% của PINN-lai trên test: độ phủ thực tế và độ rộng trung bình (\% SOH). Hai cột đầu là độ rộng cố định, hai cột sau là độ rộng thích nghi; cột cuối là tỉ lệ cell có độ phủ dưới 80\,\% với dạng thích nghi.}\label{tab:conformal}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrr}\toprule
+Bộ & Nhãn & độ phủ & độ rộng & độ phủ & độ rộng & cell phủ $<80\,\%$ \\\midrule
+XJTU & 10\,\% & 84{,}9\,\% & 5{,}01 & 87{,}3\,\% & 7{,}11 & 14\,\% \\
+ & 30\,\% & 85{,}7\,\% & 4{,}34 & 88{,}9\,\% & 5{,}51 & 15\,\% \\
+ & 50\,\% & 87{,}6\,\% & 4{,}30 & 88{,}7\,\% & 5{,}06 & 14\,\% \\
+ & 70\,\% & 87{,}5\,\% & 4{,}14 & 88{,}4\,\% & 4{,}88 & 15\,\% \\
+TJU & 10\,\% & 85{,}0\,\% & 4{,}01 & 89{,}7\,\% & 5{,}89 & 18\,\% \\
+ & 30\,\% & 90{,}2\,\% & 3{,}39 & 91{,}8\,\% & 4{,}28 & 16\,\% \\
+ & 50\,\% & 92{,}5\,\% & 3{,}43 & 91{,}9\,\% & 3{,}50 & 17\,\% \\
+ & 70\,\% & 92{,}6\,\% & 3{,}38 & 92{,}9\,\% & 3{,}40 & 15\,\% \\
+MIT & 10\,\% & 85{,}0\,\% & 1{,}06 & 86{,}3\,\% & 1{,}24 & 25\,\% \\
+ & 30\,\% & 86{,}5\,\% & 0{,}75 & 86{,}9\,\% & 0{,}78 & 24\,\% \\
+ & 50\,\% & 86{,}4\,\% & 0{,}69 & 86{,}5\,\% & 0{,}69 & 25\,\% \\
+ & 70\,\% & 87{,}4\,\% & 0{,}63 & 88{,}2\,\% & 0{,}65 & 23\,\% \\
+HUST & 10\,\% & 88{,}9\,\% & 11{,}23 & 89{,}0\,\% & 10{,}19 & 20\,\% \\
+ & 30\,\% & 88{,}1\,\% & 8{,}32 & 87{,}4\,\% & 7{,}78 & 25\,\% \\
+ & 50\,\% & 88{,}8\,\% & 7{,}48 & 88{,}7\,\% & 7{,}18 & 19\,\% \\
+ & 70\,\% & 87{,}6\,\% & 6{,}74 & 88{,}2\,\% & 6{,}69 & 22\,\% \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{hinh/fig_e20_conformal.pdf}
+\caption{Độ phủ thực tế (hàng trên) và độ rộng trung bình (hàng dưới) của khoảng dự đoán 90\,\% trên test theo lượng nhãn; vạch đứt là mức 90\,\% đặt ra.}\label{fig:conformal}
+\end{figure}
+
+
+Độ phủ thực tế trên test là 84{,}9--92{,}6\,\% với độ rộng cố định và 86{,}3--92{,}9\,\% với độ rộng thích nghi, trung bình 88{,}8\,\%, tức thấp hơn mức 90\,\% đặt ra vài điểm phần trăm. Thiếu hụt này có nguyên nhân rõ: tập hiệu chỉnh của mỗi fold chỉ gồm vài đến mười mấy cell, và phần dư của các chu kỳ trong cùng một cell tương quan rất mạnh, nên số mẫu hiệu chỉnh thực chất là số cell chứ không phải số chu kỳ; phân vị ước lượng từ chừng ấy cell dao động nhiều giữa các fold.
+Độ rộng trung bình của dạng thích nghi là 0{,}65--10{,}19\,\% SOH, so với 0{,}63--11{,}23\,\% của dạng cố định. Bảo đảm của phương
+pháp là bảo đảm trung bình: nếu các cell hiệu chỉnh và cell test hoán đổi được cho nhau thì tỉ lệ chu kỳ nằm trong
+khoảng xấp xỉ 90\,\%, nhưng không phải cell nào cũng được phủ 90\,\%. Cột cuối của Bảng~\ref{tab:conformal} cho thấy
+một phần không nhỏ cell có độ phủ dưới 80\,\%: đó là các cell bị lệch mức cả đời, đúng loại sai số chiếm phần lớn
+MSE. Hình~\ref{fig:e20traj} đặt PINN-lai cạnh PINN-semi trên đúng các cell của Hình~\ref{fig:traj}. Ở cả ba mức
+nhãn, dự đoán của PINN-lai trơn hơn và ít đoạn đi lên hơn; trên TJU và HUST nó kéo phần lệch mức về gần thực đo hơn,
+còn trên MIT hai mô hình gần như trùng nhau vì sai số vốn đã rất nhỏ. Dải tô quanh PINN-lai hẹp lại khi lượng nhãn
+tăng, đúng như cột độ rộng của Bảng~\ref{tab:conformal}.
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.92\textwidth]{hinh/fig_e20_traj.pdf}
+\caption{Quỹ đạo SOH thực đo, dự đoán của PINN-semi và của PINN-lai trên cùng các cell của Hình~\ref{fig:traj} ở 10, 30 và 70\,\% nhãn (lần lặp 0). Dải tô là khoảng 90\,\% dạng độ rộng cố định; trục dọc theo dải SOH thực đo.}\label{fig:e20traj}
+\end{figure}
+
+
+\section{Thảo luận}\label{sec:e20disc}
+
+Cải tiến lớn nhất không đến từ một ràng buộc vật lý mới mà từ việc ghép hai mô hình có điểm mạnh khác nhau. Kết quả
+này khớp với hai quan sát: sai số còn lại chủ yếu là lệch theo từng cell, và lệch của PINN-semi với của GBDT
+chỉ tương quan ở mức vừa. Vật lý có vai trò ở hai chỗ: trong huấn luyện, nó giúp nhóm mạng dùng được cell không nhãn nên PINN-lai hơn MLP-lai khi ít nhãn;
+khi suy luận, bộ lọc quỹ đạo dùng đúng giả định SOH không tăng để làm trơn dự đoán mà không làm lệch quỹ đạo giảm. Hai hướng ràng buộc mạnh hơn thất bại cho thấy thêm vật lý vào hàm mất mát không phải
+lúc nào cũng tốt: khi dạng phương trình còn thô, ép nó chặt hơn làm mạng mất tự do để khớp dữ liệu.
+
+Giới hạn của chương này cũng cần nói rõ. Đánh giá cuối dùng ba lần lặp thay vì năm vì chi phí tính toán. Giai đoạn
+phát triển dùng các cell validation của lần lặp 0, mà các cell này lại nằm trong test ở fold khác; với chín hướng
+thử và khoảng cách lớn giữa hướng được chọn và phần còn lại, thiên lệch chọn này nhỏ, và mức cải thiện trên test gần
+với trên validation. Cuối cùng, PINN-lai phụ thuộc vào GBDT: nếu chuyển sang bộ dữ liệu khác mà GBDT không tổng quát
+được, phần kết hợp có thể không còn lợi.
 
 \chapter{Kết luận và hướng phát triển}\label{ch:ketluan}
 
@@ -1329,6 +1734,12 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
       ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn thật; tốc độ $r$ ở dạng đạo hàm riêng chỉ
       phản ánh phần suy giảm gán cho biến thời gian, còn dạng Euler cho $r$ sát tốc độ thật (Mục~\ref{sec:physcheck}).
 \item Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức 0{,}026--0{,}312 trong khi MLP lệch tới 0{,}54--8{,}13; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở 12/12 cặp. So với GBDT, PINN-semi tốt hơn ở 6/12 cặp khi $k = 0$ và 8/12 cặp khi $k = 3$.
+\item Có. PINN-lai, nhóm ba PINN-semi kết hợp GBDT và bộ lọc quỹ đạo, có MAE thấp hơn PINN-semi ở
+      16/16 trường hợp (tỉ số 0{,}67--0{,}95) và thấp hơn GBDT ở 10/16 trường hợp, 8 có ý nghĩa thống kê;
+      GBDT chỉ còn tốt hơn có ý nghĩa ở 1 trường hợp.
+      Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell chỉ tương quan ở mức vừa; phần vật lý vẫn giúp khi ít
+      nhãn (so với cùng công thức dùng MLP, tỉ số 0{,}72 ở 10\,\% nhãn). Khoảng dự đoán phù hợp 90\,\% đạt độ phủ
+      86--93\,\% trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell.
 \end{enumerate}
 
 Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng
@@ -1340,11 +1751,12 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
 \section{Hướng phát triển}
 
 \begin{enumerate}
-\item Kết hợp ràng buộc vật lý với mô hình cây: dùng dự đoán của GBDT làm đầu vào hoặc làm giá trị khởi đầu cho
-      mạng nghiệm, hoặc dùng loss vật lý để tạo nhãn giả cho GBDT trên cell không nhãn.
+\item Đưa ràng buộc vật lý vào chính mô hình cây, ví dụ dùng loss đơn điệu và loss động học để tạo nhãn giả cho
+      GBDT trên cell không nhãn, thay vì chỉ lấy trung bình dự đoán như PINN-lai.
 \item Mở rộng sang dự báo SOH tương lai và tuổi thọ còn lại, với giao thức chia theo thời gian bên trong mỗi cell
       test.
-\item Ước lượng độ bất định (tổ hợp nhiều mô hình hoặc dự đoán phù hợp) để BMS biết khi nào tin được dự đoán.
+\item Khoảng dự đoán có độ phủ theo từng cell chứ không chỉ trung bình, ví dụ hiệu chỉnh theo nhóm cell hoặc
+      cập nhật khoảng khi có thêm một vài lần đo dung lượng của chính cell.
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item Tăng trọng số của phần dư động học và dùng dữ liệu nhiều mức nhiệt độ để ước lượng được $\lambda$ và $E_a$.
 \item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, để vừa giữ sai số thấp vừa có tốc độ suy giảm
@@ -1352,23 +1764,41 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
 \end{enumerate}
 
 \begin{thebibliography}{99}\small
+\bibitem{angelopoulos2023} A. N. Angelopoulos, S. Bates. Conformal prediction: a gentle introduction.
+  \emph{Foundations and Trends in Machine Learning}, 16(4):494--591, 2023.
 \bibitem{arlot2010} S. Arlot, A. Celisse. A survey of cross-validation procedures for model selection.
   \emph{Statistics Surveys}, 4:40--79, 2010.
 \bibitem{attia2022knee} P. M. Attia, A. Bills, F. Brosa Planella, et al. Review---“Knees” in lithium-ion battery
   aging trajectories. \emph{Journal of The Electrochemical Society}, 169:060517, 2022.
 \bibitem{aykol2021} M. Aykol, C. B. Gopal, A. Anapolsky, et al. Perspective---Combining physics and machine
   learning to predict battery lifetime. \emph{Journal of The Electrochemical Society}, 168:030525, 2021.
+\bibitem{barlow1972} R. E. Barlow, D. J. Bartholomew, J. M. Bremner, H. D. Brunk. \emph{Statistical Inference under
+  Order Restrictions}. Wiley, 1972.
 \bibitem{birkl2017} C. R. Birkl, M. R. Roberts, E. McTurk, P. G. Bruce, D. A. Howey. Degradation diagnostics for
   lithium ion cells. \emph{Journal of Power Sources}, 341:373--386, 2017.
 \bibitem{bouckaert2004} R. R. Bouckaert, E. Frank. Evaluating the replicability of significance tests for comparing
   learning algorithms. \emph{Advances in Knowledge Discovery and Data Mining (PAKDD)}, 3--12, 2004.
+\bibitem{braun2026} C. Braun, J. Raible, M. F. Huber. Physics-informed machine learning in prognostics and health
+  management: a systematic literature review. arXiv:2608.10047, 2026.
+\bibitem{breiman1996} L. Breiman. Bagging predictors. \emph{Machine Learning}, 24(2):123--140, 1996.
+\bibitem{broussely2001} M. Broussely, S. Herreyre, P. Biensan, et al. Aging mechanism in Li ion cells and calendar
+  life predictions. \emph{Journal of Power Sources}, 97--98:13--21, 2001.
+\bibitem{cleveland1979} W. S. Cleveland. Robust locally weighted regression and smoothing scatterplots.
+  \emph{Journal of the American Statistical Association}, 74(368):829--836, 1979.
 \bibitem{dietterich1998} T. G. Dietterich. Approximate statistical tests for comparing supervised classification
   learning algorithms. \emph{Neural Computation}, 10(7):1895--1923, 1998.
 \bibitem{doyle1993} M. Doyle, T. F. Fuller, J. Newman. Modeling of galvanostatic charge and discharge of the
   lithium/polymer/insertion cell. \emph{Journal of The Electrochemical Society}, 140(6):1526--1533, 1993.
 \bibitem{efron1993} B. Efron, R. J. Tibshirani. \emph{An Introduction to the Bootstrap}. Chapman \& Hall, 1993.
+\bibitem{fermin2020} P. Fermín-Cueto, E. McTurk, M. Allerhand, et al. Identification and machine learning
+  prediction of knee-point and knee-onset in capacity degradation curves of lithium-ion cells. \emph{Energy and AI},
+  1:100006, 2020.
 \bibitem{friedman2001} J. H. Friedman. Greedy function approximation: a gradient boosting machine.
   \emph{Annals of Statistics}, 29(5):1189--1232, 2001.
+\bibitem{grinsztajn2022} L. Grinsztajn, E. Oyallon, G. Varoquaux. Why do tree-based models still outperform deep
+  learning on typical tabular data? \emph{Advances in Neural Information Processing Systems}, 35, 2022.
+\bibitem{hinton2015} G. Hinton, O. Vinyals, J. Dean. Distilling the knowledge in a neural network.
+  arXiv:1503.02531, 2015.
 \bibitem{holm1979} S. Holm. A simple sequentially rejective multiple test procedure. \emph{Scandinavian Journal of
   Statistics}, 6(2):65--70, 1979.
 \bibitem{kapoor2023} S. Kapoor, A. Narayanan. Leakage and the reproducibility crisis in machine-learning-based
@@ -1377,12 +1807,27 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
   Physics-informed machine learning. \emph{Nature Reviews Physics}, 3:422--440, 2021.
 \bibitem{ke2017} G. Ke, Q. Meng, T. Finley, et al. LightGBM: a highly efficient gradient boosting decision tree.
   \emph{Advances in Neural Information Processing Systems}, 30, 2017.
+\bibitem{krishnapriyan2021} A. S. Krishnapriyan, A. Gholami, S. Zhe, R. M. Kirby, M. W. Mahoney. Characterizing
+  possible failure modes in physics-informed neural networks. \emph{Advances in Neural Information Processing
+  Systems}, 34, 2021.
+\bibitem{lakshminarayanan2017} B. Lakshminarayanan, A. Pritzel, C. Blundell. Simple and scalable predictive
+  uncertainty estimation using deep ensembles. \emph{Advances in Neural Information Processing Systems}, 30, 2017.
+\bibitem{lee2013} D.-H. Lee. Pseudo-label: the simple and efficient semi-supervised learning method for deep neural
+  networks. \emph{ICML Workshop on Challenges in Representation Learning}, 2013.
+\bibitem{lei2018} J. Lei, M. G'Sell, A. Rinaldo, R. J. Tibshirani, L. Wasserman. Distribution-free predictive
+  inference for regression. \emph{Journal of the American Statistical Association}, 113(523):1094--1111, 2018.
 \bibitem{loshchilov2019} I. Loshchilov, F. Hutter. Decoupled weight decay regularization. \emph{International
   Conference on Learning Representations}, 2019.
+\bibitem{lu2023} J. Lu, R. Xiong, J. Tian, C. Wang, F. Sun. Deep learning to estimate lithium-ion battery state of
+  health without additional degradation experiments. \emph{Nature Communications}, 14:2760, 2023.
 \bibitem{ma2022} G. Ma, S. Xu, B. Jiang, et al. Real-time personalized health status prediction of lithium-ion
   batteries using deep transfer learning. \emph{Energy \& Environmental Science}, 15:4083--4094, 2022.
 \bibitem{nadeau2003} C. Nadeau, Y. Bengio. Inference for the generalization error. \emph{Machine Learning},
   52:239--281, 2003.
+\bibitem{navidi2024} S. Navidi, A. Thelen, T. Li, C. Hu. Physics-informed machine learning for battery degradation
+  diagnostics: a comparison of state-of-the-art methods. arXiv:2404.04429, 2024.
+\bibitem{pinson2013} M. B. Pinson, M. Z. Bazant. Theory of SEI formation in rechargeable batteries: capacity fade,
+  accelerated aging and lifetime prediction. \emph{Journal of The Electrochemical Society}, 160(2):A243--A250, 2013.
 \bibitem{plett2015} G. L. Plett. \emph{Battery Management Systems, Volume I: Battery Modeling}. Artech House, 2015.
 \bibitem{raissi2019} M. Raissi, P. Perdikaris, G. E. Karniadakis. Physics-informed neural networks: a deep learning
   framework for solving forward and inverse problems involving nonlinear partial differential equations.
@@ -1393,19 +1838,35 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
   battery state of health. \emph{Journal of Power Sources}, 357:209--219, 2017.
 \bibitem{roman2021} D. Roman, S. Saxena, V. Robu, M. Pecht, D. Flynn. Machine learning pipeline for battery
   state-of-health estimation. \emph{Nature Machine Intelligence}, 3:447--456, 2021.
+\bibitem{schmalstieg2014} J. Schmalstieg, S. Käbitz, M. Ecker, D. U. Sauer. A holistic aging model for
+  Li(NiMnCo)O$_2$ based 18650 lithium-ion batteries. \emph{Journal of Power Sources}, 257:325--334, 2014.
 \bibitem{severson2019} K. A. Severson, P. M. Attia, N. Jin, et al. Data-driven prediction of battery cycle life before
   capacity degradation. \emph{Nature Energy}, 4:383--391, 2019.
+\bibitem{sulzer2021} V. Sulzer, P. Mohtat, A. Aitio, et al. The challenge and opportunity of battery lifetime
+  prediction from field data. \emph{Joule}, 5(8):1934--1955, 2021.
+\bibitem{tarvainen2017} A. Tarvainen, H. Valpola. Mean teachers are better role models: weight-averaged consistency
+  targets improve semi-supervised deep learning results. \emph{Advances in Neural Information Processing Systems},
+  30, 2017.
+\bibitem{thelen2024} A. Thelen, X. Huan, N. Paulson, S. Onori, Z. Hu, C. Hu. Probabilistic machine learning for
+  battery health diagnostics and prognostics---review and perspectives. \emph{npj Materials Sustainability}, 2:14,
+  2024.
 \bibitem{varma2006} S. Varma, R. Simon. Bias in error estimation when using cross-validation for model selection.
   \emph{BMC Bioinformatics}, 7:91, 2006.
+\bibitem{vovk2005} V. Vovk, A. Gammerman, G. Shafer. \emph{Algorithmic Learning in a Random World}. Springer, 2005.
 \bibitem{waldmann2014} T. Waldmann, M. Wilka, M. Kasper, M. Fleischhammer, M. Wohlfahrt-Mehrens. Temperature
   dependent ageing mechanisms in lithium-ion batteries -- a post-mortem study. \emph{Journal of Power Sources},
   262:129--135, 2014.
+\bibitem{wang2011lfp} J. Wang, P. Liu, J. Hicks-Garner, et al. Cycle-life model for graphite-LiFePO$_4$ cells.
+  \emph{Journal of Power Sources}, 196(8):3942--3948, 2011.
+\bibitem{wang2021grad} S. Wang, Y. Teng, P. Perdikaris. Understanding and mitigating gradient flow pathologies in
+  physics-informed neural networks. \emph{SIAM Journal on Scientific Computing}, 43(5):A3055--A3081, 2021.
 \bibitem{wang2024} F. Wang, Z. Zhai, Z. Zhao, Y. Di, X. Chen. Physics-informed neural network for lithium-ion
   battery degradation stable modeling and prognosis. \emph{Nature Communications}, 15:4332, 2024.
 \bibitem{wen2023} P. Wen, Z.-S. Ye, Y. Li, S. Chen, P. Xie, S. Zhao. Physics-informed neural networks for
   prognostics and health management of lithium-ion batteries. arXiv:2301.00776, 2023.
 \bibitem{wilcoxon1945} F. Wilcoxon. Individual comparisons by ranking methods. \emph{Biometrics Bulletin},
   1(6):80--83, 1945.
+\bibitem{wolpert1992} D. H. Wolpert. Stacked generalization. \emph{Neural Networks}, 5(2):241--259, 1992.
 \bibitem{zhang2018lstm} Y. Zhang, R. Xiong, H. He, M. G. Pecht. Long short-term memory recurrent neural network for
   remaining useful life prediction of lithium-ion batteries. \emph{IEEE Transactions on Vehicular Technology},
   67(7):5695--5705, 2018.
