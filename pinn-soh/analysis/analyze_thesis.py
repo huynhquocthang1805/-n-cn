@@ -517,17 +517,25 @@ def figures(df, cur, cmp_, conv, lk, mats, tr, rs=None):
         sets = [('chuan', 'chia theo cell (chuẩn)', '#1baf7a'), ('normtest', 'chuẩn hoá gồm cả test', '#9aa5ad'),
                 ('life3s', 'lọc dùng cả vòng đời', '#eda100'), ('minmax', 'min–max theo cell', '#e87ba4'),
                 ('row', 'chia theo chu kỳ', '#eb6834'), ('noi_suy_hang', 'chia theo chu kỳ, chép nhãn', '#7b5cd6')]
-        fig, ax = plt.subplots(figsize=(7.2, 2.4))
-        w = 0.13
-        for i, (key, lab, col) in enumerate(sets):
-            if key not in lk.columns:
-                continue
-            v = [1e3 * lk.set_index('bo').loc[ds, key] for ds in DATASETS]
-            ax.bar(np.arange(4) + (i - 2.5) * w, v, width=w * 0.9, color=col, label=lab)
-        ax.set_xticks(range(4)); ax.set_xticklabels(DATASETS); ax.set_ylabel('MAE theo cell (×10$^{-3}$)')
-        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
-        ax.legend(ncol=3, loc='lower center', bbox_to_anchor=(0.5, -0.45), fontsize=6.5, handlelength=1.0)
-        fig.tight_layout()
+        sets = [x for x in sets if x[0] in lk.columns]
+        fig, axes = plt.subplots(1, 4, figsize=(7.2, 2.3), sharey=True)
+        L = lk.set_index('bo')
+        for ax, ds in zip(axes, DATASETS):
+            ref = 1e3 * L.loc[ds, 'chuan']
+            ax.axvline(ref, color='#1b2330', lw=0.8, ls=(0, (2.5, 1.5)), zorder=1)
+            for i, (key, lab, col) in enumerate(sets):
+                v = 1e3 * L.loc[ds, key]
+                ax.plot([ref, v], [i, i], color=col, lw=1.0, alpha=0.55, zorder=2)
+                ax.plot(v, i, 'o', ms=4.6, color=col, mec='white', mew=0.6, zorder=3)
+            ax.set_xlim(0, 1.12 * max(1e3 * L.loc[ds, k] for k, _, _ in sets))
+            ax.locator_params(axis='x', nbins=4)
+            ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5)
+            ax.set_yticks(range(len(sets))); ax.set_yticklabels([lab for _, lab, _ in sets])
+            ax.tick_params(axis='y', length=0)
+            panel_title(ax, ds, CHEM[ds], pad=4)
+        axes[0].invert_yaxis()
+        fig.tight_layout(rect=[0, 0.08, 1, 1], w_pad=0.6)
+        fig.text(0.5, 0.015, 'MAE theo cell (×10$^{-3}$)', ha='center', va='bottom', fontsize=8.5)
         save(fig, f'{OUT}/fig_thesis_leakage')
 
     # 6.8 ma trận chuyển miền

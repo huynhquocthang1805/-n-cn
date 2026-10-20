@@ -66,6 +66,9 @@ def main():
             P['HYB'] = 0.5 * P['P_m0'] + 0.5 * P['GBDT']
             if 'ENS3' in P:
                 P['ENS3+GBDT'] = 0.5 * P['ENS3'] + 0.5 * P['GBDT']
+                P['ENS3+GBDT_w0.6'] = 0.4 * P['ENS3'] + 0.6 * P['GBDT']
+            if 'KD03' in P:
+                P['KD03+GBDT'] = 0.5 * P['KD03'] + 0.5 * P['GBDT']
         if 'GBDTrel' in P and 'REL' in P:
             P['REL+GBDTrel'] = 0.5 * P['REL'] + 0.5 * P['GBDTrel']
         for src in [a for a in ['P_m0', 'ENS3', 'GBDT', 'HYB', 'ENS3+GBDT', 'KD1', 'REL', 'REL+GBDTrel'] if a in P]:

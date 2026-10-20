@@ -33,6 +33,29 @@ def load():
     return pd.concat(rows, ignore_index=True)
 
 
+def pick_cell(r0, ds):
+    """Cell có MAE của MLP 30 % ở trung vị của bộ (lần lặp 0), bỏ qua cell có nhãn nhảy quá 0,02 giữa hai chu kỳ
+    liền nhau (lỗi đo đơn lẻ làm hình khó đọc). Không chọn theo sai số của PINN."""
+    g = r0[(r0.dataset == ds) & (r0.arm == 'A')]
+    clean = [c for c, h in g.groupby('cell') if np.abs(np.diff(h.sort_values('cycle').y.values)).max() <= 0.02]
+    g = g[g.cell.isin(clean)]
+    err = g.groupby('cell').apply(lambda h: np.abs(h.p - h.y).mean(), include_groups=False).sort_values()
+    return err.index[(len(err) - 1) // 2]
+
+
+def load_levels():
+    """Dự đoán test lần lặp 0 của MLP và PINN-semi ở 10, 30, 70 % nhãn (cho hình quỹ đạo)."""
+    pref = {('mlp', 0.1): 'L', ('pinn_semi', 0.1): 'L', ('mlp', 0.3): 'A', ('pinn_semi', 0.3): 'C',
+            ('mlp', 0.7): 'F', ('pinn_semi', 0.7): 'G'}
+    rows = []
+    for (model, frac), arm in pref.items():
+        for f in sorted(glob.glob(f'{RUNS}/{arm}_*_{model}_f{frac}_*cv0-*.json')):
+            r = json.load(open(f)); c = r['config']; tp = r['test_predictions']; ids = tp['cell_ids']
+            rows.append(pd.DataFrame(dict(model=model, frac=frac, dataset=c['dataset'], cell=[ids[k] for k in tp['cell']],
+                                          cycle=tp['cycle'], y=tp['y'], p=tp['p'])))
+    return pd.concat(rows, ignore_index=True)
+
+
 def metrics(y, p):
     e = p - y
     ss_res = (e ** 2).sum(); ss_tot = ((y - y.mean()) ** 2).sum()
@@ -96,30 +119,33 @@ def figures(df):
     fig.tight_layout()
     save(fig, f'{OUT}/fig_pred_parity')
 
-    # 2. quỹ đạo SOH: 3 cell mỗi bộ (phân vị 25/50/75 theo sai số MLP — không chọn theo PINN)
-    fig, axes = plt.subplots(4, 3, figsize=(7.2, 7.4))
+    # 2. quỹ đạo SOH của cùng một cell test ở 10, 30 và 70 % nhãn. Cell được chọn theo sai số của MLP ở 30 %
+    #    (trung vị trong bộ, lần lặp 0) — không chọn theo PINN.
+    lv = load_levels()
+    fig, axes = plt.subplots(4, 3, figsize=(7.2, 7.6), sharey='row')
     for i, ds in enumerate(DATASETS):
-        g = r0[(r0.dataset == ds)]
-        err = g[g.arm == 'A'].groupby('cell').apply(lambda h: np.abs(h.p - h.y).mean(), include_groups=False).sort_values()
-        picks = [err.index[int(q * (len(err) - 1))] for q in (0.25, 0.5, 0.75)]
-        for j, cid in enumerate(picks):
+        cid = pick_cell(r0, ds)
+        for j, frac in enumerate((0.1, 0.3, 0.7)):
             ax = axes[i, j]
-            t = g[(g.cell == cid) & (g.arm == 'A')]
-            ax.plot(t.cycle, t.y, color=MODEL_COLOR['truth'], lw=1.6, zorder=2)
-            for arm in ['A', 'C']:
-                h = g[(g.cell == cid) & (g.arm == arm)]
-                ax.plot(h.cycle, h.p, color=COL[arm], lw=0.9, zorder=3)
-            panel_title(ax, ds if j == 0 else '', cid.split('/')[-1], pad=3)
+            h = lv[(lv.dataset == ds) & (lv.frac == frac) & (lv.cell == cid)]
+            t = h[h.model == 'mlp'].sort_values('cycle')
+            ax.plot(t.cycle, t.y, color=MODEL_COLOR['truth'], lw=1.7, zorder=2)
+            for m in ('mlp', 'pinn_semi'):
+                q = h[h.model == m].sort_values('cycle')
+                ax.plot(q.cycle, q.p, color=MODEL_COLOR[m], lw=0.85, alpha=0.75 if m == 'mlp' else 0.95, zorder=3)
+            panel_title(ax, ds, f'{int(round(100 * frac))} % nhãn', pad=3)
+            lo, hi = t.y.min(), t.y.max(); pad = max(0.03, 0.25 * (hi - lo))
+            ax.set_ylim(lo - pad, hi + pad)
             ax.locator_params(axis='x', nbins=3); ax.locator_params(axis='y', nbins=4)
             ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5); ax.tick_params(labelsize=6.5)
             if j == 0:
                 ax.set_ylabel('SOH')
-    fig.supxlabel('chu kỳ', fontsize=8.5, y=0.035)
     fig.legend(handles=[plt.Line2D([], [], color=MODEL_COLOR['truth'], lw=1.6, label='thực đo'),
-                        plt.Line2D([], [], color=COL['A'], lw=1.4, label='MLP 30 %'),
-                        plt.Line2D([], [], color=COL['C'], lw=1.4, label='PINN-semi 30 %')],
+                        plt.Line2D([], [], color=MODEL_COLOR['mlp'], lw=1.4, label='MLP'),
+                        plt.Line2D([], [], color=MODEL_COLOR['pinn_semi'], lw=1.4, label='PINN-semi')],
                loc='lower center', ncol=3, bbox_to_anchor=(0.5, -0.005))
-    fig.tight_layout(rect=[0, 0.035, 1, 1])
+    fig.tight_layout(rect=[0, 0.045, 1, 1])
+    fig.text(0.5, 0.035, 'chu kỳ', ha='center', fontsize=8.5)
     save(fig, f'{OUT}/fig_pred_traj')
 
     # 3. phân bố sai số (dự đoán − thực đo)

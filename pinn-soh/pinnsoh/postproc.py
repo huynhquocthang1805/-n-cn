@@ -15,6 +15,25 @@ import numpy as np
 
 
 def causal_trend(p: np.ndarray, t: np.ndarray, w: int) -> np.ndarray:
+    """Dạng vector hoá bằng tổng tích luỹ (O(n)); cùng kết quả với vòng lặp tới sai số làm tròn (< 1e-9 SOH)."""
+    p = np.asarray(p, dtype=np.float64); t = np.asarray(t, dtype=np.float64)
+    n = len(p)
+    if n == 0:
+        return p.copy()
+    t = t - t[0]                                    # giảm mất chính xác khi trừ hai tổng lớn
+    i = np.arange(n); a = np.maximum(0, i - w + 1); cnt = (i - a + 1).astype(np.float64)
+    seg = lambda x: (lambda S: S[i + 1] - S[a])(np.concatenate([[0.0], np.cumsum(x)]))
+    st, sy, stt, sty = seg(t), seg(p), seg(t * t), seg(t * p)
+    tm, ym = st / cnt, sy / cnt
+    sxx = stt - cnt * tm * tm
+    sxy = sty - cnt * tm * ym
+    ok = (sxx > 1e-12) & (cnt >= 3)
+    slope = np.where(ok, sxy / np.where(ok, sxx, 1.0), 0.0)
+    return ym + np.minimum(slope, 0.0) * (t - tm)
+
+
+def _causal_trend_loop(p, t, w):
+    """Bản vòng lặp, giữ để kiểm tra bản vector hoá."""
     p = np.asarray(p, dtype=np.float64); t = np.asarray(t, dtype=np.float64)
     out = np.empty_like(p)
     for n in range(len(p)):

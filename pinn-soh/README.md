@@ -6,9 +6,11 @@ Huỳnh Quốc Thắng, Khoa KH&KT Máy tính, Trường ĐH Bách khoa — ĐHQ
 Bài toán: ước lượng SOH (dung lượng hiện tại / dung lượng danh định) của từng cell lithium-ion, tại từng
 chu kỳ, từ 16 đặc trưng của đoạn sạc CC–CV. Mô hình là một mạng nơ-ron có thông tin vật lý (PINN): mạng
 nghiệm dự đoán SOH, gắn với động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn
-nên áp được lên cả cell chưa đo dung lượng. Báo cáo: `do-an/bao-cao-do-an.pdf`.
+nên áp được lên cả cell chưa đo dung lượng. Mô hình cải tiến PINN-lai (E20) lấy trung bình ba mạng PINN với
+GBDT rồi qua một bộ lọc quỹ đạo nhân quả không cho SOH tăng, kèm khoảng dự đoán 90 %.
+Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
-Kết quả của báo cáo dựa trên **3 420 lượt huấn luyện** (E13–E19) trên **387 cell** của bốn bộ dữ liệu công
+Kết quả của báo cáo dựa trên **5 100 lượt huấn luyện** (E13–E20) trên **387 cell** của bốn bộ dữ liệu công
 khai XJTU, TJU, MIT, HUST.
 
 ---
@@ -36,7 +38,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -70,7 +72,12 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E17 | PINN-sup ở 10, 50 %; PINN hộp đen ở 4 mức nhãn | 600 | 6,5 | 1,6 | 0,8 |
 | E18 | Chuyển miền 12 cặp, MLP và PINN-semi, k ∈ {0, 3} | 240 | 1,0 | 0,3 | 0,1 |
 | E19 | GBDT trên 12 cặp chuyển miền | 120 | 2,3 | 0,6 | 0,3 |
-| **Tổng** | | **3 420** | **≈ 20** | **≈ 5** | **≈ 2,5** |
+| E20dev | 9 hướng cải tiến, chọn trên validation (lần lặp 0, nhãn 10 và 50 %) | 400 | 2,2 | 0,6 | 0,3 |
+| E20 | PINN-lai: 3 PINN-semi, 2 MLP thêm, GBDT lưu dự đoán validation (3 lần lặp) | 1 280 | 7,2 | 1,8 | 0,9 |
+| **Tổng** | | **5 100** | **≈ 29** | **≈ 7,3** | **≈ 3,7** |
+
+E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
+`runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
 
 `--quick` cần khoảng 1/5 thời gian trên. Phân tích (`analyze`) mất ~5 phút lần đầu cộng ~40 phút CPU để
 `analyze_physics.py` huấn luyện lại 120 lượt (đo đạo hàm và tốc độ suy giảm cần chính mô hình, mà trọng số không
@@ -97,7 +104,8 @@ pinn-soh/
 │   ├── baselines.py        Ridge, GBDT, GPR (E16, E19)
 │   ├── leakage.py          các cách chia/chuẩn hoá sai cho kiểm toán rò rỉ (E15)
 │   ├── metrics.py          MAE theo cell, R², EOL, vi phạm đơn điệu, ...
-│   ├── experiments.py      định nghĩa E13–E19 thành danh sách lượt chạy
+│   ├── experiments.py      định nghĩa E13–E20 thành danh sách lượt chạy
+│   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
@@ -107,6 +115,9 @@ pinn-soh/
 │   ├── analyze_thesis.py   chọn số chia, mô phỏng, so sánh theo lượng nhãn, rò rỉ, chuyển miền
 │   ├── analyze_metrics.py  RMSE, R² cho mọi mô hình; tỉ lệ dự đoán tăng ngược (tính đơn điệu)
 │   ├── analyze_physics.py  phần vật lý tác động ở đâu: ∂F/∂t, phần dư ODE, tốc độ suy giảm học được
+│   ├── error_decomp.py     phân rã sai số theo cell: lệch mức, trôi chậm, dao động nhanh
+│   ├── dev_e20.py          E20dev: so 9 hướng cải tiến trên validation
+│   ├── analyze_e20.py      E20: PINN-lai trên test, phân rã lợi ích, khoảng dự đoán phù hợp
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo

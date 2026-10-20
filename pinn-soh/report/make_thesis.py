@@ -56,7 +56,8 @@ def load():
               'thesis_equivalence', 'thesis_leakage', 'thesis_transfer', 'E13_tests', 'E13_secondary',
               'pred_metrics', 'verify_pipeline', 'E13_physics_params', 'thesis_rowbound', 'thesis_leakage_raw', 'thesis_rowsim',
               'metrics_summary', 'metrics_tests', 'metrics_transfer', 'physics_summary', 'physics_rate_soh',
-              'physics_cells', 'physics_check']:
+              'physics_cells', 'physics_check', 'e20_summary', 'e20_tests', 'e20_conformal', 'e20_dev',
+              'e20_error_decomp', 'e20_check', 'e20_biascorr']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -80,7 +81,8 @@ def run_counts():
     import glob
     c = dict(E13=len(glob.glob('runs/E13/*.json')), E16=len(glob.glob('runs/E16/*.json')),
              E17=len(glob.glob('runs/E17/*.json')), E15=len(glob.glob('runs/E15/*.json')),
-             E14=len(glob.glob('runs/E14/samenorm_*.json')))
+             E14=len(glob.glob('runs/E14/samenorm_*.json')),
+             E20=len({os.path.basename(p) for p in glob.glob('runs/E20/*.json') + glob.glob('runs/E20dev/*.json')}))
     c['tong'] = sum(c.values())
     return c
 
@@ -122,6 +124,7 @@ PREAMBLE = r"""\documentclass[12pt,a4paper,oneside]{report}
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\E}{\mathbb{E}}
 \setlist{itemsep=2pt,topsep=4pt}
+\emergencystretch=1.5em
 \begin{document}
 """
 
@@ -213,6 +216,8 @@ của chu kỳ hiện tại, nên có thể chạy trực tuyến trong BMS.
       phương trình động học hay chỉ từ ràng buộc đơn điệu?
 \item Mô hình có chuyển được từ bộ dữ liệu này sang bộ khác mà không cần (hoặc chỉ cần rất ít) nhãn của bộ
       đích không?
+\item Có thể giảm sai số thêm mà không dùng thêm nhãn nào không, và mô hình có cho biết dự đoán của nó đáng tin
+      tới đâu không?
 \end{enumerate}
 
 Mọi câu hỏi trên chỉ có ý nghĩa nếu giao thức đánh giá không rò rỉ thông tin. Vì vậy một phần lớn của đồ án
@@ -231,6 +236,9 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
       (<<NCELL>> cell), tổng cộng <<NRUN>> lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Thí nghiệm chuyển miền đầy đủ giữa bốn bộ dữ liệu với quy trình chuẩn hoá không dùng dữ liệu test.
+\item Mô hình cải tiến PINN-lai: nhóm ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả mang giả
+      định SOH không tăng vào bước suy luận, được chọn chỉ trên tập validation theo đề cương ấn định trước, kèm
+      khoảng dự đoán phù hợp 90\,\%.
 \end{enumerate}
 
 \section{Bố cục}
@@ -239,7 +247,8 @@ Chương~\ref{ch:lythuyet} trình bày cơ sở lý thuyết và các công trì
 bốn bộ dữ liệu và cách tiền xử lý. Chương~\ref{ch:phuongphap} trình bày mô hình, các hàm mất mát và các mô
 hình đối chứng. Chương~\ref{ch:thietke} là thiết kế thí nghiệm: cách chọn số chia, cách chống rò rỉ khi đánh
 giá trong cùng bộ và khi chuyển miền, cùng các phương pháp thống kê. Chương~\ref{ch:ketqua} trình bày và
-thảo luận kết quả. Chương~\ref{ch:ketluan} kết luận và nêu hướng phát triển.
+thảo luận kết quả. Chương~\ref{ch:caitien} phân tích sai số còn lại, thử sáu hướng cải tiến và đánh giá mô hình
+PINN-lai cùng khoảng dự đoán. Chương~\ref{ch:ketluan} kết luận và nêu hướng phát triển.
 """, K=5, R=5, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']))
 
 
@@ -435,6 +444,11 @@ def ch3(d, ctx):
                 'tab:datastats', size=r'\footnotesize')
     return T(r"""
 \chapter{Dữ liệu}\label{ch:dulieu}
+
+Bốn bộ dữ liệu được chọn vì chúng phủ ba hệ hoá học khác nhau, nhiều chế độ sạc--xả và nhiệt độ, và vì chúng đã
+được dùng trong công trình gốc của PINN4SOH, nên kết quả của đồ án so được với tài liệu. Chương này mô tả nguồn
+gốc, đặc trưng đầu vào và cách làm sạch dữ liệu; mọi bước làm sạch chỉ dùng quá khứ của chính cell để không đưa
+thông tin tương lai vào mô hình.
 
 \section{Nguồn dữ liệu}
 
@@ -737,6 +751,8 @@ def ch5(d, ctx):
               ['Mở rộng biến thể vật lý', 'PINN-sup ở 10, 50\\,\\%; PINN hộp đen ở 4 mức', num(rc['E17'])],
               ['Kiểm toán rò rỉ', '4 cách chia/chuẩn hoá sai, MLP 70\\,\\% nhãn, 2 lần lặp', num(rc['E15'])],
               ['Chuyển miền', '12 cặp nguồn--đích, $k \\in \\{0, 3\\}$, 5 seed; MLP, GBDT, PINN-semi', num(rc['E14'])],
+              ['Cải tiến mô hình (Chương~\\ref{ch:caitien})', '9 hướng trên validation; PINN-lai, 3 lần lặp, 4 mức nhãn',
+               num(rc['E20'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -1968,6 +1984,12 @@ def ch6_text(d, ctx):
     return T(r"""
 \chapter{Kết quả và thảo luận}\label{ch:ketqua}
 
+Trước khi so mô hình, cần biết những con số sắp đọc có đáng tin không. Vì vậy chương này mở đầu bằng kiểm toán
+rò rỉ: cùng một mô hình được đánh giá dưới các cách chia đúng và sai để thấy cách chia sai làm sai số trông tốt hơn
+thực tế bao nhiêu. Sau đó các mục đi lần lượt theo câu hỏi nghiên cứu: PINN so với MLP ở 30\,\% nhãn, rồi khi
+lượng nhãn thay đổi, so với các mô hình học có nhãn khác, lợi ích đến từ phần nào của hàm mất mát, chuyển miền
+giữa các bộ dữ liệu, và cuối cùng là kiểm tra trực tiếp xem phần vật lý tác động lên mô hình đã huấn luyện ra sao.
+
 \section{Kiểm toán rò rỉ}\label{sec:leakres}
 
 <<TL>>
@@ -2044,6 +2066,11 @@ dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý c�
 PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuối đời.
 
 <<FIGPAR>>
+Hình~\ref{fig:traj} đặt cạnh nhau dự đoán cho cùng một cell khi lượng nhãn tăng từ 10 lên 30 và 70\,\%. Khi ít nhãn,
+cả hai mô hình bám được hình dạng của quỹ đạo nhưng lệch mức, rõ nhất ở TJU và HUST; thêm nhãn chủ yếu làm giảm phần
+lệch mức này chứ không làm thay đổi hình dạng. Ở 10\,\% nhãn, dự đoán của MLP dao động mạnh hơn và có những đoạn đi
+lên, còn PINN-semi giữ được xu hướng giảm; khoảng cách giữa hai mô hình thu hẹp dần khi nhãn tăng.
+
 <<FIGTRAJ>>
 <<FIGERR>>
 <<METRICS>>
@@ -2067,19 +2094,22 @@ PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuố
 dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%), khi có nhiều cell chưa đo dung lượng, và nhất là khi
 phải chạy trên một bộ dữ liệu mới chưa có nhãn: ở đó MLP thất bại hoàn toàn còn PINN-semi vẫn cho sai số dùng
 được. So với GBDT thì khác: trong cùng một bộ dữ liệu, GBDT có sai số thấp hơn ở phần lớn các trường hợp; khi
-chuyển miền, hai mô hình thắng thua tuỳ cặp<<TRGBD>>. Nếu chỉ cần sai số thấp nhất trên cùng một bộ dữ liệu,
-GBDT là lựa chọn đơn giản và mạnh hơn.
+chuyển miền, hai mô hình thắng thua tuỳ cặp<<TRGBD>>. Trong số các mô hình đơn lẻ, nếu chỉ cần
+sai số thấp nhất trên cùng một bộ dữ liệu thì GBDT là lựa chọn đơn giản và mạnh hơn; Chương~\ref{ch:caitien} cho thấy
+ghép GBDT với nhóm PINN còn tốt hơn cả hai.
 
 \paragraph{Khi nào lợi ích nhỏ?} <<WEAKTXT>>
 
 \paragraph{Hạn chế.} (i) Mô hình ước lượng SOH tại chu kỳ hiện tại, chưa dự báo SOH tương lai hay tuổi thọ còn
 lại. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
-(iii) GBDT là đối thủ mạnh và chưa được kết hợp với ràng buộc vật lý. (iv) Cell validation cần nhãn ngoài ngân
+(iii) GBDT là đối thủ mạnh; Chương~\ref{ch:caitien} kết hợp nó với PINN ở mức dự đoán, nhưng ràng buộc vật lý
+chưa được đưa vào chính mô hình cây. (iv) Cell validation cần nhãn ngoài ngân
 sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ chưa
 ước lượng được từ dữ liệu hiện có. (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
 mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}).
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
-                                           'và chuẩn hoá khác nhau.', 'fig:leak'),
+                                           'và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai '
+                                           'số càng bị đánh giá thấp giả tạo.', 'fig:leak'),
              RMIN=f(1 / max(row_r.values()), 1), RMAX=f(1 / min(row_r.values()), 1), MMTXT=mm_txt, SMALL=small_txt,
              SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30LO=f(r30[lo30], 2), DSLO=lo30, R30HI=f(r30[hi30], 2),
              DSHI=hi30, NBTXT=nb_txt,
@@ -2104,8 +2134,10 @@ mạng gán cho biến thời gian, không phải tốc độ suy giảm thật 
              TP=t['P'], R2TXT=r2_txt,
              FIGPAR=fig('fig_pred_parity', 'SOH dự đoán so với thực đo trên tập test (30\\,\\% nhãn). Hàng trên: MLP; '
                         'hàng dưới: PINN-semi.', 'fig:parity'),
-             FIGTRAJ=fig('fig_pred_traj', 'Quỹ đạo SOH trên ba cell test mỗi bộ (cell có sai số MLP ở phân vị 25, 50 và '
-                         '75\\,\\%).', 'fig:traj', width=r'0.92\textwidth'),
+             FIGTRAJ=fig('fig_pred_traj', 'Quỹ đạo SOH của cùng một cell test mỗi bộ khi có 10, 30 và 70\\,\\% số cell '
+                         'mang nhãn (lần lặp 0). Cell được chọn là cell có sai số MLP ở trung vị của bộ tại 30\\,\\% nhãn, '
+                         'bỏ qua các cell có nhãn nhảy bất thường giữa hai chu kỳ; trục dọc theo dải SOH thực đo nên vài '
+                         'chu kỳ đầu của XJTU vượt khỏi khung.', 'fig:traj', width=r'0.92\textwidth'),
              FIGERR=fig('fig_pred_error_soh', 'MAE theo từng khoảng SOH thực đo (30\\,\\% nhãn).', 'fig:errsoh'),
              TT=t['T'], FIGTR=fig('fig_thesis_transfer', 'MAE theo cell trên tập test của bộ đích (thang log); hàng: số cell '
                                   'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
@@ -2116,7 +2148,400 @@ mạng gán cho biến thời gian, không phải tốc độ suy giảm thật 
 
 
 # ═════════════════════════════════════════════════════════════ CHƯƠNG 7
-def ch7(d, ctx):
+DEV_ARMS = [   # (tên trong e20_dev.csv, mô tả)
+    ('ENS3+GBDT|trend10', '3 PINN-semi + GBDT, lọc quỹ đạo ($w = 10$)'),
+    ('ENS3+GBDT', '3 PINN-semi + GBDT'),
+    ('HYB', '1 PINN-semi + GBDT'),
+    ('GBDT', 'GBDT'),
+    ('KD03', 'chưng cất từ GBDT, $\\lambda_\\text{KD} = 0{,}3$'),
+    ('ENS3|trend10', '3 PINN-semi, lọc quỹ đạo'),
+    ('ENS3', '3 PINN-semi'),
+    ('KD1', 'chưng cất từ GBDT, $\\lambda_\\text{KD} = 1$'),
+    ('P_m0|trend10', '1 PINN-semi, lọc quỹ đạo'),
+    ('P_m0|iso', '1 PINN-semi, hồi quy đơn điệu'),
+    ('M2', 'đơn điệu mạnh hơn, $\\beta = 2$'),
+    ('EU', 'thêm phần dư Euler, $\\alpha_E = 2$'),
+    ('REL', 'thêm đặc trưng tương đối'),
+]
+E20_LBL = {'mlp': 'MLP', 'gbdt': 'GBDT', 'pinn': 'PINN-semi', 'pinn_lai': 'PINN-lai'}
+
+
+def e20_facts(d):
+    """Mọi con số của Chương 7, tính từ results/e20_*.csv."""
+    s, ts, cf = d['e20_summary'], d['e20_tests'], d['e20_conformal']
+    E = {}
+    v = lambda m, fr, ds, col='MAE_cell': float(s[(s.model == m) & (s.frac == fr) & (s.dataset == ds)][col].iloc[0])
+    E['v'] = v
+    t = lambda o, fr, ds: ts[(ts.doi_chung == o) & (ts.frac == fr) & (ts.bo == ds)].iloc[0]
+    E['t'] = t
+    for o in ['pinn', 'gbdt', 'mlp', 'mlp_lai', 'pinn3', 'lai_tho', 'gbdt_loc']:
+        sub = ts[ts.doi_chung == o]
+        E[f'{o}_better'] = int((sub.ti_so < 1).sum())
+        E[f'{o}_sig'] = int(((sub.ti_so < 1) & (sub.p_holm < 0.05)).sum())
+        E[f'{o}_worse_sig'] = int(((sub.ti_so > 1) & (sub.p_holm < 0.05)).sum())
+        E[f'{o}_n'] = len(sub)
+        E[f'{o}_r'] = {fr: [float(t(o, fr, ds).ti_so) for ds in DS] for fr in FRS}
+        E[f'{o}_gm'] = {fr: _gm(E[f'{o}_r'][fr]) for fr in FRS}
+        E[f'{o}_worse_list'] = [(r.bo, r.frac) for r in sub.itertuples() if r.ti_so > 1 and r.p_holm < 0.05]
+    # dev: tỉ số validation so với PINN-semi đơn lẻ
+    dv = d['e20_dev'].groupby(['arm', 'dataset', 'frac']).val_MAE_cell.mean().unstack(['dataset', 'frac'])
+    base = dv.loc['P_m0']
+    arms = [a for a, _ in DEV_ARMS] + ['KD03+GBDT', 'ENS3+GBDT_w0.6']
+    E['dev'] = {a: {fr: _gm([dv.loc[a, (ds, fr)] / base[(ds, fr)] for ds in DS]) for fr in (0.1, 0.5)}
+                | {'all': _gm([dv.loc[a, c] / base[c] for c in dv.columns])} for a in arms if a in dv.index}
+    rel = (dv.loc['REL'] / base)
+    E['rel_worst'] = (f'{rel.idxmax()[0]} ở {pc(rel.idxmax()[1])} nhãn', float(rel.max()))
+    # test, cùng hai mức nhãn để so với dev
+    E['test_dev'] = _gm([E['pinn_r'][fr][j] for fr in (0.1, 0.5) for j in range(4)])
+    E['cf'] = cf
+    return E
+
+
+def ch7_improve(d, ctx):
+    if 'e20_summary' not in d:
+        return ''
+    E = e20_facts(d)
+    v, t = E['v'], E['t']
+    # bảng phân rã sai số ở 30 % nhãn
+    dc = d['e20_error_decomp']
+    rows = []
+    for ds in DS:
+        for m in ['mlp', 'pinn_semi', 'gbdt']:
+            r = dc[(dc.dataset == ds) & (dc.model == m) & (dc.frac == 0.3)].iloc[0]
+            rows.append([ds if m == 'mlp' else '', LBL[m], m3(r.MAE_cell), pc(r.lech_muc), pc(r.troi_cham), pc(r.dao_dong)])
+    tab_dc = table(['Bộ', 'Mô hình', r'MAE theo cell ($\times10^{-3}$)', 'lệch mức', 'trôi chậm', 'dao động nhanh'], rows,
+                   'llrrrr', r'Phân rã MSE theo cell ở 30\,\% nhãn thành ba phần (tỉ lệ trên tổng MSE).', 'tab:decomp')
+    sub = dc[dc.frac == 0.3]
+    fast = sub.dao_dong; slow = sub.lech_muc + sub.troi_cham
+    fast_nomit = sub[sub.dataset != 'MIT'].dao_dong
+    # bảng dev
+    rows = []
+    for a, lab in DEV_ARMS:
+        if a in E['dev']:
+            g = E['dev'][a]
+            rows.append([lab, f(g[0.1], 3), f(g[0.5], 3), f(g['all'], 3)])
+    tab_dev = table(['Hướng thử', r'10\,\% nhãn', r'50\,\% nhãn', 'chung'], rows, 'lrrr',
+                    r'Giai đoạn phát triển: MAE theo cell trên tập validation chia cho MAE của PINN-semi đơn lẻ, trung bình '
+                    r'nhân trên bốn bộ (lần lặp 0, 5 fold). Nhỏ hơn 1 là tốt hơn.', 'tab:dev')
+    dev = E['dev']
+    # bảng kết quả chính: MAE theo cell
+    rows = []
+    for ds in DS:
+        for m in ['mlp', 'gbdt', 'pinn', 'pinn_lai']:
+            vals = [v(m, fr, ds) for fr in FRS]
+            best = [min(v(mm, fr, ds) for mm in ['mlp', 'gbdt', 'pinn', 'pinn_lai']) for fr in FRS]
+            cells = [(r'\textbf{' + m3(x) + '}') if x == b else m3(x) for x, b in zip(vals, best)]
+            rows.append([ds if m == 'mlp' else '', E20_LBL[m]] + cells)
+    tab_main = table(['Bộ', 'Mô hình', r'10\,\%', r'30\,\%', r'50\,\%', r'70\,\%'], rows, 'llrrrr',
+                     r'MAE theo cell ($\times10^{-3}$) trên test, lần lặp 0--2; in đậm là thấp nhất ở mỗi bộ và mức nhãn.',
+                     'tab:e20')
+    # bảng kiểm định
+    def cellv(o, fr, ds):
+        r = t(o, fr, ds)
+        mark = r'$^{*}$' if r.p_holm < 0.05 else ''
+        return f(r.ti_so, 2) + mark
+    rows = [[ds if j == 0 else '', pc(fr)] + [cellv(o, fr, ds) for o in ['pinn', 'gbdt', 'mlp', 'mlp_lai']]
+            for ds in DS for j, fr in enumerate(FRS)]
+    tab_t = table(['Bộ', 'Nhãn', 'so với PINN-semi', 'so với GBDT', 'so với MLP', 'so với MLP-lai'], rows, 'llrrrr',
+                  r'Tỉ số MAE theo cell của PINN-lai so với từng mô hình (nhỏ hơn 1 là PINN-lai tốt hơn). '
+                  r'$^{*}$: Wilcoxon ghép cặp theo cell có ý nghĩa sau hiệu chỉnh Holm trên bốn bộ ($p < 0{,}05$).',
+                  'tab:e20tests')
+    # R², tăng ngược ở 30 %
+    r2 = {m: [v(m, 0.3, ds, 'R2_10') for ds in DS] for m in ['mlp', 'gbdt', 'pinn', 'pinn_lai']}
+    mono = {m: [v(m, 0.3, ds, 'tang_nguoc') for ds in DS] for m in ['mlp', 'gbdt', 'pinn', 'pinn_lai']}
+    # các bước
+    steps = {}
+    for m in ['pinn3', 'lai_tho', 'pinn_lai']:
+        steps[m] = _gm([v(m, fr, ds) / v('pinn', fr, ds) for fr in FRS for ds in DS])
+    gb_alone = _gm([v('gbdt', fr, ds) / v('pinn', fr, ds) for fr in FRS for ds in DS])
+    # khoảng dự đoán
+    cf = E['cf']
+    rows = []
+    for ds in DS:
+        for fr in FRS:
+            a = cf[(cf.dataset == ds) & (cf.frac == fr) & (cf.kieu == 'co_dinh')].iloc[0]
+            b = cf[(cf.dataset == ds) & (cf.frac == fr) & (cf.kieu == 'thich_nghi')].iloc[0]
+            rows.append([ds if fr == FRS[0] else '', pc(fr), pc(a.phu, 1), f(100 * a.rong, 2), pc(b.phu, 1),
+                         f(100 * b.rong, 2), pc(b.phu_cell_duoi80)])
+    tab_cf = table(['Bộ', 'Nhãn', 'độ phủ', 'độ rộng', 'độ phủ', 'độ rộng', r'cell phủ $<80\,\%$'], rows, 'llrrrrr',
+                   r'Khoảng dự đoán 90\,\% của PINN-lai trên test: độ phủ thực tế và độ rộng trung bình (\% SOH). Hai cột '
+                   r'đầu là độ rộng cố định, hai cột sau là độ rộng thích nghi; cột cuối là tỉ lệ cell có độ phủ dưới '
+                   r'80\,\% với dạng thích nghi.', 'tab:conformal')
+    cov_a = cf[cf.kieu == 'co_dinh'].phu; cov_b = cf[cf.kieu == 'thich_nghi'].phu
+    wid_a = cf[cf.kieu == 'co_dinh'].rong; wid_b = cf[cf.kieu == 'thich_nghi'].rong
+    bc = d['e20_biascorr']
+    chk = d['e20_check']
+    worse_gb = E['gbdt_worse_list']
+    worse_txt = (('GBDT vẫn tốt hơn có ý nghĩa ở ' + _lst([f'{ds} {pc(fr)}' for ds, fr in worse_gb]) + '.')
+                 if worse_gb else 'Không có trường hợp nào GBDT tốt hơn PINN-lai có ý nghĩa thống kê.')
+    rmax = float(bc.rho.max())
+    rho_word = ('tương quan yếu' if rmax < 0.4 else 'chỉ tương quan ở mức vừa' if rmax < 0.7 else 'tương quan khá chặt')
+    rho_word2 = ('gần như không tương quan' if rmax < 0.4 else 'chỉ tương quan ở mức vừa' if rmax < 0.7
+                 else 'tương quan khá chặt nhưng vẫn khác nhau ở nhiều cell')
+    rho_conc = ('Vì hai mô hình không lệch cùng một kiểu, lấy trung bình của chúng triệt tiêu được một phần lệch mức mà '
+                r'Mục~\ref{sec:errdecomp} chỉ ra.')
+    ml = E['mlp_lai_r']
+    phys_sig = E['mlp_lai_sig']; phys_worse = E['mlp_lai_worse_sig']
+    lowfr_ml = _gm(ml[0.1]); hifr_ml = _gm(ml[0.7])
+    if phys_sig >= 4 and lowfr_ml < hifr_ml:
+        phys_conc = ('Phần vật lý vẫn đóng góp khi đã có GBDT, rõ nhất khi ít nhãn, và đóng góp ít dần khi nhãn nhiều lên, '
+                     r'cùng xu hướng như ở Chương~\ref{ch:ketqua}.')
+        phys_disc = ' nên PINN-lai hơn MLP-lai khi ít nhãn'
+    elif phys_sig > phys_worse:
+        phys_conc = ('Khi đã có GBDT, phần vật lý chỉ còn đóng góp ở một số trường hợp; phần lớn lợi ích của PINN-lai so với '
+                     'PINN-semi đến từ việc kết hợp chứ không từ vật lý.')
+        phys_disc = ', nhưng khi đã kết hợp với GBDT phần đóng góp này nhỏ'
+    else:
+        phys_conc = ('Khi đã có GBDT, thay PINN-semi bằng MLP không làm sai số tăng: trong mô hình lai, lợi ích đến từ '
+                     'việc kết hợp chứ không từ vật lý trong hàm mất mát.')
+        phys_disc = ', nhưng trong mô hình lai đóng góp này không còn đo được'
+    cb = [x for x in cf[cf.kieu == 'thich_nghi'].phu]
+    cov_conc = (', quanh mức 90\\,\\% đặt ra' if min(cb) >= 0.85 and max(cb) <= 0.95 else
+                ', nhìn chung gần mức 90\\,\\% đặt ra nhưng thấp hơn ở một số bộ' if np.mean(cb) >= 0.85 else
+                ', thấp hơn mức 90\\,\\% đặt ra')
+    return T(r"""
+\chapter{Cải tiến mô hình}\label{ch:caitien}
+
+Chương~\ref{ch:ketqua} để lại hai kết quả trái chiều. PINN-semi giảm rõ sai số so với mạng cùng kiến trúc khi ít
+nhãn, nhưng GBDT, một mô hình không biết gì về vật lý, vẫn có sai số thấp nhất ở phần lớn các trường hợp có từ
+30\,\% nhãn trở lên. Mục~\ref{sec:physcheck} cũng cho thấy vật lý giúp chủ yếu bằng cách giữ quỹ đạo dự đoán gần
+đơn điệu. Chương này tìm cách giảm sai số thêm mà không dùng thêm nhãn nào và không đổi giao thức đánh giá. Quy
+trình gồm hai giai đoạn tách bạch: chọn hướng cải tiến chỉ trên tập validation, chốt cấu hình bằng một đề cương
+được commit trước, rồi mới đánh giá trên test.
+
+\section{Sai số còn lại nằm ở đâu}\label{sec:errdecomp}
+
+Trước khi thử cải tiến, cần biết sai số hiện tại có dạng gì. Với mỗi cell test, sai số theo chu kỳ
+$e_n = \hat y_n - y_n$ được tách thành ba phần:
+\begin{equation}
+e_n = \underbrace{b}_{\text{lệch mức}} + \underbrace{s_n}_{\text{trôi chậm}} + \underbrace{f_n}_{\text{dao động nhanh}},
+\end{equation}
+trong đó $b$ là trung bình của $e_n$ trên cả cell, $s_n$ là trung bình trượt căn giữa 21 điểm của $e_n - b$, còn $f_n$
+là phần còn lại. Bảng~\ref{tab:decomp} cho tỉ lệ của từng phần trong MSE ở 30\,\% nhãn.
+
+<<TABDC>>
+
+Phần dao động nhanh, tức nhiễu giữa các chu kỳ liền nhau, chỉ chiếm <<FAST>> tổng MSE ngoài bộ MIT; trên MIT, nơi
+sai số tuyệt đối rất nhỏ, phần này lên tới <<FASTMIT>>. Phần lớn sai số là lệch mức và trôi chậm: mô hình đoán sai
+SOH của cả một cell, hoặc đoán sai tốc độ suy giảm trên một đoạn dài. Hai hệ quả rút ra. Một là làm trơn dự đoán chỉ
+giúp được một phần nhỏ. Hai là muốn giảm sai số đáng kể phải giảm phần lệch theo từng cell, và cách đơn giản nhất là
+lấy trung bình những mô hình có lệch theo cell khác nhau.
+
+\section{Các hướng thử}\label{sec:candidates}
+
+Sáu hướng được thử, mỗi hướng dựa trên một kết quả đã công bố hoặc một quan sát ở Chương~\ref{ch:ketqua}.
+
+\paragraph{Nhóm mạng.} Huấn luyện $M = 3$ mạng PINN-semi giống hệt nhau, chỉ khác hạt giống khởi tạo và thứ tự lấy
+batch, rồi lấy trung bình $\bar F = \frac{1}{M}\sum_m F^{(m)}$~\cite{lakshminarayanan2017}. Cả ba mạng dùng đúng
+cùng cách chia và cùng tập cell có nhãn, nên không có nhãn nào được thêm vào.
+
+\paragraph{Chưng cất từ GBDT.} GBDT học trên cell có nhãn rồi dự đoán cho mọi chu kỳ của cell không nhãn; dự đoán
+này làm mục tiêu mềm cho mạng~\cite{hinton2015,lee2013}, thêm số hạng
+$\lambda_\text{KD}\,\overline{(F_\varphi(\tilde{\mathbf{x}}, t) - g(\tilde{\mathbf{x}}, t))^2}$ trên cell không nhãn.
+
+\paragraph{Kết hợp với GBDT.} Lấy trung bình dự đoán của nhóm mạng và của GBDT, $\hat y = \omega \bar F + (1-\omega) g$.
+Đây là dạng đơn giản nhất của kết hợp mô hình khác loại~\cite{wolpert1992}. Lý do để kỳ vọng nó giúp là hai mô hình
+có thiên lệch quy nạp khác hẳn nhau: cây quyết định học tốt các hàm không trơn trên dữ liệu bảng~\cite{grinsztajn2022},
+còn PINN-semi dùng được cell không nhãn và cho quỹ đạo trơn, gần đơn điệu.
+
+\paragraph{Bộ lọc quỹ đạo.} Vật lý cũng có thể được đưa vào ở bước suy luận chứ không chỉ khi huấn luyện. Tại chu kỳ
+$n$ của một cell, lấy $w$ dự đoán gần nhất $\hat y_{n-w+1}, \dots, \hat y_n$, khớp một đường thẳng bằng bình phương
+tối thiểu~\cite{cleveland1979} với ràng buộc độ dốc không dương, rồi lấy giá trị đường thẳng tại $n$:
+\begin{equation}\label{eq:trend}
+\tilde y_n = \bar y + \min(0, \hat\beta)\,(t_n - \bar t), \qquad
+\hat\beta = \frac{\sum_i (t_i - \bar t)(\hat y_i - \bar y)}{\sum_i (t_i - \bar t)^2},
+\end{equation}
+với $\bar t, \bar y$ là trung bình trên cửa sổ. Bộ lọc chỉ dùng dự đoán của các chu kỳ đã qua, không dùng nhãn,
+nên chạy được trực tuyến. Một lựa chọn tự nhiên khác là hồi quy đơn điệu~\cite{barlow1972} trên toàn bộ quá khứ,
+nhưng Mệnh đề~\ref{prop:filter} cho thấy nó lệch xuống.
+
+\paragraph{Ràng buộc vật lý mạnh hơn.} Tăng trọng số đơn điệu lên $\beta = 2$, hoặc thêm phần dư Euler dọc quỹ đạo
+(Mục~\ref{sec:physcheck}) với hệ số $\alpha_E = 2$ bên cạnh phần dư dạng đạo hàm riêng.
+
+\paragraph{Đặc trưng tương đối.} Nối thêm vào đầu vào độ thay đổi tương đối của đặc trưng so với trung bình ba chu
+kỳ đầu của chính cell, $(\mathbf{x}_n - \mathbf{x}_\text{ref})/|\mathbf{x}_\text{ref}|$, theo tinh thần của đặc
+trưng $\Delta Q(V)$ trong~\cite{severson2019}: suy giảm thể hiện ở chỗ đường sạc đã đổi bao nhiêu so với lúc mới.
+
+\section{Chọn hướng trên tập validation}\label{sec:devproto}
+
+Giai đoạn phát triển dùng lần lặp 0, cả 5 fold, hai mức nhãn 10\,\% và 50\,\%. Mỗi fold có khoảng 10\,\% số cell
+làm validation, tách khỏi cả train lẫn test; mọi quyết định chỉ dựa trên MAE theo cell của tập này. Bảng~\ref{tab:dev}
+tóm tắt kết quả.
+
+<<TABDEV>>
+
+Ba nhóm kết quả hiện ra. Kết hợp với GBDT cho mức giảm lớn nhất: ở 10\,\% nhãn tỉ số chỉ còn <<D_HYB10>>, ở 50\,\%
+nhãn còn <<D_HYB50>>, thấp hơn cả GBDT đứng một mình (<<D_GB>>). Nhóm mạng và chưng cất cho mức giảm vừa phải, khoảng
+<<D_ENS>> và <<D_KD>>; khi đã kết hợp với GBDT, chưng cất không còn thêm lợi ích (tỉ số <<D_KDG>> so với <<D_HYB1>>
+của một mạng PINN-semi kết hợp GBDT), nên bị bỏ để mô hình gọn hơn. Ba hướng còn lại làm sai số tăng: ràng buộc đơn điệu mạnh hơn
+(<<D_M2>>), thêm phần dư Euler (<<D_EU>>) và nhất là đặc trưng tương đối (<<D_REL>>). Phần dư Euler buộc $r$ bằng tốc
+độ dọc quỹ đạo trong khi phần dư dạng đạo hàm riêng buộc $\partial F/\partial t = -r$, nên hai số hạng kéo mạng
+nghiệm về hai phía. Đặc trưng tương đối chia cho $|\mathbf{x}_\text{ref}|$, nên khuếch đại các đặc trưng có giá trị
+ban đầu gần 0 và làm phân phối đầu vào khác hẳn giữa các cell; trường hợp tệ nhất là <<RELW>>, sai số tăng
+<<RELX>> lần.
+
+Trọng số $\omega = 0{,}5$ và $0{,}4$ cho GBDT trọng số $0{,}5$ và $0{,}6$, kết quả gần như nhau trên validation
+(<<D_W5>> và <<D_W6>>), nên chọn $\omega = 0{,}5$
+để không phải ước lượng thêm tham số. Cửa sổ lọc $w = 5, 10, 20$ cũng gần như nhau; chọn $w = 10$ vì nó gần tốt nhất
+với mọi mô hình nền đã thử. Cấu hình cuối được ghi vào đề cương E20 và commit trước khi đọc bất kỳ dự đoán test nào.
+
+\section{Mô hình PINN-lai}\label{sec:pinnlai}
+
+Mô hình cải tiến, gọi là PINN-lai, gồm ba bước:
+\begin{align}
+\bar F(\mathbf{x}, t) &= \tfrac{1}{3}\textstyle\sum_{m=1}^{3} F_{\varphi_m}(\tilde{\mathbf{x}}, t), \\
+\hat y_n &= \tfrac{1}{2}\,\bar F(\mathbf{x}_n, t_n) + \tfrac{1}{2}\,g(\mathbf{x}_n, t_n), \\
+\tilde y_n &= \text{bộ lọc \eqref{eq:trend} với } w = 10 \text{ trên } \hat y_{n-9}, \dots, \hat y_n,
+\end{align}
+trong đó $F_{\varphi_m}$ là ba mạng PINN-semi cấu hình E13 và $g$ là GBDT cấu hình E16, cùng học trên đúng các cell
+có nhãn của fold. Huấn luyện tốn gấp ba PINN-semi cộng một GBDT; suy luận vẫn chỉ cần đặc trưng sạc của chu kỳ hiện
+tại và chín dự đoán trước đó của chính cell.
+
+\begin{menhde}\label{prop:filter}
+Xét một cửa sổ $w$ điểm cách đều.
+(i) Nếu $\hat y_i = a - c\,t_i$ với $c \ge 0$ thì $\tilde y_n = \hat y_n$: bộ lọc không làm lệch một quỹ đạo giảm
+tuyến tính.
+(ii) Nếu $\hat y_i = a - c\,t_i + \epsilon_i$ với $\epsilon_i$ độc lập, kỳ vọng 0, phương sai $\sigma^2$, và ràng
+buộc độ dốc không kích hoạt, thì $\tilde y_n$ không chệch và
+$\operatorname{Var}(\tilde y_n) = \sigma^2\,\dfrac{2(2w-1)}{w(w+1)}$; với $w = 10$ là $0{,}345\,\sigma^2$.
+(iii) Giá trị cuối của hồi quy đơn điệu giảm trên $\hat y_1, \dots, \hat y_n$ luôn không lớn hơn $\hat y_n$, nên
+khi $\hat y$ có nhiễu nó lệch xuống.
+\end{menhde}
+\begin{proof}
+(i) Đường thẳng khớp đúng dữ liệu, độ dốc $-c \le 0$ nên ràng buộc không tác động. (ii) Đây là phương sai của giá
+trị dự đoán bình phương tối thiểu tại đầu mút: $\sigma^2\big(\frac{1}{w} + \frac{(t_n - \bar t)^2}{S_{tt}}\big)$
+với $t_n - \bar t = \frac{w-1}{2}$ và $S_{tt} = \frac{w(w^2-1)}{12}$ khi bước bằng 1; rút gọn được biểu thức trên.
+(iii) Với hồi quy đơn điệu giảm, giá trị tại điểm cuối bằng $\min_{j \le n}$ trung bình của $\hat y_j, \dots, \hat y_n$
+\cite{barlow1972}; chọn $j = n$ cho thấy nó không vượt $\hat y_n$.
+\end{proof}
+
+\section{Kết quả trên tập test}\label{sec:e20res}
+
+Đánh giá cuối dùng lần lặp 0, 1 và 2, cả 5 fold, 4 bộ và 4 mức nhãn. Mọi mô hình trong chương này, kể cả các mô
+hình cũ, được tính lại trên đúng ba lần lặp đó. Thành viên thứ nhất của nhóm mạng chạy lại đúng cấu hình E13 và cho dự
+đoán trùng từng bit với E13 ở <<CHK_P>> lượt; GBDT trùng E16 ở <<CHK_G>> lượt.
+
+<<TABMAIN>>
+<<FIGCURVE>>
+
+PINN-lai có MAE thấp hơn PINN-semi ở <<B_PINN>>/<<N_PINN>> trường hợp (bộ × mức nhãn), <<S_PINN>> trong đó có ý nghĩa
+thống kê, với tỉ số <<R_PINN>>. So với GBDT, PINN-lai tốt hơn ở <<B_GB>>/<<N_GB>> trường hợp, <<S_GB>> có ý nghĩa. <<WORSE_GB>>
+So với MLP, tỉ số là <<R_MLP>>; ở 10\,\% nhãn sai số chỉ còn <<R_MLP10>> của MLP. Trên hai mức nhãn đã dùng khi phát
+triển (10 và 50\,\%), tỉ số so với PINN-semi trên test là <<TESTDEV>>, gần với <<DEVSEL>> trên validation, nên việc
+chọn trên validation không làm kết quả test bị lạc quan đáng kể.
+
+<<TABT>>
+
+Các chỉ số khác cho cùng một bức tranh. Ở 30\,\% nhãn, $R^2$ tính từ chu kỳ 10 của PINN-lai là <<R2LAI>> trên bốn bộ,
+so với <<R2GB>> của GBDT và <<R2PINN>> của PINN-semi. Tỉ lệ cặp chu kỳ có dự đoán tăng ngược của PINN-lai là
+<<MONOLAI>>\,\%, thấp hơn PINN-semi (<<MONOPINN>>\,\%) và GBDT (<<MONOGB>>\,\%).
+
+\section{Phân rã lợi ích}\label{sec:e20steps}
+
+Hình~\ref{fig:e20steps} đi qua từng bước. Tính trung bình nhân trên 16 trường hợp, nhóm ba mạng đưa tỉ số so với
+PINN-semi xuống <<ST_ENS>>, kết hợp với GBDT xuống <<ST_LAI>>, và bộ lọc quỹ đạo xuống <<ST_FIN>>; GBDT đứng một mình
+là <<ST_GB>>. Bước kết hợp mang lại phần lớn lợi ích.
+
+<<FIGSTEPS>>
+
+Lệch mức theo cell của trung bình ba PINN-semi và của GBDT <<RHOWORD>>: hệ số Pearson <<RHO>> tùy bộ và mức nhãn,
+và ở <<NGC>> số cell hai mô hình lệch ngược dấu nhau. <<RHOCONC>>
+
+Câu hỏi còn lại là vật lý có còn cần khi đã có GBDT không. Để trả lời, cùng công thức được áp với ba mạng MLP thay
+cho ba mạng PINN-semi (MLP-lai): cùng GBDT, cùng bộ lọc. PINN-lai tốt hơn MLP-lai có ý nghĩa ở <<PHYS_SIG>>/16 trường
+hợp và kém hơn có ý nghĩa ở <<PHYS_WORSE>>; tỉ số trung bình nhân là <<PHYS10>> ở 10\,\% nhãn và <<PHYS70>> ở
+70\,\% nhãn. <<PHYSCONC>>
+
+\section{Khoảng dự đoán}\label{sec:conformal}
+
+Một con số SOH đơn lẻ chưa đủ cho các quyết định như thay pin hay giảm công suất~\cite{thelen2024}. PINN-lai được
+gắn thêm khoảng dự đoán bằng phương pháp dự đoán phù hợp tách tập~\cite{vovk2005,lei2018}. Trong mỗi fold, phần dư
+$|\tilde y - y|$ được tính trên tập validation của chính fold đó; với mức $1 - \alpha = 90\,\%$, lấy phân vị
+$\lceil (n+1)(1-\alpha) \rceil / n$ của các phần dư làm nửa độ rộng $q$, và khoảng cho một chu kỳ test là
+$[\tilde y - q, \tilde y + q]$. Dạng thích nghi chia phần dư cho $\sigma_n + \delta$, với
+$\sigma_n = |\bar F - g|$ là độ vênh giữa nhóm mạng và GBDT tại chu kỳ đó và $\delta$ là trung vị của $\sigma$ trên
+validation; khoảng khi đó rộng ở những chu kỳ hai mô hình không đồng ý với nhau.
+
+<<TABCF>>
+<<FIGCF>>
+
+Độ phủ thực tế trên test là <<COVA>> với độ rộng cố định và <<COVB>> với độ rộng thích nghi<<COVCONC>>.
+Độ rộng trung bình của dạng thích nghi là <<WIDB>>\,\% SOH, so với <<WIDA>>\,\% của dạng cố định. Bảo đảm của phương
+pháp là bảo đảm trung bình: nếu các cell hiệu chỉnh và cell test hoán đổi được cho nhau thì tỉ lệ chu kỳ nằm trong
+khoảng xấp xỉ 90\,\%, nhưng không phải cell nào cũng được phủ 90\,\%. Cột cuối của Bảng~\ref{tab:conformal} cho thấy
+một phần không nhỏ cell có độ phủ dưới 80\,\%: đó là các cell bị lệch mức cả đời, đúng loại sai số chiếm phần lớn
+MSE. Hình~\ref{fig:e20traj} đặt PINN-lai cạnh PINN-semi trên đúng các cell của Hình~\ref{fig:traj}: ở mức nhãn nào
+dự đoán của PINN-lai cũng trơn hơn và không có đoạn đi lên, còn khoảng 90\,\% rộng ra ở những đoạn nhóm mạng và GBDT
+không đồng ý với nhau, thường là đầu đời và quanh đầu gối.
+
+<<FIGTRAJ>>
+
+\section{Thảo luận}\label{sec:e20disc}
+
+Cải tiến lớn nhất không đến từ một ràng buộc vật lý mới mà từ việc ghép hai mô hình có điểm mạnh khác nhau. Kết quả
+này khớp với hai quan sát: sai số còn lại chủ yếu là lệch theo từng cell, và lệch của PINN-semi với của GBDT
+<<RHOWORD2>>. Vật lý có vai trò ở hai chỗ: trong huấn luyện, nó giúp nhóm mạng dùng được cell không nhãn<<PHYSDISC>>;
+khi suy luận, bộ lọc quỹ đạo dùng đúng giả định SOH không tăng để làm trơn dự đoán mà không làm lệch quỹ đạo giảm. Hai hướng ràng buộc mạnh hơn thất bại cho thấy thêm vật lý vào hàm mất mát không phải
+lúc nào cũng tốt: khi dạng phương trình còn thô, ép nó chặt hơn làm mạng mất tự do để khớp dữ liệu.
+
+Giới hạn của chương này cũng cần nói rõ. Đánh giá cuối dùng ba lần lặp thay vì năm vì chi phí tính toán. Giai đoạn
+phát triển dùng các cell validation của lần lặp 0, mà các cell này lại nằm trong test ở fold khác; với chín hướng
+thử và khoảng cách lớn giữa hướng được chọn và phần còn lại, thiên lệch chọn này nhỏ, và mức cải thiện trên test gần
+với trên validation. Cuối cùng, PINN-lai phụ thuộc vào GBDT: nếu chuyển sang bộ dữ liệu khác mà GBDT không tổng quát
+được, phần kết hợp có thể không còn lợi.
+""",
+             TABDC=tab_dc, FAST=_rng([100 * x for x in fast_nomit], 0) + r'\,\%',
+             FASTMIT=_rng([100 * x for x in sub[sub.dataset == 'MIT'].dao_dong], 0) + r'\,\%',
+             TABDEV=tab_dev, D_HYB10=f(dev['ENS3+GBDT|trend10'][0.1], 3), D_HYB50=f(dev['ENS3+GBDT|trend10'][0.5], 3),
+             D_GB=f(dev['GBDT']['all'], 3), D_ENS=f(dev['ENS3']['all'], 3), D_KD=f(dev['KD03']['all'], 3),
+             D_M2=f(dev['M2']['all'], 3), D_EU=f(dev['EU']['all'], 3), D_REL=f(dev['REL']['all'], 3),
+             D_KDG=f(dev['KD03+GBDT']['all'], 3), D_HYB1=f(dev['HYB']['all'], 3),
+             D_W5=f(dev['ENS3+GBDT']['all'], 3), D_W6=f(dev['ENS3+GBDT_w0.6']['all'], 3),
+             RELW=E['rel_worst'][0], RELX=f(E['rel_worst'][1], 1),
+             CHK_P=f'{int(chk.pinn_same.sum())}/{len(chk)}', CHK_G=f'{int(chk.gbdt_same.sum())}/{len(chk)}',
+             TABMAIN=tab_main,
+             FIGCURVE=fig('fig_e20_curve', 'MAE theo cell trên test theo lượng nhãn (thang log, lần lặp 0--2).',
+                          'fig:e20curve'),
+             B_PINN=E['pinn_better'], N_PINN=E['pinn_n'], S_PINN=E['pinn_sig'],
+             R_PINN=_rng([x for fr in FRS for x in E['pinn_r'][fr]]),
+             B_GB=E['gbdt_better'], N_GB=E['gbdt_n'], S_GB=E['gbdt_sig'], WORSE_GB=worse_txt,
+             R_MLP=_rng([x for fr in FRS for x in E['mlp_r'][fr]]), R_MLP10=_rng(E['mlp_r'][0.1]),
+             TESTDEV=f(E['test_dev'], 3), DEVSEL=f(dev['ENS3+GBDT|trend10']['all'], 3),
+             TABT=tab_t, R2LAI=_rng(r2['pinn_lai'], 3), R2GB=_rng(r2['gbdt'], 3), R2PINN=_rng(r2['pinn'], 3),
+             MONOLAI=_rng(mono['pinn_lai'], 1), MONOPINN=_rng(mono['pinn'], 1), MONOGB=_rng(mono['gbdt'], 1),
+             ST_ENS=f(steps['pinn3'], 3), ST_LAI=f(steps['lai_tho'], 3), ST_FIN=f(steps['pinn_lai'], 3),
+             ST_GB=f(gb_alone, 3),
+             FIGSTEPS=fig('fig_e20_steps', 'Tỉ số MAE theo cell so với PINN-semi qua từng bước của PINN-lai; mỗi đường là '
+                          'một mức nhãn, hình thoi bên phải là GBDT đứng một mình.', 'fig:e20steps'),
+             RHO=_rng(bc.rho, 2), NGC=_rng([100 * x for x in bc.ti_le_ngc_dau], 0) + r'\,\%',
+             RHOWORD=rho_word, RHOWORD2=rho_word2, RHOCONC=rho_conc, PHYSCONC=phys_conc, PHYSDISC=phys_disc,
+             COVCONC=cov_conc,
+             PHYS_SIG=phys_sig, PHYS_WORSE=phys_worse, PHYS10=f(lowfr_ml, 3), PHYS70=f(hifr_ml, 3),
+             TABCF=tab_cf,
+             FIGCF=fig('fig_e20_conformal', 'Độ phủ (trái) và độ rộng trung bình (phải) của khoảng dự đoán 90\\,\\% trên '
+                       'test; mỗi điểm là một bộ dữ liệu, vạch đứt là mức 90\\,\\%.', 'fig:conformal'),
+             COVA=_rng([100 * x for x in cov_a], 1) + r'\,\%', COVB=_rng([100 * x for x in cov_b], 1) + r'\,\%',
+             WIDA=_rng([100 * x for x in wid_a], 2), WIDB=_rng([100 * x for x in wid_b], 2),
+             FIGTRAJ=fig('fig_e20_traj', 'Quỹ đạo SOH thực đo, dự đoán của PINN-semi và của PINN-lai kèm khoảng 90\\,\\% '
+                         'thích nghi, trên cùng các cell của Hình~\\ref{fig:traj} ở 10, 30 và 70\\,\\% nhãn (lần lặp 0).',
+                         'fig:e20traj', width=r'0.92\textwidth'))
+
+
+def ch6_concl(d):
+    if 'e20_summary' not in d:
+        return ''
+    E = e20_facts(d)
+    cf = E['cf']; tb = cf[cf.kieu == 'thich_nghi']
+    return T(r"""\item Có. PINN-lai, nhóm ba PINN-semi kết hợp GBDT và bộ lọc quỹ đạo, có MAE thấp hơn PINN-semi ở
+      <<B>>/<<N>> trường hợp (tỉ số <<R>>) và thấp hơn GBDT ở <<BG>>/<<N>> trường hợp, <<SG>> có ý nghĩa thống kê.
+      Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell gần như độc lập; phần vật lý vẫn giúp khi ít
+      nhãn (so với cùng công thức dùng MLP, tỉ số <<PH>> ở 10\,\% nhãn). Khoảng dự đoán phù hợp 90\,\% đạt độ phủ
+      <<COV>> trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell.
+""", B=E['pinn_better'], N=E['pinn_n'], R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]), BG=E['gbdt_better'],
+             SG=E['gbdt_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2), COV=_rng([100 * x for x in tb.phu], 0) + r'\,\%')
+
+
+def ch8(d, ctx):
     F = ctx['F']
     w = F['wins']
     ch3 = (f'PINN-semi có MAE thấp hơn MLP trong {w["mlp"][0]}/{w["mlp"][1]}, thấp hơn Ridge trong '
@@ -2152,7 +2577,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
       ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn thật; tốc độ $r$ ở dạng đạo hàm riêng chỉ
       phản ánh phần suy giảm gán cho biến thời gian, còn dạng Euler cho $r$ sát tốc độ thật (Mục~\ref{sec:physcheck}).
 \item <<CH5>>
-\end{enumerate}
+<<CH6>>\end{enumerate}
 
 Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng
 một cận đơn giản rằng ngay cả bộ dự đoán không học gì cũng đạt sai số rất thấp dưới cách chia đó. Giao thức kiểm
@@ -2163,11 +2588,12 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
 \section{Hướng phát triển}
 
 \begin{enumerate}
-\item Kết hợp ràng buộc vật lý với mô hình cây: dùng dự đoán của GBDT làm đầu vào hoặc làm giá trị khởi đầu cho
-      mạng nghiệm, hoặc dùng loss vật lý để tạo nhãn giả cho GBDT trên cell không nhãn.
+\item Đưa ràng buộc vật lý vào chính mô hình cây, ví dụ dùng loss đơn điệu và loss động học để tạo nhãn giả cho
+      GBDT trên cell không nhãn, thay vì chỉ lấy trung bình dự đoán như PINN-lai.
 \item Mở rộng sang dự báo SOH tương lai và tuổi thọ còn lại, với giao thức chia theo thời gian bên trong mỗi cell
       test.
-\item Ước lượng độ bất định (tổ hợp nhiều mô hình hoặc dự đoán phù hợp) để BMS biết khi nào tin được dự đoán.
+\item Khoảng dự đoán có độ phủ theo từng cell chứ không chỉ trung bình, ví dụ hiệu chỉnh theo nhóm cell hoặc
+      cập nhật khoảng khi có thêm một vài lần đo dung lượng của chính cell.
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item Tăng trọng số của phần dư động học và dùng dữ liệu nhiều mức nhiệt độ để ước lượng được $\lambda$ và $E_a$.
 \item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, để vừa giữ sai số thấp vừa có tốc độ suy giảm
@@ -2180,10 +2606,22 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
-             BB=bb, CH5=ch5)
+             BB=bb, CH5=ch5, CH6=ch6_concl(d))
 
 
 # ═════════════════════════════════════════════════════════════ TÓM TẮT, PHỤ LỤC, DỰNG
+def abstract_e20(d):
+    if 'e20_summary' not in d:
+        return ''
+    E = e20_facts(d)
+    return T(r"""Từ phân tích sai số, đồ án đề xuất mô hình PINN-lai: ba mạng PINN bán giám sát kết hợp với GBDT, rồi qua
+một bộ lọc quỹ đạo nhân quả không cho SOH tăng. Cấu hình được chọn chỉ trên tập validation; trên test, PINN-lai có
+sai số bằng <<R>> lần PINN ban đầu và thấp hơn GBDT ở <<BG>>/<<N>> trường hợp bộ dữ liệu × mức nhãn, kèm khoảng
+dự đoán 90\,\% có độ phủ thực tế <<COV>> trên test.""", R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]),
+             BG=E['gbdt_better'], N=E['gbdt_n'],
+             COV=_rng([100 * x for x in E['cf'][E['cf'].kieu == 'thich_nghi'].phu], 0) + r'\,\%')
+
+
 def abstract(d, ctx):
     F = ctx['F']
     gb = ('một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu'
@@ -2201,12 +2639,14 @@ sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu
 Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>, trong
 đó khoảng một nửa đến hai phần ba mức giảm đến từ cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số <<R70>>). Trên bộ dữ liệu mới
 không có nhãn, PINN vẫn cho sai số dùng được trong khi mạng học có nhãn thất bại<<TRGB>>. Tuy vậy, <<GB>>.
+<<E20>>
 
-\noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo.
+\noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
+kết hợp mô hình, dự đoán phù hợp.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
              R70=_rng(F['r'][0.7].values()), GB=gb,
              TRGB=(f', và tốt hơn GBDT ở {F["tr_gb0_win"]}/{F["tr_gb0_n"]} cặp nguồn--đích'
-                   if F.get('tr_gb0_n') and F['tr_gb0_win'] > F['tr_gb0_n'] / 2 else ''))
+                   if F.get('tr_gb0_n') and F['tr_gb0_win'] > F['tr_gb0_n'] / 2 else ''), E20=abstract_e20(d))
 
 
 def build():
@@ -2215,14 +2655,14 @@ def build():
     ctx['ncell'] = int(ctx['stats'].N.sum())
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
-        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_')) and fn.endswith('.pdf'):
+        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_')) and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
     ctx = ch6(d, ctx)
     ctx = facts(d, ctx)
     body = (PREAMBLE + TITLE + r'\pagenumbering{roman}' + abstract(d, ctx) + r'\tableofcontents\listoffigures\listoftables'
             + '\n\\clearpage\\pagenumbering{arabic}\n' + ch1(d, ctx) + ch2(d, ctx) + ch3(d, ctx) + ch4(d, ctx) + ch5(d, ctx)
-            + ch6_text(d, ctx) + ch7(d, ctx) + REFS + r'\end{document}' + '\n')
+            + ch6_text(d, ctx) + ch7_improve(d, ctx) + ch8(d, ctx) + REFS + r'\end{document}' + '\n')
     open(f'{OUT}/main.tex', 'w').write(body)
     for _ in range(2):
         # SOURCE_DATE_EPOCH cố định: PDF dựng lại từ cùng dữ liệu giống từng byte
