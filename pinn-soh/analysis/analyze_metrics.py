@@ -176,21 +176,28 @@ def figures(sm):
     fig.tight_layout(rect=[0, 0.08, 1, 1])
     save(fig, f'{OUT}/fig_metrics_rmse_r2')
 
-    # tỉ lệ vi phạm đơn điệu ở 30 % nhãn, so với chính nhãn thật
+    # tỉ lệ vi phạm đơn điệu ở 30 % nhãn, so với chính nhãn thật: biểu đồ điểm, mỗi bộ một panel
     order = ['ridge', 'gpr', 'gbdt', 'mlp', 'pinn_sup', 'pinn_bb', 'mono_only', 'pinn_semi']
     cols = dict(COLOR, mono_only='#5fc9a0')
-    fig, ax = plt.subplots(figsize=(7.2, 2.4))
-    w = 0.1
-    for i, m in enumerate(order):
-        v = [sm[(sm.dataset == ds) & (sm.model == m) & (sm.frac == 0.3)].vi_pham_don_dieu_pct.iloc[0] for ds in DATASETS]
-        ax.bar(np.arange(4) + (i - 3.5) * w, v, width=w * 0.9, color=cols[m], label=LABEL[m])
-    true = [sm[(sm.dataset == ds) & (sm.model == 'mlp') & (sm.frac == 0.3)].vi_pham_nhan_that_pct.iloc[0] for ds in DATASETS]
-    for k, t in enumerate(true):
-        ax.hlines(t, k - 0.45, k + 0.45, color='#1b2330', lw=1.2, label='nhãn thật' if k == 0 else None)
-    ax.set_xticks(range(4)); ax.set_xticklabels(DATASETS); ax.set_ylabel('cặp tăng ngược (%)')
-    ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
-    ax.legend(ncol=5, fontsize=6.5, frameon=False, loc='lower center', bbox_to_anchor=(0.5, -0.48), handlelength=1.2)
-    fig.tight_layout()
+    fig, axes = plt.subplots(1, 4, figsize=(7.2, 2.5), sharey=True)
+    xmax = 1.08 * sm[(sm.frac == 0.3) & sm.model.isin(order)].vi_pham_don_dieu_pct.max()
+    for ax, ds in zip(axes, DATASETS):
+        g = sm[(sm.dataset == ds) & (sm.frac == 0.3)].set_index('model')
+        true = g.loc['mlp', 'vi_pham_nhan_that_pct']
+        ax.axvspan(0, true, color='#eef1f0', lw=0, zorder=0)
+        ax.axvline(true, color='#1b2330', lw=0.9, ls=(0, (2.5, 1.5)), zorder=1)
+        for i, m in enumerate(order):
+            v = g.loc[m, 'vi_pham_don_dieu_pct']
+            ax.plot([true, v], [i, i], color=cols[m], lw=1.0, alpha=0.55, zorder=2)
+            ax.plot(v, i, 'o', ms=4.6, color=cols[m], mec='white', mew=0.6, zorder=3)
+        ax.set_xlim(0, xmax); ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5)
+        ax.set_yticks(range(len(order))); ax.set_yticklabels([LABEL[m] for m in order])
+        ax.invert_yaxis() if ds == DATASETS[0] else None
+        ax.tick_params(axis='y', length=0)
+        ax.locator_params(axis='x', nbins=4)
+        panel_title(ax, ds, CHEM[ds], pad=4)
+    fig.tight_layout(rect=[0, 0.07, 1, 1], w_pad=0.6)
+    fig.text(0.5, 0.015, 'cặp chu kỳ có SOH dự đoán tăng ngược (%)', ha='center', va='bottom', fontsize=8.5)
     save(fig, f'{OUT}/fig_metrics_mono')
 
 

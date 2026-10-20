@@ -129,6 +129,63 @@ def E19(repeats=None, datasets=DATASETS, seeds=(0, 1, 2, 3, 4), out='runs/E14', 
             for m, src, tgt, k, s in itertools.product(models, datasets, DATASETS, [0, 3], seeds) if src != tgt]
 
 
-EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19)
+# ---------------------------------------------------------------- E20: cải tiến mô hình
+# Giai đoạn phát triển: chỉ lần lặp 0, mức nhãn 10 % và 50 %, mọi quyết định dựa trên MAE theo cell của
+# tập VALIDATION (dự đoán validation được lưu kèm). Tập test của các lượt này không được dùng để chọn.
+E20_DEV_FRACS = [0.1, 0.5]
+E20_DEV_ARMS = [   # (nhãn, mô hình, cấu hình riêng, các thành viên)
+    ('P', 'pinn_semi', E13_PHYS, (0, 1, 2)),
+    ('KD03', 'pinn_semi', dict(E13_PHYS, distill_w=0.3), (0,)),
+    ('KD1', 'pinn_semi', dict(E13_PHYS, distill_w=1.0), (0,)),
+    ('EU', 'pinn_semi', dict(E13_PHYS, alpha_euler=2.0), (0,)),
+    ('M2', 'pinn_semi', dict(E13_PHYS, beta_mono=2.0), (0,)),
+    ('REL', 'pinn_semi', dict(E13_PHYS, norm='both'), (0,)),
+]
+
+
+def _member_job(tag, model, frac, extra, r, ds, k, out, member):
+    j = _train_job(tag, model, frac, dict(extra, member=member, save_val_predictions=True), r, ds, k, out)
+    j.label += f' m{member}'
+    return j
+
+
+def E20dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E20dev') -> List[Job]:
+    from .baselines import cv_path
+    jobs = [_member_job(tag, m, f, extra, r, ds, k, out, mem)
+            for (tag, m, extra, mems), f, r, ds, k in itertools.product(E20_DEV_ARMS, E20_DEV_FRACS, range(repeats),
+                                                                          datasets, range(E13_FOLDS))
+            for mem in mems]
+    jobs += [Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True),
+                 cv_path('gbdt', ds, f, r, k, out), BASELINE_S[('gbdt', ds)], f'gbdt {ds} f{f} cv{r}-{k}', (ds,))
+             for f, r, ds, k in itertools.product(E20_DEV_FRACS, range(repeats), datasets, range(E13_FOLDS))]
+    jobs += [Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True, norm='both'),
+                 cv_path('gbdt', ds, f, r, k, out, 'both'), BASELINE_S[('gbdt', ds)], f'gbdt-both {ds} f{f} cv{r}-{k}', (ds,))
+             for f, r, ds, k in itertools.product(E20_DEV_FRACS, range(repeats), datasets, range(E13_FOLDS))]
+    return jobs
+
+
+# Đánh giá cuối (chốt sau giai đoạn phát triển, xem tai-lieu/de-cuong-E20.md): 3 lần lặp × 5 fold × 4 mức nhãn.
+#   P  PINN-semi E13, thành viên 0–2, lưu dự đoán validation (thành viên 0 trùng từng bit với E13)
+#   M  MLP E13, thành viên 1–2 (thành viên 0 lấy từ E13) — nhánh đối chứng không vật lý của mô hình lai
+#   gbdt  GBDT E16, lưu dự đoán validation (dự đoán test trùng E16)
+E20_REPEATS = 3
+E20_MEMBERS = (0, 1, 2)
+
+
+def E20(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E20') -> List[Job]:
+    from .baselines import cv_path
+    rr = range(repeats)
+    jobs = [_member_job('P', 'pinn_semi', f, E13_PHYS, r, ds, k, out, mem)
+            for f, r, ds, k, mem in itertools.product(FRACS, rr, datasets, range(E13_FOLDS), E20_MEMBERS)]
+    jobs += [_member_job('M', 'mlp', f, {}, r, ds, k, out, mem)
+             for f, r, ds, k, mem in itertools.product(FRACS, rr, datasets, range(E13_FOLDS), E20_MEMBERS[1:])]
+    jobs += [Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True),
+                 cv_path('gbdt', ds, f, r, k, out), BASELINE_S[('gbdt', ds)], f'gbdt {ds} f{f} cv{r}-{k}', (ds,))
+             for f, r, ds, k in itertools.product(FRACS, rr, datasets, range(E13_FOLDS))]
+    return jobs
+
+
+EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
+                                                        E20dev=E20dev, E20=E20)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20']

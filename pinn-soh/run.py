@@ -121,7 +121,7 @@ def main():
         return
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'thesis', 'all', 'reproduce',
-                                        'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19'])
+                                        'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20'])
     ap.add_argument('--workers', type=int, default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--datasets', nargs='+', default=['XJTU', 'TJU', 'MIT', 'HUST'],
@@ -129,7 +129,7 @@ def main():
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--device', default=None)
     a = ap.parse_args()
-    if a.command.startswith('E1'):
+    if a.command[0] == 'E' and a.command[1:3].isdigit():
         cmd_experiments(a, [a.command])
     else:
         globals()[f'cmd_{a.command}'](a)

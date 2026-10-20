@@ -15,6 +15,8 @@ Design choices that differ from PINN4SOH (all deliberate, see docs):
                         Deployable (needs only the cell's own first cycles),
                         chemistry-agnostic -> used for cross-dataset transfer.
       - 'per_cell_minmax' : PINN4SOH replica, ONLY for the leakage audit.
+      - 'both'        : nối 'global' và 'first_cycle' (32 cột) — mức tuyệt đối cho biết trạng thái
+                        ban đầu của cell, phần tương đối cho biết cell đã đổi bao nhiêu kể từ lúc mới (E20).
   * Cycle index is scaled by a global constant (1/1000), never per cell.
   * Splits are CELL-wise (no cell appears in two splits), stratified by
     protocol batch, fixed val/test for every labelled fraction.
@@ -323,7 +325,7 @@ def cv_split(cells: List[Cell], fold: int, repeat: int, n_folds: int = 5,
 class Normalizer:
     """Feature normaliser fitted on training cells only."""
     def __init__(self, mode: str = 'global', ref_cycles: int = 3):
-        assert mode in ('global', 'first_cycle', 'per_cell_minmax')
+        assert mode in ('global', 'first_cycle', 'per_cell_minmax', 'both')
         self.mode, self.ref_cycles = mode, ref_cycles
         self.mu = None; self.sd = None
 
@@ -334,6 +336,8 @@ class Normalizer:
     def _raw(self, c: Cell) -> np.ndarray:
         if self.mode == 'first_cycle':
             return self._rel(c)
+        if self.mode == 'both':                 # đặc trưng tuyệt đối + tương đối so với 3 chu kỳ đầu (E20)
+            return np.hstack([c.X, self._rel(c)])
         if self.mode == 'per_cell_minmax':      # PINN4SOH replica (leaky, audit only)
             mn, mx = c.X.min(0, keepdims=True), c.X.max(0, keepdims=True)
             return 2 * (c.X - mn) / (mx - mn + 1e-12) - 1

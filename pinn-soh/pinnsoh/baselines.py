@@ -39,8 +39,10 @@ def xy(cells, norm, labelled_only=True):
     return np.hstack([S.X, S.T]), S.Y.ravel(), S
 
 
-def fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, wtr=None):
-    """Huấn luyện, chọn siêu tham số theo validation, trả (dự đoán test, MAE validation, siêu tham số)."""
+def fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, wtr=None, return_val=False):
+    """Huấn luyện, chọn siêu tham số theo validation, trả (dự đoán test, MAE validation, siêu tham số)
+    và thêm dự đoán validation khi return_val=True."""
+    out = lambda pte, v, hp, pva: (pte, v, hp, pva) if return_val else (pte, v, hp)
     mae = lambda pred, y: float(np.abs(pred - y).mean())
     if model == 'ridge':
         from sklearn.linear_model import Ridge
@@ -50,7 +52,7 @@ def fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, wtr=None):
             if best is None or v < best[0]:
                 best = (v, m, dict(alpha=a))
         v, m, hp = best
-        return m.predict(Xte), v, hp
+        return out(m.predict(Xte), v, hp, m.predict(Xva))
     if model == 'gbdt':
         from sklearn.ensemble import HistGradientBoostingRegressor
         m = HistGradientBoostingRegressor(learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=20,
@@ -66,7 +68,8 @@ def fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, wtr=None):
                 if bad >= 4:
                     break
         v, it = best
-        return next(islice(m.staged_predict(Xte), it - 1, None)), v, dict(n_trees=it)
+        at = lambda X: next(islice(m.staged_predict(X), it - 1, None))
+        return out(at(Xte), v, dict(n_trees=it), at(Xva) if return_val else None)
     if model == 'gpr':
         from sklearn.gaussian_process import GaussianProcessRegressor
         from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel as C
@@ -76,17 +79,18 @@ def fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, wtr=None):
                else rng.choice(len(Xtr), size=n, replace=False, p=wtr / wtr.sum()))
         k = C(1.0) * RBF(length_scale=3.0) + WhiteKernel(1e-3)
         m = GaussianProcessRegressor(kernel=k, normalize_y=True, random_state=seed).fit(Xtr[idx], ytr[idx])
-        return m.predict(Xte), mae(m.predict(Xva), yva), dict(kernel=str(m.kernel_), n_train=int(n))
+        pva = m.predict(Xva)
+        return out(m.predict(Xte), mae(pva, yva), dict(kernel=str(m.kernel_), n_train=int(n)), pva)
     raise ValueError(model)
 
 
-def cv_path(model, ds, frac, r, k, out_dir='runs/E16'):
-    return f'{out_dir}/{model}_{ds}_f{frac}_cv{r}-{k}of5.json'
+def cv_path(model, ds, frac, r, k, out_dir='runs/E16', norm='global'):
+    return f'{out_dir}/{model}{"" if norm == "global" else "-" + norm}_{ds}_f{frac}_cv{r}-{k}of5.json'
 
 
-def run_cv(model, ds, frac, r, k, out_dir='runs/E16'):
+def run_cv(model, ds, frac, r, k, out_dir='runs/E16', save_val=False, norm='global'):
     """E16: một lượt (mô hình, bộ, mức nhãn, lần lặp r, fold k). Trả MAE theo cell trên test."""
-    path = cv_path(model, ds, frac, r, k, out_dir)
+    path = cv_path(model, ds, frac, r, k, out_dir, norm)
     if os.path.exists(path):
         return json.load(open(path))['test']['MAE_cell']
     t0 = time.time()
@@ -94,21 +98,25 @@ def run_cv(model, ds, frac, r, k, out_dir='runs/E16'):
     sp = cv_split(cells, k, r, 5, 0.10)
     seed = 100 * r + k
     lab, unl = choose_labelled(sp['train'], frac, len(cells), seed, by)
-    norm = Normalizer('global').fit([by[i] for i in lab + unl])           # cùng pool như MLP/PINN
+    norm = Normalizer(norm).fit([by[i] for i in lab + unl])               # cùng pool như MLP/PINN
     Xtr, ytr, _ = xy([by[i] for i in lab], norm)
     Xva, yva, _ = xy([by[i] for i in sp['val']], norm)
     te = [by[i] for i in sp['test']]
     Xte, yte, S = xy(te, norm)
-    p, v, hp = fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed)
+    p, v, hp, pva = fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, return_val=True)
     p = np.asarray(p, dtype=np.float64)
     res = dict(config=dict(tag='K', model=model, label_frac=frac, dataset=ds, repeat=r, fold=k, seed=seed,
-                           split='cv', n_folds=5),
+                           split='cv', n_folds=5, norm=norm.mode),
                n_cells=dict(train_labelled=len(lab), train_unlabelled=len(unl), val=len(sp['val']),
                             test=len(te), all=len(cells)),
                hyper=hp, val_MAE=v, train_time_s=time.time() - t0,
                test=evaluate(yte, p, S.cell, cycle=S.cyc),
                test_predictions=dict(y=yte.tolist(), p=p.tolist(), cell=S.cell.tolist(), cycle=S.cyc.tolist(),
                                      cell_ids=[c.cid for c in te]))
+    if save_val:
+        _, _, Sv = xy([by[i] for i in sp['val']], norm)
+        res['val_predictions'] = dict(y=yva.tolist(), p=np.asarray(pva, dtype=np.float64).tolist(),
+                                      cell=Sv.cell.tolist(), cycle=Sv.cyc.tolist(), cell_ids=list(sp['val']))
     write_json(res, path)
     return res['test']['MAE_cell']
 

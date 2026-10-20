@@ -259,6 +259,18 @@ Arrhenius: nhiệt độ cao làm SEI phát triển nhanh hơn~\cite{waldmann201
 phần động học xám ở Chương~\ref{ch:phuongphap}: tốc độ suy giảm luôn không âm, tăng khi SOH giảm và tăng theo
 nhiệt độ.
 
+\paragraph{Các quy luật thực nghiệm.} Trước khi có học máy, tuổi thọ pin thường được mô tả bằng các hàm đóng
+khớp trên dữ liệu thử nghiệm. Khi SEI dày lên và quá trình bị giới hạn bởi khuếch tán dung môi qua lớp SEI,
+lượng lithium mất đi tỉ lệ với căn bậc hai của thời gian~\cite{broussely2001,pinson2013}. Wang và cộng
+sự~\cite{wang2011lfp} khớp mất mát dung lượng của cell graphite/LFP bằng một hàm luỹ thừa của lượng điện tích
+trao đổi nhân với thừa số Arrhenius, với số mũ khoảng 0,5. Schmalstieg và cộng sự~\cite{schmalstieg2014} tách lão
+hoá theo lịch và theo chu kỳ của cell NMC 18650, mỗi phần là một hàm luỹ thừa có hệ số phụ thuộc nhiệt độ, điện
+áp và độ sâu xả. Các mô hình này gọn và dễ diễn giải, nhưng mỗi hệ hoá học và mỗi chế độ vận hành cần một bộ
+hệ số riêng, và chúng không mô tả được đoạn đầu gối. Fermín-Cueto và cộng sự~\cite{fermin2020} định nghĩa điểm
+đầu gối và điểm bắt đầu đầu gối trên đường suy giảm rồi dùng học máy dự đoán hai điểm này từ các chu kỳ đầu.
+Phương trình xám của đồ án đi theo cùng tinh thần: giữ dạng nhân của các quy luật trên (thừa số theo trạng
+thái và thừa số Arrhenius), còn phần phụ thuộc vào từng cell để mạng học.
+
 \section{Các hướng ước lượng SOH}
 
 \paragraph{Mô hình cơ chế.} Mô hình điện hoá giả hai chiều (P2D) của Doyle, Fuller và Newman~\cite{doyle1993}
@@ -278,7 +290,18 @@ học trực tiếp từ chuỗi đo. Các mô hình này mạnh khi có nhiều
 
 \paragraph{Học chuyển giao.} Ma và cộng sự~\cite{ma2022} dùng học chuyển giao sâu để cá nhân hoá dự báo
 sức khoẻ cho từng cell và công bố bộ dữ liệu HUST. Hướng này giảm nhu cầu nhãn ở miền đích nhưng vẫn cần một
-phần nhãn để thích nghi.
+phần nhãn để thích nghi. Lu và cộng sự~\cite{lu2023} đi xa hơn: một nhóm mạng sâu kết hợp thích nghi miền ước
+lượng SOH cho pin đích không có nhãn nào, thử trên 65 cell của 5 nhà sản xuất. Kết quả này cho thấy dữ liệu
+không nhãn của chính pin đích mang nhiều thông tin, và cũng là lý do đồ án đưa cell không nhãn vào huấn luyện.
+
+\paragraph{Dữ liệu thực tế và dữ liệu dạng bảng.} Sulzer và cộng sự~\cite{sulzer2021} chỉ ra rằng dữ liệu
+ngoài hiện trường có điều kiện vận hành không kiểm soát, cảm biến kém chính xác và rất ít lần đo dung lượng
+chuẩn; họ cho rằng kết hợp học máy với mô hình vật lý là hướng triển vọng vì giúp suy luận từ dữ liệu nhiễu và
+ngoại suy sang điều kiện mới. Một điểm ít được nhắc trong các bài về PINN cho pin là đặc trưng trích từ đường
+sạc là dữ liệu dạng bảng. Grinsztajn, Oyallon và Varoquaux~\cite{grinsztajn2022} so sánh trên 45 bộ dữ liệu
+bảng cỡ vừa và thấy mô hình cây như gradient boosting vẫn vượt mạng nơ-ron; mạng nơ-ron khó học các hàm mục tiêu
+không trơn và bị ảnh hưởng nhiều hơn bởi đặc trưng không mang thông tin. Vì vậy đồ án luôn đặt GBDT làm đối
+chứng, và kết quả ở Chương~\ref{ch:ketqua} xác nhận đây là đối thủ khó nhất khi có đủ nhãn.
 
 \paragraph{Mô hình lai và PINN.} Mạng nơ-ron có thông tin vật lý (PINN) của Raissi, Perdikaris và
 Karniadakis~\cite{raissi2019} đưa phần dư của phương trình vi phân vào hàm mất mát; phần dư này được tính tại
@@ -301,6 +324,20 @@ số hạng thứ hai đóng vai trò tín hiệu học bổ sung không cần n
 biết chính xác, nên một phần của $\mathcal{N}$ phải học từ dữ liệu: đây là chỗ khác nhau giữa động học hộp đen
 (học hoàn toàn) và động học xám (giữ cấu trúc vật lý, chỉ học phần chưa biết).
 
+Huấn luyện PINN không đơn giản như huấn luyện mạng thường. Wang, Teng và Perdikaris~\cite{wang2021grad} cho thấy
+gradient của các số hạng trong hàm mất mát có thể chênh nhau nhiều bậc, khiến mạng bỏ qua một số hạng; họ đề
+xuất cân lại trọng số trong lúc học. Krishnapriyan và cộng sự~\cite{krishnapriyan2021} chỉ ra rằng ràng buộc
+mềm làm mặt mất mát khó tối ưu khi hệ số của phương trình lớn. Hai kết quả này giải thích vì sao đồ án tăng dần
+trọng số vật lý trong 20\,\% số bước đầu và giữ hệ số của $\mathcal{L}_\text{ode}$ nhỏ.
+
+Braun, Raible và Huber~\cite{braun2026} tổng hợp 212 công trình học máy có thông tin vật lý trong lĩnh vực dự báo
+và quản lý sức khoẻ thiết bị, xếp chúng thành bốn nhóm: đưa vật lý vào dữ liệu (thiên lệch quan sát), vào kiến
+trúc (thiên lệch quy nạp), vào hàm mất mát (thiên lệch học), và kết hợp. Pin lithium-ion là đối tượng được nghiên
+cứu nhiều nhất. Theo cách xếp này, PINN của đồ án thuộc nhóm thứ ba; bộ lọc quỹ đạo ở Chương~\ref{ch:caitien}
+đưa cùng giả định đơn điệu vào bước suy luận. Navidi và cộng sự~\cite{navidi2024} so sánh bốn cách xây mô hình
+lai cho chẩn đoán suy giảm trên 24 cell theo dõi bốn năm, theo độ chính xác, độ phức tạp và khả năng ngoại suy;
+không có cách nào thắng ở mọi tiêu chí.
+
 \section{Học bán giám sát}
 
 Học bán giám sát tận dụng dữ liệu không nhãn qua một giả định về cấu trúc của dữ liệu, ví dụ tính trơn của
@@ -308,6 +345,31 @@ hàm cần học hoặc tính nhất quán của dự đoán. Trong đồ án, g
 của mọi cell, kể cả cell chưa đo dung lượng, phải thoả phương trình suy giảm, không tăng theo thời gian và nằm
 trong miền giá trị hợp lý. Các ràng buộc này tính được chỉ từ đặc trưng sạc, nên mỗi cell không nhãn đều
 đóng góp gradient cho mạng nghiệm.
+
+Hai họ phương pháp bán giám sát phổ biến khác dựa trên chính dự đoán của mô hình. Gán nhãn giả~\cite{lee2013}
+dùng dự đoán của mô hình trên mẫu không nhãn làm nhãn để huấn luyện tiếp; chưng cất tri thức~\cite{hinton2015}
+dùng dự đoán của một mô hình thầy làm mục tiêu mềm cho mô hình trò. Mean Teacher~\cite{tarvainen2017} giữ một
+bản trung bình trượt của trọng số làm thầy và phạt độ lệch giữa thầy và trò. Điểm chung là nhãn giả chỉ tốt
+bằng mô hình sinh ra nó; nếu thầy sai có hệ thống trên một nhóm cell, trò học lại đúng sai số đó. Ràng buộc vật
+lý không có nhược điểm này vì nó không phụ thuộc vào mô hình nào, nhưng bù lại nó chỉ cho biết dạng của quỹ đạo
+chứ không cho biết mức SOH. Chương~\ref{ch:caitien} thử kết hợp hai nguồn tín hiệu này.
+
+\section{Kết hợp mô hình và độ bất định}
+
+Trung bình dự đoán của nhiều mô hình là cách đơn giản nhất để giảm phương sai. Bagging~\cite{breiman1996} huấn
+luyện cùng một mô hình trên các mẫu bootstrap; stacking~\cite{wolpert1992} học trọng số kết hợp các mô hình khác
+loại trên dữ liệu không dùng để huấn luyện chúng. Với mạng nơ-ron, Lakshminarayanan, Pritzel và
+Blundell~\cite{lakshminarayanan2017} cho thấy chỉ cần huấn luyện vài mạng giống nhau với khởi tạo ngẫu nhiên khác
+nhau rồi lấy trung bình là đủ cải thiện độ chính xác, và độ phân tán giữa các mạng là một ước lượng độ bất định
+dùng được.
+
+Độ phân tán đó lại không đảm bảo khoảng tin cậy có độ phủ đúng. Dự đoán phù hợp (conformal
+prediction)~\cite{vovk2005,lei2018} giải quyết việc này mà không cần giả định về phân phối: trên một tập hiệu
+chỉnh tách riêng, tính phần dư của mô hình, lấy phân vị phù hợp làm nửa độ rộng khoảng. Nếu các mẫu hiệu chỉnh
+và mẫu mới hoán đổi được cho nhau, khoảng thu được có độ phủ ít nhất bằng mức đặt ra~\cite{angelopoulos2023}.
+Thelen và cộng sự~\cite{thelen2024} tổng quan học máy xác suất cho chẩn đoán và dự báo pin, nhấn mạnh rằng
+phần lớn công trình vẫn chỉ đưa ra một con số, bỏ qua biến động giữa các cell, trong khi các quyết định như
+thay pin hay giới hạn công suất cần biết độ tin cậy của con số đó.
 
 \section{Đánh giá mô hình và rò rỉ dữ liệu}
 
@@ -336,18 +398,24 @@ Richardson 2017~\cite{richardson2017} & hồi quy Gauss & không & không & có 
 Roman 2021~\cite{roman2021} & quy trình học máy & không & không & so sánh nhiều mô hình\\
 Zhu 2022~\cite{zhu2022} & điện áp hồi phục + học máy & không & không & bộ TJU\\
 Ma 2022~\cite{ma2022} & học chuyển giao sâu & không & một phần & bộ HUST\\
+Lu 2023~\cite{lu2023} & nhóm mạng sâu + thích nghi miền & không & có & không cần nhãn pin đích\\
+Wang 2011~\cite{wang2011lfp} & hàm luỹ thừa + Arrhenius & có & không & mô hình thực nghiệm, cell LFP\\
 Raissi 2019~\cite{raissi2019} & PINN tổng quát & có & có & phương trình đã biết\\
+Navidi 2024~\cite{navidi2024} & so sánh bốn cách lai & có & không & chẩn đoán suy giảm\\
 Wang 2024~\cite{wang2024} & PINN, động học hộp đen & có & không & cùng bốn bộ dữ liệu\\
-Đồ án & PINN bán giám sát, động học xám & có & có & loss vật lý không dùng nhãn\\
+Thelen 2024~\cite{thelen2024} & học máy xác suất (tổng quan) & một phần & -- & độ bất định\\
+Đồ án & PINN bán giám sát, động học xám, nhóm mạng + lọc quỹ đạo & có & có & loss vật lý không dùng nhãn,
+khoảng dự đoán phù hợp\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Từ các công trình trên có thể rút ra ba khoảng trống. Thứ nhất, các mô hình học có nhãn phụ thuộc mạnh vào
+Từ các công trình trên có thể rút ra bốn khoảng trống. Thứ nhất, các mô hình học có nhãn phụ thuộc mạnh vào
 lượng nhãn, trong khi dữ liệu sạc không nhãn hầu như chưa được khai thác. Thứ hai, các PINN cho pin hiện có
 dùng nhãn trong phần vật lý hoặc chỉ áp vật lý lên cell có nhãn, nên vật lý chỉ đóng vai trò chuẩn hoá chứ
 không thay được nhãn. Thứ ba, kết quả công bố thường dựa trên một cách chia duy nhất, ít khi kiểm định
-thống kê và ít khi kiểm tra rò rỉ. Đồ án nhắm vào cả ba điểm này.
+thống kê, ít khi kiểm tra rò rỉ và ít khi so với mô hình cây, vốn mạnh trên dữ liệu dạng bảng. Thứ tư, hầu hết
+chỉ đưa ra một giá trị SOH mà không kèm khoảng tin cậy có độ phủ được kiểm chứng. Đồ án nhắm vào cả bốn điểm này.
 """
 
 
@@ -984,23 +1052,41 @@ kiểm định.
 # ═════════════════════════════════════════════════════════════ TÀI LIỆU THAM KHẢO
 REFS = r"""
 \begin{thebibliography}{99}\small
+\bibitem{angelopoulos2023} A. N. Angelopoulos, S. Bates. Conformal prediction: a gentle introduction.
+  \emph{Foundations and Trends in Machine Learning}, 16(4):494--591, 2023.
 \bibitem{arlot2010} S. Arlot, A. Celisse. A survey of cross-validation procedures for model selection.
   \emph{Statistics Surveys}, 4:40--79, 2010.
 \bibitem{attia2022knee} P. M. Attia, A. Bills, F. Brosa Planella, et al. Review---“Knees” in lithium-ion battery
   aging trajectories. \emph{Journal of The Electrochemical Society}, 169:060517, 2022.
 \bibitem{aykol2021} M. Aykol, C. B. Gopal, A. Anapolsky, et al. Perspective---Combining physics and machine
   learning to predict battery lifetime. \emph{Journal of The Electrochemical Society}, 168:030525, 2021.
+\bibitem{barlow1972} R. E. Barlow, D. J. Bartholomew, J. M. Bremner, H. D. Brunk. \emph{Statistical Inference under
+  Order Restrictions}. Wiley, 1972.
 \bibitem{birkl2017} C. R. Birkl, M. R. Roberts, E. McTurk, P. G. Bruce, D. A. Howey. Degradation diagnostics for
   lithium ion cells. \emph{Journal of Power Sources}, 341:373--386, 2017.
 \bibitem{bouckaert2004} R. R. Bouckaert, E. Frank. Evaluating the replicability of significance tests for comparing
   learning algorithms. \emph{Advances in Knowledge Discovery and Data Mining (PAKDD)}, 3--12, 2004.
+\bibitem{braun2026} C. Braun, J. Raible, M. F. Huber. Physics-informed machine learning in prognostics and health
+  management: a systematic literature review. arXiv:2608.10047, 2026.
+\bibitem{breiman1996} L. Breiman. Bagging predictors. \emph{Machine Learning}, 24(2):123--140, 1996.
+\bibitem{broussely2001} M. Broussely, S. Herreyre, P. Biensan, et al. Aging mechanism in Li ion cells and calendar
+  life predictions. \emph{Journal of Power Sources}, 97--98:13--21, 2001.
+\bibitem{cleveland1979} W. S. Cleveland. Robust locally weighted regression and smoothing scatterplots.
+  \emph{Journal of the American Statistical Association}, 74(368):829--836, 1979.
 \bibitem{dietterich1998} T. G. Dietterich. Approximate statistical tests for comparing supervised classification
   learning algorithms. \emph{Neural Computation}, 10(7):1895--1923, 1998.
 \bibitem{doyle1993} M. Doyle, T. F. Fuller, J. Newman. Modeling of galvanostatic charge and discharge of the
   lithium/polymer/insertion cell. \emph{Journal of The Electrochemical Society}, 140(6):1526--1533, 1993.
 \bibitem{efron1993} B. Efron, R. J. Tibshirani. \emph{An Introduction to the Bootstrap}. Chapman \& Hall, 1993.
+\bibitem{fermin2020} P. Fermín-Cueto, E. McTurk, M. Allerhand, et al. Identification and machine learning
+  prediction of knee-point and knee-onset in capacity degradation curves of lithium-ion cells. \emph{Energy and AI},
+  1:100006, 2020.
 \bibitem{friedman2001} J. H. Friedman. Greedy function approximation: a gradient boosting machine.
   \emph{Annals of Statistics}, 29(5):1189--1232, 2001.
+\bibitem{grinsztajn2022} L. Grinsztajn, E. Oyallon, G. Varoquaux. Why do tree-based models still outperform deep
+  learning on typical tabular data? \emph{Advances in Neural Information Processing Systems}, 35, 2022.
+\bibitem{hinton2015} G. Hinton, O. Vinyals, J. Dean. Distilling the knowledge in a neural network.
+  arXiv:1503.02531, 2015.
 \bibitem{holm1979} S. Holm. A simple sequentially rejective multiple test procedure. \emph{Scandinavian Journal of
   Statistics}, 6(2):65--70, 1979.
 \bibitem{kapoor2023} S. Kapoor, A. Narayanan. Leakage and the reproducibility crisis in machine-learning-based
@@ -1009,12 +1095,27 @@ REFS = r"""
   Physics-informed machine learning. \emph{Nature Reviews Physics}, 3:422--440, 2021.
 \bibitem{ke2017} G. Ke, Q. Meng, T. Finley, et al. LightGBM: a highly efficient gradient boosting decision tree.
   \emph{Advances in Neural Information Processing Systems}, 30, 2017.
+\bibitem{krishnapriyan2021} A. S. Krishnapriyan, A. Gholami, S. Zhe, R. M. Kirby, M. W. Mahoney. Characterizing
+  possible failure modes in physics-informed neural networks. \emph{Advances in Neural Information Processing
+  Systems}, 34, 2021.
+\bibitem{lakshminarayanan2017} B. Lakshminarayanan, A. Pritzel, C. Blundell. Simple and scalable predictive
+  uncertainty estimation using deep ensembles. \emph{Advances in Neural Information Processing Systems}, 30, 2017.
+\bibitem{lee2013} D.-H. Lee. Pseudo-label: the simple and efficient semi-supervised learning method for deep neural
+  networks. \emph{ICML Workshop on Challenges in Representation Learning}, 2013.
+\bibitem{lei2018} J. Lei, M. G'Sell, A. Rinaldo, R. J. Tibshirani, L. Wasserman. Distribution-free predictive
+  inference for regression. \emph{Journal of the American Statistical Association}, 113(523):1094--1111, 2018.
 \bibitem{loshchilov2019} I. Loshchilov, F. Hutter. Decoupled weight decay regularization. \emph{International
   Conference on Learning Representations}, 2019.
+\bibitem{lu2023} J. Lu, R. Xiong, J. Tian, C. Wang, F. Sun. Deep learning to estimate lithium-ion battery state of
+  health without additional degradation experiments. \emph{Nature Communications}, 14:2760, 2023.
 \bibitem{ma2022} G. Ma, S. Xu, B. Jiang, et al. Real-time personalized health status prediction of lithium-ion
   batteries using deep transfer learning. \emph{Energy \& Environmental Science}, 15:4083--4094, 2022.
 \bibitem{nadeau2003} C. Nadeau, Y. Bengio. Inference for the generalization error. \emph{Machine Learning},
   52:239--281, 2003.
+\bibitem{navidi2024} S. Navidi, A. Thelen, T. Li, C. Hu. Physics-informed machine learning for battery degradation
+  diagnostics: a comparison of state-of-the-art methods. arXiv:2404.04429, 2024.
+\bibitem{pinson2013} M. B. Pinson, M. Z. Bazant. Theory of SEI formation in rechargeable batteries: capacity fade,
+  accelerated aging and lifetime prediction. \emph{Journal of The Electrochemical Society}, 160(2):A243--A250, 2013.
 \bibitem{plett2015} G. L. Plett. \emph{Battery Management Systems, Volume I: Battery Modeling}. Artech House, 2015.
 \bibitem{raissi2019} M. Raissi, P. Perdikaris, G. E. Karniadakis. Physics-informed neural networks: a deep learning
   framework for solving forward and inverse problems involving nonlinear partial differential equations.
@@ -1025,19 +1126,35 @@ REFS = r"""
   battery state of health. \emph{Journal of Power Sources}, 357:209--219, 2017.
 \bibitem{roman2021} D. Roman, S. Saxena, V. Robu, M. Pecht, D. Flynn. Machine learning pipeline for battery
   state-of-health estimation. \emph{Nature Machine Intelligence}, 3:447--456, 2021.
+\bibitem{schmalstieg2014} J. Schmalstieg, S. Käbitz, M. Ecker, D. U. Sauer. A holistic aging model for
+  Li(NiMnCo)O$_2$ based 18650 lithium-ion batteries. \emph{Journal of Power Sources}, 257:325--334, 2014.
 \bibitem{severson2019} K. A. Severson, P. M. Attia, N. Jin, et al. Data-driven prediction of battery cycle life before
   capacity degradation. \emph{Nature Energy}, 4:383--391, 2019.
+\bibitem{sulzer2021} V. Sulzer, P. Mohtat, A. Aitio, et al. The challenge and opportunity of battery lifetime
+  prediction from field data. \emph{Joule}, 5(8):1934--1955, 2021.
+\bibitem{tarvainen2017} A. Tarvainen, H. Valpola. Mean teachers are better role models: weight-averaged consistency
+  targets improve semi-supervised deep learning results. \emph{Advances in Neural Information Processing Systems},
+  30, 2017.
+\bibitem{thelen2024} A. Thelen, X. Huan, N. Paulson, S. Onori, Z. Hu, C. Hu. Probabilistic machine learning for
+  battery health diagnostics and prognostics---review and perspectives. \emph{npj Materials Sustainability}, 2:14,
+  2024.
 \bibitem{varma2006} S. Varma, R. Simon. Bias in error estimation when using cross-validation for model selection.
   \emph{BMC Bioinformatics}, 7:91, 2006.
+\bibitem{vovk2005} V. Vovk, A. Gammerman, G. Shafer. \emph{Algorithmic Learning in a Random World}. Springer, 2005.
 \bibitem{waldmann2014} T. Waldmann, M. Wilka, M. Kasper, M. Fleischhammer, M. Wohlfahrt-Mehrens. Temperature
   dependent ageing mechanisms in lithium-ion batteries -- a post-mortem study. \emph{Journal of Power Sources},
   262:129--135, 2014.
+\bibitem{wang2011lfp} J. Wang, P. Liu, J. Hicks-Garner, et al. Cycle-life model for graphite-LiFePO$_4$ cells.
+  \emph{Journal of Power Sources}, 196(8):3942--3948, 2011.
+\bibitem{wang2021grad} S. Wang, Y. Teng, P. Perdikaris. Understanding and mitigating gradient flow pathologies in
+  physics-informed neural networks. \emph{SIAM Journal on Scientific Computing}, 43(5):A3055--A3081, 2021.
 \bibitem{wang2024} F. Wang, Z. Zhai, Z. Zhao, Y. Di, X. Chen. Physics-informed neural network for lithium-ion
   battery degradation stable modeling and prognosis. \emph{Nature Communications}, 15:4332, 2024.
 \bibitem{wen2023} P. Wen, Z.-S. Ye, Y. Li, S. Chen, P. Xie, S. Zhao. Physics-informed neural networks for
   prognostics and health management of lithium-ion batteries. arXiv:2301.00776, 2023.
 \bibitem{wilcoxon1945} F. Wilcoxon. Individual comparisons by ranking methods. \emph{Biometrics Bulletin},
   1(6):80--83, 1945.
+\bibitem{wolpert1992} D. H. Wolpert. Stacked generalization. \emph{Neural Networks}, 5(2):241--259, 1992.
 \bibitem{zhang2018lstm} Y. Zhang, R. Xiong, H. He, M. G. Pecht. Long short-term memory recurrent neural network for
   remaining useful life prediction of lithium-ion batteries. \emph{IEEE Transactions on Vehicular Technology},
   67(7):5695--5705, 2018.
@@ -1619,7 +1736,7 @@ $r$ diễn giải được theo nghĩa vật lý cần dạng Euler.
                     '$\\mathcal{L}_\\text{mono}$, áp lên cặp chu kỳ của cả cell không nhãn, làm quỹ đạo dự đoán đơn điệu.'
                     if close else ''),
              TABM=tabM, FIGM=fig('fig_metrics_mono', 'Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược ở 30\\,\\% nhãn; vạch '
-                                 'ngang là cùng phép đếm trên nhãn thật.', 'fig:mono'),
+                                 'đứt và vùng tô xám là cùng phép đếm trên nhãn thật.', 'fig:mono'),
              NSAME=n_same, TABP=tabP, DPA=_rng(dpos['A'].values(), 0), DPC=_rng(dpos['C'].values(), 0),
              LOWER=(f', giảm rõ {_tren(lower)}' if lower else ''),
              TRIVIAL=(f'Riêng {_lst(trivial)}, ràng buộc được thoả theo cách tầm thường: $r$ học được gần bằng 0 '

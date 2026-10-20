@@ -88,6 +88,13 @@ class Config:
     repeat: int = 0
     val_frac_cv: float = 0.10
     save_model: bool = False         # lưu trọng số + normaliser (<tên>.pt) để dùng cho demo
+    # ---- cải tiến E20 (mặc định tắt -> mọi lượt cũ giữ nguyên từng bit)
+    member: int = 0                  # thành viên ensemble: đổi hạt giống khởi tạo và lấy mẫu batch,
+                                     # GIỮ NGUYÊN cách chia và tập cell có nhãn (chọn theo `seed`)
+    alpha_euler: float = 0.0         # residual='autograd': thêm phần dư Euler dọc quỹ đạo thật với cùng r
+    distill_w: float = 0.0           # > 0: GBDT học trên cell có nhãn làm mô hình thầy; dự đoán của nó trên
+                                     # cell không nhãn là nhãn mềm cho mạng (học bán giám sát kiểu tự huấn luyện)
+    save_val_predictions: bool = False
 
     def v2(self) -> 'Config':
         """Bật đủ năm sửa đổi của pipeline v2."""
@@ -138,7 +145,11 @@ class Trainer:
     def __init__(self, cfg: Config, device=None):
         self.cfg, self.dev = cfg, device or default_device()
         self._tcache = {}
-        set_seed(cfg.seed)
+        set_seed(self.train_seed)
+
+    @property
+    def train_seed(self) -> int:
+        return self.cfg.seed + 7919 * self.cfg.member
 
     def _t(self, S: PointSet) -> _Tensors:
         key = id(S)
@@ -176,6 +187,9 @@ class Trainer:
         self.val = make_pointset(va, self.norm, cfg.cyc, labelled_only=lab_only)
         self.test = make_pointset(te, self.norm, cfg.cyc, labelled_only=lab_only)
         self.test_ids = [c.cid for c in te]
+        self.val_ids = [c.cid for c in va]
+        if cfg.distill_w > 0 and self.S_unl is not None:
+            self.teacher_unl = self._teacher(tr_lab, va, self.S_unl)
         self.n_cells = dict(train_labelled=len(tr_lab), train_unlabelled=len(tr_unl), val=len(va), test=len(te),
                             all=len(cells))
         self.transfer = {}
@@ -186,6 +200,18 @@ class Trainer:
                 tcells = [c for c in tcells if c.cid in keep]
             self.transfer[tgt] = make_pointset(tcells, self.norm, cfg.cyc)
         return self
+
+    def _teacher(self, lab_cells, val_cells, S_unl: PointSet) -> torch.Tensor:
+        """GBDT (cùng cấu hình và cách chọn số cây theo validation như đối chứng E16) học trên cell có nhãn,
+        trả dự đoán của nó cho mọi điểm của cell không nhãn. Không dùng nhãn nào ngoài cell có nhãn."""
+        from .baselines import fit_predict
+        lab_only = self.cfg.clean != 'life3sigma'
+        Sl = make_pointset(lab_cells, self.norm, self.cfg.cyc, labelled_only=lab_only)
+        Sv = make_pointset(val_cells, self.norm, self.cfg.cyc, labelled_only=lab_only)
+        xy = lambda S: np.hstack([S.X, S.T])
+        p, v, hp = fit_predict('gbdt', xy(Sl), Sl.Y.ravel(), xy(Sv), Sv.Y.ravel(), xy(S_unl), self.cfg.seed)
+        self.teacher_info = dict(val_MAE=v, **hp)
+        return torch.from_numpy(np.asarray(p, dtype=np.float32).reshape(-1, 1)).to(self.dev)
 
     def _pairs(self, S: PointSet, rng, batch):
         sampler = S.sample_pairs_cycle if self.cfg.pair_by == 'cycle' else S.sample_pairs
@@ -223,6 +249,8 @@ class Trainer:
                 out['ode'] = (((u2 - u1) + rate * (t2 - t1)) ** 2).mean()
             else:
                 out['ode'] = ((u_t + rate) ** 2).mean()
+                if cfg.alpha_euler > 0:
+                    out['euler'] = (((u2 - u1) + rate * (t2 - t1)) ** 2).mean()
         else:
             u1 = model.u(x1, t1); u2 = model.u(x2, t2)
         # label-free monotonicity with tolerance for regeneration
@@ -237,12 +265,13 @@ class Trainer:
     def fit(self, verbose=True) -> Dict:
         cfg = self.cfg
         dyn = {'mlp': 'none', 'pinn_sup': 'greybox', 'pinn_semi': 'greybox', 'pinn_bb': 'blackbox'}[cfg.model]
-        model = SOHModel(dyn=dyn, hidden=cfg.hidden, dropout=cfg.dropout, use_cycle=cfg.use_cycle,
+        model = SOHModel(dyn=dyn, n_feat=self.S_lab.X.shape[1], hidden=cfg.hidden, dropout=cfg.dropout,
+                         use_cycle=cfg.use_cycle,
                          use_knee=cfg.use_knee, use_arrhenius=cfg.use_arrhenius,
                          act=cfg.act, arch=cfg.arch).to(self.dev)
         opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd, foreach=True)   # gộp phép tính, kết quả như cũ
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg.max_steps, eta_min=cfg.lr * 0.05)
-        rng = np.random.RandomState(cfg.seed)
+        rng = np.random.RandomState(self.train_seed)
         n_lab = len(self.S_lab)
         use_phys = cfg.model != 'mlp'
         nl, nu = self.n_cells['train_labelled'], self.n_cells['train_unlabelled']
@@ -268,8 +297,16 @@ class Trainer:
                 ph = self.physics(model, bl)
                 loss = loss + w * (cfg.alpha_ode * ph.get('ode', torch.zeros(())) + cfg.beta_mono * ph['mono']
                                    + cfg.gamma_range * ph['range'])
+                if 'euler' in ph:
+                    loss = loss + w * cfg.alpha_euler * ph['euler']
                 logs.update(ode=float(ph['ode'].detach()) if 'ode' in ph else 0.0,
                             mono=float(ph['mono'].detach()), range=float(ph['range'].detach()))
+            if cfg.distill_w > 0 and getattr(self, 'teacher_unl', None) is not None:
+                iu = rng.randint(0, len(self.S_unl), size=cfg.batch // 2)
+                xu, tu, _ = self._gather(self.S_unl, iu)
+                loss_kd = Fnn.mse_loss(model.u(xu, tu), self.teacher_unl.index_select(0, torch.from_numpy(iu).to(self.dev)))
+                loss = loss + cfg.distill_w * loss_kd
+                logs['kd'] = loss_kd.item()
             opt.zero_grad(); loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0, foreach=True)
             opt.step(); sched.step()
@@ -296,6 +333,11 @@ class Trainer:
             res['physics_params'] = dict(lam=model.dyn.lam.item(), Ea_kJ_mol=model.dyn.Ea.item() / 1e3)
         for tgt, pts in self.transfer.items():
             res[f'transfer_{tgt}'] = self.evaluate(model, pts)
+        if getattr(self, 'teacher_info', None):
+            res['teacher'] = self.teacher_info
+        if cfg.save_val_predictions:
+            res['val_predictions'] = self.predict(model, self.val)
+            res['val_predictions']['cell_ids'] = self.val_ids
         if cfg.save_predictions:
             res['test_predictions'] = self.predict(model, self.test)
             res['test_predictions']['cell_ids'] = getattr(self, 'test_ids', None)
@@ -339,6 +381,8 @@ def run_name(cfg: Config) -> str:
     extra = '' if (cfg.act == 'silu' and cfg.arch == 'mlp') else f'_{cfg.act}-{cfg.arch}'
     if cfg.split == 'cv':
         extra += f'_cv{cfg.repeat}-{cfg.fold}of{cfg.n_folds}'
+    if cfg.member:
+        extra += f'_m{cfg.member}'
     return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{cfg.norm}_{cfg.cyc}{extra}'
 
 

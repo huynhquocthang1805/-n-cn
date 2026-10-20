@@ -182,7 +182,7 @@ chiếu. Số liệu ở 30 % nhãn, mọi cell test của 5 lần lặp.
 
 {tab_mono}
 
-![Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược; vạch ngang là nhãn thật.]({IMG}/fig_metrics_mono.png){{width=100%}}
+![Tỉ lệ cặp chu kỳ có SOH dự đoán tăng ngược; vạch đứt là nhãn thật.]({IMG}/fig_metrics_mono.png){{width=100%}}
 
 Dự đoán của MLP tăng ngược ở {rng([mono(ds, 'mlp') for ds in DS], 1)} % số cặp, của PINN-semi chỉ
 {rng([mono(ds, 'pinn_semi') for ds in DS], 1)} %, gần mức của nhãn thật
