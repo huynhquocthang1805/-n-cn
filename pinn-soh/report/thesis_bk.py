@@ -131,10 +131,9 @@ vật lý về lão hoá pin, với ba yêu cầu: (i) sai số thấp hơn các
 cell có nhãn; (ii) kết quả được đo bằng một giao thức không rò rỉ thông tin, có kiểm định thống kê; (iii) đánh giá
 được khả năng dùng mô hình học trên một bộ dữ liệu cho một bộ dữ liệu khác.
 
-Đối tượng nghiên cứu là cell lithium-ion hình trụ 18650 thuộc ba hệ hoá học NCM, NCA/NCM và LFP, trong bốn bộ dữ
-liệu lão hoá công khai. Đầu vào là 16 đặc trưng trích từ đoạn sạc CC--CV của từng chu kỳ; đầu ra là SOH tại chu kỳ
-đó. Đồ án không xây dựng mô hình điện hoá chi tiết, không dự báo SOH ở tương lai và không ước lượng tuổi thọ còn
-lại; các hướng này được nêu ở phần hướng phát triển.
+Đối tượng nghiên cứu là cell lithium-ion hình trụ 18650 trong bốn bộ dữ liệu lão hoá công khai (NCM, NCA/NCM, LFP)
+và bộ NASA PCoE. Đầu vào là 16 đặc trưng trích từ đoạn sạc CC--CV của từng chu kỳ; đầu ra là SOH tại chu kỳ đó và
+SOH, dung lượng, RUL ở các chu kỳ sau. Đồ án không xây dựng mô hình điện hoá chi tiết.
 """
 
 CH2_HEAD = r"""\chapter{Cơ sở lý thuyết}\label{ch:lythuyet}
@@ -362,7 +361,7 @@ máy khác cho dự đoán trùng từng bit với kết quả báo cáo.
 
 
 # ───────────────────────────────────────────────────────────── ghép
-def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
+def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''), e26=''):
     """c1..c8: chuỗi các chương cũ (c7 = chương cải tiến); e21: các mục kết quả E21; fig: hàm sinh hình."""
     # Chương 1
     h1, s1 = split_sections(c1)
@@ -395,7 +394,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
     lai = sub1(lai, 'Sáu hướng được thử, mỗi hướng dựa trên một kết quả đã công bố hoặc một quan sát ở Chương~\\ref{ch:ketqua}.',
                'Sáu thành phần được xem xét, mỗi thành phần dựa trên một kết quả đã công bố hoặc một quan sát ở '
                'Chương~\\ref{ch:ketqua}; Mục~\\ref{sec:devproto} chọn trong số đó chỉ bằng tập validation.')
-    ch4 = (CH4_HEAD + data + pinn + lai + CH4_DA + CH4_FC + pick(s4, 'Các mô hình đối chứng')
+    ch4 = (CH4_HEAD + data + pinn + lai + CH4_DA + CH4_FC + e25[0] + pick(s4, 'Các mô hình đối chứng')
            + pick(s4, 'Cấu hình huấn luyện'))
     # Chương 5: thiết kế thí nghiệm
     h5, s5 = split_sections(c5)
@@ -439,7 +438,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
                          improve, count=1, flags=re.S)
     assert n == 1
     ch6 = (head6 + leak + s30 + labels + pick(s6, 'So với các mô hình học có nhãn khác') + pick(s6, 'Lợi ích đến từ đâu')
-           + ext + rm + pick(s6, 'Tham số vật lý') + phys + improve + e21 + e22[1]
+           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + e21 + e22[1] + e25[1]
            + pick(s6, 'Thảo luận chung') + demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp')))
     ch7 = c8
     out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
@@ -453,10 +452,9 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
 
 STRUCTURE = r"""\section{Cấu trúc báo cáo}
 
-Chương~\ref{ch:lythuyet} và~\ref{ch:lienquan} trình bày cơ sở lý thuyết và các công trình liên quan.
-Chương~\ref{ch:phuongphap} mô tả dữ liệu và các mô hình: PINN bán giám sát, PINN-lai, thích nghi và tự huấn luyện, dự báo
-SOH tương lai và RUL. Chương~\ref{ch:thietke} là thiết kế thí nghiệm và giao thức đánh giá, Chương~\ref{ch:ketqua} là kết
-quả, Chương~\ref{ch:ketluan} là kết luận và hướng phát triển.
+Chương~\ref{ch:lythuyet} và~\ref{ch:lienquan} trình bày cơ sở lý thuyết và các công trình liên quan,
+Chương~\ref{ch:phuongphap} mô tả dữ liệu và các mô hình, Chương~\ref{ch:thietke} là thiết kế thí nghiệm,
+Chương~\ref{ch:ketqua} là kết quả, Chương~\ref{ch:ketluan} là kết luận và hướng phát triển.
 """
 
 
@@ -580,13 +578,12 @@ bộ dữ liệu.
 
 <<TABA>>
 
-Giao thức B trả lời câu hỏi cùng một mô hình mất bao nhiêu độ chính xác khi rời bộ dữ liệu của nó (Bảng~\ref{tab:e21b},
-Hình~\ref{fig:e21matrix}). Trung bình nhân trên các bộ, sai số ngoài bộ của mô hình kết hợp gấp <<GAPKH>> lần sai số
+Giao thức B trả lời câu hỏi cùng một mô hình mất bao nhiêu độ chính xác khi rời bộ dữ liệu của nó
+(Bảng~\ref{tab:e21b}). Trung bình nhân trên các bộ, sai số ngoài bộ của mô hình kết hợp gấp <<GAPKH>> lần sai số
 trong bộ, của GBDT gấp <<GAPGB>> lần và của MLP gấp <<GAPMLP>> lần. Kết quả ngoài bộ của hai giao thức gần như trùng
 nhau (chênh trung bình <<AB>>), tức 15\,\% cell giữ lại để test trong bộ không làm thay đổi kết luận về chuyển miền.
 
 <<TABB>>
-<<FIGM>>
 """, WIN=win_txt, KHGB=f(E['kh_vs_gb'], 2), KHP3=f(E['kh_vs_p3'], 2), SAME=f(1e3 * E['same']['ket_hop'], 1),
              DIFF=f(1e3 * E['diff']['ket_hop'], 1), INKH=rng([1e3 * x for x in E['in_kh']], 1), NLEV=E['n_level'],
              CHEMTXT=(' Cùng hệ hoá học không làm việc chuyển dễ hơn: hai bộ LFP (MIT, HUST) khác nhau về giao thức sạc, '
@@ -596,8 +593,7 @@ nhau (chênh trung bình <<AB>>), tức 15\,\% cell giữ lại để test trong
              ANCH=rng([1e3 * x for x in E['anchor']], 1), TABA=tab_a,
              GAPKH=f(E['gap']['ket_hop'], 1), GAPGB=f(E['gap']['gbdt'], 1), GAPMLP=f(E['gap']['mlp'], 1),
              AB=pc(E['ab'], 1), TABB=tab_b,
-             FIGM=fig('fig_e21_matrix', 'Giao thức B: MAE theo cell (thang log) khi học trên bộ ở hàng và kiểm tra trên '
-                      'bộ ở cột; ô viền đậm trên đường chéo là test trong cùng bộ.', 'fig:e21matrix'))
+             )
     if 'cv' not in E:
         return out
     cv, ct = E['cv'], E['ct']
@@ -614,7 +610,7 @@ nhau (chênh trung bình <<AB>>), tức 15\,\% cell giữ lại để test trong
     out += T(r"""
 \section{Thích nghi không nhãn và học lặp}\label{sec:selftrainres}
 
-Bảng~\ref{tab:e21chain} và Hình~\ref{fig:e21rounds} theo dõi sai số của mô hình kết hợp qua từng vòng của quy trình ở
+Bảng~\ref{tab:e21chain} theo dõi sai số của mô hình kết hợp qua từng vòng của quy trình ở
 Mục~\ref{sec:selftrain}, luôn trên nửa bộ đích không dùng để thích nghi. Vòng 0, gồm chuẩn hoá theo từng bộ và loss vật
 lý trên cell đích, cho tỉ số MAE so với chưa thích nghi là <<R0>> (trung bình nhân trên 12 cặp), nhưng kết quả chia hai
 chiều rõ rệt: giảm có ý nghĩa thống kê ở <<R0B>> cặp (<<R0DOWN>>) và tăng có ý nghĩa ở <<R0W>> cặp (<<R0UP>>). Chuẩn hoá
@@ -632,7 +628,6 @@ hình kết hợp ở vòng 0; các thành phần vì vậy hội tụ về nhã
 có ích khi mỗi vòng đưa vào một thông tin mà nhãn giả chưa chứa.
 
 <<TABC>>
-<<FIGR>>
 
 Nhãn giả đã qua bộ lọc nên đúng về hình dạng, nhưng mang nguyên độ lệch mức của mô hình, và vòng sau học lại độ lệch đó.
 Thông tin còn thiếu là mức SOH của bộ đích. Một thí nghiệm bổ sung trên cùng bốn bộ (mô hình học trên bộ nguồn, thêm 3
@@ -643,9 +638,7 @@ bộ đích, hoặc dùng dung lượng đo khi xuất xưởng.
              R2V0=f(E['r2v0'], 3), R2O=E['r2_over_r0'], TABC=tab_c, R0DOWN=lst(E['r0_down']), R0UP=lst(E['r0_up']),
              P31=f(E['r1v0']['pinn3'], 2), G31=f(E['r1v0']['gbdt'], 2),
              K0P=m3(E['k3']['p0'], 1) + r'$\times10^{-3}$', K3P=m3(E['k3']['p3'], 1) + r'$\times10^{-3}$',
-             K0G=m3(E['k3']['g0'], 1) + r'$\times10^{-3}$', K3G=m3(E['k3']['g3'], 1) + r'$\times10^{-3}$',
-             FIGR=fig('fig_e21_rounds', 'MAE theo cell của mô hình kết hợp trên bộ đích qua các vòng thích nghi (thang log); '
-                      'mỗi đường là một bộ nguồn.', 'fig:e21rounds'))
+             K0G=m3(E['k3']['g0'], 1) + r'$\times10^{-3}$', K3G=m3(E['k3']['g3'], 1) + r'$\times10^{-3}$')
     return out
 
 
@@ -1012,3 +1005,118 @@ cùng lý do ở Mục~\ref{sec:forecastres}.
              FIG=fig('fig_e23_examples', 'Ba ví dụ với lịch sử đo: dao động đều của nhóm R2.5 (XJTU, gốc ở 40\\,\\% đời), gốc '
                      'ngay sau một lần hồi phục ở XJTU và ở NASA. Đường xám là bản E22, đường đậm là bản có xét hồi phục.',
                      'fig:e23ex'))
+
+
+# ───────────────────────────────────────────────────────────── E25: cập nhật theo vài lần đo dung lượng
+CH4_KF = r"""\section{Cập nhật theo vài lần đo dung lượng}\label{sec:kalman_m}
+
+Sai số còn lại của PINN-lai chủ yếu là độ lệch mức riêng của từng cell (Mục~\ref{sec:improve}), và độ lệch đó không
+thể sửa nếu không có thông tin nào về chính cell. Trong vận hành, dung lượng của một cell thường được đo vài lần: lúc
+nhận pin, và định kỳ khi bảo dưỡng. Mục này dùng các lần đo thưa đó để hiệu chỉnh ước lượng mà không huấn luyện lại mô
+hình. Gọi $p_n$ là SOH do PINN-lai ước lượng ở chu kỳ $n$ và $y_n$ là SOH thật; sai số được mô hình hoá
+\begin{equation}\label{eq:kf}
+  y_n - p_n = b_n + \varepsilon_n,\qquad
+  b_{n'} - \mu_0 = e^{-(n'-n)/\ell}\,(b_n - \mu_0) + \eta,\qquad
+  \operatorname{Var}\varepsilon = R,\ \operatorname{Var} b = P_0,
+\end{equation}
+tức độ lệch $b_n$ của cell trôi chậm và hồi quy về trung bình tổng thể $\mu_0$ với độ dài tương quan $\ell$ (quá trình
+Ornstein--Uhlenbeck), còn $\varepsilon_n$ là nhiễu nhanh. Bộ lọc Kalman cập nhật $b$ mỗi khi có một lần đo; giữa hai lần
+đo, thông tin của lần đo phai dần theo khoảng cách chu kỳ. Ước lượng hiệu chỉnh là $p_n + \hat b_n$, với $\hat b_n$ chỉ
+dùng các lần đo ở chu kỳ $\le n$, kèm khoảng 90\,\% $\pm 1{,}645\sqrt{\hat P_n + R}$. Bốn tham số lấy trên cell validation
+của chính fold: $\mu_0$ là sai số trung bình, $R$ là nửa phương sai của sai phân bậc một, $P_0$ là phần phương sai còn
+lại, $\ell$ chọn trên lưới theo MAE riêng cho từng lịch đo. Bản thử đầu dùng bước ngẫu nhiên thay cho
+\eqref{eq:kf}: một lần đo lúc nhận khi đó giữ nguyên độ lệch đầu đời mãi mãi và khoảng dự đoán rộng ra không giới hạn
+giữa hai lần đo.
+
+Với dự báo, đường dự báo của mô hình kết hợp có xét hồi phục (lịch sử ước lượng) được cộng thêm độ lệch hậu nghiệm tại
+gốc, trôi dần về $\mu_0$ theo \eqref{eq:kf} trong tầm dự báo.
+"""
+
+
+def e26_text(d, H):
+    """Đoạn nối vào Mục tham số vật lý: λ, Ea khi tăng trọng số ODE và đổi khởi tạo (E26)."""
+    f, T, rng, lst = (H[k] for k in ('f', 'T', 'rng', 'lst'))
+    P, M = d['e26_params'], d['e26_mae']
+    sh = P.dropna(subset=['s_lam'])
+    hi = P[P.alpha_ode == P.alpha_ode.max()]
+    oth = M[~M.arm.isin(['A0', 'A3'])]
+    o_sig = sorted({r.ds for r in oth.itertuples() if r.p < 0.05})
+    eu = [f'{f(r.ratio, 2)} trên {r.ds}' + (' (có ý nghĩa)' if r.p < 0.05 else '') for r in M[M.arm == 'A3'].itertuples()]
+    return T(r"""
+Hai giải thích trên (ràng buộc ODE quá yếu, hay $k(\mathbf{x})$ hấp thụ ảnh hưởng) được tách bằng một thí nghiệm
+bổ sung trên hai bộ có nhiều mức nhiệt độ, NASA (4, 24, 43\,\textdegree C) và TJU
+(25, 35, 45\,\textdegree C): huấn luyện lại PINN-semi ở 70\,\% nhãn, cùng fold và hạt giống, với $\alpha$ tăng lên
+0{,}2 và 1, có hoặc không thêm ràng buộc Euler giữa hai chu kỳ, và với giá trị khởi tạo đổi thành $\lambda = 3$,
+$E_a = 60$\,kJ/mol. Nếu dữ liệu xác định được hai tham số, các lượt khởi tạo khác nhau phải về gần cùng một giá trị.
+Thực tế, hiệu giữa giá trị học được của hai cách khởi tạo bằng <<SL>> lần hiệu khởi tạo với $\lambda$ và <<SE>> lần với
+$E_a$ (trung vị theo lượt, ở cả $\alpha = 0{,}02$ lẫn $\alpha = 1$); với $\alpha = 1$, $\lambda$ chỉ rời khởi tạo
+<<ML>> và $E_a$ <<ME>>\,kJ/mol. Tham số đứng yên ở nơi được đặt, kể cả khi ràng buộc ODE mạnh gấp 50 lần. Giải thích hợp
+lý nhất nằm ở cấu trúc chứ không ở trọng số: tốc độ suy giảm chỉ xuất hiện dưới dạng tích $k(\mathbf{x})\,g(u)\,A(T)$,
+mà $k(\mathbf{x})$ nhận chính các đặc trưng sạc, vốn đã mang thông tin về nhiệt độ và về mức SOH, nên thay đổi của
+$\lambda$ hay $E_a$ được $k$ bù lại. Về sai số, các nhánh tăng trọng số hoặc đổi khởi tạo <<OS>> (tỉ số MAE theo cell
+<<RO>>); thêm ràng buộc Euler cho tỉ số <<EU>>.
+""", SL=rng(list(sh.s_lam), 2), SE=rng(list(sh.s_ea), 2), ML=rng(list(hi.lam_move), 2), ME=rng(list(hi.ea_move), 1),
+             OS=('không khác cấu hình chuẩn có ý nghĩa' if not o_sig else 'khác cấu hình chuẩn có ý nghĩa trên '
+                 + lst(o_sig)), RO=rng(list(oth.ratio), 2), EU=lst(eu))
+
+
+def e25_text(d, H):
+    f, m3, table, T, rng, lst, pc = (H[k] for k in ('f', 'm3', 'table', 'T', 'rng', 'lst', 'pc'))
+    S, F = d['e25_estimation'], d['e25_forecast']
+    DSX = ['XJTU', 'TJU', 'MIT', 'HUST', 'NASA']
+    g = lambda ds, fr, sc: S[(S.ds == ds) & (S.frac == fr) & (S.sched == sc)].iloc[0]
+    star = lambda r, col='kalman': (r'$^{*}$' if r.p < 0.05 and r[col] < r.goc else
+                                    (r'$^{\dagger}$' if r.p < 0.05 and r[col] > r.goc else ''))
+    rows = []
+    for ds in DSX:
+        a, b, c = g(ds, 0.3, 'dau'), g(ds, 0.3, 'q25'), g(ds, 0.3, 'q10')
+        rows.append([ds, m3(a.goc, 1), m3(a.kalman, 1) + star(a), m3(b.kalman, 1) + star(b), m3(c.kalman, 1) + star(c),
+                     m3(c.gan_nhat, 1), f(c.n_meas, 1)])
+    tab = table(['Bộ', 'Không đo', 'Đo lúc nhận', 'Mỗi $0{,}25L$', 'Mỗi $0{,}1L$', 'Mỗi $0{,}1L$, lần gần nhất',
+                 'Số lần đo ($0{,}1L$)'], rows, 'lrrrrrr',
+                r'MAE theo cell ($\times10^{-3}$) của PINN-lai ở 30\,\% nhãn sau khi hiệu chỉnh bằng bộ lọc Kalman theo ba '
+                r'lịch đo dung lượng, tính trên các chu kỳ không được đo; cột áp chót dịch ước lượng theo sai số của lần đo '
+                r'gần nhất. $^{*}$/$^{\dagger}$: tốt hơn/kém hơn không hiệu chỉnh có ý nghĩa (Wilcoxon ghép cặp theo cell, '
+                r'$p < 0{,}05$).', 'tab:e25')
+    rq = lambda sc: [x for x in S[S.sched == sc].ratio]
+    worse_dau = sorted({r.ds for r in S[S.sched == 'dau'].itertuples() if r.p < 0.05 and r.kalman > r.goc})
+    better_q25 = sorted({r.ds for r in S[S.sched == 'q25'].itertuples() if r.p < 0.05 and r.kalman < r.goc})
+    nk = S[S.sched == 'q10']
+    gan_better = sorted({r.ds for r in nk.itertuples() if r.p_vs_gan < 0.05 and r.gan_nhat < r.kalman})
+    s25 = S[S.sched == 'q25']; kal_better25 = sorted({r.ds for r in s25.itertuples() if r.p_vs_gan < 0.05
+                                                       and r.kalman < r.gan_nhat})
+    fq = lambda ds, sc: F[(F.ds == ds) & (F.sched == sc)].iloc[0]
+    return T(r"""
+\section{Cập nhật khi có vài lần đo dung lượng}\label{sec:kalmanres}
+
+Bảng~\ref{tab:e25} cho sai số của PINN-lai sau khi hiệu chỉnh theo Mục~\ref{sec:kalman_m}. Đo định kỳ mỗi $0{,}1L$
+(khoảng <<N10>> lần trong đời cell) đưa sai số xuống còn <<R10>> lần sai số không hiệu chỉnh, tuỳ bộ và mức nhãn<<S10>>;
+đo mỗi $0{,}25L$ còn <<R25>> lần, có ý nghĩa <<B25>>. Lợi ích lớn nhất ở <<TOP>>, những bộ mà sai số chủ yếu là độ lệch
+mức của cả quỹ đạo, đúng như phân tích sai số ở Mục~\ref{sec:improve}.
+Ngược lại, một lần đo duy nhất lúc nhận pin không giúp (tỉ số <<RD>>) và còn làm kém đi có ý nghĩa ở <<WD>>: dung lượng
+của nhiều cell còn tăng trong vài chục chu kỳ đầu (giai đoạn kích hoạt), nên độ lệch đo ở chu kỳ đầu không đại diện cho
+độ lệch về sau. Với lịch đo dày, cách đơn giản nhất là dịch ước lượng theo sai số của lần đo gần nhất, và cách này
+<<GAN>>; bộ lọc có lợi khi đo thưa, ví dụ mỗi $0{,}25L$ nó tốt hơn có ý nghĩa trên <<K25>>, vì nó biết tin vào lần đo
+bao nhiêu và trả độ lệch về mức chung khi lần đo đã xa.
+
+<<TAB>>
+
+Khoảng 90\,\% của bộ lọc hẹp hơn nhiều so với khoảng phù hợp cố định của Mục~\ref{sec:improve} (với đo mỗi $0{,}1L$ ở
+30\,\% nhãn, độ rộng trung bình <<W1>> so với <<W2>>, đơn vị $10^{-3}$), nhưng độ phủ thực tế chỉ <<COV>>: phần trôi của
+độ lệch giữa hai lần đo không hoàn toàn theo một quá trình Ornstein--Uhlenbeck chung cho mọi cell. Với dự báo, cộng độ
+lệch hậu nghiệm tại gốc vào đường dự báo giảm sai số trên toàn bộ phần đời còn lại còn <<F10>> lần khi đo mỗi $0{,}1L$,
+trong khi có đủ lịch sử đo cho <<FDO>> lần: một vài lần đo sửa được mức, nhưng hình dạng của quỹ đạo tương lai vẫn cần
+lịch sử dung lượng đầy đủ hơn.
+""", N10=rng([x for x in nk.n_meas], 0), R10=rng(rq('q10'), 2), R25=rng(rq('q25'), 2),
+             B25=('trên ' + lst([x for x in DSX if x in better_q25])) if better_q25 else 'trên không bộ nào',
+             S10=(', có ý nghĩa thống kê ở mọi trường hợp' if (nk.p < 0.05).all() and (nk.kalman < nk.goc).all() else
+                  f', có ý nghĩa ở {int(((nk.p < 0.05) & (nk.kalman < nk.goc)).sum())}/{len(nk)} trường hợp'),
+             TOP=lst(list(nk.groupby('ds').ratio.mean().sort_values().index[:3])),
+             RD=rng(rq('dau'), 2), WD=lst([x for x in DSX if x in worse_dau]) or 'không bộ nào',
+             GAN=(('tốt ngang hoặc hơn bộ lọc, hơn có ý nghĩa ở ' + lst([x for x in DSX if x in gan_better]) + ' (đo mỗi '
+                   '$0{,}1L$)') if gan_better else 'không tốt hơn bộ lọc ở bộ nào'),
+             K25=lst([x for x in DSX if x in kal_better25]) or 'không bộ nào', TAB=tab,
+             W1=rng([1e3 * x for x in nk[nk.frac == 0.3].wid_kalman], 0),
+             W2=rng([1e3 * x for x in nk[nk.frac == 0.3].wid_conf], 0),
+             COV=rng([100 * x for x in nk.cov_kalman], 0) + r'\,\%',
+             F10=rng([fq(ds, 'q10').ratio for ds in DSX], 2), FDO=rng([fq(ds, 'lich_su_do').ratio for ds in DSX], 2))

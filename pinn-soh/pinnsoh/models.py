@@ -210,12 +210,14 @@ class BlackBoxDynamics(nn.Module):
 
 class SOHModel(nn.Module):
     def __init__(self, dyn: str = 'none', n_feat=16, hidden=(64, 64, 32), dropout=0.0,
-                 use_cycle=True, use_knee=True, use_arrhenius=True, act='silu', arch='mlp'):
+                 use_cycle=True, use_knee=True, use_arrhenius=True, act='silu', arch='mlp', lam_init=1.0,
+                 ea_init_kj=30.0):
         super().__init__()
         self.dyn_kind = dyn
         self.u = SolutionNet(n_feat, hidden, dropout, use_cycle, act=act, arch=arch)
         if dyn == 'greybox':
-            self.dyn = GreyBoxDynamics(n_feat, use_knee=use_knee, use_arrhenius=use_arrhenius, act=act)
+            self.dyn = GreyBoxDynamics(n_feat, use_knee=use_knee, use_arrhenius=use_arrhenius, lam_init=lam_init,
+                                       ea_init_kj=ea_init_kj, act=act)
         elif dyn == 'blackbox':
             self.dyn = BlackBoxDynamics(n_feat)
         else:

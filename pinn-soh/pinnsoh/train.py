@@ -95,6 +95,8 @@ class Config:
     distill_w: float = 0.0           # > 0: GBDT học trên cell có nhãn làm mô hình thầy; dự đoán của nó trên
                                      # cell không nhãn là nhãn mềm cho mạng (học bán giám sát kiểu tự huấn luyện)
     save_val_predictions: bool = False
+    lam_init: float = 1.0            # giá trị khởi tạo của hệ số đầu gối lam và năng lượng hoạt hoá Ea (kJ/mol) — E26 đổi
+    ea_init_kj: float = 30.0         # để kiểm tra hai tham số có xác định được từ dữ liệu không
     range_first: tuple = (0.85, 1.10)  # miền SOH hợp lý ở chu kỳ đầu của cell; NASA (cell 4 °C có SOH đầu 0,5–0,8 so
                                      # với 2 Ah danh định) dùng (0,40; 1,10)
 
@@ -274,7 +276,7 @@ class Trainer:
         model = SOHModel(dyn=dyn, n_feat=self.S_lab.X.shape[1], hidden=cfg.hidden, dropout=cfg.dropout,
                          use_cycle=cfg.use_cycle,
                          use_knee=cfg.use_knee, use_arrhenius=cfg.use_arrhenius,
-                         act=cfg.act, arch=cfg.arch).to(self.dev)
+                         act=cfg.act, arch=cfg.arch, lam_init=cfg.lam_init, ea_init_kj=cfg.ea_init_kj).to(self.dev)
         opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd, foreach=True)   # gộp phép tính, kết quả như cũ
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg.max_steps, eta_min=cfg.lr * 0.05)
         rng = np.random.RandomState(self.train_seed)

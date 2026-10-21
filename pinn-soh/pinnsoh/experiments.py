@@ -280,8 +280,29 @@ def E24f(repeats=E20_REPEATS, datasets=None, seeds=None, out=None) -> List[Job]:
                    f'recovery NASA cv{r}-{k}', ('NASA',)) for r, k in itertools.product(rr, range(E13_FOLDS))])
 
 
+# E26: tham số vật lý có xác định được không — hai bộ nhiều mức nhiệt độ (NASA 4/24/43 °C, TJU 25/35/45 °C), PINN-semi
+#      ở 70 % nhãn, tăng trọng số phần dư động học alpha_ode, thêm phần dư Euler, và khởi tạo lam, Ea ở giá trị khác
+#      (nếu giá trị học được đi theo giá trị khởi tạo thì dữ liệu không xác định được tham số đó). Mức gốc (alpha_ode = 0,02,
+#      khởi tạo lam = 1, Ea = 30 kJ/mol) lấy lại từ E24 (NASA) và E13 nhánh G (TJU).
+E26_ARMS = [('A0i', dict(lam_init=3.0, ea_init_kj=60.0)),
+            ('A1', dict(alpha_ode=0.2)),
+            ('A2', dict(alpha_ode=1.0)),
+            ('A2i', dict(alpha_ode=1.0, lam_init=3.0, ea_init_kj=60.0)),
+            ('A3', dict(alpha_ode=1.0, alpha_euler=2.0))]
+E26_SETS = {'NASA': (0, 1, 2), 'TJU': (0,)}
+
+
+def E26(repeats=None, datasets=None, seeds=None, out='runs/E26') -> List[Job]:
+    jobs = []
+    for ds, reps in E26_SETS.items():
+        base = dict(E13_PHYS, range_first=(0.40, 1.10)) if ds == 'NASA' else dict(E13_PHYS)
+        for (tag, extra), r, k in itertools.product(E26_ARMS, reps, range(E13_FOLDS)):
+            jobs.append(_train_job('E26' + tag, 'pinn_semi', 0.7, dict(base, **extra), r, ds, k, out))
+    return jobs
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
-                                                        E24f=E24f)
+                                                        E24f=E24f, E26=E26)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26']

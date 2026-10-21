@@ -60,7 +60,8 @@ def load():
               'e20_error_decomp', 'e20_check', 'e20_biascorr', 'e21_base', 'e21_chain', 'e21_chain_tests',
               'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting',
               'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
-              'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1']:
+              'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1', 'e25_estimation', 'e25_forecast',
+              'e26_params', 'e26_mae']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -87,7 +88,8 @@ def run_counts():
              E14=len(glob.glob('runs/E14/samenorm_*.json')),
              E20=len({os.path.basename(p) for p in glob.glob('runs/E20/*.json') + glob.glob('runs/E20dev/*.json')}),
              E21=len(glob.glob('runs/E21/*.json')), E22=len(glob.glob('runs/E22/*.npz')),
-             E23=len(glob.glob('runs/E23/*.npz')), E24=len(glob.glob('runs/E24/*.json')))
+             E23=len(glob.glob('runs/E23/*.npz')), E24=len(glob.glob('runs/E24/*.json')),
+             E26=len(glob.glob('runs/E26/*.json')))
     c['tong'] = sum(c.values())
     return c
 
@@ -240,8 +242,8 @@ lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại t
       bằng nhãn giả giúp được bao nhiêu?
 \item Có thể giảm sai số thêm mà không dùng thêm nhãn nào không, và mô hình có cho biết dự đoán của nó đáng tin
       tới đâu không?
-\item Từ SOH ước lượng được, có dự báo được SOH, dung lượng ở các chu kỳ tương lai và số chu kỳ còn lại tới ngưỡng
-      cuối đời không, kể cả khi dung lượng hồi phục sau khoảng nghỉ, và dạng phương trình động học giúp gì cho dự báo?
+\item Từ SOH ước lượng được, có dự báo được SOH, dung lượng và số chu kỳ còn lại tới ngưỡng cuối đời không, kể cả
+      khi dung lượng hồi phục sau khoảng nghỉ?
 \end{enumerate}
 
 Mọi câu hỏi trên chỉ có ý nghĩa nếu giao thức đánh giá không rò rỉ thông tin. Vì vậy một phần lớn của đồ án
@@ -254,9 +256,8 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
       xám (tốc độ suy giảm luôn không âm, có hệ số đầu gối và hệ số Arrhenius), cùng ba hàm mất mát vật lý
       không dùng nhãn nên áp được lên cell chưa đo dung lượng.
 \item Một giao thức đánh giá không rò rỉ: chia theo cell, kiểm định chéo <<K>> fold phân tầng theo chế độ thí
-      nghiệm, lặp <<R>> lần, với lý do chọn từng con số và chứng minh các tính chất của cách chia.
-\item Kiểm toán rò rỉ định lượng: đo mức sai số bị đánh giá thấp giả tạo khi chia theo chu kỳ, khi chuẩn hoá
-      theo cả vòng đời cell, khi lọc ngoại lai bằng dữ liệu tương lai.
+      nghiệm, lặp <<R>> lần, kèm kiểm toán rò rỉ định lượng (chia theo chu kỳ, chuẩn hoá theo cả vòng đời cell,
+      lọc ngoại lai bằng dữ liệu tương lai).
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
       (<<NCELL>> cell), tổng cộng <<NRUN>> lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Hai giao thức huấn luyện trên một bộ dữ liệu và kiểm tra trên ba bộ còn lại (70/30 và 70/15/15), cùng một
@@ -265,9 +266,8 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
       định SOH không tăng vào bước suy luận, được chọn chỉ trên tập validation theo đề cương ấn định trước, kèm
       khoảng dự đoán phù hợp 90\,\%.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
-      xám làm lớp đầu ra (luôn đơn điệu, mô tả được cả điểm đầu gối lẫn suy giảm chậm dần, RUL có dạng đóng), kết hợp
-      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng; bản cải tiến tách phần hồi phục
-      (phần giữ lại và phần mất ngay, ước lượng trên cell train) và dao động đều ra khỏi xu thế suy giảm.
+      xám làm lớp đầu ra, kết hợp với GBDT; bản cải tiến tách phần hồi phục dung lượng và dao động đều ra khỏi xu thế
+      suy giảm. Khi đo được dung lượng vài lần trong đời cell, một bộ lọc Kalman hiệu chỉnh ước lượng theo từng cell.
 \item Áp dụng toàn bộ quy trình cho bộ NASA PCoE (trích lại 16 đặc trưng sạc từ dữ liệu gốc), kiểm chứng ý tưởng dùng
       thời gian nghỉ của SambaMixer và so trên đúng cách chia của công trình đó.
 \end{enumerate}
@@ -803,6 +803,8 @@ def ch5(d, ctx):
               ['Dự báo có xét hồi phục', 'cùng fold với E22, thêm bộ NASA; học lại cả mô hình E22 để so ghép cặp',
                num(rc['E23'])],
               ['Bộ NASA', '2 bộ đặc trưng × 2 mức nhãn × 15 fold; cách chia của SambaMixer, 3 hạt giống', num(rc['E24'])],
+              ['Tham số vật lý', 'NASA, TJU: trọng số ODE, ràng buộc Euler, giá trị khởi tạo; 70\\,\\% nhãn',
+               num(rc['E26'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -2162,12 +2164,12 @@ ghép GBDT với nhóm PINN còn tốt hơn cả hai.
 
 \paragraph{Khi nào lợi ích nhỏ?} <<WEAKTXT>>
 
-\paragraph{Hạn chế.} (i) Mô hình ước lượng SOH tại chu kỳ hiện tại, chưa dự báo SOH tương lai hay tuổi thọ còn
-lại. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
+\paragraph{Hạn chế.} (i) Khoảng dự báo 90\,\% chưa đạt độ phủ danh nghĩa, và vài lần đo dung lượng chỉ sửa được
+mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
 (iii) GBDT là đối thủ mạnh; Chương~\ref{ch:caitien} kết hợp nó với PINN ở mức dự đoán, nhưng ràng buộc vật lý
 chưa được đưa vào chính mô hình cây. (iv) Cell validation cần nhãn ngoài ngân
-sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ chưa
-ước lượng được từ dữ liệu hiện có. (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
+sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ không
+được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
 mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}).
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
                                            'và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai '
@@ -2656,23 +2658,19 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item <<CH5>>
 <<CH6>><<CH7>>\end{enumerate}
 
-Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng
-một cận đơn giản rằng ngay cả bộ dự đoán không học gì cũng đạt sai số rất thấp dưới cách chia đó. Giao thức kiểm
-định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần, được chọn từ các ràng buộc rõ ràng và có
+Về phương pháp đánh giá, cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, đến mức bộ dự đoán không học gì
+cũng đạt sai số rất thấp. Giao thức kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần, có
 các tính chất được chứng minh: mỗi cell được test đúng một lần mỗi lần lặp, các fold cân bằng theo từng chế độ, tập
-nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch.
+nhãn lồng nhau.
 
 \section{Hướng phát triển}
 
 \begin{enumerate}
 \item Đưa ràng buộc vật lý vào chính mô hình cây, ví dụ dùng loss đơn điệu và loss động học để tạo nhãn giả cho
-      GBDT trên cell không nhãn, thay vì chỉ lấy trung bình dự đoán như PINN-lai.
-\item Cập nhật ước lượng và dự báo khi có thêm một vài lần đo dung lượng của chính cell, ví dụ dùng lớp nghiệm đóng
-      làm mô hình trạng thái cho một bộ lọc Bayes; nhờ đó khoảng dự đoán và khoảng dự báo có độ phủ đúng cho từng cell
-      chứ không chỉ trung bình.
+      GBDT trên cell không nhãn.
+\item <<FW2>>
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
-\item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, tăng trọng số của phần dư động học và dùng dữ
-      liệu nhiều mức nhiệt độ, để tốc độ $r$, $\lambda$ và $E_a$ diễn giải được theo nghĩa vật lý mà vẫn giữ sai số thấp.
+\item <<FW4>>
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
              R10=_rng(F['r'][0.1].values()), SIG10=_tren(F['sig'][0.1]) or 'trên không bộ nào',
@@ -2681,7 +2679,27 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
-             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d))
+             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), FW2=future_kalman(d), FW4=future_params(d))
+
+
+def future_kalman(d):
+    if 'e25_estimation' not in d:
+        return (r'Cập nhật ước lượng và dự báo khi có thêm một vài lần đo dung lượng của chính cell, ví dụ bằng một bộ lọc '
+                r'Bayes theo từng cell.')
+    S = d['e25_estimation']
+    cov = _rng([100 * x for x in S[S.sched == 'q10'].cov_kalman], 0) + r'\,\%'
+    return T(r"""Hiệu chỉnh độ rộng khoảng của bộ lọc Kalman theo từng cell (độ phủ hiện chỉ <<COV>>), và chọn thời
+      điểm đo dung lượng tiếp theo theo phương sai hậu nghiệm thay vì theo lịch cố định, để đạt cùng sai số với ít lần
+      đo hơn.""", COV=cov)
+
+
+def future_params(d):
+    if 'e26_params' not in d:
+        return (r'Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, tăng trọng số của phần dư động học và '
+                r'dùng dữ liệu nhiều mức nhiệt độ, để $\lambda$ và $E_a$ diễn giải được theo nghĩa vật lý.')
+    return (r'Tách $k(\mathbf{x})$ khỏi thông tin về nhiệt độ và mức SOH (ví dụ cho $k$ chỉ phụ thuộc vào cell) để '
+            r'$\lambda$ và $E_a$ được dữ liệu xác định; Mục~\ref{sec:physparams} cho thấy chỉ tăng trọng số ODE là không '
+            r'đủ.')
 
 
 # ═════════════════════════════════════════════════════════════ TÓM TẮT, PHỤ LỤC, DỰNG
@@ -2779,6 +2797,14 @@ def e22_sections(d):
     return BK.e22_setting_table(d, H), BK.e22_text(d, H) + extra
 
 
+def e25_sections(d):
+    """(mục phương pháp ở Chương 4, mục kết quả ở Chương 6) của E25; rỗng khi chưa có results/e25_*.csv."""
+    if 'e25_estimation' not in d:
+        return ('', '')
+    import thesis_bk as BK
+    return BK.CH4_KF, BK.e25_text(d, sys_helpers())
+
+
 def e22_concl(d):
     if 'e22_traj' not in d:
         return ''
@@ -2791,11 +2817,22 @@ def e22_concl(d):
       mô hình kết hợp gần ngang nhau về SOH, nhưng GBDT không ngoại suy được ra ngoài tầm đã học nên sai số RUL gấp
       <<RG>> lần; nghiệm đóng của động học là thứ giúp dự báo RUL. Tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thật
       là <<IN20>> tuỳ bộ. Dấu của hệ số $\lambda$ học được khớp với hình dạng quỹ đạo: dương ở các bộ có điểm đầu
-      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>.<<REC>>
+      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>.<<REC>><<KF>>
 """, MAE=_rng([1e3 * t(ds, 'uoc', 'e_ket_hop') for ds in DS], 1),
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
              RG=_rng([E['rul_gb'][ds] for ds in DS], 1), IN20=_rng([100 * E['rul_in20'][ds] for ds in DS], 0) + r'\,\%',
-             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%', REC=e23_sentence(d, 'concl'))
+             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%', REC=e23_sentence(d, 'concl'), KF=e25_sentence(d))
+
+
+def e25_sentence(d):
+    """Một câu cho kết luận về hiệu chỉnh bằng vài lần đo dung lượng (E25)."""
+    if 'e25_estimation' not in d:
+        return ''
+    S = d['e25_estimation']
+    q = S[S.sched == 'q10']
+    dau = S[S.sched == 'dau']
+    return (f' Khi đo được dung lượng mỗi $0{{,}}1L$, bộ lọc Kalman theo cell giảm sai số ước lượng còn '
+            f'{_rng(q.ratio, 2)} lần; một lần đo duy nhất lúc nhận pin thì không giúp (tỉ số {_rng(dau.ratio, 2)}).')
 
 
 def e23_sentence(d, kind):
@@ -2839,6 +2876,60 @@ def sys_helpers():
     return dict(f=f, pc=pc, m3=m3, table=table, fig=fig, T=T, lst=_lst, rng=_rng, gm=_gm, tren=_tren, DS=DS, CHEM=CHEM)
 
 
+# Tên ngắn trong danh sách bảng; chú thích đầy đủ vẫn nằm ở bảng
+LOT_SHORT = {
+    'tab:kfeas': r'Khả thi của số fold $K$',
+    'tab:repeats': r'Mô phỏng lấy lại theo số lần lặp',
+    'tab:fcset': r'Tham số đánh giá dự báo của từng bộ',
+    'tab:leak': r'Kiểm toán rò rỉ',
+    'tab:big': r'MAE theo cell của mọi mô hình theo lượng nhãn',
+    'tab:equiv': r'Lượng nhãn tương đương',
+    'tab:cmp': r'Tỉ số MAE của PINN-semi so với MLP và GBDT',
+    'tab:source': r'Tách nguồn gốc lợi ích ở 30\,\% nhãn',
+    'tab:phys': r'Tham số vật lý học được của PINN-semi',
+    'tab:mono': r'Tỉ lệ cặp chu kỳ có SOH dự đoán tăng',
+    'tab:physcheck': r'Kiểm tra phần vật lý trên cell test',
+    'tab:decomp': r'Phân rã MSE theo cell',
+    'tab:dev': r'Giai đoạn phát triển mô hình kết hợp',
+    'tab:e20': r'MAE theo cell của PINN-lai và các mô hình',
+    'tab:e20tests': r'Tỉ số MAE của PINN-lai so với từng mô hình',
+    'tab:e21a': r'Giao thức A: huấn luyện một bộ, kiểm tra bộ khác',
+    'tab:e21b': r'Giao thức B (70/15/15)',
+    'tab:e21chain': r'Thích nghi không nhãn và tự huấn luyện',
+    'tab:e22soh': r'MAE của SOH dự báo ở ba tầm',
+    'tab:e22rul': r'MAE của RUL dự báo',
+    'tab:e23': r'Dự báo có và không xét hồi phục dung lượng',
+    'tab:e24cv': r'Bộ NASA, kiểm định chéo theo cell',
+    'tab:e24samba': r'Cách chia NASA-L của SambaMixer',
+    'tab:e25': r'Hiệu chỉnh bằng bộ lọc Kalman theo lịch đo',
+}
+
+
+def short_captions(body):
+    """Đặt tên ngắn LOT_SHORT cho các bảng trong danh sách bảng (thêm hoặc thay đối số tuỳ chọn của caption)."""
+    import re
+    out, pos = [], 0
+    for m in re.finditer(r'\\begin\{table\}.*?\\end\{table\}', body, re.S):
+        b = m.group(0)
+        lab = re.search(r'\\label\{(tab:[^}]*)\}', b)
+        i = b.find('\\caption')
+        if lab is None or i < 0 or lab.group(1) not in LOT_SHORT:
+            continue
+        j = i + len('\\caption')
+        if b[j] == '[':
+            depth, k = 0, j
+            while True:
+                depth += {'[': 1, ']': -1}.get(b[k], 0)
+                if depth == 0:
+                    break
+                k += 1
+            b = b[:j] + b[k + 1:]
+        b = b[:j] + '[' + LOT_SHORT[lab.group(1)] + ']' + b[j:]
+        out += [body[pos:m.start()], b]
+        pos = m.end()
+    return ''.join(out) + body[pos:]
+
+
 def build():
     d = load()
     ctx = dict(stats=dataset_stats(), runs=run_counts())
@@ -2854,10 +2945,12 @@ def build():
     ctx = facts(d, ctx)
     import thesis_bk as BK
     main_body = BK.assemble(ch1(d, ctx), ch2(d, ctx), ch3(d, ctx), ch4(d, ctx), ch5(d, ctx), ch6_text(d, ctx),
-                            ch7_improve(d, ctx), ch8(d, ctx), e21_sections(d), fig, e22_sections(d))
+                            ch7_improve(d, ctx), ch8(d, ctx), e21_sections(d), fig, e22_sections(d), e25_sections(d),
+                            BK.e26_text(d, sys_helpers()) if 'e26_params' in d else '')
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
             + r'{\linespread{1.0}\selectfont\tableofcontents\listoffigures\listoftables}' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')
+    body = short_captions(body)
     open(f'{OUT}/main.tex', 'w').write(body)
     for _ in range(2):
         # SOURCE_DATE_EPOCH cố định: PDF dựng lại từ cùng dữ liệu giống từng byte

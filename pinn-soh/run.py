@@ -33,7 +33,8 @@ os.chdir(ROOT)
 ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['analysis/verify_pipeline.py', '--csv'],
             ['analysis/analyze_thesis.py'], ['analysis/analyze_metrics.py'], ['analysis/analyze_physics.py'],
             ['analysis/error_decomp.py'], ['analysis/dev_e20.py'], ['analysis/analyze_e20.py'], ['analysis/analyze_e21.py'],
-            ['analysis/analyze_e22.py'], ['analysis/analyze_e23.py'], ['analysis/analyze_e24.py'], ['report/diagrams.py']]
+            ['analysis/analyze_e22.py'], ['analysis/analyze_e23.py'], ['analysis/analyze_e24.py'], ['analysis/analyze_e25.py'],
+            ['analysis/analyze_e26.py'], ['report/diagrams.py']]
 
 
 def sh(args):

@@ -14,6 +14,9 @@ PINN-dự báo (mạng trả tham số của nghiệm đóng của động học
 E23 tách lịch sử SOH thành xu thế, phần hồi phục (một phần giữ lại, một phần mất ngay; tỉ lệ ước lượng trên cell train)
 và dao động đều để dự báo đúng hơn khi dung lượng hồi phục.
 E24 thêm bộ NASA PCoE (18 cell), thử thời gian nghỉ làm đặc trưng như SambaMixer và so trên đúng cách chia của bài đó.
+E25 hiệu chỉnh ước lượng và dự báo theo từng cell bằng bộ lọc Kalman khi đo được dung lượng vài lần trong đời cell
+(không huấn luyện thêm). E26 kiểm tra λ và Ea có được dữ liệu xác định không: tăng trọng số ODE, thêm ràng buộc Euler,
+đổi giá trị khởi tạo trên NASA và TJU (nhiều mức nhiệt độ).
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
 Kết quả của báo cáo dựa trên **5 100 lượt huấn luyện** (E13–E20) trên **387 cell** của bốn bộ dữ liệu công
@@ -44,7 +47,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -85,7 +88,8 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E23 | Dự báo có xét hồi phục, cùng fold E22, học lại cả mô hình E22 để so ghép cặp | 60 | 3 | 0,8 | 0,4 |
 | E24 | Bộ NASA: 3 PINN-semi, MLP, GBDT ở 30/70 % nhãn, có/không giờ nghỉ; cách chia SambaMixer | 330 | 1,9 | 0,5 | 0,3 |
 | E24f | Dự báo E22 và E23 trên NASA (cần E24) | 30 | 0,4 | 0,1 | 0,1 |
-| **Tổng** | | **5 748** | **≈ 47** | **≈ 12** | **≈ 6** |
+| E26 | λ, Ea trên NASA và TJU: trọng số ODE 0,2/1, ràng buộc Euler, khởi tạo khác (PINN-semi, 70 % nhãn) | 100 | 0,7 | 0,2 | 0,1 |
+| **Tổng** | | **5 848** | **≈ 48** | **≈ 12** | **≈ 6** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
@@ -137,6 +141,8 @@ pinn-soh/
 │   ├── analyze_e22.py      E22: sai số theo tầm dự báo, RUL, độ phủ khoảng 90 %
 │   ├── analyze_e23.py      E23: so với E22 trên gốc thường và gốc ngay sau hồi phục
 │   ├── analyze_e24.py      E24: NASA, có/không giờ nghỉ, so với SambaMixer
+│   ├── analyze_e25.py      E25: bộ lọc Kalman theo cell với vài lần đo dung lượng
+│   ├── analyze_e26.py      E26: λ, Ea theo trọng số ODE và giá trị khởi tạo
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo
@@ -189,6 +195,13 @@ mkdir -p NASA/raw && curl -o NASA/raw/nasa.zip "https://phm-datasets.s3.amazonaw
 cd NASA/raw && unzip nasa.zip && cd "5. Battery Data Set" && for z in *.zip; do unzip -o "$z" -d "x_${z%.zip}"; done; cd ../../..
 python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00xx.csv (18 cell)
 python run.py E24 && python run.py E24f
+```
+
+### Hướng phát triển: hiệu chỉnh bằng vài lần đo (E25) và tham số vật lý (E26)
+
+```bash
+python analysis/analyze_e25.py         # cần E20, E23, E24, E24f; không huấn luyện thêm
+python run.py E26 && python analysis/analyze_e26.py   # cần E13 (TJU) và E24 (NASA) làm nhánh chuẩn
 ```
 
 ## 5. Demo — ước lượng và dự báo SOH cho một cell
