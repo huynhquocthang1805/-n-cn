@@ -300,13 +300,20 @@ fold đầu tiên.
 (i) xu thế, là đường thẳng khớp bằng hồi quy Huber nên vài điểm hồi phục không kéo lệch được mức và độ dốc;
 (ii) dao động đều, tìm chu kỳ $P \in [2{,}2;\,15]$ với hai hài trên phần dư và chỉ giữ khi giải thích được ít nhất
 60\,\% phương sai trên cả cửa sổ lẫn từng nửa cửa sổ, tức dao động thật sự lặp lại; (iii) phần hồi phục hiện tại $e_k$,
-là phần dư của ba chu kỳ cuối sau khi trừ hai phần trên. Dự báo trở thành
+là phần dư của chính chu kỳ cuối sau khi trừ hai phần trên (ngay sau một lần nghỉ dài chỉ chu kỳ cuối nhảy lên), co về 0
+một khoảng bằng hai lần mức nhiễu cục bộ ($1{,}4826$ lần độ lệch tuyệt đối trung vị của phần dư) để nhiễu đo không bị
+coi là hồi phục. Dự báo trở thành
 \begin{equation}\label{eq:fcrec}
-  \hat y(k+h) = \ell_k + e_k\,e^{-h/\tau} - \Delta v(h; a, \lambda) + p_k(h),
+  \hat y(k+h) = \ell_k + e_k\,g(h) - \Delta v(h; a, \lambda) + p_k(h), \qquad g(h) = \rho + (1 - \rho)\,e^{-h/\tau_r},
 \end{equation}
 trong đó $\ell_k$ là giá trị xu thế tại gốc, $\Delta v$ là nghiệm đóng \eqref{eq:fcdrop} chỉ cho phần suy giảm không
-thuận nghịch, $p_k(h)$ là dao động ngoại suy, và $\tau$ là thời gian tắt của phần hồi phục, học chung với mạng
-PINN-dự báo. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch (với $\tau$ của PINN-dự báo); trọng
+thuận nghịch, $p_k(h)$ là dao động ngoại suy, $\rho$ là phần hồi phục được giữ lại và $\tau_r$ là thời gian tắt của phần
+còn lại. Cặp $(\rho, \tau_r)$ được ước lượng trực tiếp trên cell train của từng fold: tại mỗi lần hồi phục (SOH đo vượt
+trung vị năm chu kỳ trước đó quá 0,004), phần lệch của SOH so với xu thế cộng dao động trong 30 chu kỳ sau được khớp
+bằng $e_k\,g(h)$, dò lưới $\rho \in \{0; 0{,}1; \dots; 1\}$ và $\tau_r \in \{0{,}5; 1; \dots; 40\}$ chu kỳ; bộ có dưới năm
+lần hồi phục nhận $\rho = 0$. Bản đầu tiên để mạng học $\tau_r$ bằng gradient, nhưng vì rất ít mẫu có $e_k$ khác 0 nên
+$\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ ở mọi bộ, trong khi dữ liệu cho thấy phần hồi phục hoặc được giữ gần
+như trọn, hoặc mất ngay ở chu kỳ sau. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch; trọng
 số của GBDT trong mô hình kết hợp tăng tuyến tính từ 0 tại $h = 0$ tới $\tfrac{1}{2}$ tại $h = 0{,}1L$, vì cây gom các
 tầm rất ngắn vào cùng một ngăn nên kém chính xác ngay sau gốc. Các lựa chọn này được chốt trên cell validation của lần
 lặp đầu tiên, trước khi chạy trên test.
@@ -894,6 +901,10 @@ def e23_facts(d):
     E['row'] = lambda ds, sc, ot, part, a='e_ket_hop': (g(ds, sc, ot, part, a).iloc[0] if len(g(ds, sc, ot, part, a)) else None)
     E['rul'] = lambda ds, sc: (rt[(rt.ds == ds) & (rt.scen == sc)].iloc[0] if len((rt[(rt.ds == ds) & (rt.scen == sc)])) else None)
     E['dec'] = {r.ds: r for r in dc.itertuples()}
+    v1 = d.get('e23_tests_v1')                      # bản đầu (tau học bằng gradient), kết quả ở runs/E23_v1
+    E['v1'] = (lambda ds, sc, ot, part: None) if v1 is None else (
+        lambda ds, sc, ot, part: (lambda x: x.iloc[0] if len(x) else None)(
+            v1[(v1.ds == ds) & (v1.scen == sc) & (v1.otype == ot) & (v1.part == part) & (v1.old == 'e_ket_hop')]))
     return E
 
 
@@ -930,7 +941,13 @@ def e23_text(d, H):
     sh_b = [ds for ds in E23_DS if sig(R(ds, 'do', 0, 'ngan'), True)]
     sh_r = [R(ds, 'do', 0, 'ngan').ratio for ds in sh_b]
     x_w, x_s = R('XJTU', 'do', 1, 'toan_bo'), R('XJTU', 'do', 1, 'ngan')
-    m_w, n_s = R('MIT', 'do', 1, 'toan_bo'), R('NASA', 'do', 1, 'ngan')
+    m_w, n_s, n_w = R('MIT', 'do', 1, 'toan_bo'), R('NASA', 'do', 1, 'ngan'), R('NASA', 'do', 1, 'toan_bo')
+    has_ev = [ds for ds in E23_DS if ds in dec and dec[ds].n_ev_train >= 5]
+    v1n = E['v1']('NASA', 'do', 1, 'ngan')
+    ev_worse = sorted({ds for ds in E23_DS for sc in ('do', 'uoc') for part in ('toan_bo', 'ngan')
+                       if R(ds, sc, 1, part) is not None and R(ds, sc, 1, part).p < 0.05
+                       and R(ds, sc, 1, part).mae_new > R(ds, sc, 1, part).mae_old})
+    keep = [ds for ds in has_ev if dec[ds].rho >= 0.5]; drop = [ds for ds in has_ev if dec[ds].rho < 0.5]
     return T(r"""
 \section{Dự báo khi dung lượng hồi phục}\label{sec:recoveryres}
 
@@ -940,16 +957,23 @@ mức xu thế bền xuất phát đúng hơn và GBDT không còn làm lệch �
 khác biệt nhỏ hơn: tỉ số là <<RD>> với lịch sử đo và <<RU>> với lịch sử ước lượng; bản mới tốt hơn có ý nghĩa <<BD>>
 (lịch sử đo) và <<BU>> (lịch sử ước lượng), kém hơn có ý nghĩa <<WU>>.
 
-Ngay sau một lần hồi phục, bản cũ coi phần dung lượng vừa hồi phục là mức mới của xu thế. Trên XJTU, bộ có nhiều gốc
-loại này nhất (<<NX>> cell), bản mới giảm sai số <<XW>> trên toàn bộ phần đời còn lại và <<XS>> trong tầm ngắn, đều có ý
-nghĩa thống kê; trên MIT, tỉ số là <<MW>> nhưng chỉ có <<NM>> cell nên chưa đủ để kết luận. Ngược lại, trên NASA bản mới
-kém hơn ở tầm ngắn (tỉ số <<NS>>). Ở bộ này, mỗi lần hồi phục đi sau một khoảng nghỉ dài và kéo cả một đoạn quỹ đạo lên
-cao, chứ không chỉ một vài điểm vượt rồi tắt; hơn nữa nhiều cell NASA chỉ có vài chục lần xả, nên cửa sổ 60 chu kỳ dùng
-để tách xu thế gần bằng cả đời cell và tách kém. Thời gian tắt học được là $\tau \approx$ <<TAU>> chu kỳ, gần giá trị khởi
-tạo 10: phần hồi phục nhỏ so với nhiễu nên $\tau$ không được xác định rõ, và trên HUST, nơi không có hồi phục, $\tau$ giữ
-nguyên giá trị ban đầu. Lợi ích đến chủ yếu từ việc tách phần hồi phục ra khỏi mức và độ dốc của xu thế, không phải từ
-giá trị chính xác của $\tau$; với dữ liệu như NASA, một mô hình dùng thẳng thời gian nghỉ cho phần hồi phục sẽ phù hợp
-hơn.
+Ngay sau một lần hồi phục, bộ lọc quỹ đạo của bản cũ trộn điểm vừa nhảy vào đường hồi quy, nên cú nhảy làm lệch cả mức
+lẫn độ dốc của xu thế; bản mới tách cú nhảy khỏi xu thế rồi giữ lại hay bỏ đi theo $\rho$. Trên XJTU, bộ có nhiều gốc
+loại này nhất (<<NX>> cell), bản mới giảm sai số <<XW>> trên toàn bộ phần đời còn lại<<XWSIG>> và <<XS>> trong tầm
+ngắn<<XSSIG>>; trên MIT, tỉ số là <<MW>> nhưng chỉ có <<NM>> cell nên chưa đủ để kết luận. Trên NASA, tỉ số là <<NW>>
+trên toàn bộ phần đời còn lại và <<NS>> trong tầm ngắn<<NSIG>>.
+
+Cặp $(\rho, \tau_r)$ ước lượng trên cell train cho thấy hai kiểu hồi phục khác hẳn nhau. Ở <<KEEP>>, phần lớn cú nhảy
+được giữ lại (trung vị $\rho$ là <<RKEEP>>), còn ở <<DROP>>, phần hồi phục mất ngay ở chu kỳ sau (<<RDROP>>); thời gian
+tắt của phần không giữ lại là $\tau_r = $ <<TR>> chu kỳ ở mọi bộ, tức không bộ nào có phần hồi phục tắt dần chậm qua
+nhiều chu kỳ. Trên NASA, điều này khớp với nhận xét của SambaMixer~\cite{olalde2024samba} rằng hồi phục gắn với thời gian
+nghỉ: sau mỗi lần nghỉ dài, cell lấy lại một phần dung lượng rồi suy giảm tiếp từ mức mới. Bản đầu tiên của mô hình để
+mạng tự học $\tau_r$; vì rất ít mẫu có phần hồi phục khác 0, $\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ, và trên
+NASA bản đó kém E22 ở tầm ngắn ngay sau hồi phục (tỉ số <<V1NS>><<V1NSIG>>), vì bỏ sót cú nhảy ở chu kỳ cuối và cho
+phần hồi phục tắt dần trong khi thực tế nó được giữ lại. Đổi lại, bản đầu tốt hơn bản này ở gốc thường: với lịch sử đo,
+trên toàn bộ phần đời còn lại, tỉ số so với E22 của bản đầu là <<V1STD>>, của bản này là <<V2STD>>; trong tầm ngắn là
+<<V1SH>> so với <<V2SH>> (cùng thứ tự <<DSORD>>). Bản này được giữ vì được chọn trên tập validation<<EVW>>; cái giá là
+một phần lợi ích ở gốc thường, rõ nhất ở XJTU và TJU.
 
 Dao động đều chỉ được phát hiện ở <<PERX>> số gốc của XJTU, hầu hết thuộc nhóm R2.5, và gần như không có ở các bộ khác
 (<<PERO>>): bộ lọc hai nửa cửa sổ loại được các bước nhảy đơn lẻ vốn trông giống nửa chu kỳ của một sóng dài. Về RUL, bản
@@ -964,7 +988,22 @@ cùng lý do ở Mục~\ref{sec:forecastres}.
              BU=txt(better('uoc', 0, 'toan_bo'), 'trên không bộ nào'), BD=txt(better('do', 0, 'toan_bo'), 'trên không bộ nào'),
              WU=txt(sorted(set(worse('uoc', 0, 'toan_bo')) | set(worse('do', 0, 'toan_bo'))), 'trên không bộ nào'),
              NX=int(x_w.n), XW=pc(1 - x_w.ratio, 0), XS=pc(1 - x_s.ratio, 0), MW=f(m_w.ratio, 2), NM=int(m_w.n),
-             NS=f(n_s.ratio, 2), TAU=rng([dec[ds].tau for ds in E23_DS if ds in dec], 0),
+             XWSIG=(' (có ý nghĩa thống kê)' if x_w.p < 0.05 else ' (chưa có ý nghĩa thống kê)'),
+             XSSIG=(' (có ý nghĩa thống kê)' if x_s.p < 0.05 else ' (chưa có ý nghĩa thống kê)'),
+             NS=f(n_s.ratio, 2), NW=f(n_w.ratio, 2),
+             NSIG=(', có ý nghĩa thống kê' if (n_s.p < 0.05 or n_w.p < 0.05) else ', chưa có ý nghĩa thống kê'),
+             KEEP=lst(keep) or 'không bộ nào', RKEEP=', '.join(f'{ds} {f(dec[ds].rho, 1)}' for ds in keep),
+             DROP=lst(drop) or 'không bộ nào',
+             RDROP=', '.join(f'{ds} $\\rho$ = {f(dec[ds].rho, 1)}' for ds in drop),
+             TR=rng([dec[ds].tau for ds in E23_DS if ds in dec and dec[ds].n_ev_train >= 5], 1),
+             V1NS=f(v1n.ratio, 2) if v1n is not None else '--',
+             V1NSIG=(', có ý nghĩa thống kê' if v1n is not None and v1n.p < 0.05 else ''),
+             V1STD='; '.join(f(E['v1'](ds, 'do', 0, 'toan_bo').ratio, 2) for ds in E23_DS),
+             V2STD='; '.join(f(R(ds, 'do', 0, 'toan_bo').ratio, 2) for ds in E23_DS),
+             V1SH='; '.join(f(E['v1'](ds, 'do', 0, 'ngan').ratio, 2) for ds in E23_DS),
+             V2SH='; '.join(f(R(ds, 'do', 0, 'ngan').ratio, 2) for ds in E23_DS), DSORD=', '.join(E23_DS),
+             EVW=(' và vì nó không còn kém E22 có ý nghĩa ở bất kỳ gốc ngay sau hồi phục nào' if not ev_worse else
+                  ', dù ngay sau hồi phục nó vẫn kém E22 có ý nghĩa trên ' + lst(ev_worse)),
              PERX=pc(dec['XJTU'].per, 0) if 'XJTU' in dec else '--',
              PERO=', '.join(f'{ds} {pc(dec[ds].per, 0)}' for ds in E23_DS if ds in dec and ds != 'XJTU'),
              RULTXT=(('có sai số thấp hơn có ý nghĩa ' + txt(rb, '')) if rb else 'không khác bản cũ có ý nghĩa ở bộ nào')

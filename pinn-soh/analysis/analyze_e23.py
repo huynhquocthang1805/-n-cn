@@ -26,9 +26,9 @@ DCOL = ['scen', 'cell', 'otype', 'oq', 'k', 'level', 'e', 'P', 'amp', 'r2', 'slo
 PAIRS = [('ket_hop', 'ket_hop_r'), ('gbdt', 'gbdt_r'), ('pinn', 'pinn_r')]
 
 
-def load():
+def load(root=ROOT):
     T, R, D, info = [], [], [], {}
-    for f in sorted(glob.glob(f'{ROOT}/rc_*.npz')):
+    for f in sorted(glob.glob(f'{root}/rc_*.npz')):
         d = np.load(f)
         inf = json.loads(str(d['info'])); ds, r, k = inf['ds'], inf['repeat'], inf['fold']
         info[(ds, r, k)] = inf
@@ -60,10 +60,8 @@ def paired(df, a, b, keys):
     return pd.DataFrame(rows)
 
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
-    T, R, D, info = load()
-    print(f'{len(info)} lượt, {T.cid.nunique()} cell')
+def cell_errors(T):
+    """Sai số theo cell (trung bình qua lần lặp và gốc) trên toàn bộ phần đời còn lại và trong tầm 0,1L."""
     ms = sorted({m for pr in PAIRS for m in pr})
     for m in ms:
         T[f'e_{m}'] = (T[m] - T.y).abs()
@@ -78,7 +76,19 @@ def main():
         rows.append(g)
     C = pd.concat(rows, ignore_index=True)
     tests = pd.concat([paired(C, f'e_{a}', f'e_{b}', ['ds', 'scen', 'otype', 'part']) for a, b in PAIRS], ignore_index=True)
+    return C, tests
+
+
+def main():
+    os.makedirs(OUT, exist_ok=True)
+    T, R, D, info = load()
+    print(f'{len(info)} lượt, {T.cid.nunique()} cell')
+    ms = sorted({m for pr in PAIRS for m in pr})
+    C, tests = cell_errors(T)
     tests.to_csv(f'{OUT}/e23_tests.csv', index=False)
+    # bản đầu của E23 (tau học bằng gradient, e là trung vị 3 hàng cuối), giữ ở runs/E23_v1 để so trong báo cáo
+    if glob.glob('runs/E23_v1/rc_*.npz'):
+        cell_errors(load('runs/E23_v1')[0])[1].to_csv(f'{OUT}/e23_tests_v1.csv', index=False)
     cov = C[C.part == 'toan_bo'].groupby(['ds', 'scen', 'otype'])[['cov', 'cov_r']].mean().reset_index()
     cov.to_csv(f'{OUT}/e23_cover.csv', index=False)
     # ở ba tầm như E22 (gốc thường)
@@ -99,10 +109,15 @@ def main():
     rc.groupby(['ds', 'scen']).mean(numeric_only=True).reset_index().to_csv(f'{OUT}/e23_rul.csv', index=False)
     rc['part'] = 'rul'; rc['otype'] = 0
     paired(rc, 'e_ket_hop', 'e_ket_hop_r', ['ds', 'scen']).to_csv(f'{OUT}/e23_rul_tests.csv', index=False)
-    # thành phần tách được: tỉ lệ gốc có dao động, biên độ, |e|, tau học được
+    # thành phần tách được: tỉ lệ gốc có dao động, biên độ, |e|, (rho, tau) khớp trên cell train
     dd = D[D.scen == 'do'].groupby('ds').agg(per=('P', lambda x: float((x > 0).mean())), amp=('amp', 'mean'),
                                               e_abs=('e', lambda x: float(np.abs(x).mean()))).reset_index()
-    dd['tau'] = dd.ds.map(lambda ds: float(np.mean([v['new']['tau'] for k, v in info.items() if k[0] == ds])))
+    dd['tau'] = dd.ds.map(lambda ds: float(np.median([v['new']['tau'] for k, v in info.items() if k[0] == ds])))
+    dd['rho'] = dd.ds.map(lambda ds: float(np.median([v['new'].get('rho', 0.0) for k, v in info.items() if k[0] == ds])))
+    dd['rho_lo'] = dd.ds.map(lambda ds: float(np.min([v['new'].get('rho', 0.0) for k, v in info.items() if k[0] == ds])))
+    dd['rho_hi'] = dd.ds.map(lambda ds: float(np.max([v['new'].get('rho', 0.0) for k, v in info.items() if k[0] == ds])))
+    dd['n_ev_train'] = dd.ds.map(lambda ds: float(np.median([v['new'].get('n_events', 0) for k, v in info.items()
+                                                              if k[0] == ds])))
     dd['n_ev'] = dd.ds.map(lambda ds: int(T[(T.ds == ds) & (T.otype == 1) & (T.scen == 'do')].groupby(['r', 'cid', 'oq']).ngroups))
     dd.to_csv(f'{OUT}/e23_decomp.csv', index=False)
     per_batch = D[(D.scen == 'do') & (D.ds == 'XJTU')].assign(batch=lambda x: x.cid.str.split('/').str[1].str.split('_').str[0])

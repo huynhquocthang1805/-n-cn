@@ -60,7 +60,7 @@ def load():
               'e20_error_decomp', 'e20_check', 'e20_biascorr', 'e21_base', 'e21_chain', 'e21_chain_tests',
               'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting',
               'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
-              'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba']:
+              'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -266,8 +266,8 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
       khoảng dự đoán phù hợp 90\,\%.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
       xám làm lớp đầu ra (luôn đơn điệu, mô tả được cả điểm đầu gối lẫn suy giảm chậm dần, RUL có dạng đóng), kết hợp
-      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng; bản cải tiến tách phần hồi phục và
-      dao động đều ra khỏi xu thế suy giảm.
+      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng; bản cải tiến tách phần hồi phục
+      (phần giữ lại và phần mất ngay, ước lượng trên cell train) và dao động đều ra khỏi xu thế suy giảm.
 \item Áp dụng toàn bộ quy trình cho bộ NASA PCoE (trích lại 16 đặc trưng sạc từ dữ liệu gốc), kiểm chứng ý tưởng dùng
       thời gian nghỉ của SambaMixer và so trên đúng cách chia của công trình đó.
 \end{enumerate}
@@ -2791,13 +2791,34 @@ def e22_concl(d):
       mô hình kết hợp gần ngang nhau về SOH, nhưng GBDT không ngoại suy được ra ngoài tầm đã học nên sai số RUL gấp
       <<RG>> lần; nghiệm đóng của động học là thứ giúp dự báo RUL. Tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thật
       là <<IN20>> tuỳ bộ. Dấu của hệ số $\lambda$ học được khớp với hình dạng quỹ đạo: dương ở các bộ có điểm đầu
-      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>. Tách phần hồi phục và dao
-      động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên cả bốn bộ chính và giảm sai số ngay sau hồi phục ở
-      XJTU, nhưng chưa giúp được trên NASA, nơi hồi phục gắn với khoảng nghỉ dài và cell có ít chu kỳ.
+      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>.<<REC>>
 """, MAE=_rng([1e3 * t(ds, 'uoc', 'e_ket_hop') for ds in DS], 1),
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
              RG=_rng([E['rul_gb'][ds] for ds in DS], 1), IN20=_rng([100 * E['rul_in20'][ds] for ds in DS], 0) + r'\,\%',
-             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%')
+             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%', REC=e23_sentence(d, 'concl'))
+
+
+def e23_sentence(d, kind):
+    """Một câu về dự báo có xét hồi phục cho kết luận ('concl') hoặc tóm tắt ('abs'), theo đúng kết quả E23."""
+    if 'e23_tests' not in d:
+        return ''
+    import thesis_bk as BK
+    R = BK.e23_facts(d)['row']
+    dsl = [x for x in BK.E23_DS]
+    sig = lambda r, good: r is not None and r.p < 0.05 and ((r.mae_new < r.mae_old) == good)
+    sh = [ds for ds in dsl if sig(R(ds, 'do', 0, 'ngan'), True)]
+    ev_b = [ds for ds in dsl if sig(R(ds, 'do', 1, 'toan_bo'), True) or sig(R(ds, 'do', 1, 'ngan'), True)]
+    ev_w = [ds for ds in dsl if sig(R(ds, 'do', 1, 'toan_bo'), False) or sig(R(ds, 'do', 1, 'ngan'), False)]
+    lst = lambda xs: 'cả năm bộ' if len(xs) == len(dsl) else _lst(xs)
+    if kind == 'abs':
+        return (' Tách phần hồi phục dung lượng (một phần giữ lại, một phần mất ngay) và dao động đều ra khỏi xu thế giảm '
+                'thêm sai số tầm ngắn' + (f' trên {lst(sh)}' if sh else '') + '.')
+    t = (' Tách phần hồi phục và dao động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa '
+         + (f'trên {lst(sh)}' if sh else 'trên không bộ nào'))
+    t += (f'; ngay sau một lần hồi phục, sai số giảm có ý nghĩa trên {_lst(ev_b)}' if ev_b else
+          '; ngay sau một lần hồi phục, chưa bộ nào giảm sai số có ý nghĩa')
+    t += (f' và tăng có ý nghĩa trên {_lst(ev_w)}.' if ev_w else ', không bộ nào kém đi có ý nghĩa.')
+    return t
 
 
 def abstract_e22(d):
@@ -2808,11 +2829,10 @@ def abstract_e22(d):
     return T(r""" Đồ án mở rộng mô hình sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng
 cuối đời: mạng PINN-dự báo trả hai tham số của nghiệm đóng của động học xám, kết hợp với GBDT. Khi cell không được đo
 dung lượng lần nào, mô hình kết hợp có sai số SOH chỉ bằng <<RB>> lần các mô hình ngoại suy theo từng cell, và sai số
-RUL thấp hơn GBDT <<RG>> lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học. Tách phần hồi phục dung lượng
-và dao động đều ra khỏi xu thế giảm thêm sai số tầm ngắn. Trên bộ NASA, PINN-lai có sai số thấp nhất trong các mô hình
+RUL thấp hơn GBDT <<RG>> lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học.<<REC>> Trên bộ NASA, PINN-lai có sai số thấp nhất trong các mô hình
 dùng đặc trưng sạc, còn thời gian nghỉ không cải thiện ước lượng.""",
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
-             RG=_rng([E['rul_gb'][ds] for ds in DS], 1))
+             RG=_rng([E['rul_gb'][ds] for ds in DS], 1), REC=e23_sentence(d, 'abs'))
 
 
 def sys_helpers():

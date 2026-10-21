@@ -11,7 +11,8 @@ GBDT rồi qua một bộ lọc quỹ đạo nhân quả không cho SOH tăng, k
 dữ liệu (70/30 hoặc 70/15/15), kiểm tra trên ba bộ còn lại, rồi thích nghi không nhãn và tự huấn luyện hai vòng.
 E22 dự báo SOH ở các chu kỳ tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời (RUL):
 PINN-dự báo (mạng trả tham số của nghiệm đóng của động học xám) kết hợp với GBDT, kèm khoảng dự báo 90 %.
-E23 tách lịch sử SOH thành xu thế, phần hồi phục tắt dần và dao động đều để dự báo đúng hơn khi dung lượng hồi phục.
+E23 tách lịch sử SOH thành xu thế, phần hồi phục (một phần giữ lại, một phần mất ngay; tỉ lệ ước lượng trên cell train)
+và dao động đều để dự báo đúng hơn khi dung lượng hồi phục.
 E24 thêm bộ NASA PCoE (18 cell), thử thời gian nghỉ làm đặc trưng như SambaMixer và so trên đúng cách chia của bài đó.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
@@ -118,7 +119,7 @@ pinn-soh/
 │   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
 │   ├── crossds.py          E21: huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện
 │   ├── forecast.py         E22: dự báo SOH tương lai, dung lượng còn lại, RUL (nghiệm đóng + GBDT)
-│   ├── recovery.py         E23: tách xu thế / hồi phục tắt dần / dao động đều cho dự báo
+│   ├── recovery.py         E23: tách xu thế / phần hồi phục giữ lại + tắt dần / dao động đều cho dự báo
 │   ├── nasa.py             đọc bộ NASA PCoE (.mat) -> 16 đặc trưng sạc + giờ nghỉ, cùng định dạng PINN4SOH
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
@@ -204,7 +205,7 @@ python run.py demo forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 --
 ```
 
 Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng bản có xét hồi phục
-(E23) và in thêm phần hồi phục hiện tại, thời gian tắt τ và dao động đều nếu có. Lần đầu chạy `forecast`, bộ dự báo
+(E23) và in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động đều nếu có. Lần đầu chạy `forecast`, bộ dự báo
 được huấn luyện trên các cell có nhãn của cùng fold với mô hình ước lượng (vài phút) và lưu ở `demo/<bộ>_dubao.pkl`.
 Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv` và các hình `.png`.
 

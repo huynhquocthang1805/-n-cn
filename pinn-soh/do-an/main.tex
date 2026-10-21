@@ -95,8 +95,7 @@ sai số bằng 0{,}67--0{,}95 lần PINN ban đầu và thấp hơn GBDT ở 10
 dự đoán 90\,\% có độ phủ thực tế 86--93\,\% trên test. Đồ án mở rộng mô hình sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng
 cuối đời: mạng PINN-dự báo trả hai tham số của nghiệm đóng của động học xám, kết hợp với GBDT. Khi cell không được đo
 dung lượng lần nào, mô hình kết hợp có sai số SOH chỉ bằng 0{,}21--0{,}60 lần các mô hình ngoại suy theo từng cell, và sai số
-RUL thấp hơn GBDT 1{,}1--1{,}5 lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học. Tách phần hồi phục dung lượng
-và dao động đều ra khỏi xu thế giảm thêm sai số tầm ngắn. Trên bộ NASA, PINN-lai có sai số thấp nhất trong các mô hình
+RUL thấp hơn GBDT 1{,}1--1{,}5 lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học. Tách phần hồi phục dung lượng (một phần giữ lại, một phần mất ngay) và dao động đều ra khỏi xu thế giảm thêm sai số tầm ngắn trên XJTU, MIT và HUST. Trên bộ NASA, PINN-lai có sai số thấp nhất trong các mô hình
 dùng đặc trưng sạc, còn thời gian nghỉ không cải thiện ước lượng.
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
@@ -221,8 +220,8 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
       khoảng dự đoán phù hợp 90\,\%.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
       xám làm lớp đầu ra (luôn đơn điệu, mô tả được cả điểm đầu gối lẫn suy giảm chậm dần, RUL có dạng đóng), kết hợp
-      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng; bản cải tiến tách phần hồi phục và
-      dao động đều ra khỏi xu thế suy giảm.
+      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng; bản cải tiến tách phần hồi phục
+      (phần giữ lại và phần mất ngay, ước lượng trên cell train) và dao động đều ra khỏi xu thế suy giảm.
 \item Áp dụng toàn bộ quy trình cho bộ NASA PCoE (trích lại 16 đặc trưng sạc từ dữ liệu gốc), kiểm chứng ý tưởng dùng
       thời gian nghỉ của SambaMixer và so trên đúng cách chia của công trình đó.
 \end{enumerate}
@@ -830,13 +829,20 @@ fold đầu tiên.
 (i) xu thế, là đường thẳng khớp bằng hồi quy Huber nên vài điểm hồi phục không kéo lệch được mức và độ dốc;
 (ii) dao động đều, tìm chu kỳ $P \in [2{,}2;\,15]$ với hai hài trên phần dư và chỉ giữ khi giải thích được ít nhất
 60\,\% phương sai trên cả cửa sổ lẫn từng nửa cửa sổ, tức dao động thật sự lặp lại; (iii) phần hồi phục hiện tại $e_k$,
-là phần dư của ba chu kỳ cuối sau khi trừ hai phần trên. Dự báo trở thành
+là phần dư của chính chu kỳ cuối sau khi trừ hai phần trên (ngay sau một lần nghỉ dài chỉ chu kỳ cuối nhảy lên), co về 0
+một khoảng bằng hai lần mức nhiễu cục bộ ($1{,}4826$ lần độ lệch tuyệt đối trung vị của phần dư) để nhiễu đo không bị
+coi là hồi phục. Dự báo trở thành
 \begin{equation}\label{eq:fcrec}
-  \hat y(k+h) = \ell_k + e_k\,e^{-h/\tau} - \Delta v(h; a, \lambda) + p_k(h),
+  \hat y(k+h) = \ell_k + e_k\,g(h) - \Delta v(h; a, \lambda) + p_k(h), \qquad g(h) = \rho + (1 - \rho)\,e^{-h/\tau_r},
 \end{equation}
 trong đó $\ell_k$ là giá trị xu thế tại gốc, $\Delta v$ là nghiệm đóng \eqref{eq:fcdrop} chỉ cho phần suy giảm không
-thuận nghịch, $p_k(h)$ là dao động ngoại suy, và $\tau$ là thời gian tắt của phần hồi phục, học chung với mạng
-PINN-dự báo. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch (với $\tau$ của PINN-dự báo); trọng
+thuận nghịch, $p_k(h)$ là dao động ngoại suy, $\rho$ là phần hồi phục được giữ lại và $\tau_r$ là thời gian tắt của phần
+còn lại. Cặp $(\rho, \tau_r)$ được ước lượng trực tiếp trên cell train của từng fold: tại mỗi lần hồi phục (SOH đo vượt
+trung vị năm chu kỳ trước đó quá 0,004), phần lệch của SOH so với xu thế cộng dao động trong 30 chu kỳ sau được khớp
+bằng $e_k\,g(h)$, dò lưới $\rho \in \{0; 0{,}1; \dots; 1\}$ và $\tau_r \in \{0{,}5; 1; \dots; 40\}$ chu kỳ; bộ có dưới năm
+lần hồi phục nhận $\rho = 0$. Bản đầu tiên để mạng học $\tau_r$ bằng gradient, nhưng vì rất ít mẫu có $e_k$ khác 0 nên
+$\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ ở mọi bộ, trong khi dữ liệu cho thấy phần hồi phục hoặc được giữ gần
+như trọn, hoặc mất ngay ở chu kỳ sau. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch; trọng
 số của GBDT trong mô hình kết hợp tăng tuyến tính từ 0 tại $h = 0$ tới $\tfrac{1}{2}$ tại $h = 0{,}1L$, vì cây gom các
 tầm rất ngắn vào cùng một ngăn nên kém chính xác ngay sau gốc. Các lựa chọn này được chốt trên cell validation của lần
 lặp đầu tiên, trước khi chạy trên test.
@@ -1932,36 +1938,43 @@ mạnh giữa các tầm; phân vị ước lượng từ vài cell vì vậy h�
 \section{Dự báo khi dung lượng hồi phục}\label{sec:recoveryres}
 
 Bảng~\ref{tab:e23} so bản dự báo có xét hồi phục với bản ở Mục~\ref{sec:forecastres}, ghép cặp trên cùng gốc. Rõ nhất là
-tầm ngắn: với lịch sử đo, trong tầm $0{,}1L$ sau gốc thường, bản mới giảm sai số có ý nghĩa trên cả bốn bộ XJTU, TJU, MIT và HUST (tỉ số 0{,}77--0{,}81), vì
+tầm ngắn: với lịch sử đo, trong tầm $0{,}1L$ sau gốc thường, bản mới giảm sai số có ý nghĩa trên XJTU, MIT và HUST (tỉ số 0{,}77--0{,}85), vì
 mức xu thế bền xuất phát đúng hơn và GBDT không còn làm lệch đoạn đầu của đường dự báo. Trên toàn bộ phần đời còn lại,
-khác biệt nhỏ hơn: tỉ số là 0{,}93--1{,}02 với lịch sử đo và 0{,}94--1{,}02 với lịch sử ước lượng; bản mới tốt hơn có ý nghĩa trên XJTU
-(lịch sử đo) và trên TJU và HUST (lịch sử ước lượng), kém hơn có ý nghĩa trên không bộ nào.
+khác biệt nhỏ hơn: tỉ số là 0{,}98--1{,}02 với lịch sử đo và 0{,}95--1{,}04 với lịch sử ước lượng; bản mới tốt hơn có ý nghĩa trên không bộ nào
+(lịch sử đo) và trên TJU, MIT và HUST (lịch sử ước lượng), kém hơn có ý nghĩa trên TJU.
 
-Ngay sau một lần hồi phục, bản cũ coi phần dung lượng vừa hồi phục là mức mới của xu thế. Trên XJTU, bộ có nhiều gốc
-loại này nhất (14 cell), bản mới giảm sai số 13\,\% trên toàn bộ phần đời còn lại và 34\,\% trong tầm ngắn, đều có ý
-nghĩa thống kê; trên MIT, tỉ số là 0{,}63 nhưng chỉ có 6 cell nên chưa đủ để kết luận. Ngược lại, trên NASA bản mới
-kém hơn ở tầm ngắn (tỉ số 1{,}37). Ở bộ này, mỗi lần hồi phục đi sau một khoảng nghỉ dài và kéo cả một đoạn quỹ đạo lên
-cao, chứ không chỉ một vài điểm vượt rồi tắt; hơn nữa nhiều cell NASA chỉ có vài chục lần xả, nên cửa sổ 60 chu kỳ dùng
-để tách xu thế gần bằng cả đời cell và tách kém. Thời gian tắt học được là $\tau \approx$ 10--12 chu kỳ, gần giá trị khởi
-tạo 10: phần hồi phục nhỏ so với nhiễu nên $\tau$ không được xác định rõ, và trên HUST, nơi không có hồi phục, $\tau$ giữ
-nguyên giá trị ban đầu. Lợi ích đến chủ yếu từ việc tách phần hồi phục ra khỏi mức và độ dốc của xu thế, không phải từ
-giá trị chính xác của $\tau$; với dữ liệu như NASA, một mô hình dùng thẳng thời gian nghỉ cho phần hồi phục sẽ phù hợp
-hơn.
+Ngay sau một lần hồi phục, bộ lọc quỹ đạo của bản cũ trộn điểm vừa nhảy vào đường hồi quy, nên cú nhảy làm lệch cả mức
+lẫn độ dốc của xu thế; bản mới tách cú nhảy khỏi xu thế rồi giữ lại hay bỏ đi theo $\rho$. Trên XJTU, bộ có nhiều gốc
+loại này nhất (14 cell), bản mới giảm sai số 5\,\% trên toàn bộ phần đời còn lại (chưa có ý nghĩa thống kê) và 30\,\% trong tầm
+ngắn (có ý nghĩa thống kê); trên MIT, tỉ số là 0{,}62 nhưng chỉ có 6 cell nên chưa đủ để kết luận. Trên NASA, tỉ số là 1{,}05
+trên toàn bộ phần đời còn lại và 0{,}96 trong tầm ngắn, chưa có ý nghĩa thống kê.
+
+Cặp $(\rho, \tau_r)$ ước lượng trên cell train cho thấy hai kiểu hồi phục khác hẳn nhau. Ở XJTU và NASA, phần lớn cú nhảy
+được giữ lại (trung vị $\rho$ là XJTU 1{,}0, NASA 1{,}0), còn ở MIT, phần hồi phục mất ngay ở chu kỳ sau (MIT $\rho$ = 0{,}0); thời gian
+tắt của phần không giữ lại là $\tau_r = $ 0{,}5 chu kỳ ở mọi bộ, tức không bộ nào có phần hồi phục tắt dần chậm qua
+nhiều chu kỳ. Trên NASA, điều này khớp với nhận xét của SambaMixer~\cite{olalde2024samba} rằng hồi phục gắn với thời gian
+nghỉ: sau mỗi lần nghỉ dài, cell lấy lại một phần dung lượng rồi suy giảm tiếp từ mức mới. Bản đầu tiên của mô hình để
+mạng tự học $\tau_r$; vì rất ít mẫu có phần hồi phục khác 0, $\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ, và trên
+NASA bản đó kém E22 ở tầm ngắn ngay sau hồi phục (tỉ số 1{,}37, có ý nghĩa thống kê), vì bỏ sót cú nhảy ở chu kỳ cuối và cho
+phần hồi phục tắt dần trong khi thực tế nó được giữ lại. Đổi lại, bản đầu tốt hơn bản này ở gốc thường: với lịch sử đo,
+trên toàn bộ phần đời còn lại, tỉ số so với E22 của bản đầu là 0{,}93; 0{,}99; 0{,}97; 1{,}02; 0{,}95, của bản này là 0{,}98; 1{,}02; 0{,}99; 1{,}02; 1{,}00; trong tầm ngắn là
+0{,}77; 0{,}81; 0{,}77; 0{,}80; 0{,}99 so với 0{,}85; 0{,}88; 0{,}77; 0{,}79; 1{,}11 (cùng thứ tự XJTU, TJU, MIT, HUST, NASA). Bản này được giữ vì được chọn trên tập validation và vì nó không còn kém E22 có ý nghĩa ở bất kỳ gốc ngay sau hồi phục nào; cái giá là
+một phần lợi ích ở gốc thường, rõ nhất ở XJTU và TJU.
 
 Dao động đều chỉ được phát hiện ở 22\,\% số gốc của XJTU, hầu hết thuộc nhóm R2.5, và gần như không có ở các bộ khác
 (TJU 0\,\%, MIT 0\,\%, HUST 0\,\%, NASA 2\,\%): bộ lọc hai nửa cửa sổ loại được các bước nhảy đơn lẻ vốn trông giống nửa chu kỳ của một sóng dài. Về RUL, bản
-mới không khác bản cũ có ý nghĩa ở bộ nào. Khoảng 90\,\% của bản mới có độ phủ 51--84\,\% trên toàn bộ phần đời còn lại, vẫn thấp hơn mức đặt ra vì
+mới có sai số thấp hơn có ý nghĩa trên MIT. Khoảng 90\,\% của bản mới có độ phủ 52--84\,\% trên toàn bộ phần đời còn lại, vẫn thấp hơn mức đặt ra vì
 cùng lý do ở Mục~\ref{sec:forecastres}.
 
 \begin{table}[!htbp]\centering\small
 \caption[MAE theo cell ($\times10^{-3}$) của mô hình kết hợp trên toàn bộ phần đời còn lại, bản E22 và bản có xét hồi phục, ghép cặp trên cùng gốc]{MAE theo cell ($\times10^{-3}$) của mô hình kết hợp trên toàn bộ phần đời còn lại, bản E22 và bản có xét hồi phục, ghép cặp trên cùng gốc. Bốn cột đầu: gốc thường, lịch sử ước lượng và lịch sử đo; bốn cột sau: gốc ngay sau một lần hồi phục (lịch sử đo), trên toàn bộ phần đời còn lại và trong tầm $0{,}1L$. $^{*}$/$^{\dagger}$: tốt hơn/kém hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$); --: không có gốc sau hồi phục.}\label{tab:e23}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
 Bộ & Ước lượng, E22 & Ước lượng, mới & Đo, E22 & Đo, mới & Sau hồi phục, E22 & Sau hồi phục, mới & Ngắn hạn, E22 & Ngắn hạn, mới \\\midrule
-XJTU & 22{,}5 & 22{,}6 & 16{,}7 & 15{,}7$^{*}$ & 15{,}4 & 13{,}4$^{*}$ & 6{,}0 & 3{,}9$^{*}$ \\
-TJU & 11{,}6 & 11{,}1$^{*}$ & 7{,}3 & 7{,}6 & 26{,}0 & 30{,}6 & 7{,}0 & 7{,}5 \\
-MIT & 12{,}0 & 11{,}4 & 11{,}2 & 10{,}4 & 18{,}9 & 11{,}3 & 10{,}1 & 5{,}4 \\
-HUST & 27{,}0 & 25{,}6$^{*}$ & 11{,}1 & 11{,}3 & -- & -- & -- & -- \\
-NASA & 52{,}6 & 53{,}5 & 23{,}6 & 22{,}8 & 22{,}5 & 24{,}2 & 11{,}2 & 15{,}6$^{\dagger}$ \\
+XJTU & 22{,}5 & 23{,}0 & 16{,}7 & 16{,}5 & 15{,}4 & 14{,}9 & 6{,}0 & 4{,}2$^{*}$ \\
+TJU & 11{,}6 & 11{,}0$^{*}$ & 7{,}3 & 7{,}7$^{\dagger}$ & 26{,}0 & 27{,}7 & 7{,}0 & 7{,}7 \\
+MIT & 12{,}0 & 11{,}4$^{*}$ & 11{,}2 & 10{,}7 & 18{,}9 & 10{,}6 & 10{,}1 & 4{,}2 \\
+HUST & 27{,}0 & 25{,}7$^{*}$ & 11{,}1 & 11{,}3 & -- & -- & -- & -- \\
+NASA & 52{,}6 & 54{,}6 & 23{,}6 & 23{,}5 & 22{,}5 & 23{,}8 & 11{,}2 & 11{,}4 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \begin{figure}[!htbp]\centering
@@ -2084,9 +2097,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
       mô hình kết hợp gần ngang nhau về SOH, nhưng GBDT không ngoại suy được ra ngoài tầm đã học nên sai số RUL gấp
       1{,}1--1{,}5 lần; nghiệm đóng của động học là thứ giúp dự báo RUL. Tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thật
       là 38--65\,\% tuỳ bộ. Dấu của hệ số $\lambda$ học được khớp với hình dạng quỹ đạo: dương ở các bộ có điểm đầu
-      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ 78--84\,\%. Tách phần hồi phục và dao
-      động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên cả bốn bộ chính và giảm sai số ngay sau hồi phục ở
-      XJTU, nhưng chưa giúp được trên NASA, nơi hồi phục gắn với khoảng nghỉ dài và cell có ít chu kỳ.
+      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ 78--84\,\%. Tách phần hồi phục và dao động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên XJTU, MIT và HUST; ngay sau một lần hồi phục, sai số giảm có ý nghĩa trên XJTU, không bộ nào kém đi có ý nghĩa.
 \end{enumerate}
 
 Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng

@@ -146,17 +146,26 @@ def _estimate(model, norm, cell, filt=True):
     return causal_trend(p, cell.cycle, 10) if filt else p
 
 
+FORECAST_VERSION = 2          # 2: phần hồi phục = phần giữ lại rho + phần tắt dần tau, khớp trên cell train
+
+
 def _forecaster(path, model, norm, c, split):
     """Bộ dự báo của demo: học trên cell CÓ NHÃN của cùng fold với mô hình ước lượng (cell test không bao giờ được
     dùng), hiệu chỉnh khoảng 90 % trên cell validation cho cả hai kịch bản lịch sử; lưu ở demo/<bộ>_dubao.pkl.
-    Dùng bản có xét hồi phục dung lượng (E23): xu thế bền + phần hồi phục tắt dần + dao động đều."""
+    Dùng bản có xét hồi phục dung lượng (E23): xu thế bền + phần hồi phục (giữ lại / mất ngay) + dao động đều.
+    File lưu kèm số phiên bản; khác phiên bản (đổi cách mô hình hoá) thì học lại."""
     import pickle
     from pinnsoh.data import load_dataset
     from pinnsoh import forecast as FC
     from pinnsoh import recovery as RC
     fpath = os.path.join(DEMO_DIR, f'{c["dataset"]}_dubao.pkl')
     if os.path.exists(fpath):
-        return pickle.load(open(fpath, 'rb'))
+        try:
+            obj = pickle.load(open(fpath, 'rb'))
+            if obj.get('version') == FORECAST_VERSION:
+                return obj
+        except Exception:                                  # file hỏng hoặc lớp đã đổi
+            pass
     print('lần đầu: huấn luyện bộ dự báo (GBDT + 3 PINN-dự báo) — vài phút ...', flush=True)
     torch.set_num_threads(1)
     cells = load_dataset('PINN4SOH/data', c['dataset'], clean='causal'); by = {x.cid: x for x in cells}
@@ -180,7 +189,8 @@ def _forecaster(path, model, norm, c, split):
                 dec = RC.decompose(sh, x.cycle, i)
                 P = fcm.predict(RC.features_r(sh, x.cycle, Xn[x.cid], x.temp_k, i, dec), dec, hj)
                 resid[sc].append(np.column_stack([hj / L, x.soh[i + 1:] - P['ket_hop_r']]))
-    obj = dict(fc=fcm, norm=fnorm, L=L, tau=FC.TAU[c['dataset']], q={k: FC.calibrate(v) for k, v in resid.items()})
+    obj = dict(fc=fcm, norm=fnorm, L=L, tau=FC.TAU[c['dataset']], q={k: FC.calibrate(v) for k, v in resid.items()},
+               version=FORECAST_VERSION)
     pickle.dump(obj, open(fpath, 'wb'))
     return obj
 
@@ -222,7 +232,9 @@ def cmd_forecast(a):
     print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
     print(f'hiện tại: SOH {lev[i]:.3f} · dung lượng {lev[i] * nominal:.3f} Ah · '
           f'suy giảm hiện tại {10 * a_:.2f} % SOH mỗi 100 chu kỳ · hệ số gãy λ = {lam:.1f}')
-    print(f'hồi phục: phần vượt xu thế hiện tại {1000 * dec["e"]:+.1f}·10⁻³ SOH, tắt dần với τ = {F["fc"].tau:.1f} chu kỳ'
+    rho, tau_r = F['fc'].rec
+    print(f'hồi phục: phần vượt xu thế hiện tại {1000 * dec["e"]:+.1f}·10⁻³ SOH, giữ lại {100 * rho:.0f} %, '
+          f'phần còn lại tắt với thời gian {tau_r:g} chu kỳ'
           + (f' · dao động đều chu kỳ {dec["P"]:.1f}, biên độ {1000 * dec["amp"]:.1f}·10⁻³' if dec['coef'] is not None
              else ' · không có dao động đều'))
     for hr in FC.H_REL:

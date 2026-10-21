@@ -11,13 +11,18 @@ Tách lịch sử tại gốc k (chỉ dùng các chu kỳ trong W_DEC = 60 chu 
     2. dao động: trên phần dư, dò chu kỳ P ∈ [2,2; 15] (bước 0,02, ít nhất 4 chu kỳ trọn trong cửa sổ) với hai hài; chỉ
        giữ khi giải thích được ít nhất R2_PER = 60 % phương sai của phần dư trên cả cửa sổ, ít nhất 50 % trên mỗi nửa
        cửa sổ, và biên độ (độ lệch chuẩn) >= 1e-3; rồi khớp lại xu thế trên chuỗi đã trừ dao động;
-    3. phần hồi phục hiện tại e_k: trung vị phần dư của 3 hàng cuối sau khi trừ xu thế và dao động.
+    3. phần hồi phục hiện tại e_k: phần dư của chính hàng cuối sau khi trừ xu thế và dao động (ngay sau một lần nghỉ
+       dài chỉ hàng cuối nhảy lên, nên trung vị vài hàng cuối sẽ bỏ sót đúng cú nhảy cần dự báo), co về 0 một khoảng
+       bằng 2 lần mức nhiễu cục bộ (1,4826·MAD của phần dư) để nhiễu đo không bị coi là hồi phục.
 Dự báo
-    SOH(k+h) = l_k + e_k·exp(−h/tau) − dv(h; a, lam) + p_k(h),
-trong đó l_k là giá trị xu thế tại k, dv là nghiệm đóng của động học xám (phần mất thuận nghịch được tách riêng), tau là
-thời gian tắt của phần hồi phục, học chung với mạng (một tham số chung), p_k(h) là dao động ngoại suy.
-    pinn_r   mạng (đặc trưng gốc bền) -> (a, lam), cộng tau học được; 3 thành viên
-    gbdt_r   GBDT học phần giảm của xu thế l_k + e_k·exp(−h/tau) + p_k(h) − SOH(k+h) (tau lấy từ pinn_r), đơn điệu theo h;
+    SOH(k+h) = l_k + e_k·g(h) − dv(h; a, lam) + p_k(h),   g(h) = rho + (1 − rho)·exp(−h/tau),
+trong đó l_k là giá trị xu thế tại k, dv là nghiệm đóng của động học xám, p_k(h) là dao động ngoại suy, và g mô tả số
+phận của phần hồi phục: một phần rho được giữ lại, phần còn lại tắt dần với thời gian tau. (rho, tau) ước lượng trực
+tiếp trên cell train (fit_recovery): dò lưới để khớp phần lệch so với đường xu thế trong 30 chu kỳ sau mỗi lần hồi phục.
+Bản đầu học tau bằng gradient cùng mạng, nhưng chỉ vài mẫu có e_k khác 0 nên tau gần như đứng yên ở giá trị khởi tạo
+(10–12 chu kỳ ở mọi bộ), trong khi trên NASA phần lớn cú nhảy sau nghỉ dài được giữ lại và trên MIT tắt sau 1–3 chu kỳ.
+    pinn_r   mạng (đặc trưng gốc bền) -> (a, lam); 3 thành viên
+    gbdt_r   GBDT học phần giảm của xu thế l_k + e_k·g(h) + p_k(h) − SOH(k+h), đơn điệu theo h;
              dưới tầm h1 (bề rộng ngăn đầu tiên của trục h trong cây) phần giảm nội suy tuyến tính từ 0, để đường dự báo
              xuất phát đúng từ mức hiện tại
     ket_hop_r ½ + ½
@@ -43,6 +48,35 @@ PER_GRID = np.arange(2.2, W_DEC / 4 + 1e-9, 0.02)     # ít nhất 4 chu kỳ tr
 EV_JUMP, EV_MAX = 0.004, 3
 N_NET = 23                      # số cột đầu của đặc trưng gốc bền đưa vào mạng PINN (không gồm e, biên độ, độ khớp)
 MODELS_R = ['giu', 'gbdt', 'pinn', 'ket_hop', 'gbdt_r', 'pinn_r', 'ket_hop_r']
+RHO_GRID = np.round(np.linspace(0.0, 1.0, 11), 2)
+TAU_GRID = np.array([0.5, 1, 2, 3, 5, 8, 12, 20, 40])
+H_FIT, N_EV_MIN = 30, 5          # khớp g trên 30 chu kỳ sau mỗi lần hồi phục; cần ít nhất 5 lần, nếu không rho = 0
+E_NOISE = 2.0                    # ngưỡng (bội số nhiễu cục bộ) để phần lệch hàng cuối được coi là hồi phục
+
+
+def g_rec(h, rho, tau):
+    return rho + (1.0 - rho) * np.exp(-np.asarray(h, float) / tau)
+
+
+def fit_recovery(cells):
+    """(rho, tau, số lần hồi phục) khớp trên cell train: tại mỗi lần hồi phục (event_rows, không giới hạn số lần), phần lệch
+    của SOH đo so với đường xu thế + dao động trong H_FIT chu kỳ sau đó được khớp bằng e·g(h) theo bình phương tối thiểu.
+    Bộ không có đủ lần hồi phục (TJU, HUST) nhận rho = 0, tau = 0,5: phần lệch hàng cuối coi như nhiễu, tắt ngay."""
+    E, R, H = [], [], []
+    for c in cells:
+        s, cyc = c.soh.astype(float), c.cycle.astype(float)
+        for i in event_rows(c, cap=None):
+            dec = decompose(s, cyc, i)
+            j = np.flatnonzero((cyc > cyc[i]) & (cyc <= cyc[i] + H_FIT))
+            h = cyc[j] - cyc[i]
+            E.append(np.full(len(j), dec['e'])); H.append(h)
+            R.append(s[j] - (dec['level'] + dec['slope'] / 1000 * h + periodic_at(dec, h)))
+    n_ev = len(E)
+    if n_ev < N_EV_MIN:
+        return 0.0, 0.5, n_ev
+    E, R, H = map(np.concatenate, (E, R, H))
+    best = min(((float(np.sum((R - E * g_rec(H, r, t)) ** 2)), r, t) for r in RHO_GRID for t in TAU_GRID))
+    return float(best[1]), float(best[2]), n_ev
 
 
 # --------------------------------------------------------------------------- tách lịch sử
@@ -85,7 +119,7 @@ def decompose(s, cyc, i):
     t, y = cyc[m] - c0, s[m]
     out = dict(P=0.0, coef=None, amp=0.0, r2=0.0)
     if len(y) < 3:
-        return dict(out, level=float(s[i]), slope=0.0, slope_long=0.0, e=0.0)
+        return dict(out, level=float(s[i]), slope=0.0, slope_long=0.0, e=0.0, e_raw=0.0, noise=0.0)
     b = huber_line(t, y)
     y2 = y
     if len(y) >= N_MIN:
@@ -107,8 +141,12 @@ def decompose(s, cyc, i):
     if out['coef'] is not None:
         yl = yl - _harm(tl, out['P']) @ out['coef']
     bl = huber_line(tl, yl) if len(yl) >= 3 else b
-    return dict(out, level=float(b[0]), slope=float(b[1] * 1000), slope_long=float(bl[1] * 1000),
-                e=float(np.median(res[-3:])))
+    # chỉ phần vượt quá 2 lần mức nhiễu cục bộ (1,4826·MAD của phần dư) mới coi là hồi phục: nhiễu đo của hàng cuối không
+    # được giữ lại trong dự báo
+    sig = 1.4826 * float(np.median(np.abs(res - np.median(res))))
+    e = float(np.sign(res[-1]) * max(abs(res[-1]) - E_NOISE * sig, 0.0))
+    return dict(out, level=float(b[0]), slope=float(b[1] * 1000), slope_long=float(bl[1] * 1000), e=e,
+                e_raw=float(res[-1]), noise=sig)
 
 
 def periodic_at(dec, h):
@@ -148,12 +186,10 @@ def samples_r(cells, Xn_of, n_origin=40, n_h=40):
 
 # --------------------------------------------------------------------------- mô hình
 class PINNForecasterR:
-    """Như PINN-dự báo, cộng phần hồi phục e_k·exp(−h/tau) (tau học được, chung) và dao động ngoại suy."""
-    def __init__(self, seed=0, steps=4000, batch=1024, lr=3e-3, eval_every=100, patience=10):
+    """Như PINN-dự báo, cộng phần hồi phục e_k·g(h) (rho, tau cố định từ fit_recovery) và dao động ngoại suy."""
+    def __init__(self, seed=0, steps=4000, batch=1024, lr=3e-3, eval_every=100, patience=10, rho=0.0, tau=0.5):
         self.seed, self.steps, self.batch, self.lr, self.ev, self.pat = seed, steps, batch, lr, eval_every, patience
-
-    def tau(self):
-        return float(1.0 + Fnn.softplus(self.tau_raw).item())
+        self.rho, self.tau = rho, tau
 
     def _norm(self, Z):
         # mạng chỉ nhận phần đặc trưng xu thế (bỏ e, biên độ và độ khớp dao động — các phần này đã cộng thẳng vào dự báo),
@@ -162,8 +198,7 @@ class PINNForecasterR:
 
     def _pred_t(self, z, h, l, e, pv):
         a, lam = self.net(z)
-        tau = 1.0 + Fnn.softplus(self.tau_raw)
-        u = l + e * torch.exp(-h / tau) - drop_t(a, lam, h / 1000.0) + pv
+        u = l + e * (self.rho + (1 - self.rho) * torch.exp(-h / self.tau)) - drop_t(a, lam, h / 1000.0) + pv
         return torch.clamp(u, CLIP[0], CLIP[1])
 
     def fit(self, tr, va):
@@ -177,8 +212,7 @@ class PINNForecasterR:
         zv, hv, lv, ev, pvv = T(self._norm(Zva)), col(Hva), col(Lva), col(Eva), col(Pva)
         slope = np.median(np.maximum((Ltr - Ytr) / np.maximum(Htr, 1) * 1000.0, 1e-3))
         self.net = RateNet(N_NET, a0=float(slope))
-        self.tau_raw = torch.nn.Parameter(torch.tensor(float(np.log(np.expm1(9.0)))))       # tau ban đầu 10 chu kỳ
-        opt = torch.optim.AdamW(list(self.net.parameters()) + [self.tau_raw], lr=self.lr, weight_decay=1e-5)
+        opt = torch.optim.AdamW(self.net.parameters(), lr=self.lr, weight_decay=1e-5)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=self.steps, eta_min=self.lr * 0.05)
         best, state, bad = np.inf, None, 0
         for step in range(1, self.steps + 1):
@@ -186,7 +220,7 @@ class PINNForecasterR:
             idx = torch.from_numpy(rng.randint(0, len(z), size=min(self.batch, len(z))))
             loss = Fnn.mse_loss(self._pred_t(z[idx], h[idx], l[idx], e[idx], pv[idx]), y[idx])
             opt.zero_grad(); loss.backward()
-            torch.nn.utils.clip_grad_norm_(list(self.net.parameters()) + [self.tau_raw], 5.0)
+            torch.nn.utils.clip_grad_norm_(self.net.parameters(), 5.0)
             opt.step(); sched.step()
             if step % self.ev == 0:
                 self.net.eval()
@@ -194,13 +228,13 @@ class PINNForecasterR:
                     v = float(np.abs(self._pred_t(zv, hv, lv, ev, pvv).numpy().ravel() - Yva).mean())
                 if v < best - 1e-7:
                     best, bad = v, 0
-                    state = ({k: t.detach().clone() for k, t in self.net.state_dict().items()}, self.tau_raw.detach().clone())
+                    state = {k: t.detach().clone() for k, t in self.net.state_dict().items()}
                 else:
                     bad += 1
                     if bad >= self.pat:
                         break
-        self.net.load_state_dict(state[0]); self.tau_raw = torch.nn.Parameter(state[1]); self.net.eval()
-        self.info = dict(val_MAE=best, steps=step, tau=self.tau())
+        self.net.load_state_dict(state); self.net.eval()
+        self.info = dict(val_MAE=best, steps=step)
         return self
 
     @torch.no_grad()
@@ -236,26 +270,26 @@ def fit_gbdt_rate(Z, H, B, Y, Zv, Hv, Bv, Yv, seed):
 
 
 class ForecasterR:
-    def __init__(self, gb, nets, tau, info, h1=3.0, h_mix=0.0):
-        self.gb, self.nets, self.tau, self.info, self.h1, self.h_mix = gb, nets, tau, info, h1, h_mix
+    def __init__(self, gb, nets, rec, info, h1=3.0, h_mix=0.0):
+        self.gb, self.nets, self.rec, self.info, self.h1, self.h_mix = gb, nets, rec, info, h1, h_mix
 
     @classmethod
     def fit(cls, tr, va, Xn, seed: int, members=(0, 1, 2)):
+        rho, tau, n_ev = fit_recovery(tr)
         Str, Sva = samples_r(tr, Xn), samples_r(va, Xn)
-        nets = [PINNForecasterR(seed=1000 * seed + m).fit(Str, Sva) for m in members]
-        tau = float(np.mean([n.tau() for n in nets]))
+        nets = [PINNForecasterR(seed=1000 * seed + m, rho=rho, tau=tau).fit(Str, Sva) for m in members]
         Ztr, Htr, Ltr, Etr, Ptr, Ytr = Str
         Zva, Hva, Lva, Eva, Pva, Yva = Sva
-        dec = lambda L, E, H, P: L + E * np.exp(-H / tau) + P
+        dec = lambda L, E, H, P: L + E * g_rec(H, rho, tau) + P
         gb, ginfo = fit_gbdt(Ztr, Htr, dec(Ltr, Etr, Htr, Ptr), Ytr, Zva, Hva, dec(Lva, Eva, Hva, Pva), Yva, seed=seed)
         h1 = float(max(3.0, np.quantile(Htr, 1 / 255)))          # bề rộng ngăn đầu tiên của trục h trong GBDT
         h_mix = 0.1 * life_scale(list(tr) + list(va))             # GBDT đạt trọng số ½ từ tầm 0,1L
-        return cls(gb, nets, tau, dict(n_train_samples=int(len(Ytr)), gbdt=ginfo, pinn=[n.info for n in nets], tau=tau,
-                                       h1=h1, h_mix=h_mix), h1, h_mix)
+        return cls(gb, nets, (rho, tau), dict(n_train_samples=int(len(Ytr)), gbdt=ginfo, pinn=[n.info for n in nets],
+                                              rho=rho, tau=tau, n_events=n_ev, h1=h1, h_mix=h_mix), h1, h_mix)
 
     def predict(self, z, dec, hh):
         n = len(hh)
-        base = dec['level'] + dec['e'] * np.exp(-hh / self.tau) + periodic_at(dec, hh)
+        base = dec['level'] + dec['e'] * g_rec(hh, *self.rec) + periodic_at(dec, hh)
         # phần giảm của xu thế bằng 0 tại h = 0; cây gộp các tầm rất ngắn vào cùng một ngăn nên không tự bảo đảm điều này.
         # Dưới tầm h1 thay bằng đoạn thẳng từ 0 tới giá trị tại h1; từ h1 trở đi giữ nguyên dự đoán của cây.
         hc = np.maximum(hh, self.h1)
@@ -263,8 +297,7 @@ class ForecasterR:
         d = np.where(hh < self.h1, d * hh / self.h1, d)
         P = {'gbdt_r': base - d}
         ab = [net.params(z[None]) for net in self.nets]
-        P['pinn_r'] = np.mean([dec['level'] + dec['e'] * np.exp(-hh / net.tau()) + periodic_at(dec, hh)
-                               - drop_np(a[0], lam[0], hh / 1000.0) for net, (a, lam) in zip(self.nets, ab)], axis=0)
+        P['pinn_r'] = np.mean([base - drop_np(a[0], lam[0], hh / 1000.0) for a, lam in ab], axis=0)
         P['ket_hop_r0'] = 0.5 * P['gbdt_r'] + 0.5 * P['pinn_r']
         w = 0.5 * np.minimum(1.0, hh / self.h_mix) if self.h_mix > 0 else np.full(n, 0.5)
         P['ket_hop_r'] = w * P['gbdt_r'] + (1 - w) * P['pinn_r']
@@ -276,7 +309,7 @@ def out_path(ds, r, k, root=ROOT):
     return f'{root}/rc_{ds}_cv{r}-{k}of5.npz'
 
 
-def event_rows(c):
+def event_rows(c, cap=EV_MAX):
     """Hàng ngay sau một lần hồi phục: SOH đo vượt trung vị 5 hàng trước quá EV_JUMP; gộp sự kiện cách nhau <= 5 hàng,
     chỉ xét sau đỉnh của giai đoạn kích hoạt đầu đời (SOH của nhiều cell tăng trong vài chục chu kỳ đầu, không phải hồi
     phục) và trước 10 hàng cuối; lấy tối đa EV_MAX sự kiện rải đều."""
@@ -289,8 +322,8 @@ def event_rows(c):
     for i in idx:
         if start <= i <= n - 11 and (not ev or i - ev[-1] > 5):
             ev.append(int(i))
-    if len(ev) > EV_MAX:
-        ev = [ev[j] for j in np.unique(np.linspace(0, len(ev) - 1, EV_MAX).round().astype(int))]
+    if cap is not None and len(ev) > cap:
+        ev = [ev[j] for j in np.unique(np.linspace(0, len(ev) - 1, cap).round().astype(int))]
     return ev
 
 
