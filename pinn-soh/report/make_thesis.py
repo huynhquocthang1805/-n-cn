@@ -57,7 +57,8 @@ def load():
               'pred_metrics', 'verify_pipeline', 'E13_physics_params', 'thesis_rowbound', 'thesis_leakage_raw', 'thesis_rowsim',
               'metrics_summary', 'metrics_tests', 'metrics_transfer', 'physics_summary', 'physics_rate_soh',
               'physics_cells', 'physics_check', 'e20_summary', 'e20_tests', 'e20_conformal', 'e20_dev',
-              'e20_error_decomp', 'e20_check', 'e20_biascorr', 'e21_base', 'e21_chain', 'e21_chain_tests']:
+              'e20_error_decomp', 'e20_check', 'e20_biascorr', 'e21_base', 'e21_chain', 'e21_chain_tests',
+              'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -83,7 +84,7 @@ def run_counts():
              E17=len(glob.glob('runs/E17/*.json')), E15=len(glob.glob('runs/E15/*.json')),
              E14=len(glob.glob('runs/E14/samenorm_*.json')),
              E20=len({os.path.basename(p) for p in glob.glob('runs/E20/*.json') + glob.glob('runs/E20dev/*.json')}),
-             E21=len(glob.glob('runs/E21/*.json')))
+             E21=len(glob.glob('runs/E21/*.json')), E22=len(glob.glob('runs/E22/*.npz')))
     c['tong'] = sum(c.values())
     return c
 
@@ -101,6 +102,10 @@ PREAMBLE = r"""\documentclass[12pt,a4paper,oneside]{report}
 \setdefaultlanguage{vietnamese}
 \usepackage[left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
 \usepackage{graphicx,booktabs,longtable,array,tabularx,multirow,float,enumitem}
+\usepackage[section]{placeins}
+\renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}\setcounter{bottomnumber}{2}\setcounter{totalnumber}{5}
 \usepackage[table]{xcolor}
 \usepackage{adjustbox}
 \usepackage{caption}
@@ -149,14 +154,14 @@ Học kỳ: & HK261
 
 
 def fig(name, caption, label, width=r'\textwidth'):
-    return (r'\begin{figure}[H]\centering' + '\n' + rf'\includegraphics[width={width}]{{hinh/{name}.pdf}}' + '\n'
+    return (r'\begin{figure}[!htbp]\centering' + '\n' + rf'\includegraphics[width={width}]{{hinh/{name}.pdf}}' + '\n'
             + rf'\caption{{{caption}}}\label{{{label}}}' + '\n' + r'\end{figure}' + '\n')
 
 
 def table(header, rows, spec, caption, label, size=r'\small'):
     head = ' & '.join(header) + r' \\'
     body = '\n'.join(' & '.join(map(str, r)) + r' \\' for r in rows)
-    return (r'\begin{table}[H]\centering' + size + '\n' + rf'\caption{{{caption}}}\label{{{label}}}' + '\n'
+    return (r'\begin{table}[!htbp]\centering' + size + '\n' + rf'\caption{{{caption}}}\label{{{label}}}' + '\n'
             + r'\begin{adjustbox}{max width=\textwidth}' + rf'\begin{{tabular}}{{{spec}}}\toprule' + '\n' + head
             + r'\midrule' + '\n' + body + '\n' + r'\bottomrule\end{tabular}\end{adjustbox}\end{table}' + '\n')
 
@@ -205,6 +210,10 @@ học hàm
 sao cho sai số trên các cell \emph{chưa từng xuất hiện} khi huấn luyện là nhỏ nhất. Mô hình chỉ dùng dữ liệu
 của chu kỳ hiện tại, nên có thể chạy trực tuyến trong BMS.
 
+Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$ của một cell, chỉ dùng dữ liệu tới chu kỳ $k$, dự báo SOH và dung
+lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại trước khi SOH xuống dưới một ngưỡng cuối đời $\tau$
+(remaining useful life, RUL).
+
 \section{Câu hỏi nghiên cứu}
 
 \begin{enumerate}[label=\textbf{CH\arabic*.}]
@@ -220,6 +229,8 @@ của chu kỳ hiện tại, nên có thể chạy trực tuyến trong BMS.
       bằng nhãn giả giúp được bao nhiêu?
 \item Có thể giảm sai số thêm mà không dùng thêm nhãn nào không, và mô hình có cho biết dự đoán của nó đáng tin
       tới đâu không?
+\item Từ SOH ước lượng được, có dự báo được SOH, dung lượng ở các chu kỳ tương lai và số chu kỳ còn lại tới ngưỡng
+      cuối đời không, khi cell không được đo dung lượng lần nào, và dạng phương trình động học giúp gì cho dự báo?
 \end{enumerate}
 
 Mọi câu hỏi trên chỉ có ý nghĩa nếu giao thức đánh giá không rò rỉ thông tin. Vì vậy một phần lớn của đồ án
@@ -242,6 +253,9 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
 \item Mô hình cải tiến PINN-lai: nhóm ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả mang giả
       định SOH không tăng vào bước suy luận, được chọn chỉ trên tập validation theo đề cương ấn định trước, kèm
       khoảng dự đoán phù hợp 90\,\%.
+\item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
+      xám làm lớp đầu ra (luôn đơn điệu, mô tả được cả điểm đầu gối lẫn suy giảm chậm dần, RUL có dạng đóng), kết hợp
+      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng.
 \end{enumerate}
 
 \section{Bố cục}
@@ -399,7 +413,7 @@ soát xác suất mắc ít nhất một sai lầm loại I.
 
 \section{Tổng hợp và khoảng trống}
 
-\begin{table}[H]\centering\small
+\begin{table}[!htbp]\centering\small
 \caption{Tóm tắt các hướng tiếp cận liên quan.}\label{tab:related}
 \begin{tabularx}{\textwidth}{>{\raggedright}p{3.2cm}>{\raggedright}p{3.6cm}cc>{\raggedright\arraybackslash}X}
 \toprule
@@ -527,7 +541,7 @@ Mô hình gồm hai mạng nối với nhau qua hàm mất mát (Hình~\ref{fig:
 mạng tốc độ $G_\theta$ cùng hai tham số vật lý $\lambda, E_a$ mô tả tốc độ suy giảm. Khi suy luận chỉ cần
 $F_\varphi$.
 
-\begin{figure}[H]\centering
+\begin{figure}[!htbp]\centering
 \includegraphics[width=\textwidth]{hinh/fig_thesis_arch.pdf}
 \caption{Kiến trúc mô hình: mạng nghiệm dự đoán SOH, mạng tốc độ mô tả động học suy giảm; hai mạng gắn với
 nhau qua các hàm mất mát vật lý.}\label{fig:arch}
@@ -589,7 +603,7 @@ không tự hồi phục, suy giảm nhanh dần khi pin già, phản ứng ph�
 và bất đẳng thức. Đồ án không giải mô hình điện hoá chi tiết (P2D, mô hình hạt đơn) và không mô hình hoá đặc
 trưng sạc bằng phương trình nào. Bảng~\ref{tab:physmap} nối từng hiểu biết vật lý với thành phần tương ứng.
 
-\begin{table}[H]\centering\small
+\begin{table}[!htbp]\centering\small
 \caption{Hiểu biết vật lý và thành phần mô hình tương ứng.}\label{tab:physmap}
 \begin{tabularx}{\textwidth}{>{\raggedright}p{3.6cm}>{\raggedright}p{3.4cm}>{\raggedright}X c}
 \toprule
@@ -664,7 +678,7 @@ Chương~\ref{ch:ketqua}.
 Mọi mô hình dùng cùng đầu vào $[\tilde{\mathbf{x}}, t]$, cùng cách chia, cùng tập cell có nhãn và cùng
 normaliser.
 
-\begin{table}[H]\centering\small
+\begin{table}[!htbp]\centering\small
 \caption{Các mô hình được so sánh.}\label{tab:models}
 \begin{tabularx}{\textwidth}{l>{\raggedright}p{3.2cm}>{\raggedright\arraybackslash}X}
 \toprule
@@ -686,7 +700,7 @@ Hai biến thể cắt bỏ dùng để tách nguồn gốc lợi ích: \emph{ch
 
 \section{Cấu hình huấn luyện}
 
-\begin{table}[H]\centering\small
+\begin{table}[!htbp]\centering\small
 \caption{Cấu hình huấn luyện chung cho MLP và các biến thể PINN.}\label{tab:train}
 \begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X}\toprule
 Thành phần & Giá trị \\\midrule
@@ -758,6 +772,7 @@ def ch5(d, ctx):
                num(rc['E20'])],
               ['Huấn luyện một bộ, kiểm tra bộ khác', '2 giao thức × 4 bộ nguồn × 3 hạt giống; thích nghi, 2 vòng học lặp',
                num(rc['E21'])],
+              ['Dự báo SOH tương lai và RUL', 'GBDT + 3 PINN-dự báo mỗi fold, 5 fold × 3 lần lặp × 4 bộ', num(rc['E22'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -1108,8 +1123,13 @@ REFS = r"""
   learning on typical tabular data? \emph{Advances in Neural Information Processing Systems}, 35, 2022.
 \bibitem{hinton2015} G. Hinton, O. Vinyals, J. Dean. Distilling the knowledge in a neural network.
   arXiv:1503.02531, 2015.
+\bibitem{he2011} W. He, N. Williard, M. Osterman, M. Pecht. Prognostics of lithium-ion batteries based on
+  Dempster--Shafer theory and the Bayesian Monte Carlo method. \emph{Journal of Power Sources}, 196(23):10314--10321,
+  2011.
 \bibitem{holm1979} S. Holm. A simple sequentially rejective multiple test procedure. \emph{Scandinavian Journal of
   Statistics}, 6(2):65--70, 1979.
+\bibitem{hu2020joule} X. Hu, L. Xu, X. Lin, M. Pecht. Battery lifetime prognostics. \emph{Joule}, 4(2):310--346,
+  2020.
 \bibitem{kapoor2023} S. Kapoor, A. Narayanan. Leakage and the reproducibility crisis in machine-learning-based
   science. \emph{Patterns}, 4(9):100804, 2023.
 \bibitem{karniadakis2021} G. E. Karniadakis, I. G. Kevrekidis, L. Lu, P. Perdikaris, S. Wang, L. Yang.
@@ -1149,6 +1169,8 @@ REFS = r"""
   battery state of health. \emph{Journal of Power Sources}, 357:209--219, 2017.
 \bibitem{roman2021} D. Roman, S. Saxena, V. Robu, M. Pecht, D. Flynn. Machine learning pipeline for battery
   state-of-health estimation. \emph{Nature Machine Intelligence}, 3:447--456, 2021.
+\bibitem{saxena2008} A. Saxena, J. Celaya, E. Balaban, et al. Metrics for evaluating performance of prognostic
+  techniques. In \emph{International Conference on Prognostics and Health Management}, IEEE, 2008.
 \bibitem{schmalstieg2014} J. Schmalstieg, S. Käbitz, M. Ecker, D. U. Sauer. A holistic aging model for
   Li(NiMnCo)O$_2$ based 18650 lithium-ion batteries. \emph{Journal of Power Sources}, 257:325--334, 2014.
 \bibitem{severson2019} K. A. Severson, P. M. Attia, N. Jin, et al. Data-driven prediction of battery cycle life before
@@ -2599,7 +2621,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
       ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn thật; tốc độ $r$ ở dạng đạo hàm riêng chỉ
       phản ánh phần suy giảm gán cho biến thời gian, còn dạng Euler cho $r$ sát tốc độ thật (Mục~\ref{sec:physcheck}).
 \item <<CH5>>
-<<CH6>>\end{enumerate}
+<<CH6>><<CH7>>\end{enumerate}
 
 Về phương pháp đánh giá, đồ án cho thấy cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, và chứng minh bằng
 một cận đơn giản rằng ngay cả bộ dự đoán không học gì cũng đạt sai số rất thấp dưới cách chia đó. Giao thức kiểm
@@ -2612,14 +2634,12 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
 \begin{enumerate}
 \item Đưa ràng buộc vật lý vào chính mô hình cây, ví dụ dùng loss đơn điệu và loss động học để tạo nhãn giả cho
       GBDT trên cell không nhãn, thay vì chỉ lấy trung bình dự đoán như PINN-lai.
-\item Mở rộng sang dự báo SOH tương lai và tuổi thọ còn lại, với giao thức chia theo thời gian bên trong mỗi cell
-      test.
-\item Khoảng dự đoán có độ phủ theo từng cell chứ không chỉ trung bình, ví dụ hiệu chỉnh theo nhóm cell hoặc
-      cập nhật khoảng khi có thêm một vài lần đo dung lượng của chính cell.
+\item Cập nhật ước lượng và dự báo khi có thêm một vài lần đo dung lượng của chính cell, ví dụ dùng lớp nghiệm đóng
+      làm mô hình trạng thái cho một bộ lọc Bayes; nhờ đó khoảng dự đoán và khoảng dự báo có độ phủ đúng cho từng cell
+      chứ không chỉ trung bình.
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
-\item Tăng trọng số của phần dư động học và dùng dữ liệu nhiều mức nhiệt độ để ước lượng được $\lambda$ và $E_a$.
-\item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, để vừa giữ sai số thấp vừa có tốc độ suy giảm
-      $r$ diễn giải được theo nghĩa vật lý.
+\item Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, tăng trọng số của phần dư động học và dùng dữ
+      liệu nhiều mức nhiệt độ, để tốc độ $r$, $\lambda$ và $E_a$ diễn giải được theo nghĩa vật lý mà vẫn giữ sai số thấp.
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
              R10=_rng(F['r'][0.1].values()), SIG10=_tren(F['sig'][0.1]) or 'trên không bộ nào',
@@ -2628,7 +2648,7 @@ nhãn lồng nhau giữa các mức, và ước lượng sai số không chệch
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
-             BB=bb, CH5=ch5, CH6=ch6_concl(d))
+             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d))
 
 
 # ═════════════════════════════════════════════════════════════ TÓM TẮT, PHỤ LỤC, DỰNG
@@ -2676,10 +2696,10 @@ sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu
 <<E20>>
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
-kết hợp mô hình, dự đoán phù hợp.
+kết hợp mô hình, dự đoán phù hợp, dự báo tuổi thọ còn lại.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
              R70=_rng(F['r'][0.7].values()), GB=gb,
-             TRGB=abstract_e21(d), E20=abstract_e20(d))
+             TRGB=abstract_e21(d), E20=abstract_e20(d) + abstract_e22(d))
 
 
 def e21_concl(d):
@@ -2716,6 +2736,47 @@ def e21_sections(d):
     return BK.e21_text(d, sys_helpers())
 
 
+def e22_sections(d):
+    """(bảng tham số ở Chương 5, các mục kết quả ở Chương 6) của E22; rỗng khi chưa có results/e22_*.csv."""
+    if 'e22_traj' not in d:
+        return ('', '')
+    import thesis_bk as BK
+    H = sys_helpers()
+    return BK.e22_setting_table(d, H), BK.e22_text(d, H)
+
+
+def e22_concl(d):
+    if 'e22_traj' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e22_facts(d)
+    t = E['t']
+    return T(r"""\item Có, với độ chính xác giảm dần theo tầm. Khi cell test không được đo dung lượng và lịch sử SOH là ước
+      lượng PINN-lai, mô hình kết hợp (PINN-dự báo và GBDT) dự báo SOH trên toàn bộ phần đời còn lại với MAE
+      <<MAE>> ($\times10^{-3}$), bằng <<RB>> lần sai số của các mô hình chỉ dựa vào lịch sử của chính cell. GBDT và
+      mô hình kết hợp gần ngang nhau về SOH, nhưng GBDT không ngoại suy được ra ngoài tầm đã học nên sai số RUL gấp
+      <<RG>> lần; nghiệm đóng của động học là thứ giúp dự báo RUL. Tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thật
+      là <<IN20>> tuỳ bộ. Dấu của hệ số $\lambda$ học được khớp với hình dạng quỹ đạo: dương ở các bộ có điểm đầu
+      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>.
+""", MAE=_rng([1e3 * t(ds, 'uoc', 'e_ket_hop') for ds in DS], 1),
+             RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
+             RG=_rng([E['rul_gb'][ds] for ds in DS], 1), IN20=_rng([100 * E['rul_in20'][ds] for ds in DS], 0) + r'\,\%',
+             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%')
+
+
+def abstract_e22(d):
+    if 'e22_traj' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e22_facts(d)
+    return T(r""" Đồ án mở rộng mô hình sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng
+cuối đời: mạng PINN-dự báo trả hai tham số của nghiệm đóng của động học xám, kết hợp với GBDT. Khi cell không được đo
+dung lượng lần nào, mô hình kết hợp có sai số SOH chỉ bằng <<RB>> lần các mô hình ngoại suy theo từng cell, và sai số
+RUL thấp hơn GBDT <<RG>> lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học.""",
+             RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
+             RG=_rng([E['rul_gb'][ds] for ds in DS], 1))
+
+
 def sys_helpers():
     return dict(f=f, pc=pc, m3=m3, table=table, fig=fig, T=T, lst=_lst, rng=_rng, gm=_gm, tren=_tren, DS=DS, CHEM=CHEM)
 
@@ -2726,7 +2787,7 @@ def build():
     ctx['ncell'] = int(ctx['stats'].N.sum())
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
-        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_')) \
+        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_', 'fig_e22_')) \
                 and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
@@ -2734,7 +2795,7 @@ def build():
     ctx = facts(d, ctx)
     import thesis_bk as BK
     main_body = BK.assemble(ch1(d, ctx), ch2(d, ctx), ch3(d, ctx), ch4(d, ctx), ch5(d, ctx), ch6_text(d, ctx),
-                            ch7_improve(d, ctx), ch8(d, ctx), e21_sections(d), fig)
+                            ch7_improve(d, ctx), ch8(d, ctx), e21_sections(d), fig, e22_sections(d))
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
             + r'\tableofcontents\listoffigures\listoftables' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')

@@ -35,3 +35,6 @@ do-an/main.pdf
 # bộ nhớ đệm dữ liệu và kết quả phân tích (dựng lại được)
 .cache/
 *.tmp
+
+# bộ dự báo của demo: tự huấn luyện lại khi chạy lần đầu, phụ thuộc phiên bản scikit-learn
+demo/*_dubao.pkl

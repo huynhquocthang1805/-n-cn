@@ -9,6 +9,9 @@
     E17  PINN-sup ở 10 và 50 %, PINN hộp đen ở 4 mức nhãn, cùng giao thức E13                600
     E18  chuyển miền đủ 12 cặp nguồn–đích, MLP và PINN-semi, k ∈ {0, 3}, 5 hạt giống          240
     E19  GBDT trên đúng 12 cặp của E18                                                       120
+    E20  PINN-lai: 3 PINN-semi + GBDT + bộ lọc quỹ đạo, 3 lần lặp (tai-lieu/de-cuong-E20.md)  1 440
+    E21  huấn luyện một bộ, kiểm tra bộ khác (2 giao thức) + thích nghi, tự huấn luyện       168
+    E22  dự báo SOH tương lai, dung lượng còn lại, RUL; cùng fold E20, dùng ước lượng E20      60
 
 Mỗi Job biết file kết quả của nó (`out`), nên chạy lại sẽ bỏ qua lượt đã xong; tên file giữ nguyên như các
 lần chạy trước để kết quả cũ dùng lại được. Cấu hình của E13 đã ấn định trước — KHÔNG sửa.
@@ -213,7 +216,19 @@ def E21(repeats=None, datasets=DATASETS, seeds=None, out='runs/E21') -> List[Job
     return jobs
 
 
+# E22: dự báo SOH tương lai, dung lượng còn lại và RUL (pinnsoh/forecast.py) — cùng fold với E13/E20, lần lặp 0–2,
+#      lịch sử ước lượng lấy từ PINN-lai của E20 (mức nhãn 70 %)
+E22_COST = {'XJTU': 60, 'TJU': 90, 'MIT': 120, 'HUST': 200}
+
+
+def E22(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E22') -> List[Job]:
+    from .forecast import out_path
+    return [Job('forecast', dict(ds=ds, r=r, k=k, root=out), out_path(ds, r, k, out), E22_COST[ds],
+                f'forecast {ds} cv{r}-{k}', (ds,))
+            for r, ds, k in itertools.product(range(repeats), datasets, range(E13_FOLDS))]
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
-                                                        E20dev=E20dev, E20=E20, E21=E21)
+                                                        E20dev=E20dev, E20=E20, E21=E21, E22=E22)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22']

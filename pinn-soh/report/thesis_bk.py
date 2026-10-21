@@ -102,7 +102,7 @@ def pick(secs, prefix):
 
 
 def drop_float(tex: str, label: str) -> str:
-    pat = re.compile(r'\\begin\{(figure|table)\}\[H\](?:(?!\\end\{(?:figure|table)\}).)*?\\label\{' + re.escape(label)
+    pat = re.compile(r'\\begin\{(figure|table)\}\[!htbp\](?:(?!\\end\{(?:figure|table)\}).)*?\\label\{' + re.escape(label)
                      + r'\}.*?\\end\{\1\}\n?', re.S)
     new, n = pat.subn('', tex)
     assert n == 1, (label, n)
@@ -165,9 +165,10 @@ lai có thông tin vật lý, rồi rút ra các khoảng trống mà đồ án 
 
 CH4_HEAD = r"""\chapter{Dữ liệu và phương pháp đề xuất}\label{ch:dulieu}\label{ch:phuongphap}
 
-Chương này mô tả bốn bộ dữ liệu và cách tiền xử lý, rồi trình bày ba thành phần của phương pháp: mô hình PINN bán
-giám sát, mô hình kết hợp PINN-lai, và quy trình thích nghi không nhãn kèm tự huấn luyện để dùng mô hình trên một bộ
-dữ liệu khác. Cuối chương là các mô hình đối chứng và cấu hình huấn luyện chung.
+Chương này mô tả bốn bộ dữ liệu và cách tiền xử lý, rồi trình bày bốn thành phần của phương pháp: mô hình PINN bán
+giám sát, mô hình kết hợp PINN-lai, quy trình thích nghi không nhãn kèm tự huấn luyện để dùng mô hình trên một bộ
+dữ liệu khác, và phần mở rộng dự báo SOH tương lai, dung lượng còn lại và RUL. Cuối chương là các mô hình đối chứng
+và cấu hình huấn luyện chung.
 """
 
 CH4_DA = r"""\section{Thích nghi không nhãn và tự huấn luyện}\label{sec:selftrain}
@@ -189,7 +190,7 @@ các loss vật lý; GBDT học lại trên nhãn của $S$ cộng nhãn giả, 
 số của nhãn nguồn. Đồ án dùng $\lambda_\text{ps} = 1$ và hai vòng tự huấn luyện; các giá trị này được ấn định trước,
 không chọn theo nhãn của bộ đích vì nhãn đó không được phép dùng.
 
-\begin{table}[H]\centering\small
+\begin{table}[!htbp]\centering\small
 \caption{Thuật toán thích nghi không nhãn và tự huấn luyện cho một cặp $S \to T$.}\label{tab:algo}
 \begin{tabularx}{\textwidth}{>{\raggedleft}p{0.6cm}X}
 \toprule
@@ -225,6 +226,96 @@ thức A với 2 hạt giống; sai số của nó được so ghép cặp với
 \FIGPROTO
 """
 
+CH2_FC = r"""\section{Dự báo suy giảm và tuổi thọ còn lại}\label{sec:rul_theory}
+
+Ước lượng SOH cho biết dung lượng hiện tại; dự báo cho biết dung lượng ở các chu kỳ sắp tới và số chu kỳ còn lại
+trước khi pin chạm một ngưỡng cuối đời $\tau$ (remaining useful life, RUL). Các cách tiếp cận chia làm ba
+nhóm~\cite{hu2020joule}. Nhóm thứ nhất khớp một hàm thực nghiệm, thường là tổng hai hàm mũ, lên dung lượng đã đo của
+chính cell rồi ngoại suy, có thể kèm bộ lọc Bayes để cập nhật tham số khi có thêm số đo~\cite{he2011}; cách này không
+cần dữ liệu của cell khác nhưng rất nhạy với độ dài và nhiễu của lịch sử, nhất là trước điểm đầu gối, nơi quỹ đạo đã
+thấy chưa chứa dấu hiệu tăng tốc~\cite{attia2022knee}. Nhóm thứ hai học trực tiếp từ nhiều cell một ánh xạ từ lịch sử
+tới dung lượng tương lai hoặc tới RUL, bằng mạng hồi quy~\cite{zhang2018lstm} hay mô hình dựa trên đặc trưng của các chu
+kỳ đầu~\cite{severson2019}. Nhóm thứ ba ghép hai nhóm trên: dạng hàm lấy từ hiểu biết về cơ chế suy giảm, còn tham số
+của nó được học từ dữ liệu của nhiều cell. Đánh giá dự báo dùng thêm các chỉ số riêng cho RUL, chẳng hạn tỉ lệ dự báo
+rơi trong một dải sai số tương đối quanh RUL thật~\cite{saxena2008}.
+"""
+
+CH4_FC = r"""\section{Dự báo SOH tương lai, dung lượng còn lại và RUL}\label{sec:forecast_m}
+
+Mô hình ở các mục trên trả lời câu hỏi pin đang ở đâu. Mục này mở rộng sang câu hỏi pin sẽ đi tới đâu: tại chu kỳ
+gốc $k$ của một cell, dự báo SOH ở mọi chu kỳ $k + h$, $h > 0$, rồi suy ra dung lượng còn lại
+$\hat Q(k+h) = \hat y(k+h)\,C_\text{dđ}$ (Ah, $C_\text{dđ}$ là dung lượng danh định) và
+$\text{RUL}_k = \min\{h : \hat y(k+h) \le \tau\}$.
+
+\paragraph{Thông tin tại gốc.} Bộ dự báo chỉ dùng các chu kỳ $\le k$: đặc trưng sạc $\mathbf{x}_1, \dots,
+\mathbf{x}_k$ và một chuỗi SOH lịch sử $s_1, \dots, s_k$. Chuỗi lịch sử có hai nguồn, ứng với hai kịch bản: dung lượng
+đo thật, khi BMS có đo dung lượng định kỳ; hoặc SOH do PINN-lai ước lượng từ đặc trưng sạc, khi cell không được đo
+dung lượng lần nào. Từ đó tạo vectơ $\mathbf{z}_k$ gồm 23 thành phần: mức hiện tại $\ell_k$ (bộ lọc
+\eqref{eq:trend} với $w = 10$ áp lên $s$), độ dốc bình phương tối thiểu trên 30 và 100 chu kỳ gần nhất, mức ban đầu $\ell_0$ (trung
+bình 5 chu kỳ đầu) và độ giảm $\ell_0 - \ell_k$, $k/1000$, $1000/T$, cùng trung bình 16 đặc trưng sạc đã chuẩn hoá
+trên 10 chu kỳ gần nhất.
+
+\paragraph{Nghiệm đóng của động học xám.} Mạng tốc độ ở Mục~\ref{sec:pinn} mô tả
+$\partial u/\partial t = -r(\mathbf{x})\,e^{\lambda(1-u)}A(T)$. Đặc trưng sạc của các chu kỳ tương lai chưa biết, nên
+trong tầm dự báo coi $r(\mathbf{x})A(T)$ là hằng số. Đặt $v = 1 - u$, phương trình trở thành
+$\mathrm{d}v/\mathrm{d}N = a_0 e^{\lambda v}$; tích phân từ gốc $k$ cho
+\begin{equation}\label{eq:fcdrop}
+  \Delta v(h) = v(k+h) - v(k) = -\frac{1}{\lambda}\ln\bigl(1 - \lambda a h\bigr),
+\end{equation}
+trong đó $a$ là tốc độ suy giảm tại gốc (trên 1000 chu kỳ) và $h$ tính bằng nghìn chu kỳ. Khi $\lambda > 0$ suy giảm
+tăng tốc và đường cong dốc đứng khi $h$ tiến tới $1/(\lambda a)$, đúng hình dạng của điểm đầu gối; khi $\lambda < 0$ suy
+giảm chậm dần; khi $\lambda \to 0$ ta có $\Delta v = a h$. Với mọi $a \ge 0$, $\Delta v$ không âm và không giảm theo
+$h$, nên dự báo luôn đơn điệu mà không cần số hạng phạt. RUL cũng có dạng đóng:
+\begin{equation}\label{eq:fcrul}
+  h_\tau = \frac{1 - e^{-\lambda(\ell_k - \tau)}}{\lambda a}.
+\end{equation}
+
+\paragraph{PINN-dự báo.} Một mạng hai lớp ẩn 64 nút nhận $\mathbf{z}_k$ và trả $(a, \lambda)$, với $a$ qua hàm
+softplus và $\lambda = 80\tanh(\cdot/80)$; dự báo là $\hat y(k+h) = \ell_k - \Delta v(h; a, \lambda)$, giới hạn trong
+$[0{,}40;\,1{,}15]$. Hàm mất mát là sai số bình phương giữa $\hat y(k+h)$ và SOH đo trên các cặp (gốc, tầm) lấy từ
+cell train: mỗi cell cho 40 gốc cách đều, mỗi gốc 40 điểm đích cách đều trong phần đời còn lại, nên các cell có trọng
+số gần bằng nhau bất kể độ dài. Khác với PINN-semi, vật lý ở đây là ràng buộc cứng: nghiệm của phương trình động học
+chính là lớp đầu ra. Ba thành viên với hạt giống khác nhau được lấy trung bình, dừng sớm theo MAE trên cell
+validation.
+
+\paragraph{GBDT trực tiếp và mô hình kết hợp.} GBDT học ánh xạ $(\mathbf{z}_k, h) \mapsto \ell_k - y(k+h)$ trên cùng
+các cặp, với ràng buộc đơn điệu tăng theo $h$, cùng cấu hình và cách chọn số cây như GBDT đối chứng. Mô hình kết hợp
+lấy trung bình hai dự báo, theo đúng lý do của PINN-lai: GBDT nội suy tốt trong miền tầm dự báo đã thấy nhưng đi
+ngang bên ngoài miền đó, còn PINN-dự báo ngoại suy theo dạng hàm của động học.
+
+\paragraph{Mô hình đối chứng.} (i) Giữ nguyên: $\hat y(k+h) = \ell_k$. (ii) Ngoại suy tuyến tính theo độ dốc 100 chu
+kỳ gần nhất, chặn để không dương. (iii) Khớp vật lý theo cell: khớp \eqref{eq:fcdrop} với ba tham số
+$(u_0, a_0, \lambda)$ lên nửa sau lịch sử của chính cell, có phạt nhẹ $\lambda$, rồi ngoại suy, đại diện cho nhóm
+mô hình thực nghiệm khớp theo từng cell~\cite{he2011}. Khớp trên toàn bộ lịch sử và không phạt cho đường dự báo đổ
+xuống ngay sau gốc; cấu hình trên là tốt nhất trong bốn biến thể có điểm đầu gối khi thử trên cell validation của
+fold đầu tiên.
+
+\paragraph{Khoảng dự báo.} Sai số có dấu (thật trừ dự báo) của mô hình kết hợp trên cell validation được chia theo
+tầm tương đối $h/L$ ($L$ là trung vị số chu kỳ của bộ, các nhóm cận 0,05; 0,1; 0,25; 0,5; 1); cộng phân vị 5\,\% và
+95\,\% của mỗi nhóm vào dự báo cho khoảng 90\,\%. Cận dưới và cận trên của RUL là lúc biên dưới và biên trên của
+khoảng cắt ngưỡng $\tau$.
+"""
+
+CH5_FC = r"""\section{Giao thức đánh giá dự báo}\label{sec:fcproto}
+
+Dự báo dùng đúng các fold của Mục~\ref{sec:unit} (5 fold theo cell, 10\,\% cell validation, lần lặp 0--2) ở mức 70\,\%
+nhãn, nên mọi cell được dự báo đúng một lần mỗi lần lặp. Bộ dự báo học trên lịch sử đo của cell train. Ở kịch bản
+không đo dung lượng, lịch sử của cell test là ước lượng PINN-lai của chính fold đó, tức từ mô hình chưa thấy cell này.
+
+Gốc dự báo SOH đặt ở 20, 40 và 60\,\% số chu kỳ ghi được của cell; tỉ lệ này chỉ dùng để chọn điểm đánh giá, không
+phải đầu vào của mô hình. Sai số SOH được báo cáo ở ba tầm $h = 0{,}1L$, $0{,}25L$, $0{,}5L$ và trên toàn bộ phần đời
+còn lại sau gốc. Ngưỡng cuối đời $\tau$ của mỗi bộ được ấn định trước khi dự báo, là mức SOH thấp nhất (bước 0,01) mà
+ít nhất 80\,\% cell của bộ đã chạm tới; chu kỳ cuối đời thật là chu kỳ đầu tiên mà trung vị trượt 9 chu kỳ của SOH đo
+không vượt quá $\tau$. Ngưỡng 0,8 thường dùng không áp được vì phần lớn cell của MIT và XJTU dừng đo trước mức đó. Gốc
+dự báo RUL đặt ở 25, 50 và 75\,\% chu kỳ cuối đời thật của cell. Bảng~\ref{tab:fcset} tóm tắt các tham số.
+
+<<TABFC>>
+
+Chỉ số gồm MAE của SOH theo cell ở từng tầm, quy ra dung lượng (mAh); MAE của RUL (chu kỳ) và tỉ lệ dự báo RUL nằm
+trong $\pm 20\,\%$ RUL thật~\cite{saxena2008}; độ phủ thực tế của khoảng 90\,\%. Sai số của một cell lấy trung bình
+qua lần lặp và các gốc; so sánh dùng Wilcoxon ghép cặp theo cell, hiệu chỉnh Holm trong mỗi bộ.
+"""
+
 CH5_ENV = r"""\section{Môi trường thực nghiệm}
 
 Mọi thí nghiệm chạy trên CPU (Intel Xeon 2,1\,GHz, 4 lõi), mỗi lượt huấn luyện một tiến trình một luồng để kết quả
@@ -236,7 +327,7 @@ máy khác cho dự đoán trùng từng bit với kết quả báo cáo.
 
 
 # ───────────────────────────────────────────────────────────── ghép
-def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig):
+def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
     """c1..c8: chuỗi các chương cũ (c7 = chương cải tiến); e21: các mục kết quả E21; fig: hàm sinh hình."""
     # Chương 1
     h1, s1 = split_sections(c1)
@@ -247,7 +338,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig):
     h2, s2 = split_sections(c2)
     ch2 = (CH2_HEAD + pick(s2, 'Suy giảm dung lượng') + pick(s2, 'Mạng nơ-ron có thông tin vật lý')
            + retitle(pick(s2, 'Học bán giám sát'), 'Học bán giám sát và tự huấn luyện')
-           + pick(s2, 'Kết hợp mô hình') + CH2_DA + pick(s2, 'Đánh giá mô hình'))
+           + pick(s2, 'Kết hợp mô hình') + CH2_DA + CH2_FC + pick(s2, 'Đánh giá mô hình'))
     ch3 = (CH3_HEAD + retitle(pick(s2, 'Các hướng ước lượng SOH'), 'Các hướng ước lượng SOH')
            + retitle(pick(s2, 'Tổng hợp và khoảng trống'), 'Nhận xét và khoảng trống nghiên cứu'))
     # Chương 4: dữ liệu + PINN + PINN-lai + thích nghi + đối chứng
@@ -269,7 +360,8 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig):
     lai = sub1(lai, 'Sáu hướng được thử, mỗi hướng dựa trên một kết quả đã công bố hoặc một quan sát ở Chương~\\ref{ch:ketqua}.',
                'Sáu thành phần được xem xét, mỗi thành phần dựa trên một kết quả đã công bố hoặc một quan sát ở '
                'Chương~\\ref{ch:ketqua}; Mục~\\ref{sec:devproto} chọn trong số đó chỉ bằng tập validation.')
-    ch4 = (CH4_HEAD + data + pinn + lai + CH4_DA + pick(s4, 'Các mô hình đối chứng') + pick(s4, 'Cấu hình huấn luyện'))
+    ch4 = (CH4_HEAD + data + pinn + lai + CH4_DA + CH4_FC + pick(s4, 'Các mô hình đối chứng')
+           + pick(s4, 'Cấu hình huấn luyện'))
     # Chương 5: thiết kế thí nghiệm
     h5, s5 = split_sections(c5)
     unit = drop_float(pick(s5, 'Đơn vị chia'), 'tab:rowbound')
@@ -288,6 +380,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig):
            + CH5_E21.replace('\\FIGPROTO', fig('fig_e21_protocol', 'Hai giao thức huấn luyện trên một bộ, kiểm tra '
                                               'trên các bộ khác (trên) và quy trình thích nghi không nhãn, tự huấn '
                                               'luyện cho một cặp nguồn--đích (dưới).', 'fig:protocol'))
+           + (CH5_FC.replace('<<TABFC>>', e22[0]) if e22[0] else '')
            + pick(s5, 'Kiểm toán rò rỉ') + pick(s5, 'Chỉ số đánh giá') + pick(s5, 'Phương pháp thống kê') + CH5_ENV)
     # Chương 6: kết quả
     h6, s6 = split_sections(c6)
@@ -305,9 +398,12 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig):
     improve = ('\\section{Mô hình kết hợp PINN-lai}\\label{sec:improve}\n'
                + ''.join(demote(pick(s7, k)) for k in ['Sai số còn lại', 'Chọn hướng trên tập validation',
                                                        'Kết quả trên tập test', 'Phân rã lợi ích', 'Khoảng dự đoán']))
-    improve = drop_float(improve, 'tab:conformal')
+    improve = drop_float(drop_float(improve, 'tab:conformal'), 'fig:e20traj')
+    improve, n = re.subn(r' Hình~\\ref\{fig:e20traj\} đặt PINN-lai cạnh PINN-semi.*?Hình~\\ref\{fig:conformal\}\.', '',
+                         improve, count=1, flags=re.S)
+    assert n == 1
     ch6 = (head6 + leak + s30 + labels + pick(s6, 'So với các mô hình học có nhãn khác') + pick(s6, 'Lợi ích đến từ đâu')
-           + ext + rm + pick(s6, 'Tham số vật lý') + phys + improve + e21
+           + ext + rm + pick(s6, 'Tham số vật lý') + phys + improve + e21 + e22[1]
            + pick(s6, 'Thảo luận chung') + demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp')))
     ch7 = c8
     return fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
@@ -316,11 +412,12 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig):
 STRUCTURE = r"""\section{Cấu trúc báo cáo}
 
 Báo cáo gồm bảy chương. Chương~\ref{ch:lythuyet} trình bày cơ sở lý thuyết về suy giảm dung lượng pin, mạng
-nơ-ron có thông tin vật lý, học bán giám sát, kết hợp mô hình và thích nghi miền. Chương~\ref{ch:lienquan} tổng
-quan các công trình liên quan và chỉ ra khoảng trống. Chương~\ref{ch:phuongphap} mô tả dữ liệu, mô hình PINN bán
-giám sát, mô hình kết hợp PINN-lai, quy trình thích nghi và tự huấn luyện, cùng các mô hình đối chứng.
-Chương~\ref{ch:thietke} là thiết kế thí nghiệm: cách chia dữ liệu và lý do chọn từng con số, quy trình chống rò rỉ,
-hai giao thức huấn luyện trên một bộ và kiểm tra trên các bộ khác, chỉ số và kiểm định thống kê.
+nơ-ron có thông tin vật lý, học bán giám sát, kết hợp mô hình, thích nghi miền và dự báo tuổi thọ còn lại.
+Chương~\ref{ch:lienquan} tổng quan các công trình liên quan và chỉ ra khoảng trống. Chương~\ref{ch:phuongphap} mô tả
+dữ liệu, mô hình PINN bán giám sát, mô hình kết hợp PINN-lai, quy trình thích nghi và tự huấn luyện, mô hình dự báo
+SOH tương lai và RUL, cùng các mô hình đối chứng. Chương~\ref{ch:thietke} là thiết kế thí nghiệm: cách chia dữ liệu và
+lý do chọn từng con số, quy trình chống rò rỉ, hai giao thức huấn luyện trên một bộ và kiểm tra trên các bộ khác, giao
+thức đánh giá dự báo, chỉ số và kiểm định thống kê.
 Chương~\ref{ch:ketqua} trình bày và đánh giá kết quả. Chương~\ref{ch:ketluan} kết luận và nêu hướng phát triển.
 """
 
@@ -517,4 +614,165 @@ bộ đích, hoặc dùng dung lượng đo khi xuất xưởng.
                       'mỗi đường là một bộ nguồn.', 'fig:e21rounds'),
              FIGT=fig('fig_e21_traj', 'Quỹ đạo SOH của một cell bộ đích (cell có sai số trung vị khi chưa thích nghi) với '
                       'mô hình kết hợp chưa thích nghi, sau vòng 0 và sau vòng 2.', 'fig:e21traj'))
+    return out
+
+
+# ───────────────────────────────────────────────────────────── kết quả E22: dự báo
+E22_MODELS = [('giu', 'Giữ nguyên'), ('tuyen', 'Tuyến tính'), ('vatly', 'Vật lý theo cell'), ('gbdt', 'GBDT'),
+              ('pinn', 'PINN-dự báo'), ('ket_hop', 'Kết hợp')]
+
+
+def e22_facts(d):
+    import numpy as np
+    hz, tj, ts, ru, rt, lam, st = (d[k] for k in ('e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests',
+                                                     'e22_lambda', 'e22_setting'))
+    DS = ['XJTU', 'TJU', 'MIT', 'HUST']
+    E = {}
+    E['h'] = lambda ds, sc, hr, m: float(hz[(hz.ds == ds) & (hz.scen == sc) & (hz.h_rel == hr)][m].iloc[0])
+    E['t'] = lambda ds, sc, m: float(tj[(tj.ds == ds) & (tj.scen == sc)][m].iloc[0])
+    E['r'] = lambda ds, sc, m: float(ru[(ru.ds == ds) & (ru.scen == sc)][m].iloc[0])
+    E['test'] = lambda ds, sc, vs: ts[(ts.ds == ds) & (ts.scen == sc) & (ts.vs == vs)].iloc[0]
+    E['rtest'] = lambda ds, sc, vs: rt[(rt.ds == ds) & (rt.scen == sc) & (rt.vs == vs)].iloc[0]
+    E['ratio'] = {vs: [float(E['test'](ds, 'uoc', vs).ratio) for ds in DS] for vs in ('giu', 'tuyen', 'vatly', 'gbdt', 'pinn')}
+    sig = lambda f, ds, sc, vs, better: (f(ds, sc, vs).p_holm < 0.05) and ((f(ds, sc, vs).better > f(ds, sc, vs).n / 2) == better)
+    E['beats_base'] = all(sig(E['test'], ds, sc, vs, True) for ds in DS for sc in ('do', 'uoc') for vs in ('giu', 'tuyen', 'vatly'))
+    E['soh_vs'] = {vs: dict(better=[ds for ds in DS if sig(E['test'], ds, 'uoc', vs, True)],
+                            worse=[ds for ds in DS if sig(E['test'], ds, 'uoc', vs, False)]) for vs in ('gbdt', 'pinn')}
+    E['rul_vs'] = {vs: dict(better=[ds for ds in DS if sig(E['rtest'], ds, 'uoc', vs, True)],
+                            worse=[ds for ds in DS if sig(E['rtest'], ds, 'uoc', vs, False)])
+                   for vs in ('tuyen', 'vatly', 'gbdt', 'pinn')}
+    E['s2s1'] = {ds: E['t'](ds, 'uoc', 'e_ket_hop') / E['t'](ds, 'do', 'e_ket_hop') for ds in DS}
+    E['cov'] = [E['t'](ds, sc, 'cov') for ds in DS for sc in ('do', 'uoc')]
+    E['rcov'] = [E['r'](ds, sc, 'cov') for ds in DS for sc in ('do', 'uoc')]
+    E['lam'] = {r.ds: (float(r.lam_median), float(r.frac_pos)) for r in lam.itertuples()}
+    E['st'] = {r.ds: r for r in st.itertuples()}
+    E['rul_rel'] = {ds: E['r'](ds, 'uoc', 'rel_ket_hop') for ds in DS}
+    E['rul_in20'] = {ds: E['r'](ds, 'uoc', 'in20_ket_hop') for ds in DS}
+    E['rul_gb'] = {ds: E['r'](ds, 'uoc', 'e_gbdt') / E['r'](ds, 'uoc', 'e_ket_hop') for ds in DS}
+    return E
+
+
+def e22_setting_table(d, H):
+    f, table = H['f'], H['table']
+    rows = []
+    for r in d['e22_setting'].itertuples():
+        nom = f(r.nom_min, 1) if r.nom_min == r.nom_max else f'{f(r.nom_min, 1)}--{f(r.nom_max, 1)}'
+        rows.append([r.ds, r.n_cell, int(r.L), f'{r.h1}, {r.h2}, {r.h3}', f(r.tau, 2), H['pc'](r.reach, 0), nom])
+    return table(['Bộ', 'Số cell', '$L$ (chu kỳ)', 'Tầm $0{,}1L$, $0{,}25L$, $0{,}5L$', r'$\tau$',
+                  'Cell có chu kỳ cuối đời', r'$C_\text{dđ}$ (Ah)'], rows, 'lrrcrrr',
+                 r'Tham số đánh giá dự báo của từng bộ: $L$ là trung vị số chu kỳ ghi được, $\tau$ là ngưỡng cuối đời.',
+                 'tab:fcset')
+
+
+def e22_text(d, H):
+    f, pc, m3, table, fig, T, rng, lst = (H[k] for k in ('f', 'pc', 'm3', 'table', 'fig', 'T', 'rng', 'lst'))
+    import numpy as np
+    E = e22_facts(d)
+    DS = ['XJTU', 'TJU', 'MIT', 'HUST']
+    h, t, r = E['h'], E['t'], E['r']
+    rows = []
+    for ds in DS:
+        for k, hr in enumerate((0.1, 0.25, 0.5)):
+            vals = [h(ds, 'uoc', hr, f'e_{m}') for m, _ in E22_MODELS]
+            best = min(vals)
+            rows.append([ds if k == 0 else '', f(hr, 2 if hr == 0.25 else 1) + '$L$']
+                        + [(r'\textbf{' + m3(v, 1) + '}') if v == best else m3(v, 1) for v in vals]
+                        + [m3(h(ds, 'do', hr, 'e_ket_hop'), 1), f(h(ds, 'uoc', hr, 'mah'), 0)])
+    tab_soh = table(['Bộ', 'Tầm'] + [lab for _, lab in E22_MODELS] + ['Kết hợp, đo', 'Kết hợp (mAh)'], rows,
+                    'llrrrrrrrr',
+                    r'MAE theo cell ($\times10^{-3}$) của SOH dự báo ở ba tầm, kịch bản lịch sử ước lượng (không đo dung '
+                    r'lượng cell test); in đậm là thấp nhất. Hai cột cuối: mô hình kết hợp khi lịch sử là dung lượng đo, '
+                    r'và sai số của mô hình kết hợp quy ra dung lượng (mAh) ở kịch bản ước lượng.', 'tab:e22soh')
+    rows = []
+    for ds in DS:
+        vals = [r(ds, 'uoc', f'e_{m}') for m, _ in E22_MODELS[1:]]
+        best = min(vals)
+        rows.append([ds, f(r(ds, 'uoc', 'true'), 0)] + [(r'\textbf{' + f(v, 0) + '}') if v == best else f(v, 0) for v in vals]
+                    + [f(r(ds, 'do', 'e_ket_hop'), 0), pc(r(ds, 'uoc', 'in20_ket_hop'), 0), pc(r(ds, 'uoc', 'cov'), 0)])
+    tab_rul = table(['Bộ', 'RUL thực'] + [lab for _, lab in E22_MODELS[1:]] + ['Kết hợp, đo', r'Trong $\pm20\,\%$',
+                                                                               'Độ phủ khoảng'], rows, 'lrrrrrrrrr',
+                    r'MAE của RUL (chu kỳ), kịch bản lịch sử ước lượng, trung bình qua gốc ở 25, 50, 75\,\% đời; cột '
+                    r'RUL thực là trung bình RUL thật tại các gốc. Ba cột cuối của mô hình kết hợp: MAE khi lịch sử là '
+                    r'dung lượng đo, tỉ lệ dự báo nằm trong $\pm20\,\%$ RUL thật và độ phủ thực tế của khoảng RUL 90\,\%.',
+                    'tab:e22rul')
+    sv, rv = E['soh_vs'], E['rul_vs']
+    gb_txt = ('tốt hơn có ý nghĩa ' + ('trên ' + lst(sv['gbdt']['better']) if sv['gbdt']['better'] else 'trên không bộ nào')
+              + (', kém hơn có ý nghĩa trên ' + lst(sv['gbdt']['worse']) if sv['gbdt']['worse'] else ''))
+    pi_txt = ('thấp hơn có ý nghĩa trên ' + lst(sv['pinn']['better']) if sv['pinn']['better'] else
+              'không khác có ý nghĩa trên bộ nào')
+    rul_pi = ('không khác có ý nghĩa trên bộ nào' if not (rv['pinn']['better'] or rv['pinn']['worse']) else
+              ('thấp hơn có ý nghĩa trên ' + lst(rv['pinn']['better']) if rv['pinn']['better'] else '')
+              + ('; cao hơn có ý nghĩa trên ' + lst(rv['pinn']['worse']) if rv['pinn']['worse'] else ''))
+    lam = E['lam']
+    acc = [ds for ds in DS if lam[ds][0] > 0]; dec = [ds for ds in DS if lam[ds][0] <= 0]
+    out = T(r"""
+\section{Dự báo SOH tương lai, dung lượng còn lại và RUL}\label{sec:forecastres}
+
+\paragraph{Sai số SOH theo tầm dự báo.} Bảng~\ref{tab:e22soh} cho sai số ở kịch bản
+thực tế hơn, khi cell test không được đo dung lượng lần nào và lịch sử SOH là ước lượng PINN-lai. Ba mô hình chỉ dựa
+vào lịch sử của chính cell đều kém xa: trên toàn bộ phần đời còn lại, sai số của mô hình kết hợp chỉ bằng
+<<RGIU>> lần sai số của dự báo giữ nguyên, <<RTUY>> lần của ngoại suy tuyến tính và <<RVL>> lần của khớp vật lý theo
+cell<<BEATS>>. Khớp vật lý theo cell còn kém cả ngoại suy tuyến tính ở <<VLBAD>>: ba tham số khớp trên vài trăm điểm có
+nhiễu không đủ để phân biệt một quỹ đạo sắp gãy với một quỹ đạo đang chậm dần, đúng nhược điểm đã biết của cách tiếp
+cận này. Các mô hình học từ nhiều cell tránh được điều đó vì dạng đường cong được rút ra từ cell khác có đặc trưng
+sạc tương tự. Giữa ba mô hình học từ nhiều cell, khác biệt nhỏ hơn nhiều: so với GBDT, mô hình kết hợp có tỉ số sai
+số <<RGB>> và <<GBTXT>>; so với PINN-dự báo, tỉ số <<RPI>>, <<PITXT>>. Quy ra dung lượng, sai số của mô hình kết hợp
+ở tầm $0{,}5L$ là <<MAH>> mAh.
+
+<<TABSOH>>
+
+\paragraph{Cái giá của việc không đo dung lượng.} Khi lịch sử là dung lượng đo thật, sai số trên toàn bộ phần đời còn
+lại bằng <<S2S1>> sai số khi lịch sử là ước lượng (lần lượt XJTU, TJU, MIT, HUST). Chênh lệch lớn nhất ở HUST,
+nơi ở tầm ngắn $0{,}1L$ sai số tăng từ <<HU1>> lên <<HU2>> ($\times10^{-3}$): sai số của dự báo ngắn hạn gần như bằng
+sai số ước lượng mức SOH tại gốc, nên chất lượng của mô hình ước lượng quyết định chất lượng dự báo ở tầm ngắn. Ở MIT,
+nơi PINN-lai ước lượng SOH rất sát, hai kịch bản gần như trùng nhau. Hình~\ref{fig:e22traj} minh hoạ một cell mỗi bộ:
+lịch sử ước lượng, dự báo từ gốc ở 40\,\% đời và khoảng 90\,\%, với trục phải là dung lượng theo Ah.
+
+<<FIGT>>
+
+\paragraph{RUL.} Bảng~\ref{tab:e22rul} và Hình~\ref{fig:e22rul} cho thấy khác biệt rõ nhất giữa các mô hình nằm ở
+RUL. GBDT không ngoại suy được ra ngoài miền tầm dự báo đã thấy khi học, nên khi RUL dài nó dự báo SOH đi ngang và
+cắt ngưỡng quá muộn; sai số RUL của GBDT gấp <<RULGB>> lần của mô hình kết hợp, và mô hình kết hợp tốt hơn GBDT có ý
+nghĩa <<RULGBS>>. Nghiệm đóng của PINN-dự báo tiếp tục cong theo hệ số $\lambda$ đã học nên cắt ngưỡng đúng lúc
+hơn; giữa mô hình kết hợp và PINN-dự báo, sai số RUL <<RULPI>>. Như vậy mô hình kết hợp gần bằng GBDT về sai số SOH và
+gần bằng PINN-dự báo về RUL, là mô hình duy nhất không kém ở cả hai chỉ số. Tỉ lệ dự báo RUL nằm trong $\pm20\,\%$
+RUL thật là <<IN20>> và sai số tương đối trung vị <<REL>> (cùng thứ tự bốn bộ); sai số giảm khi gốc dự báo tiến gần
+cuối đời, vì phần quỹ đạo còn phải ngoại suy ngắn lại.
+
+<<TABRUL>>
+<<FIGR>>
+
+\paragraph{Hệ số $\lambda$ học được.} Mạng chỉ thấy đặc trưng tại gốc, không được cho biết bộ dữ liệu, nhưng dấu
+của $\lambda$ khớp với hình dạng quỹ đạo của từng bộ. Trung vị $\lambda$ là <<LAMS>> (lần lượt XJTU, TJU, MIT, HUST),
+với tỉ lệ gốc có $\lambda > 0$ là <<LAMP>>. <<LAMTXT>>
+
+\paragraph{Khoảng dự báo.} Khoảng 90\,\% có độ phủ thực tế <<COV>> trên toàn bộ phần đời còn lại và <<RCOV>> với
+khoảng RUL, thấp hơn mức đặt ra. Tập validation chỉ có 10\,\% số cell, trong khi sai số dự báo của một cell tương quan
+mạnh giữa các tầm; phân vị ước lượng từ vài cell vì vậy hẹp hơn phân bố sai số của cell mới. Khoảng này cho biết bậc
+độ lớn của bất định, nhưng chưa đủ tin cậy để dùng như một cam kết 90\,\%.
+""", RGIU=rng(E['ratio']['giu'], 2), RTUY=rng(E['ratio']['tuyen'], 2), RVL=rng(E['ratio']['vatly'], 2),
+            BEATS=(', khác biệt có ý nghĩa trên cả bốn bộ ở cả hai kịch bản' if E['beats_base'] else ''),
+            VLBAD=lst([ds for ds in DS if t(ds, 'uoc', 'e_vatly') > t(ds, 'uoc', 'e_tuyen')]) or 'không bộ nào',
+            RGB=rng(E['ratio']['gbdt'], 2), GBTXT=gb_txt, RPI=rng(E['ratio']['pinn'], 2), PITXT=pi_txt,
+            MAH=rng([h(ds, 'uoc', 0.5, 'mah') for ds in DS], 0), TABSOH=tab_soh,
+            S2S1='; '.join(f(1 / E['s2s1'][ds], 2) for ds in DS) + ' lần',
+            HU1=m3(h('HUST', 'do', 0.1, 'e_ket_hop'), 1), HU2=m3(h('HUST', 'uoc', 0.1, 'e_ket_hop'), 1),
+            FIGT=fig('fig_e22_traj', 'Dự báo cho một cell test mỗi bộ (lần lặp 0, gốc ở 40\\,\\% đời, cell có sai số ở '
+                     'trung vị): lịch sử SOH ước lượng tới gốc, dự báo của GBDT, PINN-dự báo và mô hình kết hợp kèm '
+                     'khoảng 90\\,\\%; trục phải là dung lượng (Ah).', 'fig:e22traj'),
+            RULGB=rng([E['rul_gb'][ds] for ds in DS], 1), RULGBS=('trên cả bốn bộ' if len(rv['gbdt']['better']) == 4 else
+                    'trên ' + lst(rv['gbdt']['better']) if rv['gbdt']['better'] else 'trên không bộ nào'),
+            RULPI=rul_pi, IN20='; '.join(pc(E['rul_in20'][ds], 0) for ds in DS),
+            REL='; '.join(pc(E['rul_rel'][ds], 0) for ds in DS), TABRUL=tab_rul,
+            FIGR=fig('fig_e22_rul', 'RUL dự báo của mô hình kết hợp so với RUL thật, kịch bản lịch sử ước lượng; mỗi '
+                     'điểm là một cell ở một gốc, trung bình qua 3 lần lặp; dải xám là sai lệch $\\pm20\\,\\%$.',
+                     'fig:e22rul'),
+            LAMS='; '.join(f(lam[ds][0], 1) for ds in DS), LAMP='; '.join(pc(lam[ds][1], 0) for ds in DS),
+            LAMTXT=((f'Ở {lst(acc)}, $\\lambda$ dương ở phần lớn gốc: tốc độ suy giảm được dự báo tăng dần, đúng với '
+                     'quỹ đạo có điểm đầu gối. ' if acc else '')
+                    + (f'Ở {lst(dec)}, nơi nhiều cell giảm nhanh ở đầu đời rồi chậm lại, trung vị $\\lambda$ âm và chỉ '
+                       'khoảng một nửa số gốc có $\\lambda > 0$: mạng tự chọn nhánh suy giảm chậm dần của nghiệm đóng. '
+                       if dec else '')
+                    + 'Cùng một dạng phương trình bao được cả hai kiểu quỹ đạo nhờ để dấu của $\\lambda$ tự do.'),
+            COV=rng([100 * x for x in E['cov']], 0) + r'\,\%', RCOV=rng([100 * x for x in E['rcov']], 0) + r'\,\%')
     return out

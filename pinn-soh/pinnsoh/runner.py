@@ -43,6 +43,9 @@ def _execute(kind: str, args: dict):
     if kind == 'cross_chain':
         from .crossds import run_chain
         return run_chain(**args)
+    if kind == 'forecast':
+        from .forecast import run_fold
+        return run_fold(**args)
     raise ValueError(kind)
 
 
