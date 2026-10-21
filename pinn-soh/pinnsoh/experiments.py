@@ -228,7 +228,60 @@ def E22(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E22') -> L
             for r, ds, k in itertools.product(range(repeats), datasets, range(E13_FOLDS))]
 
 
+# E23: dự báo có xét hồi phục dung lượng (pinnsoh/recovery.py) — cùng fold E22, học lại cả mô hình E22 để so ghép cặp
+E23_COST = {'XJTU': 150, 'TJU': 200, 'MIT': 250, 'HUST': 300, 'NASA': 60}
+
+
+def E23(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E23') -> List[Job]:
+    from .recovery import out_path
+    return [Job('recovery', dict(ds=ds, r=r, k=k, root=out), out_path(ds, r, k, out), E23_COST[ds],
+                f'recovery {ds} cv{r}-{k}', (ds,))
+            for r, ds, k in itertools.product(range(repeats), datasets, range(E13_FOLDS))]
+
+
+# E24: bộ NASA PCoE (18 cell, pinnsoh/nasa.py), có và không có thời gian nghỉ (NASAdt)
+#   cv     kiểm định chéo 5 fold × 3 lần lặp, mức nhãn 30 và 70 %: 3 PINN-semi, MLP, GBDT -> PINN-lai
+#   samba  cách chia NASA-L của SambaMixer (đánh giá trên #06, #07, #47), 3 hạt giống
+#   dự báo E22 và E23 trên NASA (cần lượt cv ở 70 % nhãn làm lịch sử ước lượng)
+E24_PHYS = dict(E13_PHYS, range_first=(0.40, 1.10))
+NASA_SETS = ('NASA', 'NASAdt')
+
+
+def E24(repeats=E20_REPEATS, datasets=NASA_SETS, seeds=None, out='runs/E24') -> List[Job]:
+    from .baselines import cv_path, samba_path
+    from .train import Config, run_name
+    rr = range(repeats)
+    datasets = [d for d in datasets if d in NASA_SETS] or list(NASA_SETS)    # run.py truyền bốn bộ chính: bỏ qua
+    jobs = []
+    for ds, f, r, k in itertools.product(datasets, (0.3, 0.7), rr, range(E13_FOLDS)):
+        jobs += [_member_job('P', 'pinn_semi', f, E24_PHYS, r, ds, k, out, m) for m in E20_MEMBERS]
+        jobs.append(_member_job('M', 'mlp', f, dict(range_first=(0.40, 1.10)), r, ds, k, out, 0))
+        jobs.append(Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True),
+                        cv_path('gbdt', ds, f, r, k, out), 3, f'gbdt {ds} f{f} cv{r}-{k}', (ds,)))
+    for ds, s in itertools.product(datasets, rr):
+        for model, mem, extra in [('pinn_semi', m, E24_PHYS) for m in E20_MEMBERS] + [('mlp', 0, dict(range_first=(0.40, 1.10)))]:
+            kw = dict(dataset=ds, label_frac=0.7, model=model, seed=s, split='samba', tag='S', out_dir=out,
+                      member=mem, save_val_predictions=True, **E13_NET, **extra)
+            jobs.append(Job('train', kw, os.path.join(out, run_name(Config(**kw)) + '.json'), _train_cost(model),
+                            f'S {ds} {model} s{s} m{mem}', (ds,)))
+        jobs.append(Job('baseline_samba', dict(model='gbdt', ds=ds, seed=s, out_dir=out), samba_path('gbdt', ds, s, out),
+                        3, f'samba gbdt {ds} s{s}', (ds,)))
+    return jobs
+
+
+def E24f(repeats=E20_REPEATS, datasets=None, seeds=None, out=None) -> List[Job]:
+    """Dự báo E22 và E23 trên NASA; chạy sau E24."""
+    from .forecast import out_path as fo
+    from .recovery import out_path as ro
+    rr = range(repeats)
+    return ([Job('forecast', dict(ds='NASA', r=r, k=k, root='runs/E22'), fo('NASA', r, k, 'runs/E22'), 40,
+                 f'forecast NASA cv{r}-{k}', ('NASA',)) for r, k in itertools.product(rr, range(E13_FOLDS))]
+            + [Job('recovery', dict(ds='NASA', r=r, k=k, root='runs/E23'), ro('NASA', r, k, 'runs/E23'), 60,
+                   f'recovery NASA cv{r}-{k}', ('NASA',)) for r, k in itertools.product(rr, range(E13_FOLDS))])
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
-                                                        E20dev=E20dev, E20=E20, E21=E21, E22=E22)
+                                                        E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
+                                                        E24f=E24f)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f']

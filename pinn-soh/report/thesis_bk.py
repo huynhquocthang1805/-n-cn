@@ -238,6 +238,12 @@ tới dung lượng tương lai hoặc tới RUL, bằng mạng hồi quy~\cite{
 kỳ đầu~\cite{severson2019}. Nhóm thứ ba ghép hai nhóm trên: dạng hàm lấy từ hiểu biết về cơ chế suy giảm, còn tham số
 của nó được học từ dữ liệu của nhiều cell. Đánh giá dự báo dùng thêm các chỉ số riêng cho RUL, chẳng hạn tỉ lệ dự báo
 rơi trong một dải sai số tương đối quanh RUL thật~\cite{saxena2008}.
+
+Một khó khăn riêng của dự báo là dung lượng đo được không giảm đều. Sau một khoảng nghỉ, các ion lithium phân bố lại
+trong điện cực và cell lấy lại một phần dung lượng, rồi mất dần trong vài chu kỳ tiếp theo; một số giao thức sạc--xả
+còn làm dung lượng dao động đều theo chu kỳ của chính giao thức. Phần thay đổi thuận nghịch này chồng lên xu thế suy
+giảm không thuận nghịch. Mô hình dự báo coi mọi biến động là xu thế sẽ hiểu sai cả mức lẫn tốc độ suy giảm ngay sau
+một lần hồi phục; SambaMixer~\cite{olalde2024samba} xử lý bằng cách đưa khoảng thời gian giữa hai chu kỳ vào mô hình.
 """
 
 CH4_FC = r"""\section{Dự báo SOH tương lai, dung lượng còn lại và RUL}\label{sec:forecast_m}
@@ -290,6 +296,21 @@ mô hình thực nghiệm khớp theo từng cell~\cite{he2011}. Khớp trên to
 xuống ngay sau gốc; cấu hình trên là tốt nhất trong bốn biến thể có điểm đầu gối khi thử trên cell validation của
 fold đầu tiên.
 
+\paragraph{Xét hồi phục dung lượng.} Bản cải tiến tách lịch sử tại gốc thành ba phần, chỉ dùng 60 chu kỳ gần nhất:
+(i) xu thế, là đường thẳng khớp bằng hồi quy Huber nên vài điểm hồi phục không kéo lệch được mức và độ dốc;
+(ii) dao động đều, tìm chu kỳ $P \in [2{,}2;\,15]$ với hai hài trên phần dư và chỉ giữ khi giải thích được ít nhất
+60\,\% phương sai trên cả cửa sổ lẫn từng nửa cửa sổ, tức dao động thật sự lặp lại; (iii) phần hồi phục hiện tại $e_k$,
+là phần dư của ba chu kỳ cuối sau khi trừ hai phần trên. Dự báo trở thành
+\begin{equation}\label{eq:fcrec}
+  \hat y(k+h) = \ell_k + e_k\,e^{-h/\tau} - \Delta v(h; a, \lambda) + p_k(h),
+\end{equation}
+trong đó $\ell_k$ là giá trị xu thế tại gốc, $\Delta v$ là nghiệm đóng \eqref{eq:fcdrop} chỉ cho phần suy giảm không
+thuận nghịch, $p_k(h)$ là dao động ngoại suy, và $\tau$ là thời gian tắt của phần hồi phục, học chung với mạng
+PINN-dự báo. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch (với $\tau$ của PINN-dự báo); trọng
+số của GBDT trong mô hình kết hợp tăng tuyến tính từ 0 tại $h = 0$ tới $\tfrac{1}{2}$ tại $h = 0{,}1L$, vì cây gom các
+tầm rất ngắn vào cùng một ngăn nên kém chính xác ngay sau gốc. Các lựa chọn này được chốt trên cell validation của lần
+lặp đầu tiên, trước khi chạy trên test.
+
 \paragraph{Khoảng dự báo.} Sai số có dấu (thật trừ dự báo) của mô hình kết hợp trên cell validation được chia theo
 tầm tương đối $h/L$ ($L$ là trung vị số chu kỳ của bộ, các nhóm cận 0,05; 0,1; 0,25; 0,5; 1); cộng phân vị 5\,\% và
 95\,\% của mỗi nhóm vào dự báo cho khoảng 90\,\%. Cận dưới và cận trên của RUL là lúc biên dưới và biên trên của
@@ -314,6 +335,13 @@ dự báo RUL đặt ở 25, 50 và 75\,\% chu kỳ cuối đời thật của c
 Chỉ số gồm MAE của SOH theo cell ở từng tầm, quy ra dung lượng (mAh); MAE của RUL (chu kỳ) và tỉ lệ dự báo RUL nằm
 trong $\pm 20\,\%$ RUL thật~\cite{saxena2008}; độ phủ thực tế của khoảng 90\,\%. Sai số của một cell lấy trung bình
 qua lần lặp và các gốc; so sánh dùng Wilcoxon ghép cặp theo cell, hiệu chỉnh Holm trong mỗi bộ.
+
+Bản có xét hồi phục được chạy trên đúng các fold đó, cùng lượt với các mô hình của bản đầu (học lại với cùng hạt giống),
+nên hai bản được so ghép cặp trên cùng gốc. Ngoài các gốc trên, mỗi cell có thêm tối đa ba gốc đặt ngay sau một lần hồi
+phục: SOH đo vượt trung vị năm chu kỳ trước đó quá 0,004, chỉ xét sau đỉnh của giai đoạn kích hoạt đầu đời (ở nhiều cell,
+SOH tăng trong vài chục chu kỳ đầu, không phải hồi phục). Sai số ngắn hạn tính trên các chu kỳ trong tầm $0{,}1L$ sau
+gốc. Bộ NASA dùng cùng giao thức kiểm định chéo cho cả ước lượng lẫn dự báo, với ngưỡng cuối đời 70\,\% như tài liệu
+của NASA và SambaMixer; để so với SambaMixer, đồ án chạy thêm đúng cách chia NASA-L của bài đó.
 """
 
 CH5_ENV = r"""\section{Môi trường thực nghiệm}
@@ -394,7 +422,8 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
     rm = pick(s6, 'RMSE và')
     for lab in ('tab:rmser2', 'tab:transr2'):
         rm = drop_float(rm, lab)
-    phys = drop_float(pick(s6, 'Kiểm tra phần vật lý'), 'fig:ratecell')
+    phys = drop_float(drop_float(pick(s6, 'Kiểm tra phần vật lý'), 'fig:ratecell'), 'fig:mono')
+    phys = sub1(phys, '(Bảng~\\ref{tab:mono}, Hình~\\ref{fig:mono})', '(Bảng~\\ref{tab:mono})')
     improve = ('\\section{Mô hình kết hợp PINN-lai}\\label{sec:improve}\n'
                + ''.join(demote(pick(s7, k)) for k in ['Sai số còn lại', 'Chọn hướng trên tập validation',
                                                        'Kết quả trên tập test', 'Phân rã lợi ích', 'Khoảng dự đoán']))
@@ -406,19 +435,21 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', '')):
            + ext + rm + pick(s6, 'Tham số vật lý') + phys + improve + e21 + e22[1]
            + pick(s6, 'Thảo luận chung') + demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp')))
     ch7 = c8
-    return fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
+    out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
+    # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
+    for lab in ('fig:e20curve', 'fig:conformal', 'fig:curvebase', 'fig:split'):
+        out = drop_float(out, lab)
+    out = sub1(out, 'Hình~\\ref{fig:curvephys}, \\ref{fig:curvebase}', 'Hình~\\ref{fig:curvephys}')
+    out = sub1(out, ' Hình~\\ref{fig:split} minh hoạ cách chia thật của XJTU.', '')
+    return out
 
 
 STRUCTURE = r"""\section{Cấu trúc báo cáo}
 
-Báo cáo gồm bảy chương. Chương~\ref{ch:lythuyet} trình bày cơ sở lý thuyết về suy giảm dung lượng pin, mạng
-nơ-ron có thông tin vật lý, học bán giám sát, kết hợp mô hình, thích nghi miền và dự báo tuổi thọ còn lại.
-Chương~\ref{ch:lienquan} tổng quan các công trình liên quan và chỉ ra khoảng trống. Chương~\ref{ch:phuongphap} mô tả
-dữ liệu, mô hình PINN bán giám sát, mô hình kết hợp PINN-lai, quy trình thích nghi và tự huấn luyện, mô hình dự báo
-SOH tương lai và RUL, cùng các mô hình đối chứng. Chương~\ref{ch:thietke} là thiết kế thí nghiệm: cách chia dữ liệu và
-lý do chọn từng con số, quy trình chống rò rỉ, hai giao thức huấn luyện trên một bộ và kiểm tra trên các bộ khác, giao
-thức đánh giá dự báo, chỉ số và kiểm định thống kê.
-Chương~\ref{ch:ketqua} trình bày và đánh giá kết quả. Chương~\ref{ch:ketluan} kết luận và nêu hướng phát triển.
+Chương~\ref{ch:lythuyet} và~\ref{ch:lienquan} trình bày cơ sở lý thuyết và các công trình liên quan.
+Chương~\ref{ch:phuongphap} mô tả dữ liệu và các mô hình: PINN bán giám sát, PINN-lai, thích nghi và tự huấn luyện, dự báo
+SOH tương lai và RUL. Chương~\ref{ch:thietke} là thiết kế thí nghiệm và giao thức đánh giá, Chương~\ref{ch:ketqua} là kết
+quả, Chương~\ref{ch:ketluan} là kết luận và hướng phát triển.
 """
 
 
@@ -596,24 +627,18 @@ có ích khi mỗi vòng đưa vào một thông tin mà nhãn giả chưa chứ
 <<TABC>>
 <<FIGR>>
 
-Hình~\ref{fig:e21traj} minh hoạ trên một cell của bốn cặp. Đường vòng 0 và vòng 2 gần như trùng nhau; vòng 0 kéo
-quỹ đạo về gần thực đo ở các cặp có sai số giảm và đẩy xa hơn ở cặp có sai số tăng, đúng như Bảng~\ref{tab:e21chain}.
 Nhãn giả đã qua bộ lọc nên đúng về hình dạng, nhưng mang nguyên độ lệch mức của mô hình, và vòng sau học lại độ lệch đó.
 Thông tin còn thiếu là mức SOH của bộ đích. Một thí nghiệm bổ sung trên cùng bốn bộ (mô hình học trên bộ nguồn, thêm 3
 cell đích có nhãn) cho thấy chỉ ba cell có nhãn đã đưa MAE trung vị qua 12 cặp của PINN-semi từ <<K0P>> xuống <<K3P>>,
 của GBDT từ <<K0G>> xuống <<K3G>>. Khi triển khai, cách rẻ nhất để có thông tin này là đo dung lượng của một vài cell ở
 bộ đích, hoặc dùng dung lượng đo khi xuất xưởng.
-
-<<FIGT>>
 """, R0=f(E['r0'], 3), R0B=E['r0_better'], R0W=E['r0_worse'], R2=f(E['r2'], 3), R2B=E['r2_better'], R2W=E['r2_worse'],
              R2V0=f(E['r2v0'], 3), R2O=E['r2_over_r0'], TABC=tab_c, R0DOWN=lst(E['r0_down']), R0UP=lst(E['r0_up']),
              P31=f(E['r1v0']['pinn3'], 2), G31=f(E['r1v0']['gbdt'], 2),
              K0P=m3(E['k3']['p0'], 1) + r'$\times10^{-3}$', K3P=m3(E['k3']['p3'], 1) + r'$\times10^{-3}$',
              K0G=m3(E['k3']['g0'], 1) + r'$\times10^{-3}$', K3G=m3(E['k3']['g3'], 1) + r'$\times10^{-3}$',
              FIGR=fig('fig_e21_rounds', 'MAE theo cell của mô hình kết hợp trên bộ đích qua các vòng thích nghi (thang log); '
-                      'mỗi đường là một bộ nguồn.', 'fig:e21rounds'),
-             FIGT=fig('fig_e21_traj', 'Quỹ đạo SOH của một cell bộ đích (cell có sai số trung vị khi chưa thích nghi) với '
-                      'mô hình kết hợp chưa thích nghi, sau vòng 0 và sau vòng 2.', 'fig:e21traj'))
+                      'mỗi đường là một bộ nguồn.', 'fig:e21rounds'))
     return out
 
 
@@ -730,7 +755,7 @@ lịch sử ước lượng, dự báo từ gốc ở 40\,\% đời và khoảng
 
 <<FIGT>>
 
-\paragraph{RUL.} Bảng~\ref{tab:e22rul} và Hình~\ref{fig:e22rul} cho thấy khác biệt rõ nhất giữa các mô hình nằm ở
+\paragraph{RUL.} Bảng~\ref{tab:e22rul} cho thấy khác biệt rõ nhất giữa các mô hình nằm ở
 RUL. GBDT không ngoại suy được ra ngoài miền tầm dự báo đã thấy khi học, nên khi RUL dài nó dự báo SOH đi ngang và
 cắt ngưỡng quá muộn; sai số RUL của GBDT gấp <<RULGB>> lần của mô hình kết hợp, và mô hình kết hợp tốt hơn GBDT có ý
 nghĩa <<RULGBS>>. Nghiệm đóng của PINN-dự báo tiếp tục cong theo hệ số $\lambda$ đã học nên cắt ngưỡng đúng lúc
@@ -740,7 +765,6 @@ RUL thật là <<IN20>> và sai số tương đối trung vị <<REL>> (cùng th
 cuối đời, vì phần quỹ đạo còn phải ngoại suy ngắn lại.
 
 <<TABRUL>>
-<<FIGR>>
 
 \paragraph{Hệ số $\lambda$ học được.} Mạng chỉ thấy đặc trưng tại gốc, không được cho biết bộ dữ liệu, nhưng dấu
 của $\lambda$ khớp với hình dạng quỹ đạo của từng bộ. Trung vị $\lambda$ là <<LAMS>> (lần lượt XJTU, TJU, MIT, HUST),
@@ -764,9 +788,6 @@ mạnh giữa các tầm; phân vị ước lượng từ vài cell vì vậy h�
                     'trên ' + lst(rv['gbdt']['better']) if rv['gbdt']['better'] else 'trên không bộ nào'),
             RULPI=rul_pi, IN20='; '.join(pc(E['rul_in20'][ds], 0) for ds in DS),
             REL='; '.join(pc(E['rul_rel'][ds], 0) for ds in DS), TABRUL=tab_rul,
-            FIGR=fig('fig_e22_rul', 'RUL dự báo của mô hình kết hợp so với RUL thật, kịch bản lịch sử ước lượng; mỗi '
-                     'điểm là một cell ở một gốc, trung bình qua 3 lần lặp; dải xám là sai lệch $\\pm20\\,\\%$.',
-                     'fig:e22rul'),
             LAMS='; '.join(f(lam[ds][0], 1) for ds in DS), LAMP='; '.join(pc(lam[ds][1], 0) for ds in DS),
             LAMTXT=((f'Ở {lst(acc)}, $\\lambda$ dương ở phần lớn gốc: tốc độ suy giảm được dự báo tăng dần, đúng với '
                      'quỹ đạo có điểm đầu gối. ' if acc else '')
@@ -776,3 +797,179 @@ mạnh giữa các tầm; phân vị ước lượng từ vài cell vì vậy h�
                     + 'Cùng một dạng phương trình bao được cả hai kiểu quỹ đạo nhờ để dấu của $\\lambda$ tự do.'),
             COV=rng([100 * x for x in E['cov']], 0) + r'\,\%', RCOV=rng([100 * x for x in E['rcov']], 0) + r'\,\%')
     return out
+
+
+# ───────────────────────────────────────────────────────────── kết quả E24: bộ NASA
+E24_MODELS = [('mlp', 'MLP'), ('gbdt', 'GBDT'), ('pinn', 'PINN-semi'), ('pinn3', '3 PINN-semi'), ('pinn_lai', 'PINN-lai')]
+SAMBA_REF = {'B0006': (2.448, 1.173), 'B0007': (1.861, 1.197), 'B0047': (2.549, 0.512)}   # (CNN-BiGRU, SambaMixer-L), MAE %
+
+
+def e24_text(d, H):
+    f, table, fig, T, rng, lst = (H[k] for k in ('f', 'table', 'fig', 'T', 'rng', 'lst'))
+    import numpy as np
+    cv, ts, rs, sb = d['e24_cv'], d['e24_tests'], d['e24_rest'], d.get('e24_samba')
+    v = lambda ds, fr, m, col='mae': 100 * float(cv[(cv.ds == ds) & (cv.frac == fr) & (cv.model == m)][col].iloc[0])
+    t = lambda kind, fr, m, ds=None: ts[(ts.kind == kind) & (ts.frac == fr) & (ts.model == m)
+                                        & ((ts.ds == ds) if ds else ts.ds.isna())].iloc[0]
+    rows = []
+    for m, lab in E24_MODELS:
+        vals = [v(ds, fr, m) for fr in (0.3, 0.7) for ds in ('NASA', 'NASAdt')]
+        rows.append([lab] + [f(x, 2) for x in vals])
+    best = [min(range(len(rows)), key=lambda i: float(rows[i][j].replace('{,}', '.'))) for j in range(1, 5)]
+    for j, i in enumerate(best):
+        rows[i][j + 1] = r'\textbf{' + rows[i][j + 1] + '}'
+    tab_cv = table(['Mô hình', '30\\,\\%, 16 đặc trưng', '30\\,\\%, thêm giờ nghỉ', '70\\,\\%, 16 đặc trưng',
+                    '70\\,\\%, thêm giờ nghỉ'], rows, 'lrrrr',
+                   r'Bộ NASA, kiểm định chéo 5 fold theo cell $\times$ 3 lần lặp: MAE theo cell (\% SOH) ở hai mức nhãn, '
+                   r'không và có thời gian nghỉ trước lần xả làm đặc trưng thứ 17; in đậm là thấp nhất mỗi cột.', 'tab:e24cv')
+    lai_sig = [fr for fr in (0.3, 0.7) for m in ('mlp',) if t('lai_vs_mlp', fr, 'mlp', 'NASA').p < 0.05]
+    out = T(r"""
+\section{Bộ dữ liệu NASA}\label{sec:nasares}
+
+\paragraph{Ước lượng SOH.} Bộ NASA được đánh giá bằng đúng giao thức của Chương~\ref{ch:thietke}: kiểm định chéo 5 fold
+theo cell, phân tầng theo sáu nhóm giao thức, 3 lần lặp, ở 30 và 70\,\% nhãn (Bảng~\ref{tab:e24cv}). PINN-lai có sai số
+thấp nhất ở cả hai mức nhãn, <<L3>>\,\% và <<L7>>\,\% SOH. So với MLP, tỉ số MAE theo cell là <<RM3>> và <<RM7>>; so với
+một PINN-semi là <<RP3>> và <<RP7>> (đều có ý nghĩa thống kê); so với GBDT là <<RG3>> và <<RG7>>, không có ý nghĩa. Sai
+số trên NASA lớn hơn nhiều so với bốn bộ kia vì bộ này chỉ có 18 cell trải trên sáu nhóm giao thức và ba mức nhiệt độ:
+khi một nhóm chỉ có hai đến bốn cell, cell test thường không có cell train nào cùng điều kiện, và SOH tính theo danh
+định 2,0\,Ah của cell 4\,\textdegree C thấp hơn cell 24\,\textdegree C ở cùng số chu kỳ tới 0,4.
+
+\paragraph{Thời gian nghỉ.} Thêm thời gian nghỉ trước lần xả làm đặc trưng thứ 17, theo ý tưởng của
+SambaMixer~\cite{olalde2024samba}, không cải thiện có ý nghĩa: tỉ số MAE của PINN-lai có và không có đặc trưng này là
+<<DT3>> (30\,\% nhãn) và <<DT7>> (70\,\% nhãn). Lý do nằm ở đầu vào. Ở các chu kỳ ngay sau khoảng nghỉ dài (dài hơn hai
+lần trung vị của cell), sai số của PINN-lai không lớn hơn các chu kỳ khác (<<LONG>> so với <<NORM>>\,\% ở 70\,\% nhãn):
+đặc trưng sạc được đo sau khoảng nghỉ, nên đã phản ánh trạng thái vừa hồi phục, và thời gian nghỉ không mang thêm thông
+tin.
+
+<<TABCV>>
+""", L3=f(v('NASA', 0.3, 'pinn_lai'), 2), L7=f(v('NASA', 0.7, 'pinn_lai'), 2),
+            RM3=f(t('lai_vs_mlp', 0.3, 'mlp', 'NASA').ratio, 2), RM7=f(t('lai_vs_mlp', 0.7, 'mlp', 'NASA').ratio, 2),
+            RP3=f(t('lai_vs_pinn', 0.3, 'pinn', 'NASA').ratio, 2), RP7=f(t('lai_vs_pinn', 0.7, 'pinn', 'NASA').ratio, 2),
+            RG3=f(t('lai_vs_gbdt', 0.3, 'gbdt', 'NASA').ratio, 2), RG7=f(t('lai_vs_gbdt', 0.7, 'gbdt', 'NASA').ratio, 2),
+            DT3=f(t('dt_vs_nodt', 0.3, 'pinn_lai').ratio, 2) + f' ($p = {f(t("dt_vs_nodt", 0.3, "pinn_lai").p, 2)}$)',
+            DT7=f(t('dt_vs_nodt', 0.7, 'pinn_lai').ratio, 2) + f' ($p = {f(t("dt_vs_nodt", 0.7, "pinn_lai").p, 2)}$)',
+            LONG=f(100 * float(rs[(rs.ds == 'NASA') & (rs.frac == 0.7) & (rs.model == 'pinn_lai')].mae_long.iloc[0]), 2),
+            NORM=f(100 * float(rs[(rs.ds == 'NASA') & (rs.frac == 0.7) & (rs.model == 'pinn_lai')].mae_norm.iloc[0]), 2),
+            TABCV=tab_cv)
+    if sb is None:
+        return out
+    sv = lambda ds, m, c: 100 * float(sb[(sb.ds == ds) & (sb.model == m) & (sb.cell == f'NASA/{c}')].mae.iloc[0])
+    rows = [[c, f(SAMBA_REF[c][0], 2), f(SAMBA_REF[c][1], 2), f(sv('NASA', 'gbdt', c), 2), f(sv('NASA', 'pinn_lai', c), 2),
+             f(sv('NASAdt', 'pinn_lai', c), 2)] for c in ('B0006', 'B0007', 'B0047')]
+    tab_s = table(['Cell', 'CNN-BiGRU', 'SambaMixer-L', 'GBDT', 'PINN-lai', 'PINN-lai, thêm giờ nghỉ'], rows, 'lrrrrr',
+                  r'Cách chia NASA-L của SambaMixer: MAE (\% SOH) trên ba cell đánh giá. Hai cột đầu lấy từ bài của '
+                  r'SambaMixer~\cite{olalde2024samba}, đầu vào là đường xả của chính chu kỳ cần ước lượng; ba cột sau là '
+                  r'của đồ án, đầu vào là 16 đặc trưng của lần sạc trước đó, trung bình 3 hạt giống.', 'tab:e24samba')
+    out += T(r"""
+\paragraph{So với SambaMixer.} Bảng~\ref{tab:e24samba} dùng đúng cách chia NASA-L của SambaMixer: tám cell train, hai cell
+giữ lại để dừng sớm, đánh giá trên các cell 6, 7 và 47. PINN-lai có MAE <<S6>>, <<S7>> và <<S47>>\,\% SOH, cao hơn
+SambaMixer trên cả ba cell và chỉ tốt hơn CNN-BiGRU trên cell 47. SambaMixer nhận chuỗi điện áp, dòng điện, nhiệt độ của chính lần xả cần ước lượng; với dòng xả không đổi, thời gian xả
+nhân với dòng điện chính là dung lượng, nên nhãn gần như nằm sẵn trong đầu vào. Đồ án dùng đoạn sạc trước lần xả, là
+dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Hình~\ref{fig:e24samba} cho thấy hai kiểu sai số còn lại:
+cell 6 bắt đầu ở 101\,\% SOH trong khi các cell train cùng nhóm bắt đầu quanh 92\,\%, và 75--84\,\% số chu kỳ của
+nó có đặc trưng sạc nằm ngoài khoảng phân vị 1--99\,\% của cell train, nên cả quỹ đạo dự đoán bị lệch xuống. Ở cell 7,
+đặc trưng sạc nửa sau đời nằm hoàn toàn trong miền của cell train, nhưng dự đoán đi ngang quanh 81\,\% trong khi dung
+lượng thật giảm tiếp về 70\,\%: với cùng một đường sạc, cell này cho dung lượng xả thấp hơn các cell train. Quan hệ
+giữa đường sạc và dung lượng xả không giống nhau giữa các cell là giới hạn chung của mọi phương pháp chỉ dùng đoạn
+sạc, và là cái giá của việc không phải xả sâu cell để đo.
+
+<<TABS>>
+<<FIGS>>
+""", S6=f(sv('NASA', 'pinn_lai', 'B0006'), 2), S7=f(sv('NASA', 'pinn_lai', 'B0007'), 2),
+             S47=f(sv('NASA', 'pinn_lai', 'B0047'), 2), TABS=tab_s,
+             FIGS=fig('fig_e24_samba', 'SOH thực đo và ước lượng PINN-lai trên ba cell đánh giá của cách chia NASA-L '
+                      '(hạt giống 0), không và có thời gian nghỉ làm đặc trưng.', 'fig:e24samba'))
+    return out
+
+
+# ───────────────────────────────────────────────────────────── kết quả E23: dự báo có xét hồi phục
+E23_DS = ['XJTU', 'TJU', 'MIT', 'HUST', 'NASA']
+
+
+def e23_facts(d):
+    ts, rt, dc = d['e23_tests'], d['e23_rul_tests'], d['e23_decomp']
+    g = lambda ds, sc, ot, part, a='e_ket_hop': ts[(ts.ds == ds) & (ts.scen == sc) & (ts.otype == ot) & (ts.part == part)
+                                                   & (ts.old == a)]
+    E = dict(g=g)
+    E['row'] = lambda ds, sc, ot, part, a='e_ket_hop': (g(ds, sc, ot, part, a).iloc[0] if len(g(ds, sc, ot, part, a)) else None)
+    E['rul'] = lambda ds, sc: (rt[(rt.ds == ds) & (rt.scen == sc)].iloc[0] if len((rt[(rt.ds == ds) & (rt.scen == sc)])) else None)
+    E['dec'] = {r.ds: r for r in dc.itertuples()}
+    return E
+
+
+def e23_text(d, H):
+    f, m3, table, fig, T, rng, lst, pc = (H[k] for k in ('f', 'm3', 'table', 'fig', 'T', 'rng', 'lst', 'pc'))
+    E = e23_facts(d)
+    R = E['row']
+    cell = lambda r, which: '--' if r is None else (m3(r[which], 1) + (r'$^{*}$' if which == 'mae_new' and r.p < 0.05
+                                                                       and r.mae_new < r.mae_old else '')
+                                                    + (r'$^{\dagger}$' if which == 'mae_new' and r.p < 0.05
+                                                       and r.mae_new > r.mae_old else ''))
+    rows = []
+    for ds in E23_DS:
+        rr = [R(ds, 'uoc', 0, 'toan_bo'), R(ds, 'do', 0, 'toan_bo'), R(ds, 'do', 1, 'toan_bo'), R(ds, 'do', 1, 'ngan')]
+        rows.append([ds] + [cell(r, w) for r in rr for w in ('mae_old', 'mae_new')])
+    tab = table(['Bộ', 'Ước lượng, E22', 'Ước lượng, mới', 'Đo, E22', 'Đo, mới', 'Sau hồi phục, E22', 'Sau hồi phục, mới',
+                 'Ngắn hạn, E22', 'Ngắn hạn, mới'], rows, 'lrrrrrrrr',
+                r'MAE theo cell ($\times10^{-3}$) của mô hình kết hợp trên toàn bộ phần đời còn lại, bản E22 và bản có xét '
+                r'hồi phục, ghép cặp trên cùng gốc. Bốn cột đầu: gốc thường, lịch sử ước lượng và lịch sử đo; bốn cột sau: '
+                r'gốc ngay sau một lần hồi phục (lịch sử đo), trên toàn bộ phần đời còn lại và trong tầm $0{,}1L$. '
+                r'$^{*}$/$^{\dagger}$: tốt hơn/kém hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$); --: không có '
+                r'gốc sau hồi phục.', 'tab:e23')
+    better = lambda sc, ot, part: [ds for ds in E23_DS if R(ds, sc, ot, part) is not None and R(ds, sc, ot, part).p < 0.05
+                                   and R(ds, sc, ot, part).mae_new < R(ds, sc, ot, part).mae_old]
+    worse = lambda sc, ot, part: [ds for ds in E23_DS if R(ds, sc, ot, part) is not None and R(ds, sc, ot, part).p < 0.05
+                                  and R(ds, sc, ot, part).mae_new > R(ds, sc, ot, part).mae_old]
+    ratios = lambda sc, ot, part: [R(ds, sc, ot, part).ratio for ds in E23_DS if R(ds, sc, ot, part) is not None]
+    dec = E['dec']
+    rul = [(ds, E['rul'](ds, 'uoc')) for ds in E23_DS if E['rul'](ds, 'uoc') is not None]
+    rb = [ds for ds, x in rul if x.p < 0.05 and x.mae_new < x.mae_old]
+    rw = [ds for ds, x in rul if x.p < 0.05 and x.mae_new > x.mae_old]
+    txt = lambda xs, empty: ('trên ' + lst(xs)) if xs else empty
+    sig = lambda r, good: r is not None and r.p < 0.05 and ((r.mae_new < r.mae_old) == good)
+    sh_b = [ds for ds in E23_DS if sig(R(ds, 'do', 0, 'ngan'), True)]
+    sh_r = [R(ds, 'do', 0, 'ngan').ratio for ds in sh_b]
+    x_w, x_s = R('XJTU', 'do', 1, 'toan_bo'), R('XJTU', 'do', 1, 'ngan')
+    m_w, n_s = R('MIT', 'do', 1, 'toan_bo'), R('NASA', 'do', 1, 'ngan')
+    return T(r"""
+\section{Dự báo khi dung lượng hồi phục}\label{sec:recoveryres}
+
+Bảng~\ref{tab:e23} so bản dự báo có xét hồi phục với bản ở Mục~\ref{sec:forecastres}, ghép cặp trên cùng gốc. Rõ nhất là
+tầm ngắn: với lịch sử đo, trong tầm $0{,}1L$ sau gốc thường, bản mới giảm sai số có ý nghĩa <<SHB>> (tỉ số <<SHR>>), vì
+mức xu thế bền xuất phát đúng hơn và GBDT không còn làm lệch đoạn đầu của đường dự báo. Trên toàn bộ phần đời còn lại,
+khác biệt nhỏ hơn: tỉ số là <<RD>> với lịch sử đo và <<RU>> với lịch sử ước lượng; bản mới tốt hơn có ý nghĩa <<BD>>
+(lịch sử đo) và <<BU>> (lịch sử ước lượng), kém hơn có ý nghĩa <<WU>>.
+
+Ngay sau một lần hồi phục, bản cũ coi phần dung lượng vừa hồi phục là mức mới của xu thế. Trên XJTU, bộ có nhiều gốc
+loại này nhất (<<NX>> cell), bản mới giảm sai số <<XW>> trên toàn bộ phần đời còn lại và <<XS>> trong tầm ngắn, đều có ý
+nghĩa thống kê; trên MIT, tỉ số là <<MW>> nhưng chỉ có <<NM>> cell nên chưa đủ để kết luận. Ngược lại, trên NASA bản mới
+kém hơn ở tầm ngắn (tỉ số <<NS>>). Ở bộ này, mỗi lần hồi phục đi sau một khoảng nghỉ dài và kéo cả một đoạn quỹ đạo lên
+cao, chứ không chỉ một vài điểm vượt rồi tắt; hơn nữa nhiều cell NASA chỉ có vài chục lần xả, nên cửa sổ 60 chu kỳ dùng
+để tách xu thế gần bằng cả đời cell và tách kém. Thời gian tắt học được là $\tau \approx$ <<TAU>> chu kỳ, gần giá trị khởi
+tạo 10: phần hồi phục nhỏ so với nhiễu nên $\tau$ không được xác định rõ, và trên HUST, nơi không có hồi phục, $\tau$ giữ
+nguyên giá trị ban đầu. Lợi ích đến chủ yếu từ việc tách phần hồi phục ra khỏi mức và độ dốc của xu thế, không phải từ
+giá trị chính xác của $\tau$; với dữ liệu như NASA, một mô hình dùng thẳng thời gian nghỉ cho phần hồi phục sẽ phù hợp
+hơn.
+
+Dao động đều chỉ được phát hiện ở <<PERX>> số gốc của XJTU, hầu hết thuộc nhóm R2.5, và gần như không có ở các bộ khác
+(<<PERO>>): bộ lọc hai nửa cửa sổ loại được các bước nhảy đơn lẻ vốn trông giống nửa chu kỳ của một sóng dài. Về RUL, bản
+mới <<RULTXT>>. Khoảng 90\,\% của bản mới có độ phủ <<COV>> trên toàn bộ phần đời còn lại, vẫn thấp hơn mức đặt ra vì
+cùng lý do ở Mục~\ref{sec:forecastres}.
+
+<<TAB>>
+<<FIG>>
+""", SHB=('trên cả bốn bộ ' + lst([d for d in sh_b if d != 'NASA']) if set(sh_b) >= {'XJTU', 'TJU', 'MIT', 'HUST'}
+          else txt(sh_b, 'trên không bộ nào')), SHR=rng(sh_r, 2),
+             RU=rng(ratios('uoc', 0, 'toan_bo'), 2), RD=rng(ratios('do', 0, 'toan_bo'), 2),
+             BU=txt(better('uoc', 0, 'toan_bo'), 'trên không bộ nào'), BD=txt(better('do', 0, 'toan_bo'), 'trên không bộ nào'),
+             WU=txt(sorted(set(worse('uoc', 0, 'toan_bo')) | set(worse('do', 0, 'toan_bo'))), 'trên không bộ nào'),
+             NX=int(x_w.n), XW=pc(1 - x_w.ratio, 0), XS=pc(1 - x_s.ratio, 0), MW=f(m_w.ratio, 2), NM=int(m_w.n),
+             NS=f(n_s.ratio, 2), TAU=rng([dec[ds].tau for ds in E23_DS if ds in dec], 0),
+             PERX=pc(dec['XJTU'].per, 0) if 'XJTU' in dec else '--',
+             PERO=', '.join(f'{ds} {pc(dec[ds].per, 0)}' for ds in E23_DS if ds in dec and ds != 'XJTU'),
+             RULTXT=(('có sai số thấp hơn có ý nghĩa ' + txt(rb, '')) if rb else 'không khác bản cũ có ý nghĩa ở bộ nào')
+                    + ((', cao hơn có ý nghĩa ' + txt(rw, '')) if rw else ''),
+             COV=rng([100 * x for x in d['e23_cover'].query('otype == 0').cov_r], 0) + r'\,\%', TAB=tab,
+             FIG=fig('fig_e23_examples', 'Ba ví dụ với lịch sử đo: dao động đều của nhóm R2.5 (XJTU, gốc ở 40\\,\\% đời), gốc '
+                     'ngay sau một lần hồi phục ở XJTU và ở NASA. Đường xám là bản E22, đường đậm là bản có xét hồi phục.',
+                     'fig:e23ex'))

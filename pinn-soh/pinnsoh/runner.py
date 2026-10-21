@@ -46,6 +46,12 @@ def _execute(kind: str, args: dict):
     if kind == 'forecast':
         from .forecast import run_fold
         return run_fold(**args)
+    if kind == 'recovery':
+        from .recovery import run_fold
+        return run_fold(**args)
+    if kind == 'baseline_samba':
+        from .baselines import run_samba
+        return run_samba(**args)
     raise ValueError(kind)
 
 

@@ -58,7 +58,9 @@ def load():
               'metrics_summary', 'metrics_tests', 'metrics_transfer', 'physics_summary', 'physics_rate_soh',
               'physics_cells', 'physics_check', 'e20_summary', 'e20_tests', 'e20_conformal', 'e20_dev',
               'e20_error_decomp', 'e20_check', 'e20_biascorr', 'e21_base', 'e21_chain', 'e21_chain_tests',
-              'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting']:
+              'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting',
+              'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
+              'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -84,7 +86,8 @@ def run_counts():
              E17=len(glob.glob('runs/E17/*.json')), E15=len(glob.glob('runs/E15/*.json')),
              E14=len(glob.glob('runs/E14/samenorm_*.json')),
              E20=len({os.path.basename(p) for p in glob.glob('runs/E20/*.json') + glob.glob('runs/E20dev/*.json')}),
-             E21=len(glob.glob('runs/E21/*.json')), E22=len(glob.glob('runs/E22/*.npz')))
+             E21=len(glob.glob('runs/E21/*.json')), E22=len(glob.glob('runs/E22/*.npz')),
+             E23=len(glob.glob('runs/E23/*.npz')), E24=len(glob.glob('runs/E24/*.json')))
     c['tong'] = sum(c.values())
     return c
 
@@ -153,15 +156,23 @@ Học kỳ: & HK261
 """
 
 
+def _cap(caption):
+    """\\caption[câu đầu]{đầy đủ}: danh mục hình và bảng chỉ in câu đầu của chú thích, dưới hình vẫn đủ."""
+    i = caption.find('. ')
+    short = caption[:i] if 0 < i < len(caption) - 2 else ''
+    ok = short and short.count('$') % 2 == 0 and short.count('{') == short.count('}') and '[' not in short
+    return rf'\caption[{short}]{{{caption}}}' if ok else rf'\caption{{{caption}}}'
+
+
 def fig(name, caption, label, width=r'\textwidth'):
     return (r'\begin{figure}[!htbp]\centering' + '\n' + rf'\includegraphics[width={width}]{{hinh/{name}.pdf}}' + '\n'
-            + rf'\caption{{{caption}}}\label{{{label}}}' + '\n' + r'\end{figure}' + '\n')
+            + _cap(caption) + rf'\label{{{label}}}' + '\n' + r'\end{figure}' + '\n')
 
 
 def table(header, rows, spec, caption, label, size=r'\small'):
     head = ' & '.join(header) + r' \\'
     body = '\n'.join(' & '.join(map(str, r)) + r' \\' for r in rows)
-    return (r'\begin{table}[!htbp]\centering' + size + '\n' + rf'\caption{{{caption}}}\label{{{label}}}' + '\n'
+    return (r'\begin{table}[!htbp]\centering' + size + '\n' + _cap(caption) + rf'\label{{{label}}}' + '\n'
             + r'\begin{adjustbox}{max width=\textwidth}' + rf'\begin{{tabular}}{{{spec}}}\toprule' + '\n' + head
             + r'\midrule' + '\n' + body + '\n' + r'\bottomrule\end{tabular}\end{adjustbox}\end{table}' + '\n')
 
@@ -230,7 +241,7 @@ lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại t
 \item Có thể giảm sai số thêm mà không dùng thêm nhãn nào không, và mô hình có cho biết dự đoán của nó đáng tin
       tới đâu không?
 \item Từ SOH ước lượng được, có dự báo được SOH, dung lượng ở các chu kỳ tương lai và số chu kỳ còn lại tới ngưỡng
-      cuối đời không, khi cell không được đo dung lượng lần nào, và dạng phương trình động học giúp gì cho dự báo?
+      cuối đời không, kể cả khi dung lượng hồi phục sau khoảng nghỉ, và dạng phương trình động học giúp gì cho dự báo?
 \end{enumerate}
 
 Mọi câu hỏi trên chỉ có ý nghĩa nếu giao thức đánh giá không rò rỉ thông tin. Vì vậy một phần lớn của đồ án
@@ -255,7 +266,10 @@ dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ
       khoảng dự đoán phù hợp 90\,\%.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
       xám làm lớp đầu ra (luôn đơn điệu, mô tả được cả điểm đầu gối lẫn suy giảm chậm dần, RUL có dạng đóng), kết hợp
-      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng.
+      với GBDT, đánh giá với lịch sử SOH đo và lịch sử SOH do mô hình ước lượng; bản cải tiến tách phần hồi phục và
+      dao động đều ra khỏi xu thế suy giảm.
+\item Áp dụng toàn bộ quy trình cho bộ NASA PCoE (trích lại 16 đặc trưng sạc từ dữ liệu gốc), kiểm chứng ý tưởng dùng
+      thời gian nghỉ của SambaMixer và so trên đúng cách chia của công trình đó.
 \end{enumerate}
 
 \section{Bố cục}
@@ -312,7 +326,10 @@ sự~\cite{zhu2022} dùng đặc trưng của điện áp hồi phục sau sạc
 cho kết quả tốt khi có đủ nhãn, nhưng phụ thuộc nhiều vào lượng nhãn và phân phối dữ liệu huấn luyện.
 
 \paragraph{Học sâu.} Mạng hồi quy LSTM~\cite{zhang2018lstm}, mạng tích chập và các kiến trúc dựa trên chú ý
-học trực tiếp từ chuỗi đo. Các mô hình này mạnh khi có nhiều dữ liệu có nhãn và dễ quá khớp khi ít nhãn.
+học trực tiếp từ chuỗi đo. Các mô hình này mạnh khi có nhiều dữ liệu có nhãn và dễ quá khớp khi ít nhãn. Gần đây,
+SambaMixer~\cite{olalde2024samba} dùng mô hình không gian trạng thái Mamba trên chuỗi điện áp, dòng điện và nhiệt độ
+của lần xả, kèm mã hoá vị trí theo thời gian lấy mẫu và theo khoảng thời gian giữa hai chu kỳ để học hiện tượng hồi
+phục dung lượng sau khoảng nghỉ; trên bộ NASA, mô hình này đạt MAE khoảng 1\,\% SOH.
 
 \paragraph{Học chuyển giao.} Ma và cộng sự~\cite{ma2022} dùng học chuyển giao sâu để cá nhân hoá dự báo
 sức khoẻ cho từng cell và công bố bộ dữ liệu HUST. Hướng này giảm nhu cầu nhãn ở miền đích nhưng vẫn cần một
@@ -486,6 +503,16 @@ phòng thí nghiệm cho tới khi dung lượng giảm sâu.
 
 Đặc trưng đoạn sạc của cả bốn bộ được trích theo cùng một quy trình và công bố kèm PINN4SOH~\cite{wang2024};
 nhờ vậy bốn bộ có chung không gian đặc trưng và có thể thử chuyển miền giữa chúng.
+
+Bộ thứ năm, \textbf{NASA} --- Saha và Goebel~\cite{saha2007nasa}, là bộ thường dùng nhất trong các công trình về SOH
+và RUL. Đồ án dùng 18 cell 18650 NCA (danh định 2,0\,Ah) có chế độ xả cố định, đúng tập cell mà
+SambaMixer~\cite{olalde2024samba} dùng (bỏ cell số 45 vì chỉ có 17 lần sạc đầy đủ), thử ở 4, 24 và 43\,\textdegree C
+với dòng xả 1--4\,A, chia thành sáu nhóm theo giao thức. Dữ liệu gốc chỉ có chuỗi đo, nên đồ án tự trích 16 đặc trưng
+đoạn sạc theo đúng định nghĩa của PINN4SOH (đoạn CC từ 4,0 tới 4,2\,V, đoạn CV từ 0,5 xuống 0,1\,A) từ lần sạc ngay
+trước mỗi lần xả; nhãn là dung lượng của lần xả chia cho 2,0\,Ah. Các lần xả hỏng mà tài liệu của NASA đã cảnh báo
+(dung lượng thấp hơn trung vị bảy lần xả lân cận quá 10\,\%) bị loại. Khác với bốn bộ kia, giữa các lần xả của NASA
+có những khoảng nghỉ dài tới hàng trăm giờ, và dung lượng hồi phục rõ sau mỗi khoảng nghỉ đó; khoảng nghỉ trước mỗi lần
+xả được giữ lại để dùng như một đặc trưng thứ 17.
 
 \section{Đặc trưng đầu vào}
 
@@ -773,6 +800,9 @@ def ch5(d, ctx):
               ['Huấn luyện một bộ, kiểm tra bộ khác', '2 giao thức × 4 bộ nguồn × 3 hạt giống; thích nghi, 2 vòng học lặp',
                num(rc['E21'])],
               ['Dự báo SOH tương lai và RUL', 'GBDT + 3 PINN-dự báo mỗi fold, 5 fold × 3 lần lặp × 4 bộ', num(rc['E22'])],
+              ['Dự báo có xét hồi phục', 'cùng fold với E22, thêm bộ NASA; học lại cả mô hình E22 để so ghép cặp',
+               num(rc['E23'])],
+              ['Bộ NASA', '2 bộ đặc trưng × 2 mức nhãn × 15 fold; cách chia của SambaMixer, 3 hạt giống', num(rc['E24'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -1126,6 +1156,9 @@ REFS = r"""
 \bibitem{he2011} W. He, N. Williard, M. Osterman, M. Pecht. Prognostics of lithium-ion batteries based on
   Dempster--Shafer theory and the Bayesian Monte Carlo method. \emph{Journal of Power Sources}, 196(23):10314--10321,
   2011.
+\bibitem{olalde2024samba} J. I. Olalde-Verano, S. Kirch, C. Pérez-Molina, S. Martín. SambaMixer: State of health
+  prediction of Li-ion batteries using Mamba state space models. \emph{IEEE Access}, 2024.
+  doi:10.1109/ACCESS.2024.3524321.
 \bibitem{holm1979} S. Holm. A simple sequentially rejective multiple test procedure. \emph{Scandinavian Journal of
   Statistics}, 6(2):65--70, 1979.
 \bibitem{hu2020joule} X. Hu, L. Xu, X. Lin, M. Pecht. Battery lifetime prognostics. \emph{Joule}, 4(2):310--346,
@@ -1171,6 +1204,8 @@ REFS = r"""
   state-of-health estimation. \emph{Nature Machine Intelligence}, 3:447--456, 2021.
 \bibitem{saxena2008} A. Saxena, J. Celaya, E. Balaban, et al. Metrics for evaluating performance of prognostic
   techniques. In \emph{International Conference on Prognostics and Health Management}, IEEE, 2008.
+\bibitem{saha2007nasa} B. Saha, K. Goebel. Battery data set. \emph{NASA Ames Prognostics Data Repository}, NASA
+  Ames Research Center, Moffett Field, CA, 2007.
 \bibitem{schmalstieg2014} J. Schmalstieg, S. Käbitz, M. Ecker, D. U. Sauer. A holistic aging model for
   Li(NiMnCo)O$_2$ based 18650 lithium-ion batteries. \emph{Journal of Power Sources}, 257:325--334, 2014.
 \bibitem{severson2019} K. A. Severson, P. M. Attia, N. Jin, et al. Data-driven prediction of battery cycle life before
@@ -2524,11 +2559,9 @@ này khớp với hai quan sát: sai số còn lại chủ yếu là lệch theo
 khi suy luận, bộ lọc quỹ đạo dùng đúng giả định SOH không tăng để làm trơn dự đoán mà không làm lệch quỹ đạo giảm. Hai hướng ràng buộc mạnh hơn thất bại cho thấy thêm vật lý vào hàm mất mát không phải
 lúc nào cũng tốt: khi dạng phương trình còn thô, ép nó chặt hơn làm mạng mất tự do để khớp dữ liệu.
 
-Giới hạn của chương này cũng cần nói rõ. Đánh giá cuối dùng ba lần lặp thay vì năm vì chi phí tính toán. Giai đoạn
-phát triển dùng các cell validation của lần lặp 0, mà các cell này lại nằm trong test ở fold khác; với chín hướng
-thử và khoảng cách lớn giữa hướng được chọn và phần còn lại, thiên lệch chọn này nhỏ, và mức cải thiện trên test gần
-với trên validation. Cuối cùng, PINN-lai phụ thuộc vào GBDT: nếu chuyển sang bộ dữ liệu khác mà GBDT không tổng quát
-được, phần kết hợp có thể không còn lợi.
+Về giới hạn: đánh giá cuối dùng ba lần lặp thay vì năm vì chi phí tính toán, và giai đoạn phát triển dùng cell
+validation của lần lặp 0, vốn nằm trong test ở fold khác; thiên lệch chọn này nhỏ vì mức cải thiện trên test gần
+với trên validation.
 """,
              TABDC=tab_dc, FAST=_rng([100 * x for x in fast_nomit], 0) + r'\,\%',
              FASTMIT=_rng([100 * x for x in sub[sub.dataset == 'MIT'].dao_dong], 0) + r'\,\%',
@@ -2742,7 +2775,8 @@ def e22_sections(d):
         return ('', '')
     import thesis_bk as BK
     H = sys_helpers()
-    return BK.e22_setting_table(d, H), BK.e22_text(d, H)
+    extra = (BK.e23_text(d, H) if 'e23_tests' in d else '') + (BK.e24_text(d, H) if 'e24_cv' in d else '')
+    return BK.e22_setting_table(d, H), BK.e22_text(d, H) + extra
 
 
 def e22_concl(d):
@@ -2757,7 +2791,9 @@ def e22_concl(d):
       mô hình kết hợp gần ngang nhau về SOH, nhưng GBDT không ngoại suy được ra ngoài tầm đã học nên sai số RUL gấp
       <<RG>> lần; nghiệm đóng của động học là thứ giúp dự báo RUL. Tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thật
       là <<IN20>> tuỳ bộ. Dấu của hệ số $\lambda$ học được khớp với hình dạng quỹ đạo: dương ở các bộ có điểm đầu
-      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>.
+      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>. Tách phần hồi phục và dao
+      động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên cả bốn bộ chính và giảm sai số ngay sau hồi phục ở
+      XJTU, nhưng chưa giúp được trên NASA, nơi hồi phục gắn với khoảng nghỉ dài và cell có ít chu kỳ.
 """, MAE=_rng([1e3 * t(ds, 'uoc', 'e_ket_hop') for ds in DS], 1),
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
              RG=_rng([E['rul_gb'][ds] for ds in DS], 1), IN20=_rng([100 * E['rul_in20'][ds] for ds in DS], 0) + r'\,\%',
@@ -2772,7 +2808,9 @@ def abstract_e22(d):
     return T(r""" Đồ án mở rộng mô hình sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng
 cuối đời: mạng PINN-dự báo trả hai tham số của nghiệm đóng của động học xám, kết hợp với GBDT. Khi cell không được đo
 dung lượng lần nào, mô hình kết hợp có sai số SOH chỉ bằng <<RB>> lần các mô hình ngoại suy theo từng cell, và sai số
-RUL thấp hơn GBDT <<RG>> lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học.""",
+RUL thấp hơn GBDT <<RG>> lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học. Tách phần hồi phục dung lượng
+và dao động đều ra khỏi xu thế giảm thêm sai số tầm ngắn. Trên bộ NASA, PINN-lai có sai số thấp nhất trong các mô hình
+dùng đặc trưng sạc, còn thời gian nghỉ không cải thiện ước lượng.""",
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
              RG=_rng([E['rul_gb'][ds] for ds in DS], 1))
 
@@ -2787,7 +2825,8 @@ def build():
     ctx['ncell'] = int(ctx['stats'].N.sum())
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
-        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_', 'fig_e22_')) \
+        if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_', 'fig_e22_', 'fig_e23_',
+                           'fig_e24_')) \
                 and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
@@ -2797,7 +2836,7 @@ def build():
     main_body = BK.assemble(ch1(d, ctx), ch2(d, ctx), ch3(d, ctx), ch4(d, ctx), ch5(d, ctx), ch6_text(d, ctx),
                             ch7_improve(d, ctx), ch8(d, ctx), e21_sections(d), fig, e22_sections(d))
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
-            + r'\tableofcontents\listoffigures\listoftables' + BK.ABBR
+            + r'{\linespread{1.0}\selectfont\tableofcontents\listoffigures\listoftables}' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')
     open(f'{OUT}/main.tex', 'w').write(body)
     for _ in range(2):

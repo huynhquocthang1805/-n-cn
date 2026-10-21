@@ -38,3 +38,6 @@ do-an/main.pdf
 
 # bộ dự báo của demo: tự huấn luyện lại khi chạy lần đầu, phụ thuộc phiên bản scikit-learn
 demo/*_dubao.pkl
+
+# dữ liệu gốc NASA PCoE (~400 MB sau giải nén): tải lại theo README, mục Bộ NASA
+NASA/

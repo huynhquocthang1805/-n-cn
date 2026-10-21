@@ -11,6 +11,8 @@ GBDT rồi qua một bộ lọc quỹ đạo nhân quả không cho SOH tăng, k
 dữ liệu (70/30 hoặc 70/15/15), kiểm tra trên ba bộ còn lại, rồi thích nghi không nhãn và tự huấn luyện hai vòng.
 E22 dự báo SOH ở các chu kỳ tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời (RUL):
 PINN-dự báo (mạng trả tham số của nghiệm đóng của động học xám) kết hợp với GBDT, kèm khoảng dự báo 90 %.
+E23 tách lịch sử SOH thành xu thế, phần hồi phục tắt dần và dao động đều để dự báo đúng hơn khi dung lượng hồi phục.
+E24 thêm bộ NASA PCoE (18 cell), thử thời gian nghỉ làm đặc trưng như SambaMixer và so trên đúng cách chia của bài đó.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
 Kết quả của báo cáo dựa trên **5 100 lượt huấn luyện** (E13–E20) trên **387 cell** của bốn bộ dữ liệu công
@@ -41,7 +43,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -79,7 +81,10 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E20 | PINN-lai: 3 PINN-semi, 2 MLP thêm, GBDT lưu dự đoán validation (3 lần lặp) | 1 280 | 7,2 | 1,8 | 0,9 |
 | E21 | Huấn luyện một bộ, kiểm tra bộ khác (2 giao thức, 3 hạt giống) + 48 chuỗi thích nghi, 2 vòng học lặp | 168 | 12 | 3 | 1,5 |
 | E22 | Dự báo SOH tương lai, dung lượng, RUL: GBDT + 3 PINN-dự báo mỗi fold (CV 5 fold × 3 lần lặp, cần E20) | 60 | 0,6 | 0,2 | 0,1 |
-| **Tổng** | | **5 328** | **≈ 42** | **≈ 10** | **≈ 5,3** |
+| E23 | Dự báo có xét hồi phục, cùng fold E22, học lại cả mô hình E22 để so ghép cặp | 60 | 3 | 0,8 | 0,4 |
+| E24 | Bộ NASA: 3 PINN-semi, MLP, GBDT ở 30/70 % nhãn, có/không giờ nghỉ; cách chia SambaMixer | 330 | 1,9 | 0,5 | 0,3 |
+| E24f | Dự báo E22 và E23 trên NASA (cần E24) | 30 | 0,4 | 0,1 | 0,1 |
+| **Tổng** | | **5 748** | **≈ 47** | **≈ 12** | **≈ 6** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
@@ -113,6 +118,8 @@ pinn-soh/
 │   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
 │   ├── crossds.py          E21: huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện
 │   ├── forecast.py         E22: dự báo SOH tương lai, dung lượng còn lại, RUL (nghiệm đóng + GBDT)
+│   ├── recovery.py         E23: tách xu thế / hồi phục tắt dần / dao động đều cho dự báo
+│   ├── nasa.py             đọc bộ NASA PCoE (.mat) -> 16 đặc trưng sạc + giờ nghỉ, cùng định dạng PINN4SOH
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
@@ -127,6 +134,8 @@ pinn-soh/
 │   ├── analyze_e20.py      E20: PINN-lai trên test, phân rã lợi ích, khoảng dự đoán phù hợp
 │   ├── analyze_e21.py      E21: ma trận nguồn → đích, sai số qua các vòng học lặp
 │   ├── analyze_e22.py      E22: sai số theo tầm dự báo, RUL, độ phủ khoảng 90 %
+│   ├── analyze_e23.py      E23: so với E22 trên gốc thường và gốc ngay sau hồi phục
+│   ├── analyze_e24.py      E24: NASA, có/không giờ nghỉ, so với SambaMixer
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo
@@ -172,6 +181,15 @@ CPU (ví dụ AVX-512 so với AVX2, Apple Silicon) hoặc khác phiên bản to
 khi đó `reproduce` báo độ lệch, các con số trong bảng có thể khác ở chữ số thứ ba–thứ tư nhưng kết luận
 không đổi.
 
+### Bộ NASA (E24)
+
+```bash
+mkdir -p NASA/raw && curl -o NASA/raw/nasa.zip "https://phm-datasets.s3.amazonaws.com/NASA/5.+Battery+Data+Set.zip"
+cd NASA/raw && unzip nasa.zip && cd "5. Battery Data Set" && for z in *.zip; do unzip -o "$z" -d "x_${z%.zip}"; done; cd ../../..
+python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00xx.csv (18 cell)
+python run.py E24 && python run.py E24f
+```
+
 ## 5. Demo — ước lượng và dự báo SOH cho một cell
 
 ```bash
@@ -185,7 +203,8 @@ python run.py demo forecast --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/
 python run.py demo forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 --an-nhan   # lịch sử SOH ước lượng
 ```
 
-Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. Lần đầu chạy `forecast`, bộ dự báo
+Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng bản có xét hồi phục
+(E23) và in thêm phần hồi phục hiện tại, thời gian tắt τ và dao động đều nếu có. Lần đầu chạy `forecast`, bộ dự báo
 được huấn luyện trên các cell có nhãn của cùng fold với mô hình ước lượng (vài phút) và lưu ở `demo/<bộ>_dubao.pkl`.
 Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv` và các hình `.png`.
 

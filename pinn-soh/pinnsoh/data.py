@@ -51,7 +51,14 @@ DATASET_INFO = {
     'HUST': dict(chem='LFP', nominal=1.1, temp_c=30.0),
     'MIT':  dict(chem='LFP', nominal=1.1, temp_c=30.0),
     'TJU':  dict(chem='NCA/NCM', nominal=None, temp_c=None),   # per batch / per file
+    'NASA': dict(chem='NCA', nominal=2.0, temp_c=None),        # 4, 24 hoặc 43 °C theo nhóm (pinnsoh/nasa.py)
 }
+# NASAdt: cùng 18 cell NASA, thêm cột thứ 17 = log(1 + giờ nghỉ kể từ lần xả trước) — ý "cycle time difference" của
+# SambaMixer, để mô hình thấy được nguyên nhân của hồi phục dung lượng sau khoảng nghỉ dài
+NASA_SETS = ('NASA', 'NASAdt')
+# cách chia NASA-L của SambaMixer (Bảng 3 trong bài): train / validation (2 cell train giữ lại để dừng sớm) / đánh giá
+SAMBA_SPLIT = dict(train=['B0005', 'B0031', 'B0034', 'B0036', 'B0046', 'B0048', 'B0054', 'B0056'],
+                   val=['B0018', 'B0055'], test=['B0006', 'B0007', 'B0047'])
 TJU_NOMINAL = {'Dataset_1_NCA_battery': 3.5, 'Dataset_2_NCM_battery': 3.5,
                'Dataset_3_NCM_NCA_battery': 2.5}
 
@@ -143,12 +150,16 @@ def resolve_root(root: str = DEFAULT_ROOT) -> str:
     return root if os.path.isabs(root) else os.path.join(PROJECT_ROOT, root)
 
 
+def _data_dir(name: str) -> str:
+    return 'NASA' if name in NASA_SETS else name
+
+
 def _signature(root: str, name: str, clean: str) -> str:
     """Băm danh sách file nguồn (tên, kích thước, thời điểm sửa) + tham số bộ lọc: đổi bất kỳ thứ gì thì
     bộ đệm cũ không còn khớp và được dựng lại."""
     h = hashlib.sha1(repr((_CACHE_VERSION, name, clean, CAUSAL_WINDOW, CAUSAL_MIN_HIST, CAUSAL_K, CAUSAL_FLOOR,
                            FEATURES)).encode())
-    d = os.path.join(root, f'{name} data')
+    d = os.path.join(root, f'{_data_dir(name)} data')
     for dirpath, dirnames, files in sorted(os.walk(d)):
         dirnames.sort()
         for f in sorted(files):
@@ -211,6 +222,17 @@ def _load_dataset_csv(root: str, name: str, clean: str = 'life3sigma') -> List[C
                         'Dataset_3_NCM_NCA_battery': 'NCM+NCA'}[b]
                 cells.append(_read(os.path.join(d, b, f), f'TJU/{b}/{f[:-4]}', 'TJU',
                                         f'{b}|{proto}', chem, TJU_NOMINAL[b], 273.15 + temp_c))
+    elif name in NASA_SETS:
+        d = os.path.join(root, 'NASA data')
+        for g in sorted(os.listdir(d)):
+            for f in sorted(os.listdir(os.path.join(d, g))):
+                path = os.path.join(d, g, f)
+                raw = pd.read_csv(path)
+                c = _read(path, f'NASA/{f[:-4]}', name, g, 'NCA', 2.0, 273.15 + float(raw['ambient_c'].median()))
+                if name == 'NASAdt':
+                    rest = np.log1p(raw['rest_h'].fillna(0.0).values.astype(np.float64))[c.cycle]
+                    c.X = np.hstack([c.X, rest[:, None].astype(np.float32)])
+                cells.append(c)
     else:
         raise ValueError(name)
     return cells

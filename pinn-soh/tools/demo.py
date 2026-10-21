@@ -136,21 +136,24 @@ def cmd_predict(a):
 
 
 # ───────────────────────────────────────────────────────────── dự báo
-def _estimate(model, norm, cell):
-    """SOH ước lượng từ đặc trưng sạc, qua bộ lọc quỹ đạo nhân quả (w = 10) như PINN-lai."""
+def _estimate(model, norm, cell, filt=True):
+    """SOH ước lượng từ đặc trưng sạc; filt=True: qua bộ lọc quỹ đạo nhân quả (w = 10) như PINN-lai, False: chuỗi thô
+    (bộ dự báo có xét hồi phục tự tách xu thế, hồi phục và dao động)."""
     from pinnsoh.postproc import causal_trend
     X = torch.from_numpy(norm.transform(cell)); t = torch.from_numpy(cycle_input(cell)[:, None])
     with torch.no_grad():
         p = model.u(X, t).numpy().ravel().astype(float)
-    return causal_trend(p, cell.cycle, 10)
+    return causal_trend(p, cell.cycle, 10) if filt else p
 
 
 def _forecaster(path, model, norm, c, split):
     """Bộ dự báo của demo: học trên cell CÓ NHÃN của cùng fold với mô hình ước lượng (cell test không bao giờ được
-    dùng), hiệu chỉnh khoảng 90 % trên cell validation cho cả hai kịch bản lịch sử; lưu ở demo/<bộ>_dubao.pkl."""
+    dùng), hiệu chỉnh khoảng 90 % trên cell validation cho cả hai kịch bản lịch sử; lưu ở demo/<bộ>_dubao.pkl.
+    Dùng bản có xét hồi phục dung lượng (E23): xu thế bền + phần hồi phục tắt dần + dao động đều."""
     import pickle
     from pinnsoh.data import load_dataset
     from pinnsoh import forecast as FC
+    from pinnsoh import recovery as RC
     fpath = os.path.join(DEMO_DIR, f'{c["dataset"]}_dubao.pkl')
     if os.path.exists(fpath):
         return pickle.load(open(fpath, 'rb'))
@@ -160,23 +163,23 @@ def _forecaster(path, model, norm, c, split):
     lab = [by[i] for i in split['labelled']]; va = [by[i] for i in split['val']]
     fnorm = Normalizer('global').fit([by[i] for i in split['train']])
     Xn = {x.cid: fnorm.transform(x) for x in cells}
-    fcm = FC.Forecaster.fit(lab, va, Xn, seed=0)
+    fcm = RC.ForecasterR.fit(lab, va, Xn, seed=0)
     L = FC.life_scale(cells)
     resid = {'do': [], 'uoc': []}
     for x in va:
         n = len(x.soh)
         if n < 8:
             continue
-        hist = {'do': x.soh.astype(float), 'uoc': _estimate(model, norm, x)}
+        hist = {'do': x.soh.astype(float), 'uoc': _estimate(model, norm, x, filt=False)}
         for sc, sh in hist.items():
-            Z, lev = FC.origin_features(sh, x.cycle, Xn[x.cid], x.temp_k)
             for q in FC.ORIGINS:
                 i = max(5, int(round(q * (n - 1))))
                 if i >= n - 1:
                     continue
                 hj = (x.cycle[i + 1:] - x.cycle[i]).astype(float)
-                P, _, _ = fcm.predict(Z, lev, i, hj, need_phys=False)
-                resid[sc].append(np.column_stack([hj / L, x.soh[i + 1:] - P['ket_hop']]))
+                dec = RC.decompose(sh, x.cycle, i)
+                P = fcm.predict(RC.features_r(sh, x.cycle, Xn[x.cid], x.temp_k, i, dec), dec, hj)
+                resid[sc].append(np.column_stack([hj / L, x.soh[i + 1:] - P['ket_hop_r']]))
     obj = dict(fc=fcm, norm=fnorm, L=L, tau=FC.TAU[c['dataset']], q={k: FC.calibrate(v) for k, v in resid.items()})
     pickle.dump(obj, open(fpath, 'wb'))
     return obj
@@ -184,27 +187,33 @@ def _forecaster(path, model, norm, c, split):
 
 def cmd_forecast(a):
     from pinnsoh import forecast as FC
+    from pinnsoh import recovery as RC
     model, norm, c, split = load_model(a.model)
     F = _forecaster(a.model, model, norm, c, split)
     nominal = a.nominal or _nominal(c['dataset'], a.csv)
     cell = load_cell_csv(a.csv, nominal, temp_c=a.temp)
     measured = np.isfinite(cell.soh).all() and not a.an_nhan
     sc = 'do' if measured else 'uoc'
-    hist = cell.soh.astype(float) if measured else _estimate(model, norm, cell)
+    hist = cell.soh.astype(float) if measured else _estimate(model, norm, cell, filt=False)
     k = cell.cycle[-1] if a.den_chu_ky is None else a.den_chu_ky
     i = int(np.searchsorted(cell.cycle, k, side='right') - 1)
     if i < 5:
         sys.exit('cần ít nhất 6 chu kỳ lịch sử trước gốc dự báo')
     L, tau = F['L'], F['tau']
-    Z, lev = FC.origin_features(hist, cell.cycle, F['norm'].transform(cell), cell.temp_k)
     step = max(1, int(round(L / 200)))
     hh = np.arange(1, int(3 * L) + 1, step, dtype=float)
-    P, a_, lam = F['fc'].predict(Z, lev, i, hh, cell.cycle, hist)
+    dec = RC.decompose(hist, cell.cycle, i)
+    z = RC.features_r(hist, cell.cycle, F['norm'].transform(cell), cell.temp_k, i, dec)
+    P = F['fc'].predict(z, dec, hh)
+    ab = [n.params(z[None]) for n in F['fc'].nets]
+    a_, lam = float(np.mean([x[0][0] for x in ab])), float(np.mean([x[1][0] for x in ab]))
     lo, hi = FC.band(F['q'][sc], hh, L)
-    p, plo, phi = P['ket_hop'], np.clip(P['ket_hop'] + lo, *FC.CLIP), np.clip(P['ket_hop'] + hi, *FC.CLIP)
+    p, plo, phi = P['ket_hop_r'], np.clip(P['ket_hop_r'] + lo, *FC.CLIP), np.clip(P['ket_hop_r'] + hi, *FC.CLIP)
     k0 = int(cell.cycle[i])
-    rul = FC.first_cross(p, hh, tau, hh[-1]); rlo = FC.first_cross(plo, hh, tau, hh[-1])
-    rhi = FC.first_cross(phi, hh, tau, hh[-1])
+    per = RC.periodic_at(dec, hh)                                 # RUL tính trên dự báo đã bỏ dao động đều
+    rul = FC.first_cross(p - per, hh, tau, hh[-1]); rlo = FC.first_cross(plo - per, hh, tau, hh[-1])
+    rhi = FC.first_cross(phi - per, hh, tau, hh[-1])
+    lev = np.full(i + 1, dec['level'])
     upto = hh <= rul
     ah_left = float(np.sum(p[upto] * nominal) * step)          # điện lượng còn xả được tới ngưỡng, xấp xỉ Σ Q(n)
     name = os.path.splitext(os.path.basename(a.csv))[0]
@@ -213,6 +222,9 @@ def cmd_forecast(a):
     print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
     print(f'hiện tại: SOH {lev[i]:.3f} · dung lượng {lev[i] * nominal:.3f} Ah · '
           f'suy giảm hiện tại {10 * a_:.2f} % SOH mỗi 100 chu kỳ · hệ số gãy λ = {lam:.1f}')
+    print(f'hồi phục: phần vượt xu thế hiện tại {1000 * dec["e"]:+.1f}·10⁻³ SOH, tắt dần với τ = {F["fc"].tau:.1f} chu kỳ'
+          + (f' · dao động đều chu kỳ {dec["P"]:.1f}, biên độ {1000 * dec["amp"]:.1f}·10⁻³' if dec['coef'] is not None
+             else ' · không có dao động đều'))
     for hr in FC.H_REL:
         h = int(round(hr * L)); j = min(np.searchsorted(hh, h), len(hh) - 1)
         print(f'  sau {h:4d} chu kỳ (chu kỳ {k0 + h}): SOH {p[j]:.3f} [{plo[j]:.3f}; {phi[j]:.3f}] · '

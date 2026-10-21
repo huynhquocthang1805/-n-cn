@@ -95,6 +95,8 @@ class Config:
     distill_w: float = 0.0           # > 0: GBDT học trên cell có nhãn làm mô hình thầy; dự đoán của nó trên
                                      # cell không nhãn là nhãn mềm cho mạng (học bán giám sát kiểu tự huấn luyện)
     save_val_predictions: bool = False
+    range_first: tuple = (0.85, 1.10)  # miền SOH hợp lý ở chu kỳ đầu của cell; NASA (cell 4 °C có SOH đầu 0,5–0,8 so
+                                     # với 2 Ah danh định) dùng (0,40; 1,10)
 
     def v2(self) -> 'Config':
         """Bật đủ năm sửa đổi của pipeline v2."""
@@ -168,6 +170,9 @@ class Trainer:
         by_id = {c.cid: c for c in cells}
         if cfg.split == 'cv':
             split = cv_split(cells, cfg.fold, cfg.repeat, cfg.n_folds, cfg.val_frac_cv)
+        elif cfg.split == 'samba':
+            from .data import SAMBA_SPLIT
+            split = {k: [f'NASA/{c}' for c in v] for k, v in SAMBA_SPLIT.items()}
         else:
             split = split_cells(cells, cfg.seed)
         lab_ids, unl_ids = choose_labelled(split['train'], cfg.label_frac, len(cells), cfg.seed, by_id)
@@ -257,7 +262,8 @@ class Trainer:
         out['mono'] = Fnn.relu(u2 - u1 - cfg.eps_mono).mean()
         # plausibility: fresh cell SOH in [0.85, 1.10]; global bounds
         first = b['first'].float().unsqueeze(1)
-        rng = Fnn.relu(u1 - 1.15) + Fnn.relu(0.4 - u1) + (Fnn.relu(u1 - 1.10) + Fnn.relu(0.85 - u1)) * first
+        lo, hi = cfg.range_first
+        rng = Fnn.relu(u1 - 1.15) + Fnn.relu(0.4 - u1) + (Fnn.relu(u1 - hi) + Fnn.relu(lo - u1)) * first
         out['range'] = rng.mean()
         return out
 

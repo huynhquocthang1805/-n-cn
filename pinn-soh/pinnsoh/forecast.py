@@ -49,7 +49,7 @@ from .postproc import by_cell, causal_trend
 
 ROOT = 'runs/E22'
 DATASETS = ['XJTU', 'TJU', 'MIT', 'HUST']
-TAU = {'XJTU': 0.84, 'TJU': 0.81, 'MIT': 0.87, 'HUST': 0.81}
+TAU = {'XJTU': 0.84, 'TJU': 0.81, 'MIT': 0.87, 'HUST': 0.81, 'NASA': 0.70}   # NASA: 70 % như README và SambaMixer
 ORIGINS = (0.2, 0.4, 0.6)            # gốc dự báo SOH: tỉ lệ số hàng đã qua của cell (chỉ để chọn điểm đánh giá)
 RUL_ORIGINS = (0.25, 0.5, 0.75)      # gốc dự báo RUL: tỉ lệ của chu kỳ cuối đời thật
 H_REL = (0.1, 0.25, 0.5)             # tầm dự báo báo cáo trong bảng, theo L của bộ
@@ -59,7 +59,7 @@ W_LEVEL, W_FEAT = 10, 10
 MODELS = ['giu', 'tuyen', 'vatly', 'gbdt', 'pinn', 'ket_hop']
 SCEN = ['do', 'uoc']
 CLIP = (0.40, 1.15)
-NOMINAL = {'XJTU': 2.0, 'MIT': 1.1, 'HUST': 1.1}
+NOMINAL = {'XJTU': 2.0, 'MIT': 1.1, 'HUST': 1.1, 'NASA': 2.0}
 
 
 def nominal_ah(c) -> float:
@@ -328,13 +328,15 @@ def first_cross(p, hgrid, tau, cap):
 
 
 # --------------------------------------------------------------------------- lịch sử ước lượng (E20)
-def e20_estimates(ds, r, k, part='test'):
+def e20_estimates(ds, r, k, part='test', raw=False):
     """PINN-lai (½ trung bình 3 PINN-semi + ½ GBDT, lọc quỹ đạo w = 10) của fold (r, k), mức nhãn 70 %:
-    dict cell_id -> (chu kỳ, SOH ước lượng). Đúng công thức của analysis/analyze_e20.py."""
+    dict cell_id -> (chu kỳ, SOH ước lượng). Đúng công thức của analysis/analyze_e20.py. raw=True trả trung bình
+    ½ + ½ trước bộ lọc (E23 tự tách xu thế, hồi phục và dao động từ chuỗi này)."""
     s = 100 * r + k
-    P = [f'runs/E20/P_{ds}_pinn_semi_f0.7_s{s}_global_global_cv{r}-{k}of5' + ('' if m == 0 else f'_m{m}') + '.json'
+    src = 'runs/E24' if ds.startswith('NASA') else 'runs/E20'          # NASA: cùng công thức, lượt của E24
+    P = [f'{src}/P_{ds}_pinn_semi_f0.7_s{s}_global_global_cv{r}-{k}of5' + ('' if m == 0 else f'_m{m}') + '.json'
          for m in range(3)]
-    G = f'runs/E20/gbdt_{ds}_f0.7_cv{r}-{k}of5.json'
+    G = f'{src}/gbdt_{ds}_f0.7_cv{r}-{k}of5.json'
     key = 'test_predictions' if part == 'test' else 'val_predictions'
     ld = lambda p: json.load(open(p))[key]
     ps = [ld(p) for p in P]; g = ld(G)
@@ -342,7 +344,8 @@ def e20_estimates(ds, r, k, part='test'):
     for o in ps[1:] + [g]:
         assert o['cycle'] == ps[0]['cycle'] and o['cell'] == ps[0]['cell'], (ds, r, k)
     lai = 0.5 * np.mean([np.asarray(o['p'], float) for o in ps], axis=0) + 0.5 * np.asarray(g['p'], float)
-    lai = by_cell(causal_trend, lai, cell, cyc, w=W_LEVEL)
+    if not raw:
+        lai = by_cell(causal_trend, lai, cell, cyc, w=W_LEVEL)
     out = {}
     for c in np.unique(cell):
         i = np.flatnonzero(cell == c); i = i[np.argsort(cyc[i])]
