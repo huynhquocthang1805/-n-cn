@@ -17,6 +17,10 @@ E24 thêm bộ NASA PCoE (18 cell), thử thời gian nghỉ làm đặc trưng 
 E25 hiệu chỉnh ước lượng và dự báo theo từng cell bằng bộ lọc Kalman khi đo được dung lượng vài lần trong đời cell
 (không huấn luyện thêm). E26 kiểm tra λ và Ea có được dữ liệu xác định không: tăng trọng số ODE, thêm ràng buộc Euler,
 đổi giá trị khởi tạo trên NASA và TJU (nhiều mức nhiệt độ).
+E27 so với PINN4SOH trên đúng cách chia của bài (dựng lại từ nhật ký công bố kèm mã nguồn), cả chế độ đầy đủ lẫn ít mẫu,
+với tiền xử lý không rò rỉ của đồ án và với bản sao tiền xử lý của bài. E28 tính nhãn theo số lần đo dung lượng: mọi
+cell train chỉ được đo ở vài chu kỳ (đầu, mỗi q·L, cuối), vật lý lan thông tin giữa các lần đo; so với đo đầy đủ một
+phần cell, và thêm đo cell mới theo cùng lịch với bộ lọc Kalman của E25.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
 Kết quả của báo cáo dựa trên **5 100 lượt huấn luyện** (E13–E20) trên **387 cell** của bốn bộ dữ liệu công
@@ -47,7 +51,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -143,6 +147,9 @@ pinn-soh/
 │   ├── analyze_e24.py      E24: NASA, có/không giờ nghỉ, so với SambaMixer
 │   ├── analyze_e25.py      E25: bộ lọc Kalman theo cell với vài lần đo dung lượng
 │   ├── analyze_e26.py      E26: λ, Ea theo trọng số ODE và giá trị khởi tạo
+│   ├── analyze_e27.py      E27: so với PINN4SOH trên đúng cách chia của bài (hai cách tiền xử lý)
+│   ├── analyze_e28.py      E28: ngân sách đo dung lượng — đo thưa mọi cell so với nhãn theo cell
+│   ├── analyze_overview.py hình tổng quan 30 % / 70 % nhãn và đo thưa
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo
@@ -197,12 +204,17 @@ python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00x
 python run.py E24 && python run.py E24f
 ```
 
-### Hướng phát triển: hiệu chỉnh bằng vài lần đo (E25) và tham số vật lý (E26)
+### Hướng phát triển và so sánh: E25, E26, E27, E28
 
 ```bash
 python analysis/analyze_e25.py         # cần E20, E23, E24, E24f; không huấn luyện thêm
 python run.py E26 && python analysis/analyze_e26.py   # cần E13 (TJU) và E24 (NASA) làm nhánh chuẩn
+python run.py E27 && python analysis/analyze_e27.py   # cách chia của PINN4SOH: pinnsoh/pinn4soh_splits.json
+python run.py E28 && python analysis/analyze_e28.py   # cần E20 (nhãn theo cell) để so sánh
+python analysis/analyze_overview.py                   # hình tổng quan 30 % / 70 % / đo thưa
 ```
+
+Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`.
 
 ## 5. Demo — ước lượng và dự báo SOH cho một cell
 

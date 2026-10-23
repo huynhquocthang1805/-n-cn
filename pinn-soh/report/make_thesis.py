@@ -61,10 +61,13 @@ def load():
               'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting',
               'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
               'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1', 'e25_estimation', 'e25_forecast',
-              'e26_params', 'e26_mae']:
+              'e26_params', 'e26_mae', 'e27_summary', 'e27_tests', 'e28_summary', 'e28_tests', 'overview',
+              'e20_tuned']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
+    if os.path.exists(f'{R}/e28_deploy.csv.gz'):
+        d['e28_deploy'] = pd.read_csv(f'{R}/e28_deploy.csv.gz')
     return d
 
 
@@ -89,7 +92,8 @@ def run_counts():
              E20=len({os.path.basename(p) for p in glob.glob('runs/E20/*.json') + glob.glob('runs/E20dev/*.json')}),
              E21=len(glob.glob('runs/E21/*.json')), E22=len(glob.glob('runs/E22/*.npz')),
              E23=len(glob.glob('runs/E23/*.npz')), E24=len(glob.glob('runs/E24/*.json')),
-             E26=len(glob.glob('runs/E26/*.json')))
+             E26=len(glob.glob('runs/E26/*.json')), E27=len(glob.glob('runs/E27/*.json')),
+             E28=len(glob.glob('runs/E28/*.json')))
     c['tong'] = sum(c.values())
     return c
 
@@ -223,6 +227,9 @@ học hàm
 sao cho sai số trên các cell \emph{chưa từng xuất hiện} khi huấn luyện là nhỏ nhất. Mô hình chỉ dùng dữ liệu
 của chu kỳ hiện tại, nên có thể chạy trực tuyến trong BMS.
 
+Cách đặt trên đếm nhãn theo cell, trong khi chi phí thật nằm ở số lần đo (mỗi nhãn là một lần xả đầy ở điều kiện
+chuẩn); đồ án xét thêm biến thể nhãn chỉ có ở một số chu kỳ rải trên mọi cell train.
+
 Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$ của một cell, chỉ dùng dữ liệu tới chu kỳ $k$, dự báo SOH và dung
 lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại trước khi SOH xuống dưới một ngưỡng cuối đời $\tau$
 (remaining useful life, RUL).
@@ -244,32 +251,33 @@ lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại t
       tới đâu không?
 \item Từ SOH ước lượng được, có dự báo được SOH, dung lượng và số chu kỳ còn lại tới ngưỡng cuối đời không, kể cả
       khi dung lượng hồi phục sau khoảng nghỉ?
+\item Trên đúng cách chia của PINN4SOH, mô hình của đồ án đứng ở đâu, với tiền xử lý không rò rỉ và với tiền xử
+      lý của bài?
+\item Nếu tính nhãn theo số lần đo dung lượng thay vì số cell có nhãn, nên đo ở đâu và cần bao nhiêu lần đo?
 \end{enumerate}
 
-Mọi câu hỏi trên chỉ có ý nghĩa nếu giao thức đánh giá không rò rỉ thông tin. Vì vậy một phần lớn của đồ án
-dành cho việc thiết kế, lý giải và chứng minh giao thức chia dữ liệu (Chương~\ref{ch:thietke}).
 
 \section{Đóng góp}
 
 \begin{enumerate}
-\item Một mô hình PINN bán giám sát cho bài toán ước lượng SOH: mạng nghiệm kết hợp động học suy giảm dạng
-      xám (tốc độ suy giảm luôn không âm, có hệ số đầu gối và hệ số Arrhenius), cùng ba hàm mất mát vật lý
-      không dùng nhãn nên áp được lên cell chưa đo dung lượng.
+\item Một mô hình PINN bán giám sát: mạng nghiệm gắn với động học suy giảm dạng xám (tốc độ luôn không âm, có hệ
+      số đầu gối và hệ số Arrhenius) và ba hàm mất mát vật lý không dùng nhãn.
 \item Một giao thức đánh giá không rò rỉ: chia theo cell, kiểm định chéo <<K>> fold phân tầng theo chế độ thí
       nghiệm, lặp <<R>> lần, kèm kiểm toán rò rỉ định lượng (chia theo chu kỳ, chuẩn hoá theo cả vòng đời cell,
       lọc ngoại lai bằng dữ liệu tương lai).
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
       (<<NCELL>> cell), tổng cộng <<NRUN>> lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
-\item Hai giao thức huấn luyện trên một bộ dữ liệu và kiểm tra trên ba bộ còn lại (70/30 và 70/15/15), cùng một
-      quy trình thích nghi không nhãn và tự huấn luyện nhiều vòng có ràng buộc vật lý.
-\item Mô hình cải tiến PINN-lai: nhóm ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả mang giả
-      định SOH không tăng vào bước suy luận, được chọn chỉ trên tập validation theo đề cương ấn định trước, kèm
-      khoảng dự đoán phù hợp 90\,\%.
+\item Hai giao thức huấn luyện trên một bộ, kiểm tra trên ba bộ còn lại, cùng quy trình thích nghi không nhãn và tự
+      huấn luyện có ràng buộc vật lý.
+\item Mô hình cải tiến PINN-lai: ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả không cho SOH
+      tăng, chọn chỉ trên tập validation, kèm khoảng dự đoán phù hợp 90\,\%.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
       xám làm lớp đầu ra, kết hợp với GBDT; bản cải tiến tách phần hồi phục dung lượng và dao động đều ra khỏi xu thế
-      suy giảm. Khi đo được dung lượng vài lần trong đời cell, một bộ lọc Kalman hiệu chỉnh ước lượng theo từng cell.
-\item Áp dụng toàn bộ quy trình cho bộ NASA PCoE (trích lại 16 đặc trưng sạc từ dữ liệu gốc), kiểm chứng ý tưởng dùng
-      thời gian nghỉ của SambaMixer và so trên đúng cách chia của công trình đó.
+      suy giảm.
+\item So trên đúng cách chia của các công trình đã công bố: PINN4SOH (dựng lại từ nhật ký công bố, ở cả hai cách
+      tiền xử lý) và SambaMixer trên bộ NASA PCoE (trích lại 16 đặc trưng sạc từ dữ liệu gốc).
+\item Đặt lại bài toán ít nhãn theo số lần đo: đo thưa mọi cell, vật lý lan thông tin giữa các lần đo khi huấn luyện,
+      bộ lọc Kalman cập nhật theo từng cell khi dùng.
 \end{enumerate}
 
 \section{Bố cục}
@@ -453,12 +461,14 @@ khoảng dự đoán phù hợp\\
 \end{tabularx}
 \end{table}
 
-Từ các công trình trên có thể rút ra bốn khoảng trống. Thứ nhất, các mô hình học có nhãn phụ thuộc mạnh vào
+Từ các công trình trên có thể rút ra năm khoảng trống. Thứ nhất, các mô hình học có nhãn phụ thuộc mạnh vào
 lượng nhãn, trong khi dữ liệu sạc không nhãn hầu như chưa được khai thác. Thứ hai, các PINN cho pin hiện có
 dùng nhãn trong phần vật lý hoặc chỉ áp vật lý lên cell có nhãn, nên vật lý chỉ đóng vai trò chuẩn hoá chứ
 không thay được nhãn. Thứ ba, kết quả công bố thường dựa trên một cách chia duy nhất, ít khi kiểm định
 thống kê, ít khi kiểm tra rò rỉ và ít khi so với mô hình cây, vốn mạnh trên dữ liệu dạng bảng. Thứ tư, hầu hết
-chỉ đưa ra một giá trị SOH mà không kèm khoảng tin cậy có độ phủ được kiểm chứng. Đồ án nhắm vào cả bốn điểm này.
+chỉ đưa ra một giá trị SOH mà không kèm khoảng tin cậy có độ phủ được kiểm chứng. Thứ năm, lượng nhãn được đếm theo
+số cell có nhãn, trong khi chi phí thật nằm ở số lần đo dung lượng và ở chỗ đặt các lần đo đó. Đồ án nhắm vào cả năm
+điểm này.
 """
 
 
@@ -805,6 +815,9 @@ def ch5(d, ctx):
               ['Bộ NASA', '2 bộ đặc trưng × 2 mức nhãn × 15 fold; cách chia của SambaMixer, 3 hạt giống', num(rc['E24'])],
               ['Tham số vật lý', 'NASA, TJU: trọng số ODE, ràng buộc Euler, giá trị khởi tạo; 70\\,\\% nhãn',
                num(rc['E26'])],
+              ['So với PINN4SOH', 'đúng cách chia của bài, 39 nhóm (đầy đủ và ít mẫu) × 2 cách tiền xử lý × 3 hạt giống',
+               num(rc['E27'])],
+              ['Ngân sách đo', 'đo thưa mọi cell train, 4 lịch đo × 4 bộ × 5 fold × 3 lần lặp', num(rc['E28'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -2615,9 +2628,21 @@ def ch6_concl(d):
       GBDT chỉ còn tốt hơn có ý nghĩa ở <<WG>> trường hợp.
       Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell chỉ tương quan ở mức vừa; phần vật lý vẫn giúp khi ít
       nhãn (so với cùng công thức dùng MLP, tỉ số <<PH>> ở 10\,\% nhãn). Khoảng dự đoán phù hợp 90\,\% đạt độ phủ
-      <<COV>> trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell.
+      <<COV>> trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell.<<TUNED>>
 """, B=E['pinn_better'], N=E['pinn_n'], R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]), BG=E['gbdt_better'],
-             SG=E['gbdt_sig'], WG=E['gbdt_worse_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2), COV=_rng([100 * x for x in tb.phu], 0) + r'\,\%')
+             SG=E['gbdt_sig'], WG=E['gbdt_worse_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2), COV=_rng([100 * x for x in tb.phu], 0) + r'\,\%',
+             TUNED=tuned_sentence(d))
+
+
+def tuned_sentence(d):
+    if 'e20_tuned' not in d:
+        return ''
+    R = d['e20_tuned']
+    gm = float(np.exp(np.log(R.r_v1).mean()))
+    ns50 = [x.ds for x in R[R.f == 0.5].itertuples() if x.p_gbdt70 >= 0.05]
+    return (f' Chọn trọng số ghép và cửa sổ lọc trên validation giảm thêm sai số còn {f(gm, 3)} lần (trung bình nhân); '
+            f'khi đó PINN-lai ở 50\\,\\% nhãn không khác GBDT ở 70\\,\\% nhãn có ý nghĩa '
+            + (_tren(ns50) if ns50 else 'trên không bộ nào') + '.')
 
 
 def ch8(d, ctx):
@@ -2653,15 +2678,12 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item Ở 10\,\% nhãn, <<SHARE>>\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
       mang lại <<MONO>>\,\% mức giảm đó.<<BB>> Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
-      ràng buộc dọc quỹ đạo: dự đoán của PINN-semi gần đơn điệu như nhãn thật; tốc độ $r$ ở dạng đạo hàm riêng chỉ
-      phản ánh phần suy giảm gán cho biến thời gian, còn dạng Euler cho $r$ sát tốc độ thật (Mục~\ref{sec:physcheck}).
+      ràng buộc dọc quỹ đạo (Mục~\ref{sec:physcheck}).
 \item <<CH5>>
-<<CH6>><<CH7>>\end{enumerate}
+<<CH6>><<CH7>><<CH8>><<CH9>>\end{enumerate}
 
-Về phương pháp đánh giá, cách chia theo chu kỳ làm sai số trông thấp hơn thực tế, đến mức bộ dự đoán không học gì
-cũng đạt sai số rất thấp. Giao thức kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần, có
-các tính chất được chứng minh: mỗi cell được test đúng một lần mỗi lần lặp, các fold cân bằng theo từng chế độ, tập
-nhãn lồng nhau.
+Về phương pháp đánh giá, cách chia theo chu kỳ và chuẩn hoá theo cả vòng đời cell làm sai số trông thấp hơn thực tế;
+giao thức theo cell của đồ án có các tính chất được chứng minh và cho phép so ghép cặp theo cell.
 
 \section{Hướng phát triển}
 
@@ -2679,7 +2701,74 @@ nhãn lồng nhau.
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
-             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), FW2=future_kalman(d), FW4=future_params(d))
+             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), CH8=e27_concl(d), CH9=e28_concl(d),
+             FW2=future_kalman(d), FW4=future_params(d))
+
+
+def overview_text(d):
+    """Hình tổng quan 30 % / 70 % nhãn và đo thưa, đặt đầu mục Thảo luận chung."""
+    if 'overview' not in d:
+        return ''
+    O = d['overview']
+    v = lambda ds, m, rg: (lambda r: float(r.mae.iloc[0]) if len(r) else NAN)(
+        O[(O.dataset == ds) & (O.model == m) & (O.regime == rg)])
+    beats = [ds for ds in DS if v(ds, 'pinn_lai', 'f0.3') < min(v(ds, 'mlp', 'f0.7'), v(ds, 'pinn', 'f0.7'))]
+    gb = [ds for ds in DS if v(ds, 'pinn_lai', 'f0.3') < v(ds, 'gbdt', 'f0.7')]
+    txt = T(r"""
+Hình~\ref{fig:overview} gom các so sánh chính vào một hình: với mỗi mô hình, sai số khi có 30\,\% và 70\,\% cell có
+nhãn. PINN-lai ở 30\,\% nằm bên trái MLP và PINN-semi ở 70\,\% <<BEATS>>, tức kết hợp vật lý, dữ liệu không nhãn và mô
+hình cây bù được hơn một nửa số cell có nhãn; nhưng <<GB>>.""", BEATS=_tren(beats) or 'ở không bộ nào',
+            GB=(r'nó vẫn nằm bên phải GBDT ở 70\,\%' if not gb else r'nó còn bên trái GBDT ở 70\,\% ' + _tren(gb)))
+    sp = O[O.regime == 'sparse']
+    if len(sp):
+        sb = [ds for ds in DS if v(ds, 'pinn_lai', 'sparse') < v(ds, 'pinn_lai', 'f0.3')]
+        txt += T(r""" Hình thoi là PINN-lai học từ các lần đo thưa trên mọi cell train (<<FR>> số chu kỳ được đo): nó
+nằm bên trái PINN-lai 30\,\% <<SB>> (Mục~\ref{sec:budgetres}).""",
+                 FR=_rng(100 * sp.frac_rows, 1) + r'\,\%', SB=_tren(sb) or 'ở không bộ nào')
+    txt += '\n\n' + fig('fig_overview', 'MAE theo cell trên test (thang log) của từng mô hình khi có 30\\,\\% (vòng rỗng) và '
+                         '70\\,\\% (vòng đặc) cell có nhãn; hình thoi: PINN-lai học từ các lần đo thưa trên mọi cell train. '
+                         'Vạch đứt: PINN-lai ở 30\\,\\% nhãn.', 'fig:overview') + '\n'
+    return txt
+
+
+def e27_concl(d):
+    if 'e27_summary' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e27_facts(d)
+    win = [ds for ds in BK.E27_DS if E['strict'][ds] < 1]
+    lose = [ds for ds in BK.E27_DS if E['strict'][ds] >= 1]
+    return T(r"""\item Trên đúng cách chia của PINN4SOH và cùng tiền xử lý với bài, PINN-lai có sai số bằng <<LFL>> lần số công bố
+      (chế độ đầy đủ) và <<SMP>> lần ở chế độ ít mẫu. Với tiền xử lý không rò rỉ, PINN-lai vẫn thấp hơn số công bố
+      <<WIN>><<LOSE>>; sai số của chính phương pháp kiểu PINN4SOH tăng <<LEAK>> lần khi bỏ rò rỉ.
+""", LFL=_rng(E['lfl'].values(), 2), SMP=_rng([x for (ds, n, p), x in E['small'].items() if p == 'paper'], 2),
+             WIN=('trên ' + _lst(win)) if win else 'trên không bộ nào',
+             LOSE=(f', còn trên {_lst(lose)} thì không, chủ yếu vì số của bài hưởng lợi từ rò rỉ' if lose else ''),
+             LEAK=_rng(E['leak'].values(), 1))
+
+
+def e28_concl(d):
+    if 'e28_summary' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e28_facts(d)
+    q = E['qmin']
+    r30 = [E['tt'](ds, q, 'pinn_lai', 'pinn_lai@30') for ds in DS]
+    r70 = [E['tt'](ds, q, 'pinn_lai', 'pinn_lai@70') for ds in DS]
+    txt = T(r"""\item Nên đo thưa trên mọi cell. Đo mỗi $<<Q>>L$ (<<FQ>> số chu kỳ train) cho PINN-lai sai số bằng <<R30>> lần
+      đo đầy đủ 30\,\% cell (<<F30>> số chu kỳ) và <<R70>> lần đo đầy đủ 70\,\% cell.""",
+            Q=f(q, 2), FQ=_rng([100 * E['fr'](ds, 'do_thua', f'q{q}', 'pinn_lai') for ds in DS], 1) + r'\,\%',
+            F30=_rng([100 * E['fr'](ds, 'theo_cell', 'f0.3', 'pinn_lai') for ds in DS], 0) + r'\,\%',
+            R30=_rng([x.ratio for x in r30 if x is not None], 2), R70=_rng([x.ratio for x in r70 if x is not None], 2))
+    if 'dep' in E:
+        q2 = sorted(E['qs'])[1] if len(E['qs']) > 1 else q
+        dep = [E['dep'](ds, q2, 'sparse') for ds in DS]
+        g70 = [E['mae'](ds, 'theo_cell', 'f0.7', 'gbdt') for ds in DS]
+        n_below = sum(a < b for a, b in zip(dep, g70))
+        txt += T(r""" Đo thêm cell mới theo lịch $<<Q2>>L$ và cập nhật bằng bộ lọc Kalman đưa MAE xuống <<DEP>>
+      ($\times10^{-3}$), thấp hơn GBDT học với 70\,\% cell có nhãn đầy đủ trên <<NB>>/4 bộ.""",
+                 Q2=f(q2, 2), DEP=_rng([1e3 * x for x in dep], 1), NB=n_below)
+    return txt + '\n'
 
 
 def future_kalman(d):
@@ -2688,9 +2777,9 @@ def future_kalman(d):
                 r'Bayes theo từng cell.')
     S = d['e25_estimation']
     cov = _rng([100 * x for x in S[S.sched == 'q10'].cov_kalman], 0) + r'\,\%'
-    return T(r"""Hiệu chỉnh độ rộng khoảng của bộ lọc Kalman theo từng cell (độ phủ hiện chỉ <<COV>>), và chọn thời
-      điểm đo dung lượng tiếp theo theo phương sai hậu nghiệm thay vì theo lịch cố định, để đạt cùng sai số với ít lần
-      đo hơn.""", COV=cov)
+    return T(r"""Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình thay vì lịch đều, hiệu
+      chỉnh khoảng theo từng cell (độ phủ hiện chỉ <<COV>>), và kiểm chứng trên dữ liệu vận hành thật, nơi khoảng cách
+      giữa hai lần kiểm tra dung lượng không đều.""", COV=cov)
 
 
 def future_params(d):
@@ -2720,12 +2809,49 @@ def abstract_e20(d):
     if 'e20_summary' not in d:
         return ''
     E = e20_facts(d)
-    return T(r"""Từ phân tích sai số, đồ án đề xuất mô hình PINN-lai: ba mạng PINN bán giám sát kết hợp với GBDT, rồi qua
-một bộ lọc quỹ đạo nhân quả không cho SOH tăng. Cấu hình được chọn chỉ trên tập validation; trên test, PINN-lai có
-sai số bằng <<R>> lần PINN ban đầu và thấp hơn GBDT ở <<BG>>/<<N>> trường hợp bộ dữ liệu × mức nhãn, kèm khoảng
-dự đoán 90\,\% có độ phủ thực tế <<COV>> trên test.""", R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]),
-             BG=E['gbdt_better'], N=E['gbdt_n'],
-             COV=_rng([100 * x for x in E['cf'][E['cf'].kieu == 'thich_nghi'].phu], 0) + r'\,\%')
+    s = d['e20_summary']
+    v = lambda ds, fr, m: float(s[(s.dataset == ds) & (s.frac == fr) & (s.model == m)].MAE_cell.iloc[0])
+    beats = [ds for ds in DS if v(ds, 0.3, 'pinn_lai') < min(v(ds, 0.7, 'mlp'), v(ds, 0.7, 'pinn'))]
+    gb70 = [ds for ds in DS if v(ds, 0.3, 'pinn_lai') < v(ds, 0.7, 'gbdt')]
+    return T(r"""Mô hình cải tiến PINN-lai kết hợp ba mạng PINN bán giám sát với GBDT rồi qua một bộ lọc quỹ đạo nhân quả không
+cho SOH tăng, được chọn chỉ trên tập validation; trên test, sai số của nó bằng <<R>> lần PINN ban đầu, thấp hơn GBDT ở
+<<BG>>/<<N>> trường hợp bộ dữ liệu × mức nhãn. Với 30\,\% cell có nhãn, PINN-lai có sai số thấp hơn MLP và PINN bán giám
+sát học với 70\,\% cell có nhãn <<BEATS>>, nhưng <<GB70>>.""", R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]),
+             BG=E['gbdt_better'], N=E['gbdt_n'], BEATS=_tren(beats) or 'trên không bộ nào',
+             GB70=(r'vẫn kém GBDT học với 70\,\% cell có nhãn' if not gb70 else
+                   r'cũng thấp hơn GBDT học với 70\,\% cell có nhãn ' + _tren(gb70)))
+
+
+def abstract_e27(d):
+    if 'e27_summary' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e27_facts(d)
+    win = [ds for ds in BK.E27_DS if E['strict'][ds] < 1]
+    return T(r""" Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai có sai số bằng <<LFL>> lần số
+công bố khi dùng cùng tiền xử lý với bài, và với tiền xử lý không rò rỉ vẫn thấp hơn số công bố <<WIN>>.""",
+             LFL=_rng(E['lfl'].values(), 2), WIN=_tren(win) or 'trên không bộ nào')
+
+
+def abstract_e28(d):
+    if 'e28_summary' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e28_facts(d)
+    q = E['qmin']
+    r30 = [E['tt'](ds, q, 'pinn_lai', 'pinn_lai@30') for ds in DS]
+    txt = T(r""" Khi tính nhãn theo số lần đo dung lượng thay vì số cell, đo thưa trên mọi cell (<<FQ>> số chu kỳ) cho
+sai số bằng <<R30>> lần đo đầy đủ 30\,\% cell.""",
+            FQ=_rng([100 * E['fr'](ds, 'do_thua', f'q{q}', 'pinn_lai') for ds in DS], 1) + r'\,\%',
+            R30=_rng([x.ratio for x in r30 if x is not None], 2))
+    if 'dep' in E:
+        q2 = sorted(E['qs'])[1] if len(E['qs']) > 1 else q
+        dep = [E['dep'](ds, q2, 'sparse') for ds in DS]
+        g70 = [E['mae'](ds, 'theo_cell', 'f0.7', 'gbdt') for ds in DS]
+        below = [ds for ds, a, b in zip(DS, dep, g70) if a < b]
+        txt += T(r""" Đo thêm cell mới theo cùng lịch và cập nhật bằng bộ lọc Kalman, sai số còn thấp hơn GBDT học với 70\,\%
+cell có nhãn đầy đủ <<BELOW>>.""", BELOW=_tren(below) or 'ở không bộ nào')
+    return txt
 
 
 def abstract(d, ctx):
@@ -2735,22 +2861,20 @@ def abstract(d, ctx):
           'một mô hình gradient boosting được tinh chỉnh tốt vẫn cạnh tranh mạnh trên một số bộ dữ liệu')
     return T(r"""
 \chapter*{Tóm tắt}\addcontentsline{toc}{chapter}{Tóm tắt}
-Đồ án nghiên cứu bài toán ước lượng trạng thái sức khoẻ (SOH) của cell lithium-ion khi chỉ một phần nhỏ cell có
-nhãn dung lượng. Mô hình đề xuất là một mạng nơ-ron có thông tin vật lý (PINN) bán giám sát: mạng nghiệm dự đoán
-SOH từ 16 đặc trưng đoạn sạc, gắn với một động học suy giảm dạng xám luôn không âm, có hệ số đầu gối và hệ số
-Arrhenius; ba hàm mất mát vật lý không dùng nhãn nên áp được lên cell chưa đo dung lượng. Đồ án thiết kế và chứng
-minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold theo cell, phân tầng theo chế độ thí nghiệm, lặp 5
-lần), lý giải từng con số của cách chia, đo định lượng tác động của các dạng rò rỉ thường gặp, và so sánh PINN với
-sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (<<NCELL>> cell, <<NRUN>> lượt huấn luyện).
-Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>, trong
-đó khoảng một nửa đến hai phần ba mức giảm đến từ cell không nhãn; khi tăng lên 70\,\% nhãn, lợi ích giảm dần (tỉ số <<R70>>). Tuy vậy, <<GB>>.<<TRGB>>
-<<E20>>
+Đồ án nghiên cứu bài toán ước lượng trạng thái sức khoẻ (SOH) của cell lithium-ion khi chỉ có ít lần đo dung lượng.
+Mô hình đề xuất là một mạng nơ-ron có thông tin vật lý (PINN) bán giám sát: mạng nghiệm dự đoán SOH từ 16 đặc trưng
+đoạn sạc, gắn với một động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn nên áp được lên
+mọi chu kỳ chưa đo dung lượng. Đồ án thiết kế và chứng minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold
+theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần), đo định lượng tác động của các dạng rò rỉ thường gặp, và so
+sánh với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (<<NCELL>> cell, <<NRUN>> lượt huấn
+luyện). Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>;
+khi tăng lên 70\,\% nhãn, lợi ích giảm dần (<<R70>>), và <<GB>>. <<E20>><<E27>><<E28>><<E22>>
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
-kết hợp mô hình, dự đoán phù hợp, dự báo tuổi thọ còn lại.
+kết hợp mô hình, ngân sách đo, dự báo tuổi thọ còn lại.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
-             R70=_rng(F['r'][0.7].values()), GB=gb,
-             TRGB=abstract_e21(d), E20=abstract_e20(d) + abstract_e22(d))
+             R70=_rng(F['r'][0.7].values()), GB=gb, E20=abstract_e20(d), E27=abstract_e27(d), E28=abstract_e28(d),
+             E22=abstract_e22(d))
 
 
 def e21_concl(d):
@@ -2762,9 +2886,8 @@ def e21_concl(d):
          f'sai số trong bộ (GBDT: {f(E["gap"]["gbdt"], 1)} lần, MLP: {f(E["gap"]["mlp"], 1)} lần); phần lớn là lệch mức '
          f'của cả quỹ đạo.')
     if 'r0' in E:
-        t += (f' Chuẩn hoá theo từng bộ cùng loss vật lý trên cell đích giảm sai số có ý nghĩa ở {E["r0_better"]} cặp '
-              f'nhưng làm tăng ở {E["r0_worse"]} cặp (tỉ số trung bình nhân {f(E["r0"], 2)}); hai vòng học lặp bằng nhãn '
-              f'giả hội tụ về đúng dự đoán của vòng đầu (tỉ số {f(E["r2v0"], 3)}), nên không cải thiện thêm.')
+        t += (f' Thích nghi không nhãn giúp ở {E["r0_better"]} cặp nhưng làm kém đi ở {E["r0_worse"]} cặp; học lặp bằng '
+              f'nhãn giả hội tụ về chính dự đoán ban đầu.')
     return t
 
 
@@ -2821,7 +2944,8 @@ def e22_concl(d):
 """, MAE=_rng([1e3 * t(ds, 'uoc', 'e_ket_hop') for ds in DS], 1),
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
              RG=_rng([E['rul_gb'][ds] for ds in DS], 1), IN20=_rng([100 * E['rul_in20'][ds] for ds in DS], 0) + r'\,\%',
-             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%', REC=e23_sentence(d, 'concl'), KF=e25_sentence(d))
+             COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%', REC=e23_sentence(d, 'concl'),
+             KF='' if 'e28_summary' in d else e25_sentence(d))
 
 
 def e25_sentence(d):
@@ -2863,13 +2987,11 @@ def abstract_e22(d):
         return ''
     import thesis_bk as BK
     E = BK.e22_facts(d)
-    return T(r""" Đồ án mở rộng mô hình sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng
-cuối đời: mạng PINN-dự báo trả hai tham số của nghiệm đóng của động học xám, kết hợp với GBDT. Khi cell không được đo
-dung lượng lần nào, mô hình kết hợp có sai số SOH chỉ bằng <<RB>> lần các mô hình ngoại suy theo từng cell, và sai số
-RUL thấp hơn GBDT <<RG>> lần nhờ nghiệm đóng ngoại suy được ra ngoài tầm đã học.<<REC>> Trên bộ NASA, PINN-lai có sai số thấp nhất trong các mô hình
-dùng đặc trưng sạc, còn thời gian nghỉ không cải thiện ước lượng.""",
+    return T(r""" Đồ án mở rộng sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối đời bằng
+mạng PINN-dự báo trả tham số của nghiệm đóng của động học xám; khi cell không được đo lần nào, sai số SOH chỉ bằng <<RB>>
+lần các mô hình ngoại suy theo từng cell và sai số RUL thấp hơn GBDT <<RG>> lần.""",
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
-             RG=_rng([E['rul_gb'][ds] for ds in DS], 1), REC=e23_sentence(d, 'abs'))
+             RG=_rng([E['rul_gb'][ds] for ds in DS], 1))
 
 
 def sys_helpers():
@@ -2937,7 +3059,7 @@ def build():
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
         if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_', 'fig_e22_', 'fig_e23_',
-                           'fig_e24_')) \
+                           'fig_e24_', 'fig_e27_', 'fig_e28_', 'fig_overview')) \
                 and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
@@ -2946,7 +3068,10 @@ def build():
     import thesis_bk as BK
     main_body = BK.assemble(ch1(d, ctx), ch2(d, ctx), ch3(d, ctx), ch4(d, ctx), ch5(d, ctx), ch6_text(d, ctx),
                             ch7_improve(d, ctx), ch8(d, ctx), e21_sections(d), fig, e22_sections(d), e25_sections(d),
-                            BK.e26_text(d, sys_helpers()) if 'e26_params' in d else '')
+                            BK.e26_text(d, sys_helpers()) if 'e26_params' in d else '',
+                            BK.e27_text(d, sys_helpers()) if 'e27_summary' in d else '',
+                            BK.e28_text(d, sys_helpers()) if 'e28_summary' in d else '', overview_text(d),
+                            BK.tuned_text(d, sys_helpers()) if 'e20_tuned' in d else '')
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
             + r'{\linespread{1.0}\selectfont\tableofcontents\listoffigures\listoftables}' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')
