@@ -75,7 +75,7 @@ class Cell:
     soh: np.ndarray          # (n,)   capacity / nominal
 
 
-CLEAN_MODES = ('life3sigma', 'causal')
+CLEAN_MODES = ('life3sigma', 'causal', 'paper3s')
 # Bộ lọc nhân quả — ấn định TRƯỚC mọi lượt huấn luyện v2, chỉ dựa trên đặc trưng:
 #   cửa sổ 50 chu kỳ quá khứ, cần >= 10 chu kỳ lịch sử, loại khi |z bền vững| > 5 ở bất kỳ đặc trưng nào,
 #   thang đo = max(IQR/1.349, 1 % |median|) để đặc trưng gần hằng không bị chia cho 0.
@@ -110,6 +110,18 @@ def _clean_causal_features(df: pd.DataFrame) -> pd.DataFrame:
     return df[finite & ~outlier]
 
 
+def _clean_paper3s(df: pd.DataFrame) -> pd.DataFrame:
+    """Bản sao đúng bộ lọc của PINN4SOH (DF.delete_3_sigma) — CHỈ để so sánh cùng điều kiện với số liệu công bố của bài
+    (E27): bỏ hàng không hữu hạn, rồi bỏ hàng lệch quá 3σ ở BẤT KỲ cột nào, kể cả chỉ số chu kỳ và dung lượng, với trung
+    bình và độ lệch chuẩn của cả vòng đời cell (dùng cả nhãn và tương lai, nên có rò rỉ)."""
+    df = df.replace([np.inf, -np.inf], np.nan).dropna().reset_index(drop=True)
+    out = set()
+    for col in FEATURES + ['cycle', 'capacity']:
+        x = df[col]
+        out |= set(np.flatnonzero(((x.mean() - 3 * x.std()) > x) | ((x.mean() + 3 * x.std()) < x)))
+    return df.drop(sorted(out)).reset_index(drop=True)
+
+
 def _read_cell(path: str, cid: str, dataset: str, batch: str, chem: str,
                nominal: float, temp_k: float, clean: str = 'life3sigma') -> Cell:
     df = pd.read_csv(path)
@@ -120,6 +132,8 @@ def _read_cell(path: str, cid: str, dataset: str, batch: str, chem: str,
         if 'capacity' not in df:
             df['capacity'] = np.nan               # cell chưa đo dung lượng: chỉ có đặc trưng sạc
         df = _clean_causal_features(df)
+    elif clean == 'paper3s':
+        df = _clean_paper3s(df)
     else:
         raise ValueError(f'clean={clean!r}; chọn trong {CLEAN_MODES}')
     return Cell(cid=cid, dataset=dataset, batch=batch, chem=chem, temp_k=temp_k,
@@ -347,7 +361,7 @@ def cv_split(cells: List[Cell], fold: int, repeat: int, n_folds: int = 5,
 class Normalizer:
     """Feature normaliser fitted on training cells only."""
     def __init__(self, mode: str = 'global', ref_cycles: int = 3):
-        assert mode in ('global', 'first_cycle', 'per_cell_minmax', 'both')
+        assert mode in ('global', 'first_cycle', 'per_cell_minmax', 'both') or mode.startswith('ema'), mode
         self.mode, self.ref_cycles = mode, ref_cycles
         self.mu = None; self.sd = None
 
@@ -356,6 +370,8 @@ class Normalizer:
         return (c.X - ref) / (np.abs(ref) + 1e-6)
 
     def _raw(self, c: Cell) -> np.ndarray:
+        if self.mode.startswith('ema'):         # 'ema' hoặc 'ema0.3': làm trơn mũ nhân quả theo các chu kỳ đã qua (E28)
+            return causal_ema(c.X, float(self.mode[3:] or EMA_ALPHA))
         if self.mode == 'first_cycle':
             return self._rel(c)
         if self.mode == 'both':                 # đặc trưng tuyệt đối + tương đối so với 3 chu kỳ đầu (E20)
@@ -372,6 +388,20 @@ class Normalizer:
 
     def transform(self, c: Cell) -> np.ndarray:
         return ((self._raw(c) - self.mu) / self.sd).astype(np.float32)
+
+
+EMA_ALPHA = 0.3
+
+
+def causal_ema(X: np.ndarray, alpha: float = EMA_ALPHA) -> np.ndarray:
+    """z_n = a·x_n + (1 − a)·z_{n−1}, z_0 = x_0, theo thứ tự hàng của MỘT cell: chỉ dùng chu kỳ hiện tại và các chu kỳ
+    trước nên chạy được trực tuyến; giảm nhiễu đo từng chu kỳ của đặc trưng sạc."""
+    from scipy.signal import lfilter
+    X = np.asarray(X, dtype=np.float64)
+    if len(X) == 0:
+        return X.astype(np.float32)
+    z = lfilter([alpha], [1.0, alpha - 1.0], X, axis=0, zi=((1.0 - alpha) * X[:1]))[0]
+    return z.astype(np.float32)
 
 
 def cycle_input(c: Cell, mode: str = 'global') -> np.ndarray:

@@ -301,8 +301,71 @@ def E26(repeats=None, datasets=None, seeds=None, out='runs/E26') -> List[Job]:
     return jobs
 
 
+# E27: so với PINN4SOH trên đúng cách chia của bài (pinnsoh/paper.py) — 11 nhóm đầy đủ và 28 nhóm ít mẫu, 3 hạt giống,
+#      hai cách tiền xử lý: 'strict' (của đồ án, không rò rỉ) và 'paper' (bản sao tiền xử lý của bài: lọc 3σ cả vòng đời
+#      kể cả cột dung lượng, min–max theo từng cell cho đặc trưng và chỉ số chu kỳ) để so cùng điều kiện với số công bố.
+#      Mỗi nhóm: 3 PINN-semi (-> PINN-lai cùng GBDT) và, ở các nhóm đầy đủ, một PINN động học hộp đen kiểu PINN4SOH.
+E27_SEEDS = (0, 1, 2)
+E27_PREPS = {'strict': dict(clean='causal', norm='global', cyc='global'),
+             'paper': dict(clean='paper3s', norm='per_cell_minmax', cyc='per_cell_minmax')}
+
+
+def E27(repeats=None, datasets=None, seeds=E27_SEEDS, out='runs/E27') -> List[Job]:
+    from .paper import keys, gbdt_path
+    from .train import Config, run_name
+    seeds = E27_SEEDS if seeds is None else tuple(seeds)
+    jobs = []
+    for key, prep, s in itertools.product(keys(), E27_PREPS, seeds):
+        ds, mode, _ = key.split('|')
+        if datasets and ds not in datasets:
+            continue
+        models = [('pinn_semi', m) for m in E20_MEMBERS] + ([('pinn_bb', 0)] if mode == 'full' else [])
+        for model, mem in models:
+            kw = dict(dataset=ds, label_frac=1.0, model=model, seed=s, split='paper', paper_key=key, member=mem,
+                      tag=f'E27{prep}', out_dir=out, norm_pool='train', pair_by='cycle', **E13_NET, **E13_PHYS,
+                      **E27_PREPS[prep])
+            cost = _train_cost(model) * (2.0 if ds in ('HUST', 'MIT') else 1.0)
+            jobs.append(Job('train_cfg', kw, os.path.join(out, run_name(Config(**kw)) + '.json'), cost,
+                            f'E27{prep} {key} {model} s{s} m{mem}', (ds,)))
+        jobs.append(Job('baseline_paper', dict(key=key, seed=s, out_dir=out, prep=prep), gbdt_path(key, s, out, prep),
+                        3 if ds in ('XJTU', 'TJU') else 20, f'E27{prep} gbdt {key} s{s}', (ds,)))
+    return jobs
+
+
+# E28: ngân sách đo dung lượng (pinnsoh/budget.py) — MỌI cell train được đo ở chu kỳ đầu và sau mỗi q·L chu kỳ, cùng
+#      fold và hạt giống với E20 (lần lặp 0–2), để vẽ sai số theo số lần đo cạnh các mức nhãn theo cell của E20.
+#      Mỗi (bộ, q, lần lặp, fold): 3 PINN-semi chỉ có nhãn ở lần đo (vật lý trên mọi hàng) -> PINN-lai cùng GBDT;
+#      MLP chỉ có nhãn ở lần đo; GBDT trên lần đo và trên nhãn nội suy; một PINN-semi học nhãn nội suy (q = 0,1; 0,05).
+E28_QS = (0.5, 0.2, 0.1, 0.05)
+
+
+def E28(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E28') -> List[Job]:
+    from .budget import gbdt_path
+    rr = range(repeats)
+    jobs = []
+    for q, r, ds, k in itertools.product(E28_QS, rr, datasets, range(E13_FOLDS)):
+        meas = dict(E13_PHYS, meas_every=q)
+        jobs += [_member_job(f'Q', 'pinn_semi', 0.7, meas, r, ds, k, out, m) for m in E20_MEMBERS]
+        jobs.append(_member_job('Q', 'mlp', 0.7, dict(meas_every=q), r, ds, k, out, 0))
+        if q in (0.1, 0.05):
+            jobs.append(_member_job('Q', 'pinn_semi', 0.7, dict(meas, meas_interp=True), r, ds, k, out, 0))
+        for mode in ('meas', 'interp'):
+            jobs.append(Job('baseline_budget', dict(ds=ds, q=q, mode=mode, r=r, k=k, out_dir=out),
+                            gbdt_path(ds, q, mode, r, k, out), BASELINE_S[('gbdt', ds)], f'gbdt-{mode} {ds} q{q} cv{r}-{k}',
+                            (ds,)))
+    return jobs
+
+
+# E29dev: đặc trưng sạc làm trơn mũ nhân quả (norm='ema') cho PINN-semi — giai đoạn phát triển, lần lặp 0, nhãn 30 và
+#         70 %, chỉ xem MAE validation (so với thành viên 0 của E20, cùng hạt giống)
+def E29dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E29dev') -> List[Job]:
+    return [_member_job('V', 'pinn_semi', f, dict(E13_PHYS, norm='ema'), r, ds, k, out, 0)
+            for f, r, ds, k in itertools.product((0.3, 0.7), range(repeats), datasets, range(E13_FOLDS))]
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
-                                                        E24f=E24f, E26=E26)
+                                                        E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26', 'E27',
+         'E28']

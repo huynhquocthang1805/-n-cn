@@ -23,6 +23,15 @@ def _execute(kind: str, args: dict):
     if kind == 'train':
         from .train import Config, run
         return run(Config(**args).v2(), verbose=False, log=False)['test'].get('MAE_cell')
+    if kind == 'train_cfg':                       # cấu hình đầy đủ trong args (không ép pipeline v2) — E27
+        from .train import Config, run
+        return run(Config(**args), verbose=False, log=False)['test'].get('MAE_cell')
+    if kind == 'baseline_paper':
+        from .paper import run_gbdt
+        return run_gbdt(**args)
+    if kind == 'baseline_budget':
+        from .budget import run_gbdt
+        return run_gbdt(**args)
     if kind == 'transfer':
         from .transfer import TransferConfig, run_transfer
         cfg = TransferConfig(**args)
@@ -55,8 +64,10 @@ def _execute(kind: str, args: dict):
     raise ValueError(kind)
 
 
-def _safe_execute(kind, args):
+def _safe_execute(kind, args, out=None):
     t0 = time.time()
+    if out and os.path.exists(out):                  # một lần chạy khác đã làm xong lượt này trong lúc chờ
+        return None, 0.0, None
     try:
         return _execute(kind, args), time.time() - t0, None
     except Exception:                                                   # báo lỗi về tiến trình chính
@@ -104,6 +115,9 @@ def prewarm(jobs: List[Job]):
     from .data import load_dataset
     for ds in sorted({d for j in jobs for d in j.datasets}):
         load_dataset('PINN4SOH/data', ds, clean='causal')
+    for ds in sorted({j.args.get('dataset', j.args.get('key', '|').split('|')[0]) for j in jobs
+                      if j.args.get('clean') == 'paper3s' or j.args.get('prep') == 'paper'}):
+        load_dataset('PINN4SOH/data', ds, clean='paper3s')
     if any(j.kind == 'leak' and j.args.get('setting') == 'life3s' for j in jobs):
         for ds in sorted({d for j in jobs for d in j.datasets}):
             load_dataset('PINN4SOH/data', ds, clean='life3sigma')
@@ -132,13 +146,13 @@ def run_jobs(jobs: List[Job], workers: Optional[int] = None, threads: int = 1, d
     if workers == 1:
         _init_worker(threads)
         for i, job in enumerate(todo, 1):
-            report(i, job, *_safe_execute(job.kind, job.args))
+            report(i, job, *_safe_execute(job.kind, job.args, job.out))
     else:
         import multiprocessing as mp
         from concurrent.futures import ProcessPoolExecutor, as_completed
         with ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context('spawn'),
                                  initializer=_init_worker, initargs=(threads,)) as ex:
-            futs = {ex.submit(_safe_execute, j.kind, j.args): j for j in todo}
+            futs = {ex.submit(_safe_execute, j.kind, j.args, j.out): j for j in todo}
             try:
                 for i, fu in enumerate(as_completed(futs), 1):
                     report(i, futs[fu], *fu.result())

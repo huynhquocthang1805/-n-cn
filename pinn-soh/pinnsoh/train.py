@@ -99,6 +99,11 @@ class Config:
     ea_init_kj: float = 30.0         # để kiểm tra hai tham số có xác định được từ dữ liệu không
     range_first: tuple = (0.85, 1.10)  # miền SOH hợp lý ở chu kỳ đầu của cell; NASA (cell 4 °C có SOH đầu 0,5–0,8 so
                                      # với 2 Ah danh định) dùng (0,40; 1,10)
+    paper_key: str = ''              # split='paper': khoá cách chia của PINN4SOH trong pinn4soh_splits.json (E27)
+    meas_every: float = 0.0          # > 0: cell có nhãn chỉ được đo dung lượng ở chu kỳ đầu và sau mỗi meas_every·L chu kỳ (E28)
+    meas_interp: bool = False        #   True: nhãn giữa hai lần đo lấy theo nội suy tuyến tính (lan nhãn trước khi học)
+    label_smooth: int = 0            # > 0: nhãn của cell train có nhãn được làm trơn dọc quỹ đạo (trung vị rồi trung bình
+                                     # trượt có tâm, cửa sổ label_smooth chu kỳ) trước khi học; validation, test giữ nhãn gốc
 
     def v2(self) -> 'Config':
         """Bật đủ năm sửa đổi của pipeline v2."""
@@ -169,6 +174,8 @@ class Trainer:
     def prepare(self):
         cfg = self.cfg
         cells = _load(cfg, cfg.dataset)
+        if cfg.split == 'paper':
+            return self._prepare_paper(cells)
         by_id = {c.cid: c for c in cells}
         if cfg.split == 'cv':
             split = cv_split(cells, cfg.fold, cfg.repeat, cfg.n_folds, cfg.val_frac_cv)
@@ -189,7 +196,19 @@ class Trainer:
         pool = tr_lab + tr_unl if (semi or cfg.norm_pool == 'train') else tr_lab
         self.norm = Normalizer(cfg.norm).fit(pool)
         lab_only = cfg.clean != 'life3sigma'          # v2: loss dữ liệu / val / test chỉ trên hàng có nhãn
-        self.S_lab = make_pointset(tr_lab, self.norm, cfg.cyc, labelled_only=lab_only)
+        self.S_pairs = None
+        if cfg.meas_every > 0:                        # E28: nhãn thưa theo lịch đo; cặp vật lý lấy trên MỌI hàng của cell
+            from .budget import life_steps, sparse_cells
+            self.meas_step = life_steps(tr_lab + tr_unl, cfg.meas_every)
+            self.S_lab = make_pointset(sparse_cells(tr_lab, self.meas_step, cfg.meas_interp), self.norm, cfg.cyc,
+                                       labelled_only=True)
+            self.S_pairs = make_pointset(tr_lab, self.norm, cfg.cyc)
+        elif cfg.label_smooth > 0:
+            from .budget import smooth_cells
+            self.S_lab = make_pointset(smooth_cells(tr_lab, cfg.label_smooth), self.norm, cfg.cyc, labelled_only=lab_only)
+            self.S_pairs = make_pointset(tr_lab, self.norm, cfg.cyc, labelled_only=lab_only)
+        else:
+            self.S_lab = make_pointset(tr_lab, self.norm, cfg.cyc, labelled_only=lab_only)
         self.S_unl = make_pointset(tr_unl, self.norm, cfg.cyc) if (semi and tr_unl) else None
         self.val = make_pointset(va, self.norm, cfg.cyc, labelled_only=lab_only)
         self.test = make_pointset(te, self.norm, cfg.cyc, labelled_only=lab_only)
@@ -199,6 +218,8 @@ class Trainer:
             self.teacher_unl = self._teacher(tr_lab, va, self.S_unl)
         self.n_cells = dict(train_labelled=len(tr_lab), train_unlabelled=len(tr_unl), val=len(va), test=len(te),
                             all=len(cells))
+        if cfg.meas_every > 0:
+            self.n_cells.update(meas_step=self.meas_step, lab_rows=len(self.S_lab))
         self.transfer = {}
         for tgt in cfg.transfer_to:
             tcells = _load(cfg, tgt)
@@ -206,6 +227,32 @@ class Trainer:
                 keep = set(split_cells(tcells, cfg.seed)['test'])
                 tcells = [c for c in tcells if c.cid in keep]
             self.transfer[tgt] = make_pointset(tcells, self.norm, cfg.cyc)
+        return self
+
+    def _prepare_paper(self, cells):
+        """E27: cách chia của PINN4SOH (pinnsoh/paper.py). Validation = 20 % hàng ngẫu nhiên của các cell có nhãn như
+        trong bài; cell train không nhãn (chế độ ít mẫu) chỉ góp đặc trưng cho các hàm mất mát vật lý."""
+        from .paper import paper_split, row_split
+        cfg = self.cfg
+        by_id = {c.cid: c for c in cells}
+        sp = paper_split(cfg.paper_key)
+        tr_lab = [by_id[i] for i in sp['labelled']]; tr_unl = [by_id[i] for i in sp['unlabelled']]
+        te = [by_id[i] for i in sp['test']]
+        self.split = dict(train=sp['labelled'] + sp['unlabelled'], val=[], test=sp['test'], labelled=sp['labelled'],
+                          unlabelled=sp['unlabelled'])
+        self.norm = Normalizer(cfg.norm).fit(tr_lab + tr_unl)
+        self.S_pairs = None
+        lab_tr, lab_va = row_split(tr_lab, cfg.seed)
+        semi = cfg.model in ('pinn_semi', 'pinn_bb')
+        self.S_lab = make_pointset(lab_tr, self.norm, cfg.cyc, labelled_only=True)
+        self.S_unl = make_pointset(tr_unl, self.norm, cfg.cyc) if (semi and tr_unl) else None
+        self.val = make_pointset(lab_va, self.norm, cfg.cyc, labelled_only=True)
+        self.test = make_pointset(te, self.norm, cfg.cyc, labelled_only=True)
+        self.test_ids = [c.cid for c in te]
+        self.val_ids = [c.cid for c in tr_lab]
+        self.n_cells = dict(train_labelled=len(tr_lab), train_unlabelled=len(tr_unl), val=0, test=len(te),
+                            all=len(cells))
+        self.transfer = {}
         return self
 
     def _teacher(self, lab_cells, val_cells, S_unl: PointSet) -> torch.Tensor:
@@ -298,7 +345,8 @@ class Trainer:
             # ----- physics losses on (N, N+h) pairs
             if use_phys:
                 w = w_adapt * min(1.0, step / max(1, cfg.warmup_frac * cfg.max_steps))
-                bl = self._pairs(self.S_lab, rng, cfg.batch // 2 if self.S_unl is not None else cfg.batch)
+                bl = self._pairs(self.S_lab if getattr(self, 'S_pairs', None) is None else self.S_pairs, rng,
+                                 cfg.batch // 2 if self.S_unl is not None else cfg.batch)
                 if self.S_unl is not None:
                     bu = self._pairs(self.S_unl, rng, cfg.batch // 2)
                     bl = {k: torch.cat([bl[k], bu[k]], 0) for k in bl}
@@ -389,6 +437,12 @@ def run_name(cfg: Config) -> str:
     extra = '' if (cfg.act == 'silu' and cfg.arch == 'mlp') else f'_{cfg.act}-{cfg.arch}'
     if cfg.split == 'cv':
         extra += f'_cv{cfg.repeat}-{cfg.fold}of{cfg.n_folds}'
+    elif cfg.split == 'paper':
+        extra += '_' + cfg.paper_key.replace('|', '_')
+    if cfg.meas_every > 0:
+        extra += f'_q{cfg.meas_every}' + ('i' if cfg.meas_interp else '')
+    if cfg.label_smooth > 0:
+        extra += f'_ls{cfg.label_smooth}'
     if cfg.member:
         extra += f'_m{cfg.member}'
     return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{cfg.norm}_{cfg.cyc}{extra}'
