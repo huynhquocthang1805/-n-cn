@@ -362,7 +362,7 @@ máy khác cho dự đoán trùng từng bit với kết quả báo cáo.
 
 # ───────────────────────────────────────────────────────────── ghép
 def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''), e26='', e27='', e28='', overview='',
-             tuned=''):
+             tuned='', e25s=''):
     """c1..c8: chuỗi các chương cũ (c7 = chương cải tiến); e21: các mục kết quả E21; fig: hàm sinh hình."""
     # Chương 1
     h1, s1 = split_sections(c1)
@@ -425,9 +425,10 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
     for lab in ('tab:pred', 'fig:parity', 'fig:errsoh'):
         ext = drop_float(ext, lab)
     rm = pick(s6, 'RMSE và')
-    for lab in ('tab:rmser2', 'tab:transr2'):
+    for lab in ('tab:rmser2', 'tab:transr2', 'fig:rmser2'):
         rm = drop_float(rm, lab)
-    phys = drop_float(drop_float(pick(s6, 'Kiểm tra phần vật lý'), 'fig:ratecell'), 'fig:mono')
+    phys = drop_float(drop_float(drop_float(pick(s6, 'Kiểm tra phần vật lý'), 'fig:ratecell'), 'fig:mono'), 'fig:ratesoh')
+    phys = sub1(phys, 'Hình~\\ref{fig:ratesoh} xếp tốc độ suy giảm', 'Đồ án xếp tốc độ suy giảm')
     phys = sub1(phys, '(Bảng~\\ref{tab:mono}, Hình~\\ref{fig:mono})', '(Bảng~\\ref{tab:mono})')
     improve = ('\\section{Mô hình kết hợp PINN-lai}\\label{sec:improve}\n'
                + ''.join(demote(pick(s7, k)) for k in ['Sai số còn lại', 'Chọn hướng trên tập validation',
@@ -437,7 +438,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
                          improve, count=1, flags=re.S)
     assert n == 1
     ch6 = (head6 + leak + s30 + labels + pick(s6, 'So với các mô hình học có nhãn khác') + pick(s6, 'Lợi ích đến từ đâu')
-           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + e27 + e21 + e22[1] + e28 + (demote(retitle(e25[1].lstrip(), 'Đo cell mới: một lần lúc nhận hay đo định kỳ')) if (e28 and e25[1]) else e25[1])
+           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + e27 + e21 + e22[1] + e28 + (e25s if (e28 and e25s) else e25[1])
            + sub1(pick(s6, 'Thảo luận chung'), '\\section{Thảo luận chung}\n', '\\section{Thảo luận chung}\n' + overview)
            + demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp')))
     ch7 = c8
@@ -469,8 +470,8 @@ def fix_refs(t: str) -> str:
         ('(iii) GBDT là đối thủ mạnh; Chương~\\ref{ch:caitien}', '(iii) GBDT là đối thủ mạnh; Mục~\\ref{sec:improve}'),
         (' (Hình~\\ref{fig:cells}: phần lớn cell nằm dưới đường chéo)', ''),
         ('Hình~\\ref{fig:parity}--\\ref{fig:errsoh} cho thấy', 'Hình~\\ref{fig:traj} cho thấy'),
-        ('Bảng~\\ref{tab:rmser2} và Hình~\\ref{fig:rmser2} bổ sung hai', 'Hình~\\ref{fig:rmser2} bổ sung hai'),
-        ('rồi lấy trung bình qua năm lần lặp. Bảng dùng $R^2$', 'rồi lấy trung bình qua năm lần lặp. Hình dùng $R^2$'),
+        ('Bảng~\\ref{tab:rmser2} và Hình~\\ref{fig:rmser2} bổ sung hai', 'Mục này bổ sung hai'),
+        ('rồi lấy trung bình qua năm lần lặp. Bảng dùng $R^2$', 'rồi lấy trung bình qua năm lần lặp. Mục này dùng $R^2$'),
         ('Hình~\\ref{fig:ratecell} so tốc độ suy giảm', 'Đồ án so tốc độ suy giảm'),
     ]
     for a, b in reps:
@@ -813,7 +814,7 @@ tin.
 giữ lại để dừng sớm, đánh giá trên các cell 6, 7 và 47. PINN-lai có MAE <<S6>>, <<S7>> và <<S47>>\,\% SOH, cao hơn
 SambaMixer trên cả ba cell và chỉ tốt hơn CNN-BiGRU trên cell 47. SambaMixer nhận chuỗi điện áp, dòng điện, nhiệt độ của chính lần xả cần ước lượng; với dòng xả không đổi, thời gian xả
 nhân với dòng điện chính là dung lượng, nên nhãn gần như nằm sẵn trong đầu vào. Đồ án dùng đoạn sạc trước lần xả, là
-dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Hình~\ref{fig:e24samba} cho thấy hai kiểu sai số còn lại:
+dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Còn lại hai kiểu sai số:
 cell 6 bắt đầu ở 101\,\% SOH trong khi các cell train cùng nhóm bắt đầu quanh 92\,\%, và 75--84\,\% số chu kỳ của
 nó có đặc trưng sạc nằm ngoài khoảng phân vị 1--99\,\% của cell train, nên cả quỹ đạo dự đoán bị lệch xuống. Ở cell 7,
 đặc trưng sạc nửa sau đời nằm hoàn toàn trong miền của cell train, nhưng dự đoán đi ngang quanh 81\,\% trong khi dung
@@ -825,8 +826,7 @@ sạc, và là cái giá của việc không phải xả sâu cell để đo.
 <<FIGS>>
 """, S6=f(sv('NASA', 'pinn_lai', 'B0006'), 2), S7=f(sv('NASA', 'pinn_lai', 'B0007'), 2),
              S47=f(sv('NASA', 'pinn_lai', 'B0047'), 2), TABS=tab_s,
-             FIGS=fig('fig_e24_samba', 'SOH thực đo và ước lượng PINN-lai trên ba cell đánh giá của cách chia NASA-L '
-                      '(hạt giống 0), không và có thời gian nghỉ làm đặc trưng.', 'fig:e24samba'))
+             FIGS='')
     return out
 
 
@@ -1093,11 +1093,19 @@ def e27_text(d, H):
                 r'không rò rỉ của đồ án. Hộp đen: PINN động học hộp đen kiểu PINN4SOH. Trung bình 3 hạt giống, rồi qua các '
                 r'batch như bài.', 'tab:e27')
     sig = lambda prep, better: [ds for ds in E27_DS if tt(ds, prep).p < 0.05 and (tt(ds, prep).ours < tt(ds, prep).theirs) == better]
-    win_strict = [ds for ds in E27_DS if E['strict'][ds] < 1]
-    lose_strict = [ds for ds in E27_DS if E['strict'][ds] >= 1]
+    lk = E['leak']
+    up = [ds for ds in E27_DS if lk[ds] > 1.05]
+    down = [ds for ds in E27_DS if lk[ds] < 0.95]
+    st = E['strict']
+    win = [ds for ds in E27_DS if st[ds] < 0.95]
+    tie = [ds for ds in E27_DS if 0.95 <= st[ds] <= 1.05]
+    lose = [ds for ds in E27_DS if st[ds] > 1.05]
+    sb, sw = sig('strict', True), sig('strict', False)
     sm = E['small']
     small_paper = [x for (ds, n, prep), x in sm.items() if prep == 'paper']
-    small_strict_win = [(ds, n) for (ds, n, prep), x in sm.items() if prep == 'strict' and x < 1]
+    sp_all = all(x < 1 for x in small_paper)
+    sw_strict = [(ds, n) for (ds, n, prep), x in sm.items() if prep == 'strict' and x < 1]
+    rest = [x for (ds, n, prep), x in sm.items() if prep == 'strict' and x >= 1]
     return T(r"""
 \section{So với PINN4SOH trên đúng cách chia của bài}\label{sec:paperres}
 
@@ -1108,32 +1116,38 @@ MAE bằng <<LFL>> lần PINN4SOH<<LFLSIG>>.
 
 <<TAB>>
 
-Với tiền xử lý không rò rỉ, mọi mô hình đều kém đi: sai số của PINN hộp đen tăng <<LEAK>> lần so với khi dùng tiền xử lý
-của bài, đúng chiều với kiểm toán rò rỉ ở Mục~\ref{sec:audit}; riêng trên HUST, chỉ số chu kỳ sau min--max theo từng cell
-chính là phần đời đã qua của cell, một thông tin mà mô hình triển khai thật không thể có. Dù vậy, PINN-lai với tiền xử
-lý không rò rỉ vẫn có sai số thấp hơn số công bố của PINN4SOH trên <<WIN>> (tỉ số <<WINR>>)<<LOSE>>.
+Tiền xử lý của bài vừa thêm một thông tin rò rỉ vừa bỏ đi một thông tin thật, và hai tác động này cân nhau khác nhau theo
+bộ. Đổi sang tiền xử lý không rò rỉ, sai số của PINN hộp đen tăng <<LUP>> lần trên <<UPDS>>: chỉ số chu kỳ sau min--max
+theo từng cell chính là phần đời đã qua của cell, thông tin mà một mô hình triển khai thật không thể có. Ngược lại, sai
+số giảm còn <<LDOWN>> lần trên <<DOWNDS>>: min--max theo từng cell xoá mức tuyệt đối của đặc trưng sạc, vốn mang thông
+tin về SOH. Với tiền xử lý không rò rỉ, PINN-lai có sai số thấp hơn số công bố của PINN4SOH trên <<WIN>><<TIE>><<LOSE>>.
 
 <<FIG>>
 
-Ở chế độ ít mẫu (Hình~\ref{fig:e27}, dưới), với tiền xử lý của bài, PINN-lai có sai số bằng <<SMP>> lần PINN4SOH qua
-các mức $K = 1, \dots, 4$ cell có nhãn: các cell train không nhãn đi vào loss vật lý và bù cho số nhãn ít. Với tiền
-xử lý không rò rỉ, <<SMS>>. Phần lớn độ chính xác của chế độ ít mẫu trong bài vì vậy đến từ việc chuẩn hoá theo cả
-vòng đời cell: khi chỉ có một vài cell có nhãn, biết cell đã đi được bao nhiêu phần đời gần như là biết SOH.
+Ở chế độ ít mẫu (Hình~\ref{fig:e27}, dưới), với tiền xử lý của bài, PINN-lai có sai số <<SPTXT>> (tỉ số <<SMP>>): các
+cell train không nhãn đi vào loss vật lý và bù cho số nhãn ít, rõ nhất khi chỉ một cell có nhãn. Với tiền xử lý không rò
+rỉ, <<SMS>>. Khi chỉ có vài cell có nhãn, biết cell đã đi được bao nhiêu phần đời gần như là biết SOH, nên con số ít
+mẫu của bài phần lớn đến từ việc chuẩn hoá theo cả vòng đời cell.
 """, REP=rng(list(E['rep'].values()), 2), LFL=rng(list(E['lfl'].values()), 2),
              LFLSIG=((', thấp hơn có ý nghĩa thống kê theo cell trên ' + lst(sig('paper', True))) if sig('paper', True)
                      else '') + ((', cao hơn có ý nghĩa trên ' + lst(sig('paper', False))) if sig('paper', False) else ''),
-             TAB=tab, LEAK=rng(list(E['leak'].values()), 1),
-             WIN=lst(win_strict) if win_strict else 'không bộ nào',
-             WINR=rng([E['strict'][ds] for ds in win_strict], 2) if win_strict else '--',
-             LOSE=(f'; trên {lst(lose_strict)}, tỉ số là {rng([E["strict"][ds] for ds in lose_strict], 2)}'
-                   if lose_strict else ''),
+             TAB=tab, LUP=rng([lk[ds] for ds in up], 2) if up else '--', UPDS=lst(up) if up else 'không bộ nào',
+             LDOWN=rng([lk[ds] for ds in down], 2) if down else '--', DOWNDS=lst(down) if down else 'không bộ nào',
+             WIN=(lst(win) + ' (tỉ số ' + rng([st[ds] for ds in win], 2)
+                  + (', có ý nghĩa thống kê theo cell trên ' + lst([x for x in win if x in sb]) if [x for x in win if x in sb] else '')
+                  + ')') if win else 'không bộ nào',
+             TIE=(f', ngang trên {lst(tie)} (tỉ số {rng([st[ds] for ds in tie], 2)})' if tie else ''),
+             LOSE=(f', và chỉ cao hơn trên {lst(lose)} (tỉ số {rng([st[ds] for ds in lose], 2)}), đúng bộ mà tiền xử lý của '
+                   'bài có lợi nhất' if lose else ''),
              FIG=fig('fig_e27_compare', 'So với PINN4SOH trên đúng cách chia của bài. Trên: chế độ đầy đủ, mỗi bộ năm cột '
                      '(số công bố, rồi PINN hộp đen và PINN-lai của đồ án với tiền xử lý của bài và với tiền xử lý không rò '
                      'rỉ). Dưới: chế độ ít mẫu, MAE theo số cell có nhãn (thang log).', 'fig:e27'),
-             SMP=rng(small_paper, 2),
-             SMS=('PINN-lai chỉ thấp hơn số công bố ở ' + lst([f'{ds} với $K = {n}$' for ds, n in small_strict_win])
-                  if small_strict_win else 'PINN-lai không thấp hơn số công bố ở mức nào')
-                 + f' (tỉ số {rng([x for (ds, n, prep), x in sm.items() if prep == "strict"], 2)})')
+             SPTXT=(r'thấp hơn PINN4SOH ở mọi mức $K = 1, \dots, 4$ trên cả XJTU và HUST' if sp_all else
+                    'so với PINN4SOH'), SMP=rng(small_paper, 2),
+             SMS=(('PINN-lai chỉ thấp hơn số công bố ở ' + lst([f'{ds} với $K = {n}$' for ds, n in sw_strict])
+                   + (f' (tỉ số {rng([sm[(ds, n, "strict")] for ds, n in sw_strict], 2)})') if sw_strict
+                   else 'PINN-lai không thấp hơn số công bố ở mức nào')
+                  + (f'; ở các mức còn lại tỉ số là {rng(rest, 2)}' if rest else '')))
 
 
 # ───────────────────────────────────────────────────────────── E28: ngân sách đo
@@ -1244,6 +1258,34 @@ học từ 70\,\% cell có nhãn đầy đủ cho <<DEP70>>: khi đã đo cell m
                  BELOW=(lst(below) if len(below) < len(DSX) else 'cả bốn bộ') if below else 'không bộ nào',
                  DEP70=rng([1e3 * v for v in dep70.values()], 1))
     return out
+
+
+def e25_short(d, H):
+    """Bản gọn của kết quả E25 (lịch đo khi dùng, mô hình học với nhãn theo cell) — tiểu mục trong mục ngân sách đo."""
+    f, T, rng, lst = (H[k] for k in ('f', 'T', 'rng', 'lst'))
+    S = d['e25_estimation']
+    DSX = ['XJTU', 'TJU', 'MIT', 'HUST', 'NASA']
+    rq = lambda sc: [x for x in S[S.sched == sc].ratio]
+    worse_dau = sorted({r.ds for r in S[S.sched == 'dau'].itertuples() if r.p < 0.05 and r.kalman > r.goc})
+    nk = S[S.sched == 'q10']
+    gan_better = sorted({r.ds for r in nk.itertuples() if r.p_vs_gan < 0.05 and r.gan_nhat < r.kalman})
+    s25 = S[S.sched == 'q25']
+    kal_better25 = sorted({r.ds for r in s25.itertuples() if r.p_vs_gan < 0.05 and r.kalman < r.gan_nhat})
+    return T(r"""
+\subsection{Đo cell mới: một lần lúc nhận hay đo định kỳ}\label{sec:kalmanres}
+
+Với mô hình học từ nhãn theo cell (10--70\,\% cell có nhãn, năm bộ kể cả NASA), đo cell mới mỗi $0{,}1L$ đưa sai số
+xuống còn <<R10>> lần không hiệu chỉnh, mỗi $0{,}25L$ còn <<R25>> lần. Một lần đo duy nhất lúc nhận pin gần như không giúp (tỉ số
+<<RD>>) và còn làm kém đi có ý nghĩa ở <<WD>>: dung lượng của nhiều cell còn tăng trong vài chục chu kỳ đầu, nên độ lệch
+đo ở chu kỳ đầu không đại diện cho về sau. Khi đo dày, dịch ước lượng theo sai số của lần đo gần nhất đã đủ tốt
+(<<GAN>>); bộ lọc có lợi khi đo thưa (mỗi $0{,}25L$, tốt hơn có ý nghĩa trên <<K25>>), vì nó trả độ lệch về mức chung
+khi lần đo đã xa. Khoảng 90\,\% của bộ lọc hẹp hơn nhiều so với khoảng phù hợp cố định nhưng độ phủ thực tế chỉ <<COV>>.
+""", R10=rng(rq('q10'), 2), R25=rng(rq('q25'), 2), RD=rng(rq('dau'), 2),
+             WD=lst([x for x in DSX if x in worse_dau]) or 'không bộ nào',
+             GAN=(('hơn bộ lọc có ý nghĩa ở ' + lst([x for x in DSX if x in gan_better])) if gan_better
+                  else 'không kém bộ lọc ở bộ nào'),
+             K25=lst([x for x in DSX if x in kal_better25]) or 'không bộ nào',
+             COV=rng([100 * x for x in nk.cov_kalman], 0) + r'\,\%')
 
 
 def e25_text(d, H):

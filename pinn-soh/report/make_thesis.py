@@ -2672,8 +2672,8 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 
 \begin{enumerate}[label=\textbf{CH\arabic*.}]
 \item Cùng 30\,\% nhãn, PINN-semi có sai số thấp hơn MLP có ý nghĩa thống kê <<SIG30>> (tỉ số MAE <<R30>>).
-\item Lợi ích lớn nhất khi ít nhãn (10\,\%: tỉ số <<R10>>, có ý nghĩa <<SIG10>>) và giảm dần khi lượng nhãn tăng
-      (trung bình nhân qua bốn bộ: <<GM>>). Ở 70\,\% nhãn, khi không còn cell không nhãn, <<SIG70>><<WORSE70>>.
+\item Lợi ích lớn nhất khi ít nhãn (10\,\%: tỉ số <<R10>>, có ý nghĩa <<SIG10>>) và giảm dần khi lượng nhãn tăng.
+      Ở 70\,\% nhãn, khi không còn cell không nhãn, <<SIG70>><<WORSE70>>.
 \item <<CH3>>
 \item Ở 10\,\% nhãn, <<SHARE>>\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
@@ -2696,7 +2696,6 @@ giao thức theo cell của đồ án có các tính chất được chứng min
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
              R10=_rng(F['r'][0.1].values()), SIG10=_tren(F['sig'][0.1]) or 'trên không bộ nào',
-             GM=', '.join(f'{pc(fr)}: {f(F["gm"][fr], 2)}' for fr in FRS),
              SIG70=('cải thiện chỉ còn có ý nghĩa ' + _tren(F['sig'][0.7])) if F['sig'][0.7]
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
@@ -2736,15 +2735,19 @@ def e27_concl(d):
         return ''
     import thesis_bk as BK
     E = BK.e27_facts(d)
-    win = [ds for ds in BK.E27_DS if E['strict'][ds] < 1]
-    lose = [ds for ds in BK.E27_DS if E['strict'][ds] >= 1]
-    return T(r"""\item Trên đúng cách chia của PINN4SOH và cùng tiền xử lý với bài, PINN-lai có sai số bằng <<LFL>> lần số công bố
-      (chế độ đầy đủ) và <<SMP>> lần ở chế độ ít mẫu. Với tiền xử lý không rò rỉ, PINN-lai vẫn thấp hơn số công bố
-      <<WIN>><<LOSE>>; sai số của chính phương pháp kiểu PINN4SOH tăng <<LEAK>> lần khi bỏ rò rỉ.
-""", LFL=_rng(E['lfl'].values(), 2), SMP=_rng([x for (ds, n, p), x in E['small'].items() if p == 'paper'], 2),
-             WIN=('trên ' + _lst(win)) if win else 'trên không bộ nào',
-             LOSE=(f', còn trên {_lst(lose)} thì không, chủ yếu vì số của bài hưởng lợi từ rò rỉ' if lose else ''),
-             LEAK=_rng(E['leak'].values(), 1))
+    st = E['strict']
+    win = [ds for ds in BK.E27_DS if st[ds] < 0.95]
+    tie = [ds for ds in BK.E27_DS if 0.95 <= st[ds] <= 1.05]
+    lose = [ds for ds in BK.E27_DS if st[ds] > 1.05]
+    small = [x for (ds, n, p), x in E['small'].items() if p == 'paper']
+    return T(r"""\item Trên đúng cách chia của PINN4SOH, với tiền xử lý không rò rỉ, PINN-lai có sai số bằng <<WR>> lần số công
+      bố <<WIN>><<TIE>><<LOSE>>. Cùng tiền xử lý với bài, PINN-lai bằng <<LFL>> lần ở chế độ đầy đủ và <<SMP>> lần ở chế độ
+      ít mẫu, nhờ các cell không nhãn đi vào loss vật lý.
+""", WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
+             TIE=(f', ngang {_tren(tie)}' if tie else ''),
+             LOSE=(f' và chỉ kém {_tren(lose)}, nơi chỉ số chu kỳ chuẩn hoá theo từng cell cho mô hình của bài biết phần '
+                   'đời đã qua' if lose else ''),
+             LFL=_rng(E['lfl'].values(), 2), SMP=_rng(small, 2))
 
 
 def e28_concl(d):
@@ -2827,10 +2830,15 @@ def abstract_e27(d):
         return ''
     import thesis_bk as BK
     E = BK.e27_facts(d)
-    win = [ds for ds in BK.E27_DS if E['strict'][ds] < 1]
-    return T(r""" Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai có sai số bằng <<LFL>> lần số
-công bố khi dùng cùng tiền xử lý với bài, và với tiền xử lý không rò rỉ vẫn thấp hơn số công bố <<WIN>>.""",
-             LFL=_rng(E['lfl'].values(), 2), WIN=_tren(win) or 'trên không bộ nào')
+    st = E['strict']
+    win = [ds for ds in BK.E27_DS if st[ds] < 0.95]
+    tie = [ds for ds in BK.E27_DS if 0.95 <= st[ds] <= 1.05]
+    lose = [ds for ds in BK.E27_DS if st[ds] > 1.05]
+    return T(r""" Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai với tiền xử lý không rò rỉ có
+sai số bằng <<WR>> lần số công bố <<WIN>><<TIE>><<LOSE>>; cùng tiền xử lý với bài, nó thấp hơn số công bố ở mọi mức của
+thí nghiệm ít mẫu.""", WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
+             TIE=(f', ngang {_tren(tie)}' if tie else ''),
+             LOSE=(f', chỉ kém {_tren(lose)}, nơi số công bố nhờ chuẩn hoá theo cả vòng đời cell' if lose else ''))
 
 
 def abstract_e28(d):
@@ -2934,16 +2942,13 @@ def e22_concl(d):
     import thesis_bk as BK
     E = BK.e22_facts(d)
     t = E['t']
-    return T(r"""\item Có, với độ chính xác giảm dần theo tầm. Khi cell test không được đo dung lượng và lịch sử SOH là ước
-      lượng PINN-lai, mô hình kết hợp (PINN-dự báo và GBDT) dự báo SOH trên toàn bộ phần đời còn lại với MAE
-      <<MAE>> ($\times10^{-3}$), bằng <<RB>> lần sai số của các mô hình chỉ dựa vào lịch sử của chính cell. GBDT và
-      mô hình kết hợp gần ngang nhau về SOH, nhưng GBDT không ngoại suy được ra ngoài tầm đã học nên sai số RUL gấp
-      <<RG>> lần; nghiệm đóng của động học là thứ giúp dự báo RUL. Tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thật
-      là <<IN20>> tuỳ bộ. Dấu của hệ số $\lambda$ học được khớp với hình dạng quỹ đạo: dương ở các bộ có điểm đầu
-      gối, âm ở bộ suy giảm chậm dần. Khoảng 90\,\% hiện chỉ đạt độ phủ <<COV>>.<<REC>><<KF>>
+    return T(r"""\item Có, với độ chính xác giảm dần theo tầm. Khi cell test không được đo dung lượng, mô hình kết hợp
+      (PINN-dự báo và GBDT) dự báo SOH trên toàn bộ phần đời còn lại với MAE <<MAE>> ($\times10^{-3}$), bằng <<RB>>
+      lần các mô hình chỉ dựa vào lịch sử của chính cell; GBDT gần ngang về SOH nhưng không ngoại suy được ra ngoài
+      tầm đã học nên sai số RUL gấp <<RG>> lần. Khoảng 90\,\% chỉ đạt độ phủ <<COV>>.<<REC>><<KF>>
 """, MAE=_rng([1e3 * t(ds, 'uoc', 'e_ket_hop') for ds in DS], 1),
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
-             RG=_rng([E['rul_gb'][ds] for ds in DS], 1), IN20=_rng([100 * E['rul_in20'][ds] for ds in DS], 0) + r'\,\%',
+             RG=_rng([E['rul_gb'][ds] for ds in DS], 1),
              COV=_rng([100 * x for x in E['cov']], 0) + r'\,\%', REC=e23_sentence(d, 'concl'),
              KF='' if 'e28_summary' in d else e25_sentence(d))
 
@@ -3071,7 +3076,8 @@ def build():
                             BK.e26_text(d, sys_helpers()) if 'e26_params' in d else '',
                             BK.e27_text(d, sys_helpers()) if 'e27_summary' in d else '',
                             BK.e28_text(d, sys_helpers()) if 'e28_summary' in d else '', overview_text(d),
-                            BK.tuned_text(d, sys_helpers()) if 'e20_tuned' in d else '')
+                            BK.tuned_text(d, sys_helpers()) if 'e20_tuned' in d else '',
+                            BK.e25_short(d, sys_helpers()) if 'e25_estimation' in d else '')
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
             + r'{\linespread{1.0}\selectfont\tableofcontents\listoffigures\listoftables}' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')

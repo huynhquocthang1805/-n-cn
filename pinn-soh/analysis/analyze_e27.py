@@ -154,7 +154,7 @@ def figure(S):
                  ('MLP (công bố)', lambda k: PAPER_MAE[(ds, f'n{k}')]['MLP'], '#c3cbd1', ':'),
                  ('PINN-lai, tiền xử lý của bài', lambda k: _get(S, ds, f'n{k}', 'paper', 'pinn_lai'), '#86b6ef', '-'),
                  ('PINN-lai, không rò rỉ', lambda k: _get(S, ds, f'n{k}', 'strict', 'pinn_lai'), '#0b3d73', '-'),
-                 ('GBDT, không rò rỉ', lambda k: _get(S, ds, f'n{k}', 'strict', 'gbdt'), '#eda100', '-')]
+                 ('GBDT, không rò rỉ', lambda k: _get(S, ds, f'n{k}', 'strict', 'gbdt'), '#1baf7a', '-')]
         for lab, fn, col, ls in lines:
             ax.plot(n, [1e3 * fn(k) for k in n], color=col, ls=ls, marker='o', ms=3, lw=1.3, label=lab)
         ax.set_yscale('log'); ax.set_xticks(n)
