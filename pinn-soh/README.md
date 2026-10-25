@@ -23,8 +23,9 @@ cell train chỉ được đo ở vài chu kỳ (đầu, mỗi q·L, cuối), v�
 phần cell, và thêm đo cell mới theo cùng lịch với bộ lọc Kalman của E25.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
-Kết quả của báo cáo dựa trên **5 100 lượt huấn luyện** (E13–E20) trên **387 cell** của bốn bộ dữ liệu công
-khai XJTU, TJU, MIT, HUST.
+Kết quả của báo cáo dựa trên **8 938 lượt huấn luyện** (E13–E28, đếm theo tệp kết quả; bảng thời gian chạy bên dưới
+đếm theo lượt phải chạy nên tổng khác) trên **387 cell** của bốn bộ dữ liệu công khai XJTU, TJU, MIT, HUST, cộng 18
+cell của NASA PCoE ở E24.
 
 ---
 
@@ -94,7 +95,8 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E24f | Dự báo E22 và E23 trên NASA (cần E24) | 30 | 0,4 | 0,1 | 0,1 |
 | E26 | λ, Ea trên NASA và TJU: trọng số ODE 0,2/1, ràng buộc Euler, khởi tạo khác (PINN-semi, 70 % nhãn) | 100 | 0,7 | 0,2 | 0,1 |
 | E27 | Cách chia của PINN4SOH (39 nhóm, đầy đủ + ít mẫu), 2 cách tiền xử lý × 3 hạt giống: 3 PINN-semi, GBDT, PINN hộp đen | 1 002 | 7 | 1,8 | 0,9 |
-| **Tổng** | | **6 850** | **≈ 55** | **≈ 14** | **≈ 7** |
+| E28 | Ngân sách đo: mọi cell train đo mỗi q·L, q ∈ {0,5; 0,2; 0,1; 0,05}; 3 PINN-semi, MLP, GBDT trên lần đo / nhãn nội suy (3 lần lặp × 5 fold) | 1 560 | 9 | 2,2 | 1,1 |
+| **Tổng** | | **8 410** | **≈ 64** | **≈ 16** | **≈ 8** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.

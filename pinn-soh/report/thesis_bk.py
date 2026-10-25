@@ -440,7 +440,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
     ch6 = (head6 + leak + s30 + labels + pick(s6, 'So với các mô hình học có nhãn khác') + pick(s6, 'Lợi ích đến từ đâu')
            + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + e27 + e21 + e22[1] + e28 + (e25s if (e28 and e25s) else e25[1])
            + sub1(pick(s6, 'Thảo luận chung'), '\\section{Thảo luận chung}\n', '\\section{Thảo luận chung}\n' + overview)
-           + demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp')))
+           + ('' if e28 else demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp'))))
     ch7 = c8
     out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
     # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
@@ -467,7 +467,6 @@ def fix_refs(t: str) -> str:
         ('Chương~\\ref{ch:caitien} thử kết hợp', 'Mục~\\ref{sec:pinnlai_m} thử kết hợp'),
         ('Cải tiến mô hình (Chương~\\ref{ch:caitien})', 'Cải tiến mô hình (Mục~\\ref{sec:improve})'),
         ('Chương~\\ref{ch:caitien} cho thấy', 'Mục~\\ref{sec:improve} cho thấy'),
-        ('(iii) GBDT là đối thủ mạnh; Chương~\\ref{ch:caitien}', '(iii) GBDT là đối thủ mạnh; Mục~\\ref{sec:improve}'),
         (' (Hình~\\ref{fig:cells}: phần lớn cell nằm dưới đường chéo)', ''),
         ('Hình~\\ref{fig:parity}--\\ref{fig:errsoh} cho thấy', 'Hình~\\ref{fig:traj} cho thấy'),
         ('Bảng~\\ref{tab:rmser2} và Hình~\\ref{fig:rmser2} bổ sung hai', 'Mục này bổ sung hai'),
@@ -911,10 +910,9 @@ nhiều chu kỳ. Trên NASA, điều này khớp với nhận xét của SambaM
 nghỉ: sau mỗi lần nghỉ dài, cell lấy lại một phần dung lượng rồi suy giảm tiếp từ mức mới. Bản đầu tiên của mô hình để
 mạng tự học $\tau_r$; vì rất ít mẫu có phần hồi phục khác 0, $\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ, và trên
 NASA bản đó kém E22 ở tầm ngắn ngay sau hồi phục (tỉ số <<V1NS>><<V1NSIG>>), vì bỏ sót cú nhảy ở chu kỳ cuối và cho
-phần hồi phục tắt dần trong khi thực tế nó được giữ lại. Đổi lại, bản đầu tốt hơn bản này ở gốc thường: với lịch sử đo,
-trên toàn bộ phần đời còn lại, tỉ số so với E22 của bản đầu là <<V1STD>>, của bản này là <<V2STD>>; trong tầm ngắn là
-<<V1SH>> so với <<V2SH>> (cùng thứ tự <<DSORD>>). Bản này được giữ vì được chọn trên tập validation<<EVW>>; cái giá là
-một phần lợi ích ở gốc thường, rõ nhất ở XJTU và TJU.
+phần hồi phục tắt dần trong khi thực tế nó được giữ lại. Bản này được giữ vì được chọn trên tập validation<<EVW>>; cái
+giá là một phần lợi ích ở gốc thường, rõ nhất ở XJTU và TJU (trên toàn bộ phần đời còn lại, tỉ số so với E22 của bản
+đầu là <<V1STD>>, của bản này là <<V2STD>>, theo thứ tự <<DSORD>>).
 
 Dao động đều chỉ được phát hiện ở <<PERX>> số gốc của XJTU, hầu hết thuộc nhóm R2.5, và gần như không có ở các bộ khác
 (<<PERO>>): bộ lọc hai nửa cửa sổ loại được các bước nhảy đơn lẻ vốn trông giống nửa chu kỳ của một sóng dài. Về RUL, bản
@@ -941,8 +939,7 @@ cùng lý do ở Mục~\ref{sec:forecastres}.
              V1NSIG=(', có ý nghĩa thống kê' if v1n is not None and v1n.p < 0.05 else ''),
              V1STD='; '.join(f(E['v1'](ds, 'do', 0, 'toan_bo').ratio, 2) for ds in E23_DS),
              V2STD='; '.join(f(R(ds, 'do', 0, 'toan_bo').ratio, 2) for ds in E23_DS),
-             V1SH='; '.join(f(E['v1'](ds, 'do', 0, 'ngan').ratio, 2) for ds in E23_DS),
-             V2SH='; '.join(f(R(ds, 'do', 0, 'ngan').ratio, 2) for ds in E23_DS), DSORD=', '.join(E23_DS),
+             DSORD=', '.join(E23_DS),
              EVW=(' và vì nó không còn kém E22 có ý nghĩa ở bất kỳ gốc ngay sau hồi phục nào' if not ev_worse else
                   ', dù ngay sau hồi phục nó vẫn kém E22 có ý nghĩa trên ' + lst(ev_worse)),
              PERX=pc(dec['XJTU'].per, 0) if 'XJTU' in dec else '--',
@@ -1151,6 +1148,14 @@ mẫu của bài phần lớn đến từ việc chuẩn hoá theo cả vòng đ
 
 
 # ───────────────────────────────────────────────────────────── E28: ngân sách đo
+E28_DS = ['XJTU', 'TJU', 'MIT', 'HUST']
+
+
+def fq(f, q):
+    """Lịch đo q không có số 0 thừa: 0,05; 0,1; 0,5."""
+    return f(q, 1) if abs(10 * q - round(10 * q)) < 1e-9 else f(q, 2)
+
+
 def e28_facts(d):
     S, Tt = d['e28_summary'], d['e28_tests']
     nan = float('nan')
@@ -1163,101 +1168,138 @@ def e28_facts(d):
     tt = lambda ds, q, model, ref: (lambda r: r.iloc[0] if len(r) else None)(
         Tt[(Tt.dataset == ds) & (Tt.q == q) & (Tt.model == model) & (Tt.ref == ref)])
     qs = sorted({float(x[1:]) for x in S[S.kind == 'do_thua'].regime.unique()}, reverse=True)
-    E = dict(mae=mae, fr=fr, tt=tt, qs=qs, qmin=min(qs))
+    q = min(qs)
+    cmp = lambda model, ref: {ds: r for ds in E28_DS for r in [tt(ds, q, model, ref)] if r is not None}
+    E = dict(mae=mae, fr=fr, tt=tt, qs=qs, qmin=q, qmax=max(qs),
+             c30=cmp('pinn_lai', 'pinn_lai@30'), c70=cmp('pinn_lai', 'pinn_lai@70'),
+             t30=cmp('pinn_lai_v2', 'pinn_lai_v2@30'), t70=cmp('pinn_lai_v2', 'pinn_lai_v2@70'),
+             gi70=cmp('gbdt_interp', 'gbdt@70'),
+             fewer=[fr(ds, 'theo_cell', 'f0.3', 'pinn_lai') / fr(ds, 'do_thua', f'q{q}', 'pinn_lai') for ds in E28_DS])
+    if 'e28_tuned' in d:
+        om = d['e28_tuned'].set_index(['dataset', 'q']).om
+        E['omega'] = lambda ds, q_: float(om[(ds, q_)])
     if 'e28_deploy' in d:
         D = d['e28_deploy']
         D = D.groupby(['dataset', 'q', 'src', 'cell'])[['goc', 'kalman', 'n_meas', 'n_rows']].mean().reset_index()
-        E['dep'] = lambda ds, q, src, col='kalman': float(D[(D.dataset == ds) & (D.q == q) & (D.src == src)][col].mean())
-        E['dep_frac'] = lambda ds, q: float((D[(D.dataset == ds) & (D.q == q) & (D.src == 'sparse')].n_meas
-                                            / D[(D.dataset == ds) & (D.q == q) & (D.src == 'sparse')].n_rows).mean())
+        E['dep'] = lambda ds, q_, src, col='kalman': float(D[(D.dataset == ds) & (D.q == q_) & (D.src == src)][col].mean())
+        E['dep_frac'] = lambda ds, q_: float((D[(D.dataset == ds) & (D.q == q_) & (D.src == 'sparse')].n_meas
+                                             / D[(D.dataset == ds) & (D.q == q_) & (D.src == 'sparse')].n_rows).mean())
     return E
 
 
+def _verdict(C, lst):
+    """'tốt hơn có ý nghĩa ở TJU, kém hơn có ý nghĩa ở MIT, khác biệt không có ý nghĩa ở XJTU và HUST'"""
+    b = [ds for ds in E28_DS if ds in C and C[ds].p < 0.05 and C[ds].ratio < 1]
+    w = [ds for ds in E28_DS if ds in C and C[ds].p < 0.05 and C[ds].ratio > 1]
+    n = [ds for ds in E28_DS if ds in C and C[ds].p >= 0.05]
+    return ', '.join(([f'tốt hơn có ý nghĩa ở {lst(b)}'] if b else []) + ([f'kém hơn có ý nghĩa ở {lst(w)}'] if w else [])
+                     + ([f'khác biệt không có ý nghĩa ở {lst(n)}'] if n else []))
+
+
 def e28_text(d, H):
-    f, m3, table, fig, T, rng, lst, pc = (H[k] for k in ('f', 'm3', 'table', 'fig', 'T', 'rng', 'lst', 'pc'))
+    f, m3, table, fig, T, rng, lst, tren = (H[k] for k in ('f', 'm3', 'table', 'fig', 'T', 'rng', 'lst', 'tren'))
     E = e28_facts(d)
-    mae, fr, tt, qmin = E['mae'], E['fr'], E['tt'], E['qmin']
-    DSX = ['XJTU', 'TJU', 'MIT', 'HUST']
+    mae, fr, qmin, qmax = E['mae'], E['fr'], E['qmin'], E['qmax']
+    DSX = E28_DS
     q2 = sorted(E['qs'])[1] if len(E['qs']) > 1 else qmin
     cell = lambda v, p: f'{m3(v, 2)} ({f(100 * p, 1)})'
     rows = []
     for ds in DSX:
         r = [ds, cell(mae(ds, 'theo_cell', 'f0.3', 'pinn_lai'), fr(ds, 'theo_cell', 'f0.3', 'pinn_lai')),
-             cell(mae(ds, 'theo_cell', 'f0.7', 'pinn_lai'), fr(ds, 'theo_cell', 'f0.7', 'pinn_lai')),
-             m3(mae(ds, 'theo_cell', 'f0.7', 'gbdt'), 2),
+             m3(mae(ds, 'theo_cell', 'f0.7', 'pinn_lai'), 2), m3(mae(ds, 'theo_cell', 'f0.7', 'gbdt'), 2),
              cell(mae(ds, 'do_thua', f'q{q2}', 'pinn_lai'), fr(ds, 'do_thua', f'q{q2}', 'pinn_lai')),
              cell(mae(ds, 'do_thua', f'q{qmin}', 'pinn_lai'), fr(ds, 'do_thua', f'q{qmin}', 'pinn_lai'))]
         if 'dep' in E:
             r.append(m3(E['dep'](ds, q2, 'sparse'), 2))
         rows.append(r)
     hdr = ['Bộ', 'PINN-lai, 30\\,\\% cell', 'PINN-lai, 70\\,\\% cell', 'GBDT, 70\\,\\% cell',
-           f'PINN-lai, đo mỗi ${f(q2, 2)}L$', f'PINN-lai, đo mỗi ${f(qmin, 2)}L$']
+           f'PINN-lai, đo mỗi ${fq(f, q2)}L$', f'PINN-lai, đo mỗi ${fq(f, qmin)}L$']
     if 'dep' in E:
-        hdr.append(f'đo cả cell mới mỗi ${f(q2, 2)}L$')
+        hdr.append(f'đo cả cell mới mỗi ${fq(f, q2)}L$')
     tab = table(hdr, rows, 'l' + 'r' * (len(hdr) - 1),
                 r'MAE theo cell ($\times10^{-3}$) trên test, trung bình 3 lần lặp; trong ngoặc là phần trăm số chu kỳ của cell '
-                r'train có đo dung lượng. Hai cột đo thưa: mọi cell train được đo ở chu kỳ đầu, sau mỗi $qL$ chu kỳ và ở chu kỳ '
-                r'cuối. Cột cuối: thêm đo cell test theo cùng lịch, cập nhật bằng bộ lọc Kalman, sai số trên các chu kỳ không '
-                r'được đo.', 'tab:e28')
-    # so sánh chính: PINN-lai đo thưa ở q nhỏ nhất với theo cell 30 % và 70 %
-    c30 = {ds: tt(ds, qmin, 'pinn_lai', 'pinn_lai@30') for ds in DSX}
-    c70 = {ds: tt(ds, qmin, 'pinn_lai', 'pinn_lai@70') for ds in DSX}
-    g70 = {ds: tt(ds, qmin, 'pinn_lai', 'gbdt@70') for ds in DSX}
-    better30 = [ds for ds in DSX if c30[ds] is not None and c30[ds].ratio < 1]
+                r'train có đo dung lượng (70\,\% số cell là toàn bộ). Hai cột đo thưa: mọi cell train được đo ở chu kỳ đầu, '
+                r'sau mỗi $qL$ chu kỳ và ở chu kỳ cuối. Cột cuối: đo thêm cell test theo cùng lịch, cập nhật bằng bộ lọc '
+                r'Kalman, sai số trên các chu kỳ không được đo.', 'tab:e28')
+    c30, c70, t30, t70 = E['c30'], E['c70'], E['t30'], E['t70']
+    better30 = [ds for ds in DSX if ds in c30 and c30[ds].ratio < 1]
     sig30 = [ds for ds in better30 if c30[ds].p < 0.05]
-    sig70w = [ds for ds in DSX if c70[ds] is not None and c70[ds].p < 0.05 and c70[ds].ratio > 1]
-    sig70b = [ds for ds in DSX if c70[ds] is not None and c70[ds].p < 0.05 and c70[ds].ratio < 1]
-    mlp_hi = {ds: mae(ds, 'do_thua', f'q{max(E["qs"])}', 'mlp') / mae(ds, 'do_thua', f'q{max(E["qs"])}', 'pinn3') for ds in DSX}
-    gi_gm = {ds: mae(ds, 'do_thua', f'q{qmin}', 'gbdt_interp') / mae(ds, 'do_thua', f'q{qmin}', 'gbdt_meas') for ds in DSX}
+    s30 = (', cả bốn có ý nghĩa thống kê' if len(sig30) == len(DSX) else
+           (f', có ý nghĩa thống kê ở {lst(sig30)}' if sig30 else ', không bộ nào có ý nghĩa thống kê'))
+    p3 = lambda ds, q_: mae(ds, 'do_thua', f'q{q_}', 'pinn3')
+    gi = lambda ds, q_: mae(ds, 'do_thua', f'q{q_}', 'gbdt_interp')
+    gb_lo = [ds for ds in DSX if gi(ds, qmin) < p3(ds, qmin)]
+    gb_hi = [ds for ds in DSX if gi(ds, qmax) > p3(ds, qmax)]
+    mlp_hi = [mae(ds, 'do_thua', f'q{qmax}', 'mlp') / p3(ds, qmax) for ds in DSX]
     out = T(r"""
 \section{Ngân sách đo dung lượng}\label{sec:budgetres}
 
 \subsection{Đo thưa khi huấn luyện}
 
-Hình~\ref{fig:e28} đặt hai cách dùng cùng một loại nhãn lên cùng một trục: phần trăm số chu kỳ của cell train có đo dung
-lượng. Theo cell, 30\,\% cell có nhãn tương ứng <<F30>> số chu kỳ train được đo, 70\,\% cell là toàn bộ. Đo thưa mỗi
-$<<QMIN>>L$ trên mọi cell chỉ cần <<FQ>> số chu kỳ, nhưng PINN-lai đạt MAE thấp hơn 30\,\% cell có nhãn trên <<B30>>
-(tỉ số <<R30>><<S30>>) và bằng <<R70>> lần khi 70\,\% cell được đo đầy đủ<<W70>>. Nói cách khác, cùng một lượng công đo,
-rải đều lên mọi cell có giá trị hơn nhiều so với đo kín một phần cell: các chu kỳ của cùng một cell mang thông tin gần
-nhau, còn các cell khác nhau mang độ lệch mức khác nhau mà mô hình cần thấy.
+Hình~\ref{fig:e28} đặt hai cách gắn nhãn lên cùng một trục: phần trăm số chu kỳ của cell train có đo dung lượng. Gắn
+nhãn đầy đủ cho 30\,\% số cell tương ứng <<F30>> số chu kỳ train, 70\,\% số cell là toàn bộ. Đo mỗi $<<QMIN>>L$ chu kỳ
+trên mọi cell chỉ dùng <<FQ>> số chu kỳ, ít hơn <<FEWER>> lần, nhưng PINN-lai học theo cách này có MAE thấp hơn PINN-lai
+học với 30\,\% số cell <<B30>> (tỉ số <<R30>><<S30>>; Bảng~\ref{tab:e28}). So với 70\,\% số cell, tỉ số là <<R70>>:
+<<V70>>. Phân tích thêm sau khi có các số trên: khi trọng số trộn và cửa sổ lọc được chọn trên validation cho cả hai
+cách gắn nhãn như Mục~\ref{sec:tuned}, hai tỉ số này là <<T30>> và <<T70>>.
 
 <<FIG>>
 
-Vật lý là thứ giữ cho mạng nơ-ron dùng được khi nhãn thưa. Ở lịch thưa nhất ($<<QMAX>>L$), MLP chỉ học trên các lần đo có
-sai số bằng <<MLPR>> lần trung bình ba PINN-semi, vì ràng buộc đơn điệu và động học trên mọi hàng nối các lần đo với
-nhau. GBDT không có cơ chế này; với nó, nội suy tuyến tính giữa hai lần đo trước khi học cho tỉ số MAE <<GIGM>> so với
-chỉ học trên các lần đo (lịch $<<QMIN>>L$).
+Lợi ích nằm ở chỗ đặt nhãn hơn là ở mô hình. Phần lớn sai số là lệch mức và trôi chậm riêng của từng cell
+(Mục~\ref{sec:errdecomp}); mô hình chỉ học được phần này khi thấy nhãn của chính cell đó, trong khi các chu kỳ liền nhau
+của một cell gần như lặp lại thông tin của nhau. Đo kín một phần cell dồn công đo vào thông tin lặp lại và bỏ trống độ
+lệch của các cell còn lại. Vì vậy GBDT học nhãn nội suy tuyến tính giữa các lần đo ở lịch $<<QMIN>>L$ cũng có sai số
+bằng <<GI70>> lần GBDT học với 70\,\% số cell, và Hình~\ref{fig:overview} cho thấy điều tương tự ở mọi mô hình.
+
+Không thành phần nào của PINN-lai tốt nhất ở mọi lịch đo. Ở lịch $<<QMIN>>L$, GBDT học nhãn nội suy tốt hơn trung bình
+ba PINN-semi <<GBLO>>. Ở lịch thưa nhất ($<<QMAX>>L$, khoảng ba lần đo mỗi cell), nội suy tuyến tính qua nửa đời cell bỏ
+qua đoạn suy giảm nhanh về cuối, và GBDT kém hơn ba PINN-semi <<GBHI>>; MLP chỉ học trên các lần đo cũng kém ba PINN-semi
+<<MLPR>> lần, vì ràng buộc đơn điệu và động học trên mọi hàng là thứ nối các lần đo với nhau.<<OM>>
 
 <<TAB>>
 """, F30=rng([100 * fr(ds, 'theo_cell', 'f0.3', 'pinn_lai') for ds in DSX], 0) + r'\,\%',
-             QMIN=f(qmin, 2), QMAX=f(max(E['qs']), 1),
+             QMIN=fq(f, qmin), QMAX=fq(f, qmax),
              FQ=rng([100 * fr(ds, 'do_thua', f'q{qmin}', 'pinn_lai') for ds in DSX], 1) + r'\,\%',
-             B30=(lst(better30) if len(better30) < len(DSX) else 'cả bốn bộ') if better30 else 'không bộ nào',
-             R30=rng([c30[ds].ratio for ds in DSX if c30[ds] is not None], 2),
-             S30=(f', có ý nghĩa thống kê ở {lst(sig30)}' if sig30 else ''),
-             R70=rng([c70[ds].ratio for ds in DSX if c70[ds] is not None], 2),
-             W70=((f'; kém hơn có ý nghĩa ở {lst(sig70w)}' if sig70w else '; khác biệt không có ý nghĩa ở bộ nào')
-                  + (f', tốt hơn có ý nghĩa ở {lst(sig70b)}' if sig70b else '')),
-             MLPR=rng(list(mlp_hi.values()), 1), GIGM=rng(list(gi_gm.values()), 2), TAB=tab,
+             FEWER=rng(E['fewer'], 0),
+             B30=tren(better30) or 'trên không bộ nào', R30=rng([c30[ds].ratio for ds in c30], 2), S30=s30,
+             R70=rng([c70[ds].ratio for ds in c70], 2), V70=_verdict(c70, lst),
+             T30=rng([t30[ds].ratio for ds in t30], 2), T70=rng([t70[ds].ratio for ds in t70], 2),
+             GI70=rng([E['gi70'][ds].ratio for ds in E['gi70']], 2),
+             GBLO=tren(gb_lo) or 'trên không bộ nào',
+             GBHI=(tren(gb_hi) + f' (tới {f(max(gi(ds, qmax) / p3(ds, qmax) for ds in gb_hi), 1)} lần)') if gb_hi
+             else 'trên không bộ nào',
+             MLPR=rng(mlp_hi, 1), TAB=tab,
+             OM=_omega_sentence(E, f, lst, qmin, qmax) if 'omega' in E else '',
              FIG=fig('fig_e28_budget', 'MAE theo cell trên test theo phần trăm số chu kỳ của cell train có đo dung lượng '
-                     '(hai trục thang log). Nét đứt: nhãn theo cell (10, 30, 50, 70\\,\\% cell có nhãn đầy đủ); nét liền: đo '
+                     '(hai trục thang log). Nét đứt: nhãn theo cell (10, 30, 50, 70\\,\\% số cell có nhãn đầy đủ); nét liền: đo '
                      'thưa mọi cell train theo lịch $qL$, $q$ = 0{,}5; 0{,}2; 0{,}1; 0{,}05.', 'fig:e28'))
     if 'dep' in E:
         dep = {ds: E['dep'](ds, q2, 'sparse') for ds in DSX}
         dep70 = {ds: E['dep'](ds, q2, 'full70') for ds in DSX}
-        g70v = {ds: mae(ds, 'theo_cell', 'f0.7', 'gbdt') for ds in DSX}
-        below = [ds for ds in DSX if dep[ds] < g70v[ds]]
+        g70 = {ds: mae(ds, 'theo_cell', 'f0.7', 'gbdt') for ds in DSX}
+        below = [ds for ds in DSX if dep[ds] < g70[ds]]
         out += T(r"""
 \subsection{Đo thưa cả khi dùng}
 
-Khi cell mới cũng được đo theo cùng lịch $<<Q2>>L$ (khoảng <<DF>> số chu kỳ của nó) và ước lượng được cập nhật bằng bộ
-lọc Kalman \eqref{eq:kf}, MAE trên các chu kỳ không được đo của PINN-lai học từ nhãn thưa còn <<DEP>> ($\times10^{-3}$),
-thấp hơn GBDT học với 70\,\% cell có nhãn đầy đủ nhưng không đo cell mới trên <<BELOW>>. Cùng lịch đo khi dùng, mô hình
-học từ 70\,\% cell có nhãn đầy đủ cho <<DEP70>>: khi đã đo cell mới, phần lớn khác biệt giữa hai cách huấn luyện biến mất.
-""", Q2=f(q2, 2), DF=rng([100 * E['dep_frac'](ds, q2) for ds in DSX], 0) + r'\,\%', DEP=rng([1e3 * v for v in dep.values()], 1),
-                 BELOW=(lst(below) if len(below) < len(DSX) else 'cả bốn bộ') if below else 'không bộ nào',
-                 DEP70=rng([1e3 * v for v in dep70.values()], 1))
+Khi cell mới cũng được đo theo lịch $<<Q2>>L$ (<<DF>> số chu kỳ của nó) và ước lượng được cập nhật bằng bộ lọc Kalman
+\eqref{eq:kf}, MAE trên các chu kỳ không được đo của PINN-lai học từ nhãn thưa còn <<DEP>> ($\times10^{-3}$), bằng
+<<DEPR>> lần GBDT học với 70\,\% số cell có nhãn đầy đủ nhưng không đo cell mới<<BELOW>>. Với cùng lịch đo khi dùng,
+PINN-lai học với 70\,\% số cell cho <<DEP70>>: khi cell mới đã được đo, chênh lệch giữa hai cách huấn luyện không quá
+<<DIFF>> ($\times10^{-3}$).
+""", Q2=fq(f, q2), DF=rng([100 * E['dep_frac'](ds, q2) for ds in DSX], 0) + r'\,\%',
+                 DEP=rng([1e3 * v for v in dep.values()], 1), DEPR=rng([dep[ds] / g70[ds] for ds in DSX], 2),
+                 BELOW='' if len(below) == len(DSX) else f' (thấp hơn {tren(below) or "trên không bộ nào"})',
+                 DEP70=rng([1e3 * v for v in dep70.values()], 1),
+                 DIFF=f(max(abs(1e3 * (dep[ds] - dep70[ds])) for ds in DSX), 1))
     return out
+
+
+def _omega_sentence(E, f, lst, qmin, qmax):
+    lo = [ds for ds in E28_DS if E['omega'](ds, qmin) <= 0.3]
+    hi = [ds for ds in E28_DS if E['omega'](ds, qmax) >= 0.7]
+    parts = ([rf'$\omega = 0{{,}}3$ (nghiêng về GBDT) ở lịch ${fq(f, qmin)}L$ trên {lst(lo)}'] if lo else []) + \
+            ([rf'$\omega = 0{{,}}7$ ở lịch ${fq(f, qmax)}L$ trên {lst(hi)}'] if hi else [])
+    return (' Trọng số chọn trên validation đi theo lịch đo: ' + ', '.join(parts) + '.') if parts else ''
 
 
 def e25_short(d, H):

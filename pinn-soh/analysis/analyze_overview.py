@@ -4,9 +4,9 @@ Hình tổng quan: sai số của từng mô hình khi có 30 % và 70 % số ce
     python analysis/analyze_overview.py     # -> results/fig_overview.pdf|png, results/overview.csv
 
 Mỗi bộ dữ liệu một panel, mỗi mô hình một hàng; trục ngang là MAE theo cell (thang log). Vòng tròn rỗng là 30 % nhãn,
-vòng tròn đặc là 70 % nhãn, nối bằng một đoạn thẳng; hình thoi là PINN-lai học từ các lần đo thưa trên mọi cell train
-(mức q nhỏ nhất của E28, khoảng vài phần trăm số chu kỳ). Đọc theo chiều ngang: điểm nào nằm bên trái điểm khác là sai
-số thấp hơn.
+vòng tròn đặc là 70 % nhãn, nối bằng một đoạn thẳng; hình thoi là cùng mô hình học từ các lần đo thưa trên mọi cell train
+(mức q nhỏ nhất của E28, khoảng vài phần trăm số chu kỳ; GBDT học nhãn nội suy giữa các lần đo). Đọc theo chiều ngang:
+điểm nào nằm bên trái điểm khác là sai số thấp hơn.
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -20,6 +20,7 @@ OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 MODELS = [('mlp', 'MLP'), ('pinn', 'PINN-semi'), ('gbdt', 'GBDT'), ('pinn_lai', 'PINN-lai'),
           ('pinn_lai_v2', 'PINN-lai tinh chỉnh')]
+SPARSE = {'mlp': 'mlp', 'pinn': 'pinn', 'gbdt': 'gbdt_interp', 'pinn_lai': 'pinn_lai', 'pinn_lai_v2': 'pinn_lai_v2'}
 
 
 def load():
@@ -32,12 +33,13 @@ def load():
     sparse = None
     if os.path.exists(f'{OUT}/e28_summary.csv'):
         e = pd.read_csv(f'{OUT}/e28_summary.csv')
-        e = e[(e.kind == 'do_thua') & (e.model == 'pinn_lai')]
+        e = e[e.kind == 'do_thua']
         if len(e):
             qmin = e.regime.map(lambda x: float(x[1:])).min()
             sparse = e[e.regime == f'q{qmin}']
-            for r in sparse.itertuples():
-                rows.append(dict(dataset=r.dataset, model='pinn_lai', regime='sparse', mae=r.mae, frac_rows=r.frac_rows))
+            for m, src in SPARSE.items():
+                for r in sparse[sparse.model == src].itertuples():
+                    rows.append(dict(dataset=r.dataset, model=m, regime='sparse', mae=r.mae, frac_rows=r.frac_rows))
     return pd.DataFrame(rows)
 
 
@@ -54,8 +56,8 @@ def figure(D):
                 ax.plot([g['f0.3'], g['f0.7']], [i, i], color=col[m], lw=1.2, zorder=1)
                 ax.scatter([g['f0.3']], [i], s=22, facecolor='white', edgecolor=col[m], lw=1.2, zorder=2)
                 ax.scatter([g['f0.7']], [i], s=22, color=col[m], zorder=2)
-            if m == 'pinn_lai' and 'sparse' in g:
-                ax.scatter([g['sparse']], [i + 0.35], s=26, marker='D', color='#e87ba4', zorder=3)
+            if 'sparse' in g:
+                ax.scatter([g['sparse']], [i + 0.3], s=20, marker='D', color=col[m], edgecolor='white', lw=0.5, zorder=3)
         ref = D[(D.dataset == ds) & (D.model == 'pinn_lai_v2') & (D.regime == 'f0.3')].mae
         if not len(ref):
             ref = D[(D.dataset == ds) & (D.model == 'pinn_lai') & (D.regime == 'f0.3')].mae
@@ -72,7 +74,7 @@ def figure(D):
     axes[0].set_yticks(range(len(MODELS))); axes[0].set_yticklabels([l for _, l in MODELS], fontsize=7)
     hd = [plt.Line2D([], [], ls='', marker='o', mfc='white', mec='#4a5563', ms=4.5, label='30 % cell có nhãn'),
           plt.Line2D([], [], ls='', marker='o', color='#4a5563', ms=4.5, label='70 % cell có nhãn'),
-          plt.Line2D([], [], ls='', marker='D', color='#e87ba4', ms=4.5, label='PINN-lai, đo thưa mọi cell')]
+          plt.Line2D([], [], ls='', marker='D', color='#4a5563', ms=4.5, label='đo thưa mọi cell')]
     fig.legend(handles=hd, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.05), fontsize=7)
     fig.tight_layout(rect=[0, 0.12, 1, 1])
     fig.text(0.5, 0.1, 'MAE theo cell trên test (×10$^{-3}$, thang log)', ha='center', fontsize=7.5)

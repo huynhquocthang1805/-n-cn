@@ -13,6 +13,8 @@ Mô hình ở chế độ đo thưa:
     pinn3       trung bình 3 PINN-semi
     gbdt_meas   GBDT chỉ trên các hàng được đo;  gbdt_interp  GBDT trên nhãn nội suy
     mlp         MLP chỉ trên các hàng được đo;    pinn_interp  một PINN-semi học nhãn nội suy (q = 0,1; 0,05)
+    pinn_lai_v2 PINN-lai với (ω, w) chọn trên cell validation theo cùng lưới của analyze_tuning.py, riêng cho từng bộ và
+                từng q; ở chế độ nhãn theo cell là (ω, w) đã chọn trong results/e20_tuned.csv
 Sai số: MAE theo cell trên test, trung bình qua 3 lần lặp; Wilcoxon ghép cặp theo cell so với PINN-lai và GBDT của E20
 ở 30 % và 70 % nhãn (cùng fold, cùng cell test).
 """
@@ -20,6 +22,7 @@ from __future__ import annotations
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 _os.chdir(_sys.path[0])
+_sys.path.insert(0, _os.path.join(_sys.path[0], 'analysis'))
 import collections, json, os
 import numpy as np
 import pandas as pd
@@ -28,6 +31,7 @@ from scipy import stats
 from pinnsoh.experiments import E28, E28_QS
 from pinnsoh.postproc import by_cell, causal_trend
 from pinnsoh.runcache import cached_map
+from analyze_tuning import OMEGAS, WINDOWS
 
 OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
@@ -79,7 +83,7 @@ def build_sparse():
     paths = sorted({p for g in G.values() for v in g.values() for p in (v if isinstance(v, list) else [v])
                     if p and os.path.exists(p)})
     data = dict(zip(paths, cached_map(paths, _both, 'e28_preds_v1')))
-    rows, rowfrac, val = [], [], []
+    rows, rowfrac, val, grid = [], [], [], []
     for (ds, q, r, k), g in sorted(G.items()):
         need = g['pinn'] + [g['gbdt_interp'], g['gbdt_meas'], g['mlp']]
         if not all(p and p in data for p in need):
@@ -101,7 +105,19 @@ def build_sparse():
                 for c, e in cell_errors(y, p, cell).items():
                     (rows if part == 'test' else val).append(dict(dataset=ds, regime=f'q{q}', q=q, r=r, k=k, model=m,
                                                                   cell=c, mae=e))
-    return pd.DataFrame(rows), pd.DataFrame(val), pd.DataFrame(rowfrac)
+            for om in OMEGAS:
+                for w in WINDOWS:
+                    p = by_cell(causal_trend, om * pinn3 + (1 - om) * gi, cell, cyc, w=w)
+                    for c, e in cell_errors(y, p, cell).items():
+                        grid.append(dict(dataset=ds, q=q, r=r, k=k, part=part, om=om, w=w, cell=c, mae=e))
+    # PINN-lai tinh chỉnh: (ω, w) có MAE theo cell trung bình nhỏ nhất trên validation (3 lần lặp × 5 fold)
+    Gd = pd.DataFrame(grid)
+    V = Gd[Gd.part == 'val'].groupby(['dataset', 'q', 'om', 'w']).mae.mean().reset_index()
+    best = V.loc[V.groupby(['dataset', 'q']).mae.idxmin()].rename(columns={'mae': 'val'})
+    Tb = Gd[Gd.part == 'test'].merge(best[['dataset', 'q', 'om', 'w']], on=['dataset', 'q', 'om', 'w'])
+    rows += [dict(dataset=t.dataset, regime=f'q{t.q}', q=t.q, r=t.r, k=t.k, model='pinn_lai_v2', cell=t.cell, mae=t.mae)
+             for t in Tb.itertuples()]
+    return pd.DataFrame(rows), pd.DataFrame(val), pd.DataFrame(rowfrac), best
 
 
 def build_bycell():
@@ -110,11 +126,18 @@ def build_bycell():
     from pinnsoh.baselines import cells_of
     from pinnsoh.data import cv_split, choose_labelled
     P, _ = A.build()
+    tuned = (pd.read_csv(f'{OUT}/e20_tuned.csv').set_index(['ds', 'f'])[['omega', 'w']]
+             if os.path.exists(f'{OUT}/e20_tuned.csv') else None)
     rows, rowfrac = [], []
     for (ds, f, r, k), rec in P.items():
         t = rec['test']
-        for m in ('pinn_lai', 'gbdt', 'mlp', 'pinn3'):
-            for c, e in cell_errors(t['y'], t['pred'][m], t['cell']).items():
+        pred = {m: t['pred'][m] for m in ('pinn_lai', 'gbdt', 'mlp', 'pinn3')}
+        if tuned is not None:
+            om, w = tuned.loc[(ds, f)]
+            pred['pinn_lai_v2'] = by_cell(causal_trend, om * t['pred']['pinn3'] + (1 - om) * t['pred']['gbdt'], t['cell'],
+                                          t['cyc'], w=int(w))
+        for m, p in pred.items():
+            for c, e in cell_errors(t['y'], p, t['cell']).items():
                 rows.append(dict(dataset=ds, regime=f'f{f}', frac=f, r=r, k=k, model=m, cell=c, mae=e))
     for ds in DS:
         cells = cells_of(ds); by = {c.cid: c for c in cells}
@@ -143,12 +166,15 @@ def tests(Cs, Cb):
     out = []
     for ds in DS:
         for q in E28_QS:
-            for m in ('pinn_lai', 'gbdt_interp', 'gbdt_meas', 'mlp', 'pinn3'):
+            for m in ('pinn_lai', 'pinn_lai_v2', 'gbdt_interp', 'gbdt_meas', 'mlp', 'pinn3'):
                 x = a[(a.dataset == ds) & (a.regime == f'q{q}') & (a.model == m)].set_index('cell').mae
                 if not len(x):
                     continue
-                for ref_m, f in (('pinn_lai', 0.3), ('pinn_lai', 0.7), ('gbdt', 0.7), ('gbdt', 0.3)):
+                for ref_m, f in (('pinn_lai', 0.3), ('pinn_lai', 0.7), ('gbdt', 0.7), ('gbdt', 0.3), ('pinn_lai_v2', 0.3),
+                                 ('pinn_lai_v2', 0.7)):
                     yv = b[(b.dataset == ds) & (b.regime == f'f{f}') & (b.model == ref_m)].set_index('cell').mae
+                    if not len(yv):
+                        continue
                     cells = sorted(set(x.index) & set(yv.index))
                     d = x.reindex(cells).values - yv.reindex(cells).values
                     out.append(dict(dataset=ds, q=q, model=m, ref=f'{ref_m}@{int(100 * f)}', n_cells=len(cells),
@@ -261,9 +287,10 @@ def deploy(qs=E28_QS):
 
 
 def main():
-    Cs, Vs, Fs = build_sparse()
+    Cs, Vs, Fs, best = build_sparse()
     Cb, Fb = build_bycell()
     os.makedirs(OUT, exist_ok=True)
+    best.to_csv(f'{OUT}/e28_tuned.csv', index=False)
     pd.concat([Cs.assign(kind='do_thua'), Cb.assign(kind='theo_cell')]).to_csv(f'{OUT}/e28_cells.csv.gz', index=False)
     S = summary(Cs, Cb, Fs, Fb); S.to_csv(f'{OUT}/e28_summary.csv', index=False)
     T = tests(Cs, Cb); T.to_csv(f'{OUT}/e28_tests.csv', index=False)
@@ -273,7 +300,8 @@ def main():
         p = S.assign(mae=1e3 * S.mae, pr=100 * S.frac_rows).pivot_table(index=['dataset', 'kind', 'regime', 'pr'],
                                                                           columns='model', values='mae')
         print(p.round(2).to_string())
-        print(T[T.model == 'pinn_lai'].round(4).to_string(index=False))
+        print(T[T.model.isin(['pinn_lai', 'pinn_lai_v2'])].round(4).to_string(index=False))
+        print(best.round(5).to_string(index=False))
         print((1e3 * V).round(2).to_string())
     D = deploy()
     D.to_csv(f'{OUT}/e28_deploy.csv.gz', index=False)
@@ -284,5 +312,4 @@ def main():
 
 
 if __name__ == '__main__':
-    _sys.path.insert(0, _os.path.join(_sys.path[0], 'analysis'))
     main()

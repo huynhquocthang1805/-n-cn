@@ -61,7 +61,7 @@ def load():
               'e22_horizon', 'e22_traj', 'e22_tests', 'e22_rul', 'e22_rul_tests', 'e22_lambda', 'e22_setting',
               'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
               'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1', 'e25_estimation', 'e25_forecast',
-              'e26_params', 'e26_mae', 'e27_summary', 'e27_tests', 'e28_summary', 'e28_tests', 'overview',
+              'e26_params', 'e26_mae', 'e27_summary', 'e27_tests', 'e28_summary', 'e28_tests', 'e28_tuned', 'overview',
               'e20_tuned']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
@@ -2179,11 +2179,11 @@ ghép GBDT với nhóm PINN còn tốt hơn cả hai.
 
 \paragraph{Hạn chế.} (i) Khoảng dự báo 90\,\% chưa đạt độ phủ danh nghĩa, và vài lần đo dung lượng chỉ sửa được
 mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
-(iii) GBDT là đối thủ mạnh; Chương~\ref{ch:caitien} kết hợp nó với PINN ở mức dự đoán, nhưng ràng buộc vật lý
-chưa được đưa vào chính mô hình cây. (iv) Cell validation cần nhãn ngoài ngân
-sách nhãn. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ không
+(iii) Ràng buộc vật lý chưa được đưa vào chính mô hình cây; PINN-lai chỉ ghép hai mô hình ở mức dự đoán. (iv) Cell validation có nhãn đầy đủ và nằm ngoài ngân sách nhãn ở mọi thí
+nghiệm, kể cả khi đo thưa. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ không
 được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
-mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}).
+mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
+đánh giá với ba lần lặp thay vì năm.
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
                                            'và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai '
                                            'số càng bị đánh giá thấp giả tạo.', 'fig:leak'),
@@ -2220,7 +2220,7 @@ mạng gán cho biến thời gian, không phải tốc độ suy giảm thật 
                                   'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
                                   'fig:transfer', width=r'\textwidth'),
              TRTXT=tr_txt, TPH=t['PH'], METRICS=ch6_metrics(d, ctx), PHYSCHECK=ch6_physcheck(d, ctx),
-             TRGBD=e21_discussion(d), PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
+             TRGBD='' if 'e28_summary' in d else e21_discussion(d), PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
 
 
 # ═════════════════════════════════════════════════════════════ CHƯƠNG 7
@@ -2720,13 +2720,20 @@ hình cây bù được hơn một nửa số cell có nhãn; nhưng <<GB>>.""",
             GB=(r'nó vẫn nằm bên phải GBDT ở 70\,\%' if not gb else r'nó còn bên trái GBDT ở 70\,\% ' + _tren(gb)))
     sp = O[O.regime == 'sparse']
     if len(sp):
-        sb = [ds for ds in DS if v(ds, 'pinn_lai', 'sparse') < v(ds, 'pinn_lai', 'f0.3')]
-        txt += T(r""" Hình thoi là PINN-lai học từ các lần đo thưa trên mọi cell train (<<FR>> số chu kỳ được đo): nó
-nằm bên trái PINN-lai 30\,\% <<SB>> (Mục~\ref{sec:budgetres}).""",
-                 FR=_rng(100 * sp.frac_rows, 1) + r'\,\%', SB=_tren(sb) or 'ở không bộ nào')
+        M = sorted(set(sp.model))
+        left = sum(v(ds, m, 'sparse') < v(ds, m, 'f0.3') for ds in DS for m in M)
+        gap = lambda ds, m: (v(ds, m, 'f0.3') - v(ds, m, 'sparse')) / (v(ds, m, 'f0.3') - v(ds, m, 'f0.7'))
+        txt += T(r""" Hình thoi, cùng mô hình học từ các lần đo thưa trên mọi cell train (<<FR>> số chu kỳ), nằm bên
+trái vòng rỗng ở <<LEFT>> cặp mô hình và bộ dữ liệu; với mọi mô hình trừ MLP, nó lấy lại ít nhất <<GAP>>\,\% khoảng
+cách từ 30\,\% đến 70\,\% số cell có nhãn (Mục~\ref{sec:budgetres}). Câu hỏi đáng đặt ra vì vậy không phải là 30\,\%
+nhãn có thắng 70\,\% nhãn hay không, mà là nên đặt các lần đo dung lượng ở đâu.""",
+                 FR=_rng(100 * sp.frac_rows, 1) + r'\,\%',
+                 LEFT=f'cả {left}' if left == len(DS) * len(M) else f'{left}/{len(DS) * len(M)}',
+                 GAP=f(100 * min(gap(ds, m) for ds in DS for m in M if m != 'mlp'), 0))
     txt += '\n\n' + fig('fig_overview', 'MAE theo cell trên test (thang log) của từng mô hình khi có 30\\,\\% (vòng rỗng) và '
-                         '70\\,\\% (vòng đặc) cell có nhãn; hình thoi: PINN-lai học từ các lần đo thưa trên mọi cell train. '
-                         'Vạch đứt: PINN-lai ở 30\\,\\% nhãn.', 'fig:overview') + '\n'
+                         '70\\,\\% (vòng đặc) số cell có nhãn đầy đủ; hình thoi: cùng mô hình học từ các lần đo mỗi '
+                         '$0{,}05L$ trên mọi cell train (GBDT học nhãn nội suy giữa các lần đo). Vạch đứt: PINN-lai tinh '
+                         'chỉnh ở 30\\,\\% nhãn.', 'fig:overview') + '\n'
     return txt
 
 
@@ -2756,21 +2763,19 @@ def e28_concl(d):
     import thesis_bk as BK
     E = BK.e28_facts(d)
     q = E['qmin']
-    r30 = [E['tt'](ds, q, 'pinn_lai', 'pinn_lai@30') for ds in DS]
-    r70 = [E['tt'](ds, q, 'pinn_lai', 'pinn_lai@70') for ds in DS]
-    txt = T(r"""\item Nên đo thưa trên mọi cell. Đo mỗi $<<Q>>L$ (<<FQ>> số chu kỳ train) cho PINN-lai sai số bằng <<R30>> lần
-      đo đầy đủ 30\,\% cell (<<F30>> số chu kỳ) và <<R70>> lần đo đầy đủ 70\,\% cell.""",
-            Q=f(q, 2), FQ=_rng([100 * E['fr'](ds, 'do_thua', f'q{q}', 'pinn_lai') for ds in DS], 1) + r'\,\%',
+    txt = T(r"""\item Nên tính nhãn theo số lần đo dung lượng và rải các lần đo lên mọi cell thay vì đo kín một phần cell. Đo mỗi
+      $<<Q>>L$ (<<FQ>> số chu kỳ train) cho PINN-lai sai số bằng <<R30>> lần gắn nhãn đầy đủ cho 30\,\% số cell (<<F30>> số
+      chu kỳ) và <<R70>> lần khi gắn cho 70\,\% số cell; cả năm mô hình đều hưởng lợi theo cùng hướng.""",
+            Q=BK.fq(f, q), FQ=_rng([100 * E['fr'](ds, 'do_thua', f'q{q}', 'pinn_lai') for ds in DS], 1) + r'\,\%',
             F30=_rng([100 * E['fr'](ds, 'theo_cell', 'f0.3', 'pinn_lai') for ds in DS], 0) + r'\,\%',
-            R30=_rng([x.ratio for x in r30 if x is not None], 2), R70=_rng([x.ratio for x in r70 if x is not None], 2))
+            R30=_rng([x.ratio for x in E['c30'].values()], 2), R70=_rng([x.ratio for x in E['c70'].values()], 2))
     if 'dep' in E:
         q2 = sorted(E['qs'])[1] if len(E['qs']) > 1 else q
         dep = [E['dep'](ds, q2, 'sparse') for ds in DS]
         g70 = [E['mae'](ds, 'theo_cell', 'f0.7', 'gbdt') for ds in DS]
-        n_below = sum(a < b for a, b in zip(dep, g70))
         txt += T(r""" Đo thêm cell mới theo lịch $<<Q2>>L$ và cập nhật bằng bộ lọc Kalman đưa MAE xuống <<DEP>>
-      ($\times10^{-3}$), thấp hơn GBDT học với 70\,\% cell có nhãn đầy đủ trên <<NB>>/4 bộ.""",
-                 Q2=f(q2, 2), DEP=_rng([1e3 * x for x in dep], 1), NB=n_below)
+      ($\times10^{-3}$), bằng <<DR>> lần GBDT học với 70\,\% cell có nhãn đầy đủ.""",
+                 Q2=BK.fq(f, q2), DEP=_rng([1e3 * x for x in dep], 1), DR=_rng([a / b for a, b in zip(dep, g70)], 2))
     return txt + '\n'
 
 
@@ -2847,18 +2852,16 @@ def abstract_e28(d):
     import thesis_bk as BK
     E = BK.e28_facts(d)
     q = E['qmin']
-    r30 = [E['tt'](ds, q, 'pinn_lai', 'pinn_lai@30') for ds in DS]
-    txt = T(r""" Khi tính nhãn theo số lần đo dung lượng thay vì số cell, đo thưa trên mọi cell (<<FQ>> số chu kỳ) cho
-sai số bằng <<R30>> lần đo đầy đủ 30\,\% cell.""",
+    txt = T(r""" Khi tính nhãn theo số lần đo dung lượng thay vì số cell, đo thưa trên mọi cell chỉ với <<FQ>> số chu kỳ
+cho PINN-lai sai số bằng <<R30>> lần gắn nhãn đầy đủ cho 30\,\% số cell và <<R70>> lần khi gắn cho 70\,\% số cell.""",
             FQ=_rng([100 * E['fr'](ds, 'do_thua', f'q{q}', 'pinn_lai') for ds in DS], 1) + r'\,\%',
-            R30=_rng([x.ratio for x in r30 if x is not None], 2))
+            R30=_rng([x.ratio for x in E['c30'].values()], 2), R70=_rng([x.ratio for x in E['c70'].values()], 2))
     if 'dep' in E:
         q2 = sorted(E['qs'])[1] if len(E['qs']) > 1 else q
         dep = [E['dep'](ds, q2, 'sparse') for ds in DS]
         g70 = [E['mae'](ds, 'theo_cell', 'f0.7', 'gbdt') for ds in DS]
-        below = [ds for ds, a, b in zip(DS, dep, g70) if a < b]
-        txt += T(r""" Đo thêm cell mới theo cùng lịch và cập nhật bằng bộ lọc Kalman, sai số còn thấp hơn GBDT học với 70\,\%
-cell có nhãn đầy đủ <<BELOW>>.""", BELOW=_tren(below) or 'ở không bộ nào')
+        txt += T(r""" Đo thêm cell mới theo cùng lịch và cập nhật bằng bộ lọc Kalman, sai số còn <<DR>> lần GBDT học với
+70\,\% số cell có nhãn đầy đủ.""", DR=_rng([a / b for a, b in zip(dep, g70)], 2))
     return txt
 
 

@@ -40,3 +40,10 @@ trên lập luận, không dựa trên tập test.
   trên HUST.
 * GBDT tinh chỉnh (tốc độ học, số lá, số mẫu tối thiểu mỗi lá): lẫn lộn theo fold.
 * Làm trơn nhãn của cell train (trung vị/trung bình trượt): XJTU kém đi, TJU tốt hơn, MIT không đổi.
+
+## Thêm sau khi xem kết quả test của E28
+
+* PINN-lai tinh chỉnh ở chế độ đo thưa: (ω, w) chọn trên cell validation, riêng cho từng bộ và từng q, theo đúng lưới
+  và quy tắc của phần tinh chỉnh E20 (ω ∈ {0,3; …; 0,7}, w ∈ {5, 10, 20, 40}). Phân tích này được thêm sau khi đã
+  thấy kết quả test của công thức cố định, nên chỉ là phân tích phụ; so sánh chính vẫn là công thức cố định ½ / w = 10.
+  Nó được so với PINN-lai tinh chỉnh ở chế độ nhãn theo cell (cùng điều kiện), không so với bản cố định.
