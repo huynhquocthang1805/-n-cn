@@ -24,10 +24,13 @@ cell train chỉ được đo ở vài chu kỳ (đầu, mỗi q·L, cuối), v�
 phần cell, và thêm đo cell mới theo cùng lịch với bộ lọc Kalman của E25. E29 thêm lịch sử của cell vào đầu vào
 (trung bình trượt mũ nhân quả của đặc trưng sạc, độ dốc gần đây), chọn dạng trên validation cho từng bộ và từng mô
 hình, và kiểm tra bộ lọc quỹ đạo: bản hiện tại không bảo đảm SOH không tăng, bản có bảo đảm làm sai số tăng ở bộ có
-dung lượng hồi phục (XJTU, NASA).
+dung lượng hồi phục (XJTU, NASA). Lịch sử giảm sai số của PINN-lai trên TJU và HUST khi có từ 30 % nhãn nhưng không
+giúp trên XJTU và ở 10 % nhãn, và không được chọn cho MIT, NASA vì không giảm sai số trên validation; khi dùng hay
+không dùng lịch sử được chọn trên validation của đủ ba lần lặp
+(phân tích hậu kiểm), PINN-lai có sai số thấp hơn GBDT ở cả 16 trường hợp bộ × mức nhãn, 13 có ý nghĩa thống kê.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
-Kết quả của báo cáo dựa trên **8 938 lượt huấn luyện** (E13–E28, đếm theo tệp kết quả; bảng thời gian chạy bên dưới
+Kết quả của báo cáo dựa trên **10 354 lượt huấn luyện** (E13–E29, đếm theo tệp kết quả; bảng thời gian chạy bên dưới
 đếm theo lượt phải chạy nên tổng khác) trên **387 cell** của bốn bộ dữ liệu công khai XJTU, TJU, MIT, HUST, cộng 18
 cell của NASA PCoE ở E24.
 
@@ -56,7 +59,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28, E29dev, E29) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -100,7 +103,9 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E26 | λ, Ea trên NASA và TJU: trọng số ODE 0,2/1, ràng buộc Euler, khởi tạo khác (PINN-semi, 70 % nhãn) | 100 | 0,7 | 0,2 | 0,1 |
 | E27 | Cách chia của PINN4SOH (39 nhóm, đầy đủ + ít mẫu), 2 cách tiền xử lý × 3 hạt giống: 3 PINN-semi, GBDT, PINN hộp đen | 1 002 | 7 | 1,8 | 0,9 |
 | E28 | Ngân sách đo: mọi cell train đo mỗi q·L, q ∈ {0,5; 0,2; 0,1; 0,05}; 3 PINN-semi, MLP, GBDT trên lần đo / nhãn nội suy (3 lần lặp × 5 fold) | 1 560 | 9 | 2,2 | 1,1 |
-| **Tổng** | | **8 410** | **≈ 64** | **≈ 16** | **≈ 8** |
+| E29dev | Chọn dạng lịch sử trên validation (lần lặp 0, nhãn 30 và 70 %): PINN-semi 4 dạng, GBDT 6 dạng; NASA cả cách chia SambaMixer | 576 | 3 | 0,8 | 0,4 |
+| E29 | Đầu vào có lịch sử, cùng fold với E20: 3 PINN-semi, MLP, GBDT trên XJTU, TJU, HUST (3 lần lặp × 5 fold × 4 mức nhãn) | 840 | 5,4 | 1,4 | 0,7 |
+| **Tổng** | | **9 826** | **≈ 72** | **≈ 18** | **≈ 9** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
@@ -156,7 +161,12 @@ pinn-soh/
 │   ├── analyze_e26.py      E26: λ, Ea theo trọng số ODE và giá trị khởi tạo
 │   ├── analyze_e27.py      E27: so với PINN4SOH trên đúng cách chia của bài (hai cách tiền xử lý)
 │   ├── analyze_e28.py      E28: ngân sách đo dung lượng — đo thưa mọi cell so với nhãn theo cell
+│   ├── analyze_tuning.py   chọn trọng số ghép và cửa sổ lọc của PINN-lai trên validation
+│   ├── analyze_mono.py     bộ lọc quỹ đạo có giữ SOH không tăng không; bộ lọc có bảo đảm
+│   ├── dev_e29.py          E29dev: chọn dạng lịch sử trên validation
+│   ├── analyze_e29.py      E29: mô hình có lịch sử trên test, chọn có / không lịch sử trên validation
 │   ├── analyze_overview.py hình tổng quan 30 % / 70 % nhãn và đo thưa
+│   ├── figures_report.py   vẽ lại các hình của báo cáo cho dễ đọc khi in
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
 │   └── section_e13.py      mục kết quả E13 (Markdown, slide)
 ├── report/                 results/ -> báo cáo

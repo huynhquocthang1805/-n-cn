@@ -10,7 +10,7 @@
 \setdefaultlanguage{vietnamese}
 \usepackage[left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
 \usepackage{graphicx,booktabs,longtable,array,tabularx,multirow,float,enumitem}
-\usepackage[section]{placeins}
+\usepackage{placeins}
 \renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.8}
 \renewcommand{\textfraction}{0.07}\renewcommand{\floatpagefraction}{0.75}
 \setcounter{topnumber}{3}\setcounter{bottomnumber}{2}\setcounter{totalnumber}{5}
@@ -18,7 +18,7 @@
 \usepackage{adjustbox}
 \usepackage{caption}
 \captionsetup{font=small,labelfont=bf,labelsep=period}
-\usepackage{titlesec}
+\usepackage{titlesec,etoolbox}
 \titleformat{\chapter}[display]{\normalfont\bfseries\Large\centering}{\MakeUppercase{\chaptername}~\thechapter}{6pt}{\LARGE}
 \titlespacing*{\chapter}{0pt}{-10pt}{18pt}
 \usepackage{fancyhdr}
@@ -40,6 +40,7 @@
 \setlist{itemsep=2pt,topsep=4pt}
 \emergencystretch=1.5em
 \setcounter{tocdepth}{1}
+\makeatletter\patchcmd{\l@chapter}{1.0em}{0.15em}{}{}\makeatother
 \begin{document}
 \begin{titlepage}
 \begin{center}
@@ -85,12 +86,15 @@ Mô hình đề xuất là một mạng nơ-ron có thông tin vật lý (PINN) 
 đoạn sạc, gắn với một động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn nên áp được lên
 mọi chu kỳ chưa đo dung lượng. Đồ án thiết kế và chứng minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold
 theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần), đo định lượng tác động của các dạng rò rỉ thường gặp, và so
-sánh với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 8.938 lượt huấn
+sánh với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 10.354 lượt huấn
 luyện). Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là 0{,}39--0{,}90;
-khi tăng lên 70\,\% nhãn, lợi ích giảm dần (0{,}85--1{,}09), và một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu. Mô hình cải tiến PINN-lai kết hợp ba mạng PINN bán giám sát với GBDT rồi qua một bộ lọc quỹ đạo nhân quả không
-cho SOH tăng, được chọn chỉ trên tập validation; trên test, sai số của nó bằng 0{,}67--0{,}95 lần PINN ban đầu, thấp hơn GBDT ở
+khi tăng lên 70\,\% nhãn, lợi ích giảm dần (0{,}85--1{,}09), và một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu. Mô hình cải tiến PINN-lai kết hợp ba mạng PINN bán giám sát với GBDT rồi làm trơn bằng một bộ lọc xu thế nhân
+quả, được chọn chỉ trên tập validation; trên test, sai số của nó bằng 0{,}67--0{,}95 lần PINN ban đầu, thấp hơn GBDT ở
 10/16 trường hợp bộ dữ liệu × mức nhãn. Với 30\,\% cell có nhãn, PINN-lai có sai số thấp hơn MLP và PINN bán giám
-sát học với 70\,\% cell có nhãn trên cả bốn bộ, nhưng vẫn kém GBDT học với 70\,\% cell có nhãn. Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai với tiền xử lý không rò rỉ có
+sát học với 70\,\% cell có nhãn trên cả bốn bộ, nhưng vẫn kém GBDT học với 70\,\% cell có nhãn. Thêm lịch sử của cell vào đầu vào (trung bình trượt nhân quả của đặc trưng sạc) giảm sai số của
+PINN-lai còn 0{,}89--0{,}97 lần trên TJU và HUST khi có từ 30\,\% nhãn nhưng không giúp trên XJTU và khi chỉ có 10\,\% nhãn; dùng
+lịch sử theo lựa chọn trên validation, PINN-lai có sai số thấp hơn GBDT ở 16/16 trường hợp. Bộ lọc quỹ đạo được chỉ
+ra là không bảo đảm SOH không tăng, và ép không tăng làm sai số tăng ở bộ có dung lượng tăng thật. Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai với tiền xử lý không rò rỉ có
 sai số bằng 0{,}23--0{,}63 lần số công bố trên TJU và MIT, ngang trên XJTU, chỉ kém trên HUST, nơi số công bố nhờ chuẩn hoá theo cả vòng đời cell; cùng tiền xử lý với bài, nó thấp hơn số công bố ở mọi mức của
 thí nghiệm ít mẫu. Khi tính nhãn theo số lần đo dung lượng thay vì số cell, đo thưa trên mọi cell chỉ với 1{,}2--6{,}0\,\% số chu kỳ
 cho PINN-lai sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell và 0{,}97--1{,}05 lần khi gắn cho 70\,\% số cell. Đo thêm cell mới theo cùng lịch và cập nhật bằng bộ lọc Kalman, sai số còn 0{,}34--0{,}77 lần GBDT học với
@@ -201,6 +205,8 @@ SOH, dung lượng, RUL ở các chu kỳ sau. Đồ án không xây dựng mô 
 \item Trên đúng cách chia của PINN4SOH, mô hình của đồ án đứng ở đâu, với tiền xử lý không rò rỉ và với tiền xử
       lý của bài?
 \item Nếu tính nhãn theo số lần đo dung lượng thay vì số cell có nhãn, nên đo ở đâu và cần bao nhiêu lần đo?
+\item Thêm lịch sử của cell vào đầu vào có giảm sai số không, ở bộ nào, và bộ lọc quỹ đạo có giữ được SOH không tăng
+      không?
 \end{enumerate}
 
 
@@ -213,11 +219,12 @@ SOH, dung lượng, RUL ở các chu kỳ sau. Đồ án không xây dựng mô 
       nghiệm, lặp 5 lần, kèm kiểm toán rò rỉ định lượng (chia theo chu kỳ, chuẩn hoá theo cả vòng đời cell,
       lọc ngoại lai bằng dữ liệu tương lai).
 \item So sánh hệ thống PINN với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai
-      (387 cell), tổng cộng 8.938 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
+      (387 cell), tổng cộng 10.354 lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Hai giao thức huấn luyện trên một bộ, kiểm tra trên ba bộ còn lại, cùng quy trình thích nghi không nhãn và tự
       huấn luyện có ràng buộc vật lý.
-\item Mô hình cải tiến PINN-lai: ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả không cho SOH
-      tăng, chọn chỉ trên tập validation, kèm khoảng dự đoán phù hợp 90\,\%.
+\item Mô hình cải tiến PINN-lai: ba mạng PINN-semi kết hợp với GBDT và một bộ lọc xu thế nhân quả, chọn chỉ trên
+      tập validation, kèm khoảng dự đoán phù hợp 90\,\%; đầu vào có lịch sử của cell ở các bộ mà validation cho thấy
+      có lợi.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
       xám làm lớp đầu ra, kết hợp với GBDT; bản cải tiến tách phần hồi phục dung lượng và dao động đều ra khỏi xu thế
       suy giảm.
@@ -736,14 +743,41 @@ buộc độ dốc không kích hoạt, thì $\tilde y_n$ không chệch và
 $\operatorname{Var}(\tilde y_n) = \sigma^2\,\dfrac{2(2w-1)}{w(w+1)}$; với $w = 10$ là $0{,}345\,\sigma^2$.
 (iii) Giá trị cuối của hồi quy đơn điệu giảm trên $\hat y_1, \dots, \hat y_n$ luôn không lớn hơn $\hat y_n$, nên
 khi $\hat y$ có nhiễu nó lệch xuống.
+(iv) Dãy $\tilde y_1, \tilde y_2, \dots$ không nhất thiết đơn điệu: ràng buộc chỉ đặt lên độ dốc trong từng cửa sổ, còn
+hai chu kỳ liền nhau dùng hai cửa sổ khác nhau. Dãy
+\begin{equation}\label{eq:mono}
+m_1 = \tilde y_1, \qquad m_n = m_{n-1} + a\,\min(0,\ \tilde y_n - m_{n-1}), \quad 0 < a \le 1,
+\end{equation}
+thì luôn không tăng; $a = 1$ cho cực tiểu luỹ tiến của $\tilde y$.
 \end{menhde}
 \begin{proof}
 (i) Đường thẳng khớp đúng dữ liệu, độ dốc $-c \le 0$ nên ràng buộc không tác động. (ii) Đây là phương sai của giá
 trị dự đoán bình phương tối thiểu tại đầu mút: $\sigma^2\big(\frac{1}{w} + \frac{(t_n - \bar t)^2}{S_{tt}}\big)$
 với $t_n - \bar t = \frac{w-1}{2}$ và $S_{tt} = \frac{w(w^2-1)}{12}$ khi bước bằng 1; rút gọn được biểu thức trên.
 (iii) Với hồi quy đơn điệu giảm, giá trị tại điểm cuối bằng $\min_{j \le n}$ trung bình của $\hat y_j, \dots, \hat y_n$
-\cite{barlow1972}; chọn $j = n$ cho thấy nó không vượt $\hat y_n$.
+\cite{barlow1972}; chọn $j = n$ cho thấy nó không vượt $\hat y_n$. (iv) Lấy $\hat y = (0{,}9;\ 0{,}9;\ 0{,}95)$, $w = 2$:
+$\tilde y_2 = 0{,}9$, còn cửa sổ thứ ba có độ dốc dương bị chặn về 0 nên $\tilde y_3 = 0{,}925 > \tilde y_2$. Với
+\eqref{eq:mono}, $m_n - m_{n-1} = a\min(0, \tilde y_n - m_{n-1}) \le 0$.
 \end{proof}
+
+\section{Đầu vào có lịch sử của cell}\label{sec:hist_m}
+
+PINN-semi, MLP và GBDT đều dự đoán SOH ở chu kỳ $n$ chỉ từ 16 đặc trưng sạc của chính chu kỳ đó và chỉ số chu kỳ.
+Đặc trưng của một chu kỳ có nhiễu đo, trong khi các chu kỳ liền trước mang thông tin về gần như cùng một trạng thái của
+cell. Đồ án thêm lịch sử vào đầu vào bằng các đại lượng nhân quả, chỉ dùng chu kỳ $n$ và các chu kỳ trước của cùng
+cell nên vẫn chạy trực tuyến được: trung bình trượt mũ
+\begin{equation}\label{eq:ema}
+\mathbf{z}^{(a)}_1 = \mathbf{x}_1, \qquad \mathbf{z}^{(a)}_n = a\,\mathbf{x}_n + (1-a)\,\mathbf{z}^{(a)}_{n-1},
+\end{equation}
+nhớ khoảng $1/a$ chu kỳ, và độ dốc bình phương tối thiểu của từng đặc trưng trên 20 chu kỳ gần nhất. Bốn dạng được
+thử: chỉ $\mathbf{z}^{(0{,}3)}$ thay cho $\mathbf{x}$; $\mathbf{x}$ nối với $\mathbf{z}^{(0{,}1)}$; $\mathbf{x}$ nối
+với $\mathbf{z}^{(0{,}3)}, \mathbf{z}^{(0{,}1)}, \mathbf{z}^{(0{,}03)}$; và $\mathbf{x}$ nối với $\mathbf{z}^{(0{,}1)},
+\mathbf{z}^{(0{,}03)}$ cùng độ dốc. GBDT thử thêm $\mathbf{x}$ nối với độ dốc, và $\mathbf{x}, \mathbf{z}^{(0{,}1)}$ nối
+với độ lệch của $\mathbf{x}$ so với trung bình 5 chu kỳ đầu của cell. Đây là một lớp hồi quy tuyến tính với hệ số cố định, cùng ý tưởng với mô hình không
+gian trạng thái của SambaMixer~\cite{olalde2024samba} nhưng không học hệ số. Mọi mô hình dùng được cùng đầu vào, nên
+phép so sánh tách được tác động của lịch sử khỏi tác động của vật lý. Với mỗi bộ và mỗi loại mô hình, dạng lịch sử được
+chọn trên tập validation và chỉ được giữ khi nó giảm MAE validation ít nhất 2\,\%; nếu không, mô hình dùng đặc trưng
+gốc. PINN-lai có lịch sử dùng đúng công thức \eqref{eq:lai1}--\eqref{eq:lai3} với ba PINN-semi và GBDT đã chọn cho bộ.
 
 \section{Thích nghi không nhãn và tự huấn luyện}\label{sec:selftrain}
 
@@ -971,17 +1005,13 @@ train, validation hoặc test.
 
 
 
-Để kiểm tra mệnh đề trên toàn bộ dải $q$, đồ án mô phỏng hai lần (Hình~\ref{fig:rowsim}). Thứ nhất, gán ngẫu nhiên
+Để kiểm tra mệnh đề trên toàn bộ dải $q$, đồ án mô phỏng hai lần. Thứ nhất, gán ngẫu nhiên
 $10^6$ vị trí vào train với xác suất $q$ và đo khoảng cách trung bình tới vị trí train gần nhất: kết quả Monte Carlo
 lệch công thức \eqref{eq:Ed} không quá 0{,}3\,\%. Thứ hai, áp phép chép nhãn lên quỹ đạo SOH thật của cả 387
 cell với $q$ từ 0,1 tới 0,9: 35 trong 36 điểm nằm dưới hoặc trong khoảng 5\,\% quanh cận; các điểm vượt
 nhẹ đến từ hai đầu cell, nơi chu kỳ train gần nhất chỉ có ở một phía. Ở mọi $q \ge 0{,}5$, sai số chép nhãn
 nhỏ hơn MLP được đánh giá đúng cách từ 5 lần trở lên.
 
-\begin{figure}[!htbp]\centering
-\includegraphics[width=\textwidth]{hinh/fig_thesis_rowsim.pdf}
-\caption[Mô phỏng chia theo chu kỳ]{Mô phỏng chia theo chu kỳ. Trái: khoảng cách trung bình tới chu kỳ train gần nhất theo $q$. Phải: sai số của phép chép nhãn trên quỹ đạo SOH thật (điểm) so với cận $\E[d]\cdot\overline{|\Delta y|}$ (nét đứt); trục dọc thang log.}\label{fig:rowsim}
-\end{figure}
 
 
 \section{Chọn số fold \texorpdfstring{$K$}{K}}
@@ -1119,7 +1149,7 @@ hình nào, phụ thuộc vào đặc trưng hoặc nhãn của cell test, hoặ
 (chẳng hạn các chu kỳ tương lai của chính cell).
 \end{dinhnghia}
 
-Hình~\ref{fig:usage} liệt kê phần dữ liệu nào được dùng cho bước nào. Bốn quy tắc:
+Bốn quy tắc về phần dữ liệu được dùng ở từng bước:
 \begin{enumerate}
 \item Normaliser chỉ fit trên đặc trưng của cell train (có nhãn và không nhãn).
 \item Bộ lọc ngoại lai quyết định giữ hay bỏ chu kỳ $n$ chỉ bằng các chu kỳ trước $n$ của chính cell đó.
@@ -1127,10 +1157,6 @@ Hình~\ref{fig:usage} liệt kê phần dữ liệu nào được dùng cho bư�
 \item Dừng sớm và chọn siêu tham số chỉ dựa trên validation; tập test chỉ được dùng một lần để đánh giá.
 \end{enumerate}
 
-\begin{figure}[!htbp]\centering
-\includegraphics[width=0.95\textwidth]{hinh/fig_thesis_usage.pdf}
-\caption[Phần dữ liệu nào được dùng cho bước nào (ô màu: có dùng)]{Phần dữ liệu nào được dùng cho bước nào (ô màu: có dùng). Trái: đánh giá trong cùng bộ; phải: chuyển miền. Với MLP, cột loss vật lý không áp dụng.}\label{fig:usage}
-\end{figure}
 
 
 \begin{menhde}[Ước lượng không chệch]\label{md:unbiased}
@@ -1278,7 +1304,8 @@ Bộ NASA & 2 bộ đặc trưng × 2 mức nhãn × 15 fold; cách chia của S
 Tham số vật lý & NASA, TJU: trọng số ODE, ràng buộc Euler, giá trị khởi tạo; 70\,\% nhãn & 100 \\
 So với PINN4SOH & đúng cách chia của bài, 39 nhóm (đầy đủ và ít mẫu) × 2 cách tiền xử lý × 3 hạt giống & 1.002 \\
 Ngân sách đo & đo thưa mọi cell train, 4 lịch đo × 4 bộ × 5 fold × 3 lần lặp & 1.560 \\
-\textbf{Tổng} &  & \textbf{8.938} \\
+Đầu vào có lịch sử & chọn dạng trên validation; PINN-semi, MLP, GBDT có lịch sử, 3 lần lặp × 5 fold & 1.416 \\
+\textbf{Tổng} &  & \textbf{10.354} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \section{Môi trường thực nghiệm}
@@ -1299,17 +1326,6 @@ giữa các bộ dữ liệu, và cuối cùng là kiểm tra trực tiếp xem 
 
 \section{Kiểm toán rò rỉ}\label{sec:leakres}
 
-\begin{table}[!htbp]\centering\small
-\caption[Kiểm toán rò rỉ]{Kiểm toán rò rỉ: MAE theo cell (×$10^{-3}$) của MLP với 70\,\% nhãn, trung bình 2 lần lặp × 5 fold; trong ngoặc là tỉ số so với giao thức chuẩn.}\label{tab:leak}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrr}\toprule
-Thiết lập & XJTU & TJU & MIT & HUST \\\midrule
-Chia theo cell (chuẩn) & 13{,}11 & 9{,}86 & 2{,}80 & 17{,}46 \\
-Chuẩn hoá gồm cả test & 13{,}50 (1{,}03) & 9{,}98 (1{,}01) & 2{,}82 (1{,}01) & 17{,}15 (0{,}98) \\
-Lọc dùng cả vòng đời & 11{,}37 (0{,}87) & 9{,}67 (0{,}98) & 2{,}82 (1{,}01) & 16{,}82 (0{,}96) \\
-Min--max theo cell & 10{,}54 (0{,}80) & 14{,}88 (1{,}51) & 7{,}74 (2{,}76) & 8{,}06 (0{,}46) \\
-Chia theo chu kỳ & 7{,}19 (0{,}55) & 8{,}33 (0{,}85) & 2{,}28 (0{,}81) & 11{,}25 (0{,}64) \\
-Chia theo chu kỳ, chép nhãn & 1{,}82 (0{,}14) & 0{,}99 (0{,}10) & 0{,}43 (0{,}15) & 0{,}20 (0{,}01) \\
-\bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \begin{figure}[!htbp]\centering
 \includegraphics[width=\textwidth]{hinh/fig_thesis_leakage.pdf}
@@ -1317,8 +1333,8 @@ Chia theo chu kỳ, chép nhãn & 1{,}82 (0{,}14) & 0{,}99 (0{,}10) & 0{,}43 (0{
 \end{figure}
 
 
-Bảng~\ref{tab:leak} cho thấy mức độ nghiêm trọng của từng dạng rò rỉ. Chia theo chu kỳ làm sai số thấp đi
-1{,}2--1{,}8 lần so với chia theo cell, dù mô hình và dữ liệu không đổi. Hàng cuối của bảng còn rõ hơn: một
+Hình~\ref{fig:leak} cho thấy mức độ nghiêm trọng của từng dạng rò rỉ. Chia theo chu kỳ làm sai số thấp đi
+1{,}2--1{,}8 lần so với chia theo cell, dù mô hình và dữ liệu không đổi. Thiết lập cuối còn rõ hơn: một
 bộ “dự đoán” không dùng đặc trưng nào, chỉ chép nhãn của chu kỳ train gần nhất trong cùng cell, đạt sai số
 thấp hơn mọi mô hình thật được đánh giá đúng cách, đúng như Mệnh đề~\ref{md:rowleak} dự báo. Chuẩn hoá min--max theo vòng đời cell làm sai số thấp giả tạo trên XJTU và HUST (tỉ số XJTU 0{,}80, HUST 0{,}46), vì đầu vào đã chứa vị trí tương đối của chu kỳ trong vòng đời; ở hai bộ này SOH cuối đời của mọi cell gần như bằng nhau (XJTU 0{,}78--0{,}89, HUST 0{,}80--0{,}82; Bảng~\ref{tab:datastats}), nên biết vị trí trong vòng đời gần như đủ để suy ra SOH. Ngược lại, trên TJU và MIT cùng phép chuẩn hoá đó làm sai số tăng (tỉ số TJU 1{,}51, MIT 2{,}76): SOH cuối đời ở đây trải rộng hơn (TJU 0{,}66--0{,}90, MIT 0{,}82--0{,}97), nên vị trí trong vòng đời không đủ để suy ra SOH, trong khi chuẩn hoá theo từng cell lại xoá mất mức tuyệt đối của đặc trưng, vốn là thông tin phân biệt cell này với cell khác. Dù theo chiều nào, con số đo được cũng không phản ánh sai số khi triển khai, vì tuổi thọ của một cell đang vận hành chưa biết trước. Hai dạng còn lại tác động nhỏ hơn (lọc dùng cả vòng đời: 0{,}87--1{,}01; chuẩn hoá gồm cả test: 0{,}98--1{,}03), nhưng vẫn là rò rỉ và vẫn được loại bỏ trong giao thức chuẩn. Mọi
 kết quả từ đây trở đi dùng giao thức chuẩn của Chương~\ref{ch:thietke}.
@@ -1465,8 +1481,7 @@ PINN-semi & 13{,}44 (0{,}84) & 10{,}85 (0{,}96) & 2{,}58 (0{,}76) & 17{,}30 (0{,
 
 
 
-Ở 30\,\% nhãn, $R^2$ của PINN-semi cao hơn MLP trên cả bốn bộ; ở 70\,\% nhãn trên XJTU, MIT và HUST, trừ TJU. $R^2$ gộp của XJTU thấp (0{,}40--0{,}75) vì vài chu kỳ đầu của một số cell có đặc trưng khác xa dữ liệu huấn luyện và cho sai số rất lớn; tính từ chu kỳ thứ 10, $R^2$ của XJTU là 0{,}80--0{,}88. Hình~\ref{fig:traj} cho thấy dự đoán bám sát thực đo trong phần lớn vòng đời,
-PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuối đời.
+Ở 30\,\% nhãn, $R^2$ của PINN-semi cao hơn MLP trên cả bốn bộ; ở 70\,\% nhãn trên XJTU, MIT và HUST, trừ TJU. $R^2$ gộp của XJTU thấp (0{,}40--0{,}75) vì vài chu kỳ đầu của một số cell có đặc trưng khác xa dữ liệu huấn luyện và cho sai số rất lớn; tính từ chu kỳ thứ 10, $R^2$ của XJTU là 0{,}80--0{,}88.
 
 
 Hình~\ref{fig:traj} đặt cạnh nhau dự đoán cho cùng một cell khi lượng nhãn tăng từ 10 lên 30 và 70\,\%. Khi ít nhãn,
@@ -1504,15 +1519,6 @@ GBDT tốt hơn có ý nghĩa ở 30\,\% (XJTU, TJU và MIT); 50\,\% (XJTU, TJU 
 
 \section{Tham số vật lý học được}\label{sec:physparams}
 
-\begin{table}[!htbp]\centering\small
-\caption[Tham số vật lý học được của PINN-semi]{Tham số vật lý học được của PINN-semi ở 30\,\% nhãn (trung bình ± độ lệch chuẩn qua 25 lượt). Giá trị khởi tạo: $\lambda = 1$, $E_a = 30$\,kJ/mol.}\label{tab:phys}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrc}\toprule
-Bộ & $\lambda$ & $E_a$ (kJ/mol) & Nhiều mức nhiệt độ \\\midrule
-XJTU & 0{,}96 ± 0{,}00 & 30{,}0 ± 0{,}0 & không \\
-TJU & 0{,}96 ± 0{,}00 & 28{,}9 ± 0{,}2 & có \\
-MIT & 0{,}96 ± 0{,}00 & 29{,}0 ± 0{,}1 & không \\
-HUST & 0{,}97 ± 0{,}02 & 28{,}9 ± 0{,}1 & không \\
-\bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
 Cả hai tham số vật lý gần như không rời giá trị khởi tạo: $\lambda$ nằm trong khoảng 0{,}96--0{,}97 trên mọi bộ (khởi tạo 1), $E_a$ dịch XJTU 0{,}0, TJU 1{,}1, MIT 1{,}0, HUST 1{,}1\,kJ/mol. Trên XJTU, nhiệt độ thí nghiệm trùng $T_\text{ref} = 25$\,\textdegree C nên $A(T) = 1$ và gradient theo $E_a$ bằng 0; trên MIT và HUST, mọi cell cùng 30\,\textdegree C nên $A(T)$ chỉ là một hằng số nhân, không tách được khỏi $k(\mathbf{x})$. Ngay cả trên TJU, nơi có ba mức nhiệt độ, $E_a$ cũng chỉ dịch chừng 1\,kJ/mol: với trọng số $\alpha = 0{,}02$, tín hiệu từ $\mathcal{L}_\text{ode}$ quá yếu để ước lượng $E_a$, và mạng $k(\mathbf{x})$ có thể tự hấp thụ ảnh hưởng của nhiệt độ qua đặc trưng sạc. Vì vậy hai tham số này nên được hiểu là phần cấu trúc của ràng buộc (dấu và dạng hàm của tốc độ suy giảm), không phải đại lượng vật lý được ước lượng từ dữ liệu.
@@ -1534,19 +1540,10 @@ lên đạo hàm riêng theo thời gian khi giữ nguyên đặc trưng sạc. 
 \paragraph{Dọc quỹ đạo: tính đơn điệu của dự đoán.} Với mỗi cell test, đếm các cặp chu kỳ cách nhau ít nhất 10 chu
 kỳ mà SOH dự đoán ở chu kỳ sau cao hơn chu kỳ trước quá 0,002, tức đúng ngưỡng của $\mathcal{L}_\text{mono}$. Phép
 đếm này không cần nhãn, nên làm được với mọi mô hình; làm trên chính nhãn thật cho mức tham chiếu, vì dung lượng
-thật có thể hồi phục nhẹ sau thời gian nghỉ (Bảng~\ref{tab:mono}). Ở 30\,\% nhãn, dự đoán của
+thật có thể hồi phục nhẹ sau thời gian nghỉ. Ở 30\,\% nhãn, dự đoán của
 MLP tăng ngược ở 13{,}6--31{,}1\,\% số cặp, của PINN-semi chỉ 3{,}0--12{,}0\,\%, trong khi nhãn thật là 0{,}1--7{,}7\,\%.
 Biến thể chỉ đơn điệu cho tỉ lệ gần như bằng PINN-semi (3{,}1--12{,}4\,\%): chính $\mathcal{L}_\text{mono}$, áp lên cặp chu kỳ của cả cell không nhãn, làm quỹ đạo dự đoán đơn điệu.
 
-\begin{table}[!htbp]\centering\small
-\caption[Tỉ lệ cặp chu kỳ có SOH dự đoán tăng]{Tỉ lệ cặp chu kỳ cách nhau ít nhất 10 chu kỳ mà SOH dự đoán tăng quá 0,002 (\%), 30\,\% nhãn, mọi cell test của 5 lần lặp; cột đầu là cùng phép đếm trên chính nhãn thật.}\label{tab:mono}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrr}\toprule
-Bộ & Nhãn thật & MLP & GBDT & PINN-sup & PINN hộp đen & chỉ đơn điệu & PINN-semi \\\midrule
-XJTU & 7{,}7 & 28{,}0 & 19{,}4 & 14{,}9 & 11{,}5 & 10{,}8 & 10{,}7 \\
-TJU & 0{,}1 & 15{,}7 & 5{,}2 & 5{,}0 & 5{,}6 & 5{,}7 & 5{,}5 \\
-MIT & 0{,}5 & 13{,}6 & 3{,}2 & 3{,}9 & 3{,}0 & 3{,}1 & 3{,}0 \\
-HUST & 0{,}1 & 31{,}1 & 12{,}9 & 14{,}3 & 12{,}5 & 12{,}4 & 12{,}0 \\
-\bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
 
@@ -1591,12 +1588,10 @@ tổng biến thiên dọc quỹ đạo, nên $r$ của nó xấp xỉ tốc đ�
 
 
 
-Đồ án xếp tốc độ suy giảm theo khoảng SOH thực đo. Trên XJTU, MIT và HUST, tốc độ thực đo ở khoảng SOH thấp nhất cao gấp 2--175 lần ở khoảng SOH cao nhất: đây là hiện tượng đầu gối. Trên TJU, đường trung bình không đi lên đều theo SOH. Mỗi khoảng SOH gồm một tập cell khác
-nhau, nên đây là đường trung bình chứ không phải đường của một cell. Độ dốc dự đoán của PINN-semi theo sát đường
-thực đo trên cả bốn bộ, nhưng $r$ gần như phẳng: giữa các khoảng SOH, $r$ chỉ thay đổi 1{,}4--1{,}9 lần (bỏ qua MIT, nơi $r \approx 0$), trong khi
-tốc độ thực đo thay đổi 3--175 lần. Với $\lambda \approx 0{,}96$ (Mục~\ref{sec:physparams}), thừa số $g(u) = e^{\lambda(1-u)}$ chỉ tăng khoảng
-1,2 lần khi SOH giảm từ 1 xuống 0,8. Đầu gối trong dự đoán đến từ đặc trưng sạc, không đến từ thừa số đầu gối của
-động học.
+Đồ án xếp tốc độ suy giảm theo khoảng SOH thực đo. Trên XJTU, MIT và HUST, tốc độ thực đo ở khoảng SOH thấp nhất cao gấp 2--175 lần ở khoảng SOH cao nhất: đây là hiện tượng đầu gối. Trên TJU, đường trung bình không đi lên đều theo SOH. Giữa các khoảng SOH, $r$ chỉ thay đổi
+1{,}4--1{,}9 lần (bỏ qua MIT, nơi $r \approx 0$) trong khi tốc độ thực đo thay đổi 3--175 lần, và với $\lambda \approx 0{,}96$ thừa số
+$g(u) = e^{\lambda(1-u)}$ chỉ tăng khoảng 1,2 lần khi SOH giảm từ 1 xuống 0,8: đầu gối trong dự đoán đến từ đặc trưng
+sạc, không đến từ thừa số đầu gối của động học.
 
 
 
@@ -1615,28 +1610,8 @@ $e_n = \hat y_n - y_n$ được tách thành ba phần:
 e_n = \underbrace{b}_{\text{lệch mức}} + \underbrace{s_n}_{\text{trôi chậm}} + \underbrace{f_n}_{\text{dao động nhanh}},
 \end{equation}
 trong đó $b$ là trung bình của $e_n$ trên cả cell, $s_n$ là trung bình trượt căn giữa 21 điểm của $e_n - b$, còn $f_n$
-là phần còn lại. Bảng~\ref{tab:decomp} cho tỉ lệ của từng phần trong MSE ở 30\,\% nhãn.
-
-\begin{table}[!htbp]\centering\small
-\caption[Phân rã MSE theo cell]{Phân rã MSE theo cell ở 30\,\% nhãn thành ba phần (tỉ lệ trên tổng MSE).}\label{tab:decomp}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
-Bộ & Mô hình & MAE theo cell ($\times10^{-3}$) & lệch mức & trôi chậm & dao động nhanh \\\midrule
-XJTU & MLP & 15{,}95 & 14\,\% & 55\,\% & 17\,\% \\
- & PINN-semi & 13{,}44 & 20\,\% & 56\,\% & 13\,\% \\
- & GBDT & 10{,}85 & 36\,\% & 49\,\% & 11\,\% \\
-TJU & MLP & 11{,}33 & 54\,\% & 32\,\% & 12\,\% \\
- & PINN-semi & 10{,}85 & 58\,\% & 34\,\% & 7\,\% \\
- & GBDT & 8{,}14 & 54\,\% & 36\,\% & 8\,\% \\
-MIT & MLP & 3{,}40 & 36\,\% & 38\,\% & 27\,\% \\
- & PINN-semi & 2{,}58 & 36\,\% & 41\,\% & 25\,\% \\
- & GBDT & 1{,}99 & 19\,\% & 47\,\% & 34\,\% \\
-HUST & MLP & 19{,}80 & 44\,\% & 53\,\% & 4\,\% \\
- & PINN-semi & 17{,}30 & 47\,\% & 52\,\% & 1\,\% \\
- & GBDT & 18{,}63 & 41\,\% & 57\,\% & 2\,\% \\
-\bottomrule\end{tabular}\end{adjustbox}\end{table}
-
-
-Phần dao động nhanh, tức nhiễu giữa các chu kỳ liền nhau, chỉ chiếm 1--17\,\% tổng MSE ngoài bộ MIT; trên MIT, nơi
+là phần còn lại. Ở 30\,\% nhãn, với MLP, PINN-semi và GBDT trên bốn bộ, lệch mức chiếm 14--58\,\% tổng MSE và trôi chậm
+32--57\,\%. Phần dao động nhanh, tức nhiễu giữa các chu kỳ liền nhau, chỉ chiếm 1--17\,\% tổng MSE ngoài bộ MIT; trên MIT, nơi
 sai số tuyệt đối rất nhỏ, phần này lên tới 25--34\,\%. Phần lớn sai số là lệch mức và trôi chậm: mô hình đoán sai
 SOH của cả một cell, hoặc đoán sai tốc độ suy giảm trên một đoạn dài. Hai hệ quả rút ra. Một là làm trơn dự đoán chỉ
 giúp được một phần nhỏ. Hai là muốn giảm sai số đáng kể phải giảm phần lệch theo từng cell, và cách đơn giản nhất là
@@ -1645,27 +1620,8 @@ lấy trung bình những mô hình có lệch theo cell khác nhau.
 \subsection{Chọn hướng trên tập validation}\label{sec:devproto}
 
 Giai đoạn phát triển dùng lần lặp 0, cả 5 fold, hai mức nhãn 10\,\% và 50\,\%. Mỗi fold có khoảng 10\,\% số cell
-làm validation, tách khỏi cả train lẫn test; mọi quyết định chỉ dựa trên MAE theo cell của tập này. Bảng~\ref{tab:dev}
-tóm tắt kết quả.
+làm validation, tách khỏi cả train lẫn test; mọi quyết định chỉ dựa trên MAE theo cell của tập này.
 
-\begin{table}[!htbp]\centering\small
-\caption[Giai đoạn phát triển mô hình kết hợp]{Giai đoạn phát triển: MAE theo cell trên tập validation chia cho MAE của PINN-semi đơn lẻ, trung bình nhân trên bốn bộ (lần lặp 0, 5 fold). Nhỏ hơn 1 là tốt hơn.}\label{tab:dev}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrr}\toprule
-Hướng thử & 10\,\% nhãn & 50\,\% nhãn & chung \\\midrule
-3 PINN-semi + GBDT, lọc quỹ đạo ($w = 10$) & 0{,}843 & 0{,}804 & 0{,}823 \\
-3 PINN-semi + GBDT & 0{,}847 & 0{,}810 & 0{,}828 \\
-1 PINN-semi + GBDT & 0{,}861 & 0{,}841 & 0{,}851 \\
-GBDT & 0{,}967 & 0{,}848 & 0{,}906 \\
-chưng cất từ GBDT, $\lambda_\text{KD} = 0{,}3$ & 0{,}940 & 0{,}982 & 0{,}961 \\
-3 PINN-semi, lọc quỹ đạo & 0{,}970 & 0{,}947 & 0{,}958 \\
-3 PINN-semi & 0{,}974 & 0{,}952 & 0{,}963 \\
-chưng cất từ GBDT, $\lambda_\text{KD} = 1$ & 0{,}946 & 1{,}007 & 0{,}976 \\
-1 PINN-semi, lọc quỹ đạo & 0{,}989 & 0{,}986 & 0{,}987 \\
-1 PINN-semi, hồi quy đơn điệu & 0{,}993 & 0{,}997 & 0{,}995 \\
-đơn điệu mạnh hơn, $\beta = 2$ & 1{,}062 & 1{,}068 & 1{,}065 \\
-thêm phần dư Euler, $\alpha_E = 2$ & 1{,}279 & 1{,}299 & 1{,}289 \\
-thêm đặc trưng tương đối & 2{,}408 & 1{,}189 & 1{,}692 \\
-\bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 
 Ba nhóm kết quả hiện ra. Kết hợp với GBDT cho mức giảm lớn nhất: ở 10\,\% nhãn tỉ số chỉ còn 0{,}843, ở 50\,\%
@@ -1749,14 +1705,10 @@ so với 0{,}858--0{,}985 của GBDT và 0{,}860--0{,}986 của PINN-semi. Tỉ 
 
 \subsection{Phân rã lợi ích}\label{sec:e20steps}
 
-Hình~\ref{fig:e20steps} đi qua từng bước. Tính trung bình nhân trên 16 trường hợp, nhóm ba mạng đưa tỉ số so với
+Tính trung bình nhân trên 16 trường hợp, nhóm ba mạng đưa tỉ số so với
 PINN-semi xuống 0{,}961, kết hợp với GBDT xuống 0{,}798, và bộ lọc quỹ đạo xuống 0{,}793; GBDT đứng một mình
 là 0{,}823. Bước kết hợp mang lại phần lớn lợi ích.
 
-\begin{figure}[!htbp]\centering
-\includegraphics[width=\textwidth]{hinh/fig_e20_steps.pdf}
-\caption{Tỉ số MAE theo cell so với PINN-semi qua từng bước của PINN-lai; mỗi đường là một mức nhãn; cột bên phải là GBDT đứng một mình, mỗi hình thoi một mức nhãn (nhạt: 10\,\%, đậm: 70\,\%).}\label{fig:e20steps}
-\end{figure}
 
 
 Lệch mức theo cell của trung bình ba PINN-semi và của GBDT chỉ tương quan ở mức vừa: hệ số Pearson 0{,}50--0{,}80 tùy bộ và mức nhãn,
@@ -1794,22 +1746,96 @@ phủ dưới 80\,\%: đó là các cell bị lệch mức cả đời, đúng l
 Đề cương của PINN-lai cố định $\omega = \tfrac12$ trong \eqref{eq:lai2} và $w = 10$ trong \eqref{eq:lai3}. Hai giá trị
 này chọn được trên validation mà không phải huấn luyện lại: với mỗi bộ và mức nhãn, $(\omega, w)$ được chọn trên lưới
 $\omega \in \{0{,}3;\ 0{,}4;\ 0{,}5;\ 0{,}6;\ 0{,}7\}$, $w \in \{5, 10, 20, 40\}$ bằng MAE theo cell trung bình trên
-validation của 3 lần lặp $\times$ 5 fold, rồi đánh giá đúng một lần trên test (Bảng~\ref{tab:tuned}). Validation nghiêng
+validation của 3 lần lặp $\times$ 5 fold, rồi đánh giá đúng một lần trên test (cột PINN-lai của Bảng~\ref{tab:e29}). Validation nghiêng
 về GBDT ($\omega = 0{,}3$) ở XJTU, TJU, MIT khi có từ 30\,\% nhãn và chọn cửa sổ dài ($w = 40$) ở HUST. Trên test, sai
 số còn 0{,}92--1{,}00 lần bản gốc (trung bình nhân 0{,}965), giảm có ý nghĩa ở 5/16 trường hợp bộ × mức nhãn; PINN-lai
 tinh chỉnh thấp hơn GBDT cùng mức nhãn có ý nghĩa ở 11/16 trường hợp và không trường hợp nào cao hơn có ý nghĩa. Ở 50\,\% nhãn, nó không khác GBDT học với
 70\,\% nhãn có ý nghĩa trên cả bốn bộ.
 
-\begin{table}[!htbp]\centering\small
-\caption[PINN-lai với $(\omega, w)$ chọn trên validation: MAE theo cell ($\times10^{-3}$) trên test ở 30 và 70\,\% nhãn, cạnh bản gốc ($\omega = 0{,}5$, $w = 10$) và GBDT ở 70\,\% nhãn]{PINN-lai với $(\omega, w)$ chọn trên validation: MAE theo cell ($\times10^{-3}$) trên test ở 30 và 70\,\% nhãn, cạnh bản gốc ($\omega = 0{,}5$, $w = 10$) và GBDT ở 70\,\% nhãn. $^{*}$: khác bản gốc có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$).}\label{tab:tuned}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrr}\toprule
-Bộ & $\omega$; $w$ (30\,\%) & gốc & tinh chỉnh & $\omega$; $w$ (70\,\%) & gốc & tinh chỉnh & GBDT 70\,\% \\\midrule
-XJTU & 0{,}3; 5 & 11{,}43 & 10{,}78 & 0{,}3; 5 & 10{,}00 & 9{,}50 & 9{,}64 \\
-TJU & 0{,}3; 5 & 8{,}52 & 8{,}00$^{*}$ & 0{,}3; 5 & 7{,}76 & 7{,}11$^{*}$ & 6{,}96 \\
-MIT & 0{,}3; 5 & 1{,}79 & 1{,}75 & 0{,}3; 5 & 1{,}59 & 1{,}48$^{*}$ & 1{,}59 \\
-HUST & 0{,}7; 40 & 16{,}19 & 15{,}99 & 0{,}5; 40 & 13{,}78 & 13{,}76 & 14{,}60 \\
+
+
+\subsection{Bộ lọc có giữ SOH không tăng không}\label{sec:monores}
+
+Theo Mệnh đề~\ref{prop:filter}(iv), bộ lọc \eqref{eq:trend} không bảo đảm dãy đầu ra không tăng, và trên test điều này
+xảy ra thường xuyên: đầu ra của PINN-lai tăng ở 28--44\,\% số bước giữa hai chu kỳ liên tiếp, bước tăng lớn nhất là
+0{,}11 SOH. Dãy \eqref{eq:mono} thì không bao giờ tăng. Khi $(w, a)$ của nó được chọn trên validation riêng cho từng
+bộ rồi so trên test với bộ lọc xu thế, tỉ số MAE gần như bằng 1 trên TJU và HUST (0{,}99--1{,}00), nhưng là 1{,}01--1{,}06 trên MIT và
+1{,}76--1{,}94 trên XJTU, kém hơn có ý nghĩa ở mọi mức nhãn trên XJTU và MIT.
+
+Nguyên nhân nằm ở nhãn, không ở bộ lọc. Dung lượng đo được của XJTU tăng trong vài chục chu kỳ đầu (trung vị
+0{,}03 SOH), và 5\,\% số bước tăng quá 0,5\,\% SOH; trên NASA, tỉ lệ này là 12\,\% vì dung lượng hồi phục sau
+mỗi lần nghỉ. TJU và HUST gần như không có bước tăng thật. Dãy không tăng bắt đầu từ dự đoán ở chu kỳ đầu nên không theo
+được đoạn dung lượng tăng (Hình~\ref{fig:mono}). PINN-lai vì vậy giữ bộ lọc xu thế, và đồ án mô tả nó đúng là làm trơn
+theo xu thế giảm, không phải ràng buộc không tăng. Ràng buộc cứng chỉ hợp với các bộ mà dung lượng đo được thật sự
+không tăng, như TJU và HUST.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{hinh/fig_mono_example.pdf}
+\caption{Một cell test của XJTU có dung lượng tăng đầu đời và một cell TJU (30\,\% nhãn, lần lặp 0): SOH đo được, dự đoán của PINN-lai trước khi lọc, sau bộ lọc xu thế và sau bộ lọc không tăng \eqref{eq:mono} với $(w, a)$ chọn trên validation.}\label{fig:mono}
+\end{figure}
+
+
+\section{Đầu vào có lịch sử của cell}\label{sec:histres}
+
+Dạng lịch sử được chọn ở bước khám phá, trên validation của lần lặp 0 với 30 và 70\,\% nhãn, rồi chốt trước khi chạy
+đánh giá cuối. Lịch sử giảm MAE validation của PINN-semi trên XJTU, TJU và HUST (tỉ số 0{,}87--0{,}95) và của GBDT trên XJTU và HUST
+(0{,}95--0{,}97); với PINN-semi trên MIT và với GBDT trên TJU và MIT, không có dạng nào đạt ngưỡng 2\,\% nên các mô hình này giữ
+đặc trưng gốc. Trên NASA, tính trung bình qua các cách chia, mọi dạng đều kém hơn đặc trưng gốc
+(Mục~\ref{sec:nasares}).
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{hinh/fig_e29_hist.pdf}
+\caption[MAE theo cell trên test theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation]{MAE theo cell trên test theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation. Trên MIT không dạng lịch sử nào được chọn.}\label{fig:e29}
+\end{figure}
+
+Trên test (Bảng~\ref{tab:e29}, Hình~\ref{fig:e29}), lịch sử giúp rõ trên TJU và HUST khi có từ 30\,\% nhãn: MAE của
+PINN-semi còn 0{,}84--1{,}00 lần bản gốc (tốt hơn có ý nghĩa ở 5/6 trường hợp) và của PINN-lai còn 0{,}89--0{,}97 lần (6/6).
+Trên XJTU thì ngược lại: PINN-semi có lịch sử kém bản gốc ở mọi mức nhãn (1{,}05--1{,}42 lần), PINN-lai kém 1{,}02--1{,}25 lần. Ở
+10\,\% nhãn, lịch sử không giảm sai số có ý nghĩa trên bộ nào (PINN-semi 1{,}04--1{,}42 lần, PINN-lai 0{,}99--1{,}25 lần).
+
+\begin{table}[!htbp]\centering\footnotesize
+\caption[MAE theo cell ($\times10^{-3}$) trên test, 3 lần lặp $\times$ 5 fold, cùng fold và hạt giống với Mục~\ref{sec:e20res}]{MAE theo cell ($\times10^{-3}$) trên test, 3 lần lặp $\times$ 5 fold, cùng fold và hạt giống với Mục~\ref{sec:e20res}. PINN-lai là bản tinh chỉnh trên validation (Mục~\ref{sec:tuned}); GBDT là bản có hoặc không lịch sử, chọn trên validation; mô hình cuối là PINN-lai dùng hay không dùng lịch sử theo validation của từng bộ và mức nhãn. $^{*}$/$^{\dagger}$: tốt hơn/kém hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước; ở cột cuối, so với GBDT.}\label{tab:e29}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
+Bộ & Nhãn & PINN-semi & + lịch sử & GBDT & PINN-lai & + lịch sử & Mô hình cuối \\\midrule
+XJTU & 10\,\% & 14{,}65 & 20{,}79$^{\dagger}$ & 14{,}01 & 12{,}71 & 15{,}95$^{\dagger}$ & 12{,}71$^{*}$ \\
+ & 30\,\% & 13{,}35 & 15{,}34 & 10{,}87 & 10{,}78 & 11{,}25 & 10{,}78$^{*}$ \\
+ & 50\,\% & 13{,}20 & 15{,}12 & 10{,}09 & 10{,}02 & 10{,}21 & 10{,}02 \\
+ & 70\,\% & 12{,}53 & 13{,}17 & 9{,}60 & 9{,}50 & 9{,}73 & 9{,}50 \\
+TJU & 10\,\% & 14{,}01 & 15{,}88$^{\dagger}$ & 12{,}60 & 11{,}70 & 11{,}83 & 11{,}70$^{*}$ \\
+ & 30\,\% & 11{,}39 & 10{,}51$^{*}$ & 8{,}06 & 8{,}00 & 7{,}78$^{*}$ & 7{,}78$^{*}$ \\
+ & 50\,\% & 10{,}74 & 9{,}43$^{*}$ & 7{,}17 & 7{,}23 & 6{,}92$^{*}$ & 6{,}92$^{*}$ \\
+ & 70\,\% & 10{,}80 & 9{,}57$^{*}$ & 6{,}96 & 7{,}11 & 6{,}82$^{*}$ & 6{,}82 \\
+MIT & 10\,\% & 3{,}29 & -- & 3{,}15 & 2{,}52 & -- & 2{,}52$^{*}$ \\
+ & 30\,\% & 2{,}50 & -- & 1{,}97 & 1{,}75 & -- & 1{,}75$^{*}$ \\
+ & 50\,\% & 2{,}45 & -- & 1{,}74 & 1{,}59 & -- & 1{,}59$^{*}$ \\
+ & 70\,\% & 2{,}38 & -- & 1{,}59 & 1{,}48 & -- & 1{,}48$^{*}$ \\
+HUST & 10\,\% & 22{,}76 & 23{,}63 & 23{,}84 & 20{,}36 & 20{,}15 & 20{,}36$^{*}$ \\
+ & 30\,\% & 17{,}10 & 17{,}11 & 18{,}02 & 15{,}99 & 15{,}34$^{*}$ & 15{,}34$^{*}$ \\
+ & 50\,\% & 16{,}42 & 14{,}81$^{*}$ & 14{,}75 & 14{,}26 & 13{,}17$^{*}$ & 13{,}17$^{*}$ \\
+ & 70\,\% & 16{,}38 & 13{,}71$^{*}$ & 13{,}64 & 13{,}76 & 12{,}24$^{*}$ & 12{,}24$^{*}$ \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
+Lựa chọn ở bước khám phá sai trên XJTU vì nó chỉ dựa trên một lần lặp. Với lần lặp 0, tỉ số MAE validation của
+PINN-semi có và không có lịch sử trên XJTU là 0{,}92--0{,}94 ở 30 và 70\,\% nhãn; với lần lặp 2, nó là 1{,}30--1{,}50; trung bình ba
+lần lặp là 1{,}06--1{,}17, gần với tỉ số trên test (1{,}06--1{,}15). Mỗi fold của XJTU chỉ có 6 cell validation, nên tác động của lịch sử
+đổi theo cách chia cell. Ở 10\,\% nhãn, đầu vào có lịch sử có số chiều gấp đôi đến gấp bốn trong khi chỉ còn vài cell có
+nhãn; ngay cả MLP có lịch sử cũng kém MLP gốc 1{,}12--2{,}06 lần ở mức nhãn này.
+
+Validation của đủ ba lần lặp đã có sẵn trong các lượt trên, nên có thể chọn lại mà không dùng test: với mỗi bộ và mức
+nhãn, PINN-lai dùng hay không dùng lịch sử, cùng trọng số trộn và cửa sổ lọc, được chọn theo MAE validation trung bình
+của 3 lần lặp $\times$ 5 fold; GBDT được chọn có hay không lịch sử theo cùng cách. Bước này được đặt ra sau khi đã thấy
+kết quả test ở trên, nên là phân tích hậu kiểm chứ không thuộc đề cương. Validation chọn lịch sử ở TJU và HUST với
+30\,\%, 50\,\% và 70\,\% nhãn và bỏ nó ở mọi trường hợp còn lại, trùng với các trường hợp lịch sử có lợi trên test. Với lựa chọn này,
+PINN-lai (cột cuối của Bảng~\ref{tab:e29}) có MAE thấp hơn GBDT ở 16/16 trường hợp bộ $\times$ mức nhãn (tỉ số
+0{,}80--0{,}99), có ý nghĩa ở 13. Khi GBDT cũng được qua
+bộ lọc xu thế với cửa sổ chọn trên validation, tỉ số là 0{,}82--0{,}99, thấp hơn có ý nghĩa ở 11/16 và không trường hợp nào cao hơn có ý nghĩa.
+
+Ràng buộc vật lý giúp nhiều nhất khi ít nhãn và không giúp ở mọi bộ. Khi cả hai cùng có lịch sử, PINN-semi có MAE bằng
+0{,}31--0{,}89 lần MLP ở 10\,\% nhãn, tốt hơn có ý nghĩa trên cả ba bộ. Từ 30\,\% nhãn, tỉ số là 0{,}68--0{,}92 trên XJTU và HUST nhưng
+1{,}03--1{,}06 trên TJU, nơi MLP có lịch sử tốt hơn PINN-semi có lịch sử (có ý nghĩa ở 70\,\% nhãn). Không có lịch sử,
+TJU cũng như vậy
+(1{,}08--1{,}11 ở 50 và 70\,\% nhãn): bộ này gộp ba nhóm hoá học và nhiều nhóm điều kiện, nên một động học dùng chung cho
+mọi cell có thể không khớp với từng nhóm.
 
 \section{So với PINN4SOH trên đúng cách chia của bài}\label{sec:paperres}
 
@@ -1966,21 +1992,12 @@ loại này nhất (14 cell), bản mới giảm sai số 5\,\% trên toàn bộ
 ngắn (có ý nghĩa thống kê); trên MIT, tỉ số là 0{,}62 nhưng chỉ có 6 cell nên chưa đủ để kết luận. Trên NASA, tỉ số là 1{,}05
 trên toàn bộ phần đời còn lại và 0{,}96 trong tầm ngắn, chưa có ý nghĩa thống kê.
 
-Cặp $(\rho, \tau_r)$ ước lượng trên cell train cho thấy hai kiểu hồi phục khác hẳn nhau. Ở XJTU và NASA, phần lớn cú nhảy
-được giữ lại (trung vị $\rho$ là XJTU 1{,}0, NASA 1{,}0), còn ở MIT, phần hồi phục mất ngay ở chu kỳ sau (MIT $\rho$ = 0{,}0); thời gian
-tắt của phần không giữ lại là $\tau_r = $ 0{,}5 chu kỳ ở mọi bộ, tức không bộ nào có phần hồi phục tắt dần chậm qua
-nhiều chu kỳ. Trên NASA, điều này khớp với nhận xét của SambaMixer~\cite{olalde2024samba} rằng hồi phục gắn với thời gian
-nghỉ: sau mỗi lần nghỉ dài, cell lấy lại một phần dung lượng rồi suy giảm tiếp từ mức mới. Bản đầu tiên của mô hình để
-mạng tự học $\tau_r$; vì rất ít mẫu có phần hồi phục khác 0, $\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ, và trên
-NASA bản đó kém E22 ở tầm ngắn ngay sau hồi phục (tỉ số 1{,}37, có ý nghĩa thống kê), vì bỏ sót cú nhảy ở chu kỳ cuối và cho
-phần hồi phục tắt dần trong khi thực tế nó được giữ lại. Bản này được giữ vì được chọn trên tập validation và vì nó không còn kém E22 có ý nghĩa ở bất kỳ gốc ngay sau hồi phục nào; cái
-giá là một phần lợi ích ở gốc thường, rõ nhất ở XJTU và TJU (trên toàn bộ phần đời còn lại, tỉ số so với E22 của bản
-đầu là 0{,}93; 0{,}99; 0{,}97; 1{,}02; 0{,}95, của bản này là 0{,}98; 1{,}02; 0{,}99; 1{,}02; 1{,}00, theo thứ tự XJTU, TJU, MIT, HUST, NASA).
-
-Dao động đều chỉ được phát hiện ở 22\,\% số gốc của XJTU, hầu hết thuộc nhóm R2.5, và gần như không có ở các bộ khác
-(TJU 0\,\%, MIT 0\,\%, HUST 0\,\%, NASA 2\,\%): bộ lọc hai nửa cửa sổ loại được các bước nhảy đơn lẻ vốn trông giống nửa chu kỳ của một sóng dài. Về RUL, bản
-mới có sai số thấp hơn có ý nghĩa trên MIT. Khoảng 90\,\% của bản mới có độ phủ 52--84\,\% trên toàn bộ phần đời còn lại, vẫn thấp hơn mức đặt ra vì
-cùng lý do ở Mục~\ref{sec:forecastres}.
+Cặp $(\rho, \tau_r)$ ước lượng trên cell train cho thấy hai kiểu hồi phục: ở XJTU và NASA, phần lớn cú nhảy được giữ lại
+(trung vị $\rho$: XJTU 1{,}0, NASA 1{,}0), còn ở MIT, phần hồi phục mất ngay ở chu kỳ sau (MIT $\rho$ = 0{,}0); $\tau_r = $ 0{,}5 chu kỳ
+ở mọi bộ, tức không có phần hồi phục tắt dần chậm. Trên NASA, điều này khớp với nhận xét của
+SambaMixer~\cite{olalde2024samba} rằng hồi phục gắn với thời gian nghỉ. Dao động đều chỉ được phát hiện ở 22\,\% số gốc
+của XJTU, hầu hết thuộc nhóm R2.5. Về RUL, bản mới có sai số thấp hơn có ý nghĩa trên MIT; khoảng 90\,\% có độ phủ 52--84\,\% trên toàn bộ phần đời còn
+lại, thấp hơn mức đặt ra vì cùng lý do ở Mục~\ref{sec:forecastres}.
 
 \begin{table}[!htbp]\centering\small
 \caption[Dự báo có và không xét hồi phục dung lượng]{MAE theo cell ($\times10^{-3}$) của mô hình kết hợp trên toàn bộ phần đời còn lại, bản E22 và bản có xét hồi phục, ghép cặp trên cùng gốc. Bốn cột đầu: gốc thường, lịch sử ước lượng và lịch sử đo; bốn cột sau: gốc ngay sau một lần hồi phục (lịch sử đo), trên toàn bộ phần đời còn lại và trong tầm $0{,}1L$. $^{*}$/$^{\dagger}$: tốt hơn/kém hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$); --: không có gốc sau hồi phục.}\label{tab:e23}
@@ -1993,10 +2010,6 @@ HUST & 27{,}0 & 25{,}7$^{*}$ & 11{,}1 & 11{,}3 & -- & -- & -- & -- \\
 NASA & 52{,}6 & 54{,}6 & 23{,}6 & 23{,}5 & 22{,}5 & 23{,}8 & 11{,}2 & 11{,}4 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
-\begin{figure}[!htbp]\centering
-\includegraphics[width=\textwidth]{hinh/fig_e23_examples.pdf}
-\caption[Ba ví dụ với lịch sử đo: dao động đều của nhóm R2.5 (XJTU, gốc ở 40\,\% đời), gốc ngay sau một lần hồi phục ở XJTU và ở NASA]{Ba ví dụ với lịch sử đo: dao động đều của nhóm R2.5 (XJTU, gốc ở 40\,\% đời), gốc ngay sau một lần hồi phục ở XJTU và ở NASA. Đường xám là bản E22, đường đậm là bản có xét hồi phục.}\label{fig:e23ex}
-\end{figure}
 
 
 \section{Bộ dữ liệu NASA}\label{sec:nasares}
@@ -2032,13 +2045,9 @@ PINN-lai & \textbf{6{,}17} & \textbf{6{,}23} & \textbf{5{,}13} & \textbf{5{,}11}
 giữ lại để dừng sớm, đánh giá trên các cell 6, 7 và 47. PINN-lai có MAE 6{,}78, 3{,}54 và 2{,}05\,\% SOH, cao hơn
 SambaMixer trên cả ba cell và chỉ tốt hơn CNN-BiGRU trên cell 47. SambaMixer nhận chuỗi điện áp, dòng điện, nhiệt độ của chính lần xả cần ước lượng; với dòng xả không đổi, thời gian xả
 nhân với dòng điện chính là dung lượng, nên nhãn gần như nằm sẵn trong đầu vào. Đồ án dùng đoạn sạc trước lần xả, là
-dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Còn lại hai kiểu sai số:
-cell 6 bắt đầu ở 101\,\% SOH trong khi các cell train cùng nhóm bắt đầu quanh 92\,\%, và 75--84\,\% số chu kỳ của
-nó có đặc trưng sạc nằm ngoài khoảng phân vị 1--99\,\% của cell train, nên cả quỹ đạo dự đoán bị lệch xuống. Ở cell 7,
-đặc trưng sạc nửa sau đời nằm hoàn toàn trong miền của cell train, nhưng dự đoán đi ngang quanh 81\,\% trong khi dung
-lượng thật giảm tiếp về 70\,\%: với cùng một đường sạc, cell này cho dung lượng xả thấp hơn các cell train. Quan hệ
-giữa đường sạc và dung lượng xả không giống nhau giữa các cell là giới hạn chung của mọi phương pháp chỉ dùng đoạn
-sạc, và là cái giá của việc không phải xả sâu cell để đo.
+dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Sai số lớn nhất ở cell 6, vốn bắt đầu ở 101\,\% SOH trong khi
+các cell train cùng nhóm bắt đầu quanh 92\,\%, với 75--84\,\% số chu kỳ có đặc trưng sạc nằm ngoài miền của cell
+train. Đầu vào có lịch sử (Mục~\ref{sec:hist_m}) không được chọn cho NASA: dạng tốt nhất trên validation, tính trung bình qua kiểm định chéo và cách chia NASA-L, vẫn có MAE bằng 1{,}03--1{,}11 lần đặc trưng gốc với PINN-semi và 1{,}27 lần với GBDT. Có thể vì dung lượng NASA nhảy lên sau mỗi lần nghỉ: đặc trưng sạc của chu kỳ hiện tại phản ánh ngay cú nhảy đó, còn trung bình trượt làm nó trễ đi.
 
 \begin{table}[!htbp]\centering\small
 \caption[Cách chia NASA-L của SambaMixer]{Cách chia NASA-L của SambaMixer: MAE (\% SOH) trên ba cell đánh giá. Hai cột đầu lấy từ bài của SambaMixer~\cite{olalde2024samba}, đầu vào là đường xả của chính chu kỳ cần ước lượng; ba cột sau là của đồ án, đầu vào là 16 đặc trưng của lần sạc trước đó, trung bình 3 hạt giống.}\label{tab:e24samba}
@@ -2135,7 +2144,8 @@ mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii)
 nghiệm, kể cả khi đo thưa. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững trên MIT. (vi) Tham số vật lý $\lambda, E_a$ không
 được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
 mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
-đánh giá với ba lần lặp thay vì năm.
+đánh giá với ba lần lặp thay vì năm, và việc dùng lịch sử theo từng mức nhãn được chọn sau khi đã thấy kết quả test của
+mô hình có lịch sử, dù chỉ dựa trên validation (Mục~\ref{sec:histres}).
 
 \chapter{Kết luận và hướng phát triển}\label{ch:ketluan}
 
@@ -2148,22 +2158,21 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item Cùng 30\,\% nhãn, PINN-semi có sai số thấp hơn MLP có ý nghĩa thống kê trên cả bốn bộ (tỉ số MAE 0{,}76--0{,}96).
 \item Lợi ích lớn nhất khi ít nhãn (10\,\%: tỉ số 0{,}39--0{,}90, có ý nghĩa trên cả bốn bộ) và giảm dần khi lượng nhãn tăng.
       Ở 70\,\% nhãn, khi không còn cell không nhãn, cải thiện chỉ còn có ý nghĩa trên MIT, và trên TJU MLP tốt hơn.
-\item PINN-semi có MAE thấp hơn MLP trong 14/16, thấp hơn Ridge trong 15/16 và GPR trong 6/16 trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong 14/16 trường hợp, 10 trong đó có ý nghĩa thống kê. GBDT được tinh chỉnh tốt vẫn là mô hình mạnh nhất khi đánh giá trong cùng một bộ dữ liệu.
+\item PINN-semi có MAE thấp hơn MLP trong 14/16, thấp hơn Ridge trong 15/16 và GPR trong 6/16 trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong 14/16 trường hợp, 10 trong đó có ý nghĩa thống kê: trong các mô hình đơn lẻ, GBDT mạnh nhất.
 \item Ở 10\,\% nhãn, 50--64\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
-      mang lại 62--95\,\% mức giảm đó. Động học xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa ở 4 trong 16 trường hợp (bộ × mức nhãn) và kém hơn ở 1; khác biệt rõ nhất ở MIT khi ít nhãn. Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
+      mang lại 62--95\,\% mức giảm đó. Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
       ràng buộc dọc quỹ đạo (Mục~\ref{sec:physcheck}).
 \item Học trên một bộ và dùng nguyên cho bộ khác, sai số của mô hình kết hợp gấp 14{,}6 lần sai số trong bộ (GBDT: 12{,}4 lần, MLP: 29{,}2 lần); phần lớn là lệch mức của cả quỹ đạo. Thích nghi không nhãn giúp ở 6 cặp nhưng làm kém đi ở 5 cặp; học lặp bằng nhãn giả hội tụ về chính dự đoán ban đầu.
 \item Có. PINN-lai, nhóm ba PINN-semi kết hợp GBDT và bộ lọc quỹ đạo, có MAE thấp hơn PINN-semi ở
       16/16 trường hợp (tỉ số 0{,}67--0{,}95) và thấp hơn GBDT ở 10/16 trường hợp, 8 có ý nghĩa thống kê;
       GBDT chỉ còn tốt hơn có ý nghĩa ở 1 trường hợp.
       Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell chỉ tương quan ở mức vừa; phần vật lý vẫn giúp khi ít
-      nhãn (so với cùng công thức dùng MLP, tỉ số 0{,}72 ở 10\,\% nhãn). Khoảng dự đoán phù hợp 90\,\% đạt độ phủ
-      86--93\,\% trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell. Chọn trọng số ghép và cửa sổ lọc trên validation giảm thêm sai số còn 0{,}965 lần (trung bình nhân); khi đó PINN-lai ở 50\,\% nhãn không khác GBDT ở 70\,\% nhãn có ý nghĩa trên cả bốn bộ.
+      nhãn (so với cùng công thức dùng MLP, tỉ số 0{,}72 ở 10\,\% nhãn).
 \item Có, với độ chính xác giảm dần theo tầm. Khi cell test không được đo dung lượng, mô hình kết hợp
       (PINN-dự báo và GBDT) dự báo SOH trên toàn bộ phần đời còn lại với MAE 11{,}6--27{,}0 ($\times10^{-3}$), bằng 0{,}21--0{,}60
       lần các mô hình chỉ dựa vào lịch sử của chính cell; GBDT gần ngang về SOH nhưng không ngoại suy được ra ngoài
-      tầm đã học nên sai số RUL gấp 1{,}1--1{,}5 lần. Khoảng 90\,\% chỉ đạt độ phủ 78--84\,\%. Tách phần hồi phục và dao động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên XJTU, MIT và HUST; ngay sau một lần hồi phục, sai số giảm có ý nghĩa trên XJTU, không bộ nào kém đi có ý nghĩa.
+      tầm đã học nên sai số RUL gấp 1{,}1--1{,}5 lần. Khoảng 90\,\% chỉ đạt độ phủ 78--84\,\%. Tách phần hồi phục và dao động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên XJTU, MIT và HUST.
 \item Trên đúng cách chia của PINN4SOH, với tiền xử lý không rò rỉ, PINN-lai có sai số bằng 0{,}23--0{,}63 lần số công
       bố trên TJU và MIT, ngang trên XJTU và chỉ kém trên HUST, nơi chỉ số chu kỳ chuẩn hoá theo từng cell cho mô hình của bài biết phần đời đã qua. Cùng tiền xử lý với bài, PINN-lai bằng 0{,}84--1{,}10 lần ở chế độ đầy đủ và 0{,}33--0{,}94 lần ở chế độ
       ít mẫu, nhờ các cell không nhãn đi vào loss vật lý.
@@ -2171,6 +2180,11 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
       $0{,}05L$ (1{,}2--6{,}0\,\% số chu kỳ train) cho PINN-lai sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell (43--44\,\% số
       chu kỳ) và 0{,}97--1{,}05 lần khi gắn cho 70\,\% số cell; cả năm mô hình đều hưởng lợi theo cùng hướng. Đo thêm cell mới theo lịch $0{,}1L$ và cập nhật bằng bộ lọc Kalman đưa MAE xuống 1{,}2--7{,}5
       ($\times10^{-3}$), bằng 0{,}34--0{,}77 lần GBDT học với 70\,\% cell có nhãn đầy đủ.
+\item Lịch sử của cell giúp khi đủ nhãn, nhưng không ở mọi bộ: trên TJU và HUST từ 30\,\% nhãn, nó giảm sai số
+      của PINN-lai còn 0{,}89--0{,}97 lần; trên XJTU và ở 10\,\% nhãn thì không. Khi dùng hay không dùng lịch sử được chọn
+      trên validation của đủ ba lần lặp (phân tích hậu kiểm), PINN-lai có sai số thấp hơn GBDT ở 16/16 trường hợp
+      bộ $\times$ mức nhãn, có ý nghĩa ở 13. Bộ lọc xu thế không bảo đảm SOH không tăng (đầu ra tăng ở 28--44\,\% số bước); ép không tăng làm sai số
+      trên XJTU tăng 1{,}8--1{,}9 lần vì dung lượng đo được của XJTU tăng ở đầu đời.
 \end{enumerate}
 
 Về phương pháp đánh giá, cách chia theo chu kỳ và chuẩn hoá theo cả vòng đời cell làm sai số trông thấp hơn thực tế;
@@ -2181,11 +2195,9 @@ giao thức theo cell của đồ án có các tính chất được chứng min
 \begin{enumerate}
 \item Đưa ràng buộc vật lý vào chính mô hình cây, ví dụ dùng loss đơn điệu và loss động học để tạo nhãn giả cho
       GBDT trên cell không nhãn.
-\item Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình thay vì lịch đều, hiệu
-      chỉnh khoảng theo từng cell (độ phủ hiện chỉ 73--92\,\%), và kiểm chứng trên dữ liệu vận hành thật, nơi khoảng cách
-      giữa hai lần kiểm tra dung lượng không đều.
+\item Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình thay vì lịch đều, và kiểm chứng trên dữ liệu vận hành thật, nơi các lần kiểm tra dung lượng cách nhau không đều.
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
-\item Tách $k(\mathbf{x})$ khỏi thông tin về nhiệt độ và mức SOH (ví dụ cho $k$ chỉ phụ thuộc vào cell) để $\lambda$ và $E_a$ được dữ liệu xác định; Mục~\ref{sec:physparams} cho thấy chỉ tăng trọng số ODE là không đủ.
+\item Cho $k$ chỉ phụ thuộc vào cell để $\lambda$ và $E_a$ được dữ liệu xác định (Mục~\ref{sec:physparams}).
 \end{enumerate}
 
 \begin{thebibliography}{99}\small

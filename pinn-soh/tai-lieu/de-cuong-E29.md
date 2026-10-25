@@ -41,3 +41,23 @@ nếu nó thấp hơn bản không lịch sử ít nhất 2 %; nếu không, mô
 * So sánh ghép cặp theo cell test (trung bình 3 lần lặp), Wilcoxon: PINN-semi có/không lịch sử, PINN-lai có/không lịch
   sử, PINN-lai có lịch sử với GBDT tốt nhất của bộ, MLP có lịch sử với PINN-semi có lịch sử.
 * MIT và NASA không có lượt mới: dạng lịch sử không được chọn trên validation, kết quả giữ như E20 và E24.
+
+## Kết quả và phân tích hậu kiểm (ghi sau khi đã xem test)
+
+* Theo đề cương: lịch sử giúp trên TJU và HUST khi có từ 30 % nhãn (PINN-lai tinh chỉnh 0,89–0,97 lần bản không lịch
+  sử, có ý nghĩa ở 6/6 trường hợp), nhưng làm PINN-semi kém đi trên XJTU ở mọi mức nhãn (1,05–1,42 lần) và không giảm
+  sai số có ý nghĩa ở 10 % nhãn trên bộ nào.
+* Lựa chọn trên XJTU sai vì chỉ dựa trên lần lặp 0: tỉ số MAE validation của PINN-semi có / không lịch sử ở 30 và 70 %
+  nhãn là 0,92–0,94 với lần lặp 0, 1,30–1,50 với lần lặp 2, trung bình ba lần lặp 1,06–1,17 (test 1,06–1,15). Mỗi
+  fold của XJTU chỉ có 6 cell validation.
+* Phân tích hậu kiểm, đặt ra sau khi đã xem kết quả test ở trên nhưng chỉ dùng validation của đủ 3 lần lặp × 5 fold:
+  với mỗi (bộ, mức nhãn), PINN-lai dùng hay không dùng lịch sử cùng (ω, w) được chọn theo MAE validation; GBDT có hay
+  không lịch sử chọn theo cùng cách (analysis/analyze_e29.py: pinn_lai_sel_v2, gbdt_best). Validation chọn lịch sử ở
+  TJU và HUST với 30, 50, 70 % nhãn, trùng các trường hợp lịch sử có lợi trên test. Mô hình này thấp hơn GBDT ở 16/16
+  trường hợp (tỉ số 0,80–0,99, 13 có ý nghĩa); so với GBDT có hay không lịch sử, có hay không bộ lọc xu thế
+  (w ∈ {5, 10, 20, 40}) chọn trên validation: 16/16 thấp hơn (0,82–0,99), 11 có ý nghĩa, không trường hợp nào cao hơn
+  có ý nghĩa.
+* Khi cả hai cùng có lịch sử, PINN-semi so với MLP: 0,31–0,89 ở 10 % nhãn; 0,68–0,92 trên XJTU và HUST từ 30 % nhãn;
+  1,03–1,06 trên TJU (MLP tốt hơn, có ý nghĩa ở 70 %), giống như khi không có lịch sử.
+* Tỉ số GBDT trong bảng chọn ở trên lấy từ lượt khám phá; khi chạy lại đầy đủ trong E29dev (analysis/dev_e29.py),
+  TJU là 1,00 thay vì 0,997, các lựa chọn không đổi.

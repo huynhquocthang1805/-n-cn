@@ -62,7 +62,8 @@ def load():
               'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
               'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1', 'e25_estimation', 'e25_forecast',
               'e26_params', 'e26_mae', 'e27_summary', 'e27_tests', 'e28_summary', 'e28_tests', 'e28_tuned', 'overview',
-              'e20_tuned', 'mono_stats', 'mono_filter', 'e29_summary', 'e29_tests', 'e29_tuned', 'e29_dev', 'e29_choice']:
+              'e20_tuned', 'mono_stats', 'mono_filter', 'e29_summary', 'e29_tests', 'e29_tuned', 'e29_dev', 'e29_choice',
+              'e29_val', 'e29_select']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -93,7 +94,8 @@ def run_counts():
              E21=len(glob.glob('runs/E21/*.json')), E22=len(glob.glob('runs/E22/*.npz')),
              E23=len(glob.glob('runs/E23/*.npz')), E24=len(glob.glob('runs/E24/*.json')),
              E26=len(glob.glob('runs/E26/*.json')), E27=len(glob.glob('runs/E27/*.json')),
-             E28=len(glob.glob('runs/E28/*.json')))
+             E28=len(glob.glob('runs/E28/*.json')),
+             E29=len(glob.glob('runs/E29dev/*.json')) + len(glob.glob('runs/E29/*.json')))
     c['tong'] = sum(c.values())
     return c
 
@@ -111,7 +113,7 @@ PREAMBLE = r"""\documentclass[12pt,a4paper,oneside]{report}
 \setdefaultlanguage{vietnamese}
 \usepackage[left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
 \usepackage{graphicx,booktabs,longtable,array,tabularx,multirow,float,enumitem}
-\usepackage[section]{placeins}
+\usepackage{placeins}
 \renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.8}
 \renewcommand{\textfraction}{0.07}\renewcommand{\floatpagefraction}{0.75}
 \setcounter{topnumber}{3}\setcounter{bottomnumber}{2}\setcounter{totalnumber}{5}
@@ -119,7 +121,7 @@ PREAMBLE = r"""\documentclass[12pt,a4paper,oneside]{report}
 \usepackage{adjustbox}
 \usepackage{caption}
 \captionsetup{font=small,labelfont=bf,labelsep=period}
-\usepackage{titlesec}
+\usepackage{titlesec,etoolbox}
 \titleformat{\chapter}[display]{\normalfont\bfseries\Large\centering}{\MakeUppercase{\chaptername}~\thechapter}{6pt}{\LARGE}
 \titlespacing*{\chapter}{0pt}{-10pt}{18pt}
 \usepackage{fancyhdr}
@@ -141,6 +143,7 @@ PREAMBLE = r"""\documentclass[12pt,a4paper,oneside]{report}
 \setlist{itemsep=2pt,topsep=4pt}
 \emergencystretch=1.5em
 \setcounter{tocdepth}{1}
+\makeatletter\patchcmd{\l@chapter}{1.0em}{0.15em}{}{}\makeatother
 \begin{document}
 """
 
@@ -821,6 +824,8 @@ def ch5(d, ctx):
               ['So với PINN4SOH', 'đúng cách chia của bài, 39 nhóm (đầy đủ và ít mẫu) × 2 cách tiền xử lý × 3 hạt giống',
                num(rc['E27'])],
               ['Ngân sách đo', 'đo thưa mọi cell train, 4 lịch đo × 4 bộ × 5 fold × 3 lần lặp', num(rc['E28'])],
+              ['Đầu vào có lịch sử', 'chọn dạng trên validation; PINN-semi, MLP, GBDT có lịch sử, 3 lần lặp × 5 fold',
+               num(rc['E29'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -2184,7 +2189,8 @@ mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii)
 nghiệm, kể cả khi đo thưa. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ không
 được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
 mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
-đánh giá với ba lần lặp thay vì năm.
+đánh giá với ba lần lặp thay vì năm, và việc dùng lịch sử theo từng mức nhãn được chọn sau khi đã thấy kết quả test của
+mô hình có lịch sử, dù chỉ dựa trên validation (Mục~\ref{sec:histres}).
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
                                            'và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai '
                                            'số càng bị đánh giá thấp giả tạo.', 'fig:leak'),
@@ -2279,16 +2285,9 @@ def ch7_improve(d, ctx):
         return ''
     E = e20_facts(d)
     v, t = E['v'], E['t']
-    # bảng phân rã sai số ở 30 % nhãn
+    # phân rã sai số ở 30 % nhãn (MLP, PINN-semi, GBDT trên bốn bộ)
     dc = d['e20_error_decomp']
-    rows = []
-    for ds in DS:
-        for m in ['mlp', 'pinn_semi', 'gbdt']:
-            r = dc[(dc.dataset == ds) & (dc.model == m) & (dc.frac == 0.3)].iloc[0]
-            rows.append([ds if m == 'mlp' else '', LBL[m], m3(r.MAE_cell), pc(r.lech_muc), pc(r.troi_cham), pc(r.dao_dong)])
-    tab_dc = table(['Bộ', 'Mô hình', r'MAE theo cell ($\times10^{-3}$)', 'lệch mức', 'trôi chậm', 'dao động nhanh'], rows,
-                   'llrrrr', r'Phân rã MSE theo cell ở 30\,\% nhãn thành ba phần (tỉ lệ trên tổng MSE).', 'tab:decomp')
-    sub = dc[dc.frac == 0.3]
+    sub = dc[(dc.frac == 0.3) & dc.model.isin(['mlp', 'pinn_semi', 'gbdt'])]
     fast = sub.dao_dong; slow = sub.lech_muc + sub.troi_cham
     fast_nomit = sub[sub.dataset != 'MIT'].dao_dong
     # bảng dev
@@ -2406,11 +2405,8 @@ $e_n = \hat y_n - y_n$ được tách thành ba phần:
 e_n = \underbrace{b}_{\text{lệch mức}} + \underbrace{s_n}_{\text{trôi chậm}} + \underbrace{f_n}_{\text{dao động nhanh}},
 \end{equation}
 trong đó $b$ là trung bình của $e_n$ trên cả cell, $s_n$ là trung bình trượt căn giữa 21 điểm của $e_n - b$, còn $f_n$
-là phần còn lại. Bảng~\ref{tab:decomp} cho tỉ lệ của từng phần trong MSE ở 30\,\% nhãn.
-
-<<TABDC>>
-
-Phần dao động nhanh, tức nhiễu giữa các chu kỳ liền nhau, chỉ chiếm <<FAST>> tổng MSE ngoài bộ MIT; trên MIT, nơi
+là phần còn lại. Ở 30\,\% nhãn, với MLP, PINN-semi và GBDT trên bốn bộ, lệch mức chiếm <<LEVEL>> tổng MSE và trôi chậm
+<<DRIFT>>. Phần dao động nhanh, tức nhiễu giữa các chu kỳ liền nhau, chỉ chiếm <<FAST>> tổng MSE ngoài bộ MIT; trên MIT, nơi
 sai số tuyệt đối rất nhỏ, phần này lên tới <<FASTMIT>>. Phần lớn sai số là lệch mức và trôi chậm: mô hình đoán sai
 SOH của cả một cell, hoặc đoán sai tốc độ suy giảm trên một đoạn dài. Hai hệ quả rút ra. Một là làm trơn dự đoán chỉ
 giúp được một phần nhỏ. Hai là muốn giảm sai số đáng kể phải giảm phần lệch theo từng cell, và cách đơn giản nhất là
@@ -2587,7 +2583,8 @@ Về giới hạn: đánh giá cuối dùng ba lần lặp thay vì năm vì chi
 validation của lần lặp 0, vốn nằm trong test ở fold khác; thiên lệch chọn này nhỏ vì mức cải thiện trên test gần
 với trên validation.
 """,
-             TABDC=tab_dc, FAST=_rng([100 * x for x in fast_nomit], 0) + r'\,\%',
+             LEVEL=_rng([100 * x for x in sub.lech_muc], 0) + r'\,\%', DRIFT=_rng([100 * x for x in sub.troi_cham], 0) + r'\,\%',
+             FAST=_rng([100 * x for x in fast_nomit], 0) + r'\,\%',
              FASTMIT=_rng([100 * x for x in sub[sub.dataset == 'MIT'].dao_dong], 0) + r'\,\%',
              TABDEV=tab_dev, D_HYB10=f(dev['ENS3+GBDT|trend10'][0.1], 3), D_HYB50=f(dev['ENS3+GBDT|trend10'][0.5], 3),
              D_GB=f(dev['GBDT']['all'], 3), D_ENS=f(dev['ENS3']['all'], 3), D_KD=f(dev['KD03']['all'], 3),
@@ -2631,16 +2628,14 @@ def ch6_concl(d):
     if 'e20_summary' not in d:
         return ''
     E = e20_facts(d)
-    cf = E['cf']; tb = cf[cf.kieu == 'thich_nghi']
     return T(r"""\item Có. PINN-lai, nhóm ba PINN-semi kết hợp GBDT và bộ lọc quỹ đạo, có MAE thấp hơn PINN-semi ở
       <<B>>/<<N>> trường hợp (tỉ số <<R>>) và thấp hơn GBDT ở <<BG>>/<<N>> trường hợp, <<SG>> có ý nghĩa thống kê;
       GBDT chỉ còn tốt hơn có ý nghĩa ở <<WG>> trường hợp.
       Phần lớn lợi ích đến từ việc kết hợp hai mô hình có lệch theo cell chỉ tương quan ở mức vừa; phần vật lý vẫn giúp khi ít
-      nhãn (so với cùng công thức dùng MLP, tỉ số <<PH>> ở 10\,\% nhãn). Khoảng dự đoán phù hợp 90\,\% đạt độ phủ
-      <<COV>> trên test, nhưng chỉ theo nghĩa trung bình trên các chu kỳ, không phải cho từng cell.<<TUNED>>
+      nhãn (so với cùng công thức dùng MLP, tỉ số <<PH>> ở 10\,\% nhãn).<<TUNED>>
 """, B=E['pinn_better'], N=E['pinn_n'], R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]), BG=E['gbdt_better'],
-             SG=E['gbdt_sig'], WG=E['gbdt_worse_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2), COV=_rng([100 * x for x in tb.phu], 0) + r'\,\%',
-             TUNED=tuned_sentence(d))
+             SG=E['gbdt_sig'], WG=E['gbdt_worse_sig'], PH=f(_gm(E['mlp_lai_r'][0.1]), 2),
+             TUNED='' if 'e29_summary' in d else tuned_sentence(d))
 
 
 def tuned_sentence(d):
@@ -2660,11 +2655,8 @@ def ch8(d, ctx):
     ch3 = (f'PINN-semi có MAE thấp hơn MLP trong {w["mlp"][0]}/{w["mlp"][1]}, thấp hơn Ridge trong '
            f'{w["ridge"][0]}/{w["ridge"][1]}' + (f' và GPR trong {w["gpr"][0]}/{w["gpr"][1]}' if w['gpr'][1] else '')
            + ' trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong '
-           f'{w["gbdt"][1] - w["gbdt"][0]}/{w["gbdt"][1]} trường hợp, {F["n_gb_sig"]} trong đó có ý nghĩa thống kê. '
-           'GBDT được tinh chỉnh tốt vẫn là mô hình mạnh nhất khi đánh giá trong cùng một bộ dữ liệu.')
-    bb = (f' Động học xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa ở {F["bb_nsemi"]} trong 16 trường hợp '
-          f'(bộ × mức nhãn) và kém hơn ở {F["bb_nsig"] - F["bb_nsemi"]}; khác biệt rõ nhất ở {F["bb_max"][0]} khi ít '
-          'nhãn.' if F['bb_have'] else '')
+           f'{w["gbdt"][1] - w["gbdt"][0]}/{w["gbdt"][1]} trường hợp, {F["n_gb_sig"]} trong đó có ý nghĩa thống kê: '
+           'trong các mô hình đơn lẻ, GBDT mạnh nhất.')
     Tr = F['tr']
     ch5 = e21_concl(d) or (f'Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức {_rng(F["tr_k0_pinn"], 3)} trong khi MLP lệch tới '
            f'{_rng(F["tr_k0_mlp"])}; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở '
@@ -2686,7 +2678,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item <<CH3>>
 \item Ở 10\,\% nhãn, <<SHARE>>\,\% mức giảm sai số (thang log) của PINN-semi so với MLP đến từ việc áp loss vật
       lý lên cell không nhãn, phần còn lại từ vật lý trên cell có nhãn. Ở 30\,\% nhãn, riêng ràng buộc đơn điệu đã
-      mang lại <<MONO>>\,\% mức giảm đó.<<BB>> Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
+      mang lại <<MONO>>\,\% mức giảm đó. Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
       ràng buộc dọc quỹ đạo (Mục~\ref{sec:physcheck}).
 \item <<CH5>>
 <<CH6>><<CH7>><<CH8>><<CH9>><<CH10>>\end{enumerate}
@@ -2709,7 +2701,7 @@ giao thức theo cell của đồ án có các tính chất được chứng min
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
-             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), CH8=e27_concl(d), CH9=e28_concl(d), CH10=e29_concl(d),
+             CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), CH8=e27_concl(d), CH9=e28_concl(d), CH10=e29_concl(d),
              FW2=future_kalman(d), FW4=future_params(d))
 
 
@@ -2793,14 +2785,17 @@ def e29_concl(d):
         return ''
     import thesis_bk as BK
     E = BK.e29_facts(d)
-    ph, lh, lg = E['pair']('pinn_h', 'pinn'), E['pair']('pinn_lai_h', 'pinn_lai'), E['pair']('pinn_lai_h', 'gbdt_sel')
-    sig = lambda X: BK._sig(X)
-    bph, _, nph = sig(ph); blh, _, nlh = sig(lh); blg, wlg, nlg = sig(lg)
-    txt = T(r"""\item Có, ở <<DSH>>: PINN-semi có lịch sử có sai số bằng <<RPH>> lần bản gốc (tốt hơn có ý nghĩa ở <<BPH>>/<<NPH>>
-      trường hợp), PINN-lai có lịch sử bằng <<RLH>> lần PINN-lai; trên MIT và NASA lịch sử không được chọn trên
-      validation. So với GBDT, PINN-lai có lịch sử thấp hơn có ý nghĩa ở <<BLG>>/<<NLG>> trường hợp<<WLG>>.""",
-            DSH=_lst(E['DS']), RPH=_rng(ph.ratio, 2), BPH=bph, NPH=nph, RLH=_rng(lh.ratio, 2), BLG=blg, NLG=nlg,
-            WLG=(f' và kém hơn có ý nghĩa ở {wlg}' if wlg else ''))
+    lv, good, gds, fmin = BK.e29_groups(E)
+    A = lambda X: X[X.dataset.isin(gds) & (X.f >= fmin)]
+    bad = [ds for ds in E['DS'] if ds not in gds]
+    fin = E['pair']('pinn_lai_sel_v2', 'gbdt_best')
+    nb, _, n = BK._sig(fin)
+    txt = T(r"""\item Lịch sử của cell giúp khi đủ nhãn, nhưng không ở mọi bộ: trên <<GDS>> từ <<FMIN>> nhãn, nó giảm sai số
+      của PINN-lai còn <<RLA>> lần; trên <<BAD>> và ở 10\,\% nhãn thì không. Khi dùng hay không dùng lịch sử được chọn
+      trên validation của đủ ba lần lặp (phân tích hậu kiểm), PINN-lai có sai số thấp hơn GBDT ở <<NL>>/<<N>> trường hợp
+      bộ $\times$ mức nhãn, có ý nghĩa ở <<NB>>.""",
+            GDS=_lst(gds), FMIN=pc(fmin), RLA=_rng(A(lv).ratio, 2), BAD=_lst(bad),
+            NL=int((fin.ratio < 1).sum()), N=n, NB=nb)
     if 'mono_filter' in d:
         F = d['mono_filter']
         txt += T(r""" Bộ lọc xu thế không bảo đảm SOH không tăng (đầu ra tăng ở <<UP>> số bước); ép không tăng làm sai số
@@ -2814,20 +2809,15 @@ def future_kalman(d):
     if 'e25_estimation' not in d:
         return (r'Cập nhật ước lượng và dự báo khi có thêm một vài lần đo dung lượng của chính cell, ví dụ bằng một bộ lọc '
                 r'Bayes theo từng cell.')
-    S = d['e25_estimation']
-    cov = _rng([100 * x for x in S[S.sched == 'q10'].cov_kalman], 0) + r'\,\%'
-    return T(r"""Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình thay vì lịch đều, hiệu
-      chỉnh khoảng theo từng cell (độ phủ hiện chỉ <<COV>>), và kiểm chứng trên dữ liệu vận hành thật, nơi khoảng cách
-      giữa hai lần kiểm tra dung lượng không đều.""", COV=cov)
+    return (r'Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình thay vì lịch đều, và kiểm '
+            r'chứng trên dữ liệu vận hành thật, nơi các lần kiểm tra dung lượng cách nhau không đều.')
 
 
 def future_params(d):
     if 'e26_params' not in d:
         return (r'Kết hợp phần dư dạng đạo hàm riêng với dạng Euler dọc quỹ đạo, tăng trọng số của phần dư động học và '
                 r'dùng dữ liệu nhiều mức nhiệt độ, để $\lambda$ và $E_a$ diễn giải được theo nghĩa vật lý.')
-    return (r'Tách $k(\mathbf{x})$ khỏi thông tin về nhiệt độ và mức SOH (ví dụ cho $k$ chỉ phụ thuộc vào cell) để '
-            r'$\lambda$ và $E_a$ được dữ liệu xác định; Mục~\ref{sec:physparams} cho thấy chỉ tăng trọng số ODE là không '
-            r'đủ.')
+    return r'Cho $k$ chỉ phụ thuộc vào cell để $\lambda$ và $E_a$ được dữ liệu xác định (Mục~\ref{sec:physparams}).'
 
 
 # ═════════════════════════════════════════════════════════════ TÓM TẮT, PHỤ LỤC, DỰNG
@@ -2901,11 +2891,15 @@ def abstract_e29(d):
         return ''
     import thesis_bk as BK
     E = BK.e29_facts(d)
-    lh = E['pair']('pinn_lai_h', 'pinn_lai')
+    lv, good, gds, fmin = BK.e29_groups(E)
+    A = lv[lv.dataset.isin(gds) & (lv.f >= fmin)]
+    fin = E['pair']('pinn_lai_sel_v2', 'gbdt_best')
     return T(r""" Thêm lịch sử của cell vào đầu vào (trung bình trượt nhân quả của đặc trưng sạc) giảm sai số của
-PINN-lai còn <<RLH>> lần trên <<DSH>>, nơi validation cho thấy có lợi; bộ lọc quỹ đạo được chứng minh là không bảo đảm
-SOH không tăng, và ép không tăng làm sai số tăng ở bộ có dung lượng hồi phục.""",
-             RLH=_rng(lh.ratio, 2), DSH=_lst(E['DS']))
+PINN-lai còn <<RLA>> lần trên <<GDS>> khi có từ <<FMIN>> nhãn nhưng không giúp trên <<BAD>> và khi chỉ có 10\,\% nhãn; dùng
+lịch sử theo lựa chọn trên validation, PINN-lai có sai số thấp hơn GBDT ở <<NL>>/<<N>> trường hợp. Bộ lọc quỹ đạo được chỉ
+ra là không bảo đảm SOH không tăng, và ép không tăng làm sai số tăng ở bộ có dung lượng tăng thật.""",
+             RLA=_rng(A.ratio, 2), GDS=_lst(gds), FMIN=pc(fmin),
+             BAD=_lst([ds for ds in E['DS'] if ds not in gds]), NL=int((fin.ratio < 1).sum()), N=len(fin))
 
 
 def abstract(d, ctx):
@@ -3027,10 +3021,7 @@ def e23_sentence(d, kind):
                 'thêm sai số tầm ngắn' + (f' trên {lst(sh)}' if sh else '') + '.')
     t = (' Tách phần hồi phục và dao động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa '
          + (f'trên {lst(sh)}' if sh else 'trên không bộ nào'))
-    t += (f'; ngay sau một lần hồi phục, sai số giảm có ý nghĩa trên {_lst(ev_b)}' if ev_b else
-          '; ngay sau một lần hồi phục, chưa bộ nào giảm sai số có ý nghĩa')
-    t += (f' và tăng có ý nghĩa trên {_lst(ev_w)}.' if ev_w else ', không bộ nào kém đi có ý nghĩa.')
-    return t
+    return t + (f', nhưng làm sai số tăng có ý nghĩa ngay sau hồi phục trên {_lst(ev_w)}.' if ev_w else '.')
 
 
 def abstract_e22(d):

@@ -344,10 +344,38 @@ def e22_traj():
     save(fig, f'{OUT}/fig_e22_traj')
 
 
+# ─────────────────────────────────────────────────────────── đầu vào có lịch sử (E29), đủ bốn bộ
+def e29_hist():
+    """MAE theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh, không / có lịch sử, cạnh GBDT tốt nhất trên validation. MIT
+    không có dạng lịch sử nào được chọn ở E29dev nên chỉ có các đường không lịch sử."""
+    plt = setup()
+    from pinnsoh.plotstyle import panel_title, save, CHEM
+    S = pd.read_csv(f'{OUT}/e29_summary.csv')
+    spec = [('pinn', '#9fd8c1', (0, (4, 2)), 'PINN-semi'),
+            ('pinn_h', '#1baf7a', '-', 'PINN-semi + lịch sử'),
+            ('gbdt_best', '#eb6834', '-', 'GBDT'),
+            ('pinn_lai_v2', '#86b6ef', (0, (4, 2)), 'PINN-lai'),
+            ('pinn_lai_h_v2', '#0b3d73', '-', 'PINN-lai + lịch sử')]
+    fig, axes = _grid(plt, 4.5)
+    for ax, ds in zip(axes, DS):
+        vals = []
+        for m, col, ls, lab in spec:
+            g = S[(S.dataset == ds) & (S.model == m)].sort_values('f')
+            ax.plot(100 * g.f, 1e3 * g.mae, color=col, ls=ls, lw=1.8, marker='o', ms=4, label=lab)
+            vals += list(1e3 * g.mae)
+        _log_ticks(ax, min(vals) / 1.08, max(vals) * 1.08)
+        ax.set_xticks([10, 30, 50, 70]); ax.set_xlim(5, 75)
+        panel_title(ax, f'{ds} ({CHEM[ds]})' + ('' if (S[S.dataset == ds].model == 'pinn_h').any() else
+                                                ', không dùng lịch sử'), pad=4)
+    _finish(fig, axes, '% số cell có nhãn', 'MAE theo cell (×10$^{-3}$)', 2, 3)
+    save(fig, f'{OUT}/fig_e29_hist')
+
+
 FIGS = dict(curve_physics=curve_physics, leakage=leakage, e20_steps=e20_steps, e27_compare=e27_compare,
-            e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj)
+            e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e29_hist=e29_hist)
 NEEDS = dict(curve_physics='thesis_curve', leakage='thesis_leakage', e20_steps='e20_summary', e27_compare='e27_summary',
-             e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon')
+             e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon',
+             e29_hist='e29_summary')
 
 
 def main(names=None):
