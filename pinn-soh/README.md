@@ -93,7 +93,8 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E24 | Bộ NASA: 3 PINN-semi, MLP, GBDT ở 30/70 % nhãn, có/không giờ nghỉ; cách chia SambaMixer | 330 | 1,9 | 0,5 | 0,3 |
 | E24f | Dự báo E22 và E23 trên NASA (cần E24) | 30 | 0,4 | 0,1 | 0,1 |
 | E26 | λ, Ea trên NASA và TJU: trọng số ODE 0,2/1, ràng buộc Euler, khởi tạo khác (PINN-semi, 70 % nhãn) | 100 | 0,7 | 0,2 | 0,1 |
-| **Tổng** | | **5 848** | **≈ 48** | **≈ 12** | **≈ 6** |
+| E27 | Cách chia của PINN4SOH (39 nhóm, đầy đủ + ít mẫu), 2 cách tiền xử lý × 3 hạt giống: 3 PINN-semi, GBDT, PINN hộp đen | 1 002 | 7 | 1,8 | 0,9 |
+| **Tổng** | | **6 850** | **≈ 55** | **≈ 14** | **≈ 7** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
