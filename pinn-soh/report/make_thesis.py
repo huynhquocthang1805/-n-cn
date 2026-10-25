@@ -514,7 +514,7 @@ phòng thí nghiệm cho tới khi dung lượng giảm sâu.
 Đặc trưng đoạn sạc của cả bốn bộ được trích theo cùng một quy trình và công bố kèm PINN4SOH~\cite{wang2024};
 nhờ vậy bốn bộ có chung không gian đặc trưng và có thể thử chuyển miền giữa chúng.
 
-Bộ thứ năm, \textbf{NASA} --- Saha và Goebel~\cite{saha2007nasa}, là bộ thường dùng nhất trong các công trình về SOH
+Bộ thứ năm, NASA --- Saha và Goebel~\cite{saha2007nasa}, là bộ thường dùng nhất trong các công trình về SOH
 và RUL. Đồ án dùng 18 cell 18650 NCA (danh định 2,0\,Ah) có chế độ xả cố định, đúng tập cell mà
 SambaMixer~\cite{olalde2024samba} dùng (bỏ cell số 45 vì chỉ có 17 lần sạc đầy đủ), thử ở 4, 24 và 43\,\textdegree C
 với dòng xả 1--4\,A, chia thành sáu nhóm theo giao thức. Dữ liệu gốc chỉ có chuỗi đo, nên đồ án tự trích 16 đặc trưng
