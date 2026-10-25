@@ -171,6 +171,62 @@ dữ liệu khác, và phần mở rộng dự báo SOH tương lai, dung lượ
 và cấu hình huấn luyện chung.
 """
 
+CH4_HIST = r"""\section{Đầu vào có lịch sử của cell}\label{sec:hist_m}
+
+PINN-semi, MLP và GBDT đều dự đoán SOH ở chu kỳ $n$ chỉ từ 16 đặc trưng sạc của chính chu kỳ đó và chỉ số chu kỳ.
+Đặc trưng của một chu kỳ có nhiễu đo, trong khi các chu kỳ liền trước mang thông tin về gần như cùng một trạng thái của
+cell. Đồ án thêm lịch sử vào đầu vào bằng các đại lượng nhân quả, chỉ dùng chu kỳ $n$ và các chu kỳ trước của cùng
+cell nên vẫn chạy trực tuyến được: trung bình trượt mũ
+\begin{equation}\label{eq:ema}
+\mathbf{z}^{(a)}_1 = \mathbf{x}_1, \qquad \mathbf{z}^{(a)}_n = a\,\mathbf{x}_n + (1-a)\,\mathbf{z}^{(a)}_{n-1},
+\end{equation}
+nhớ khoảng $1/a$ chu kỳ, và độ dốc bình phương tối thiểu của từng đặc trưng trên 20 chu kỳ gần nhất. Bốn dạng được
+thử: chỉ $\mathbf{z}^{(0{,}3)}$ thay cho $\mathbf{x}$; $\mathbf{x}$ nối với $\mathbf{z}^{(0{,}1)}$; $\mathbf{x}$ nối
+với $\mathbf{z}^{(0{,}3)}, \mathbf{z}^{(0{,}1)}, \mathbf{z}^{(0{,}03)}$; và $\mathbf{x}$ nối với $\mathbf{z}^{(0{,}1)},
+\mathbf{z}^{(0{,}03)}$ cùng độ dốc. Đây là một lớp hồi quy tuyến tính với hệ số cố định, cùng ý tưởng với mô hình không
+gian trạng thái của SambaMixer~\cite{olalde2024samba} nhưng không học hệ số. Mọi mô hình dùng được cùng đầu vào, nên
+phép so sánh tách được tác động của lịch sử khỏi tác động của vật lý. Với mỗi bộ và mỗi loại mô hình, dạng lịch sử được
+chọn trên tập validation và chỉ được giữ khi nó giảm MAE validation ít nhất 2\,\%; nếu không, mô hình dùng đặc trưng
+gốc. PINN-lai có lịch sử dùng đúng công thức \eqref{eq:lai1}--\eqref{eq:lai3} với ba PINN-semi và GBDT đã chọn cho bộ.
+
+"""
+
+
+def mono_text(d, H):
+    """Tiểu mục: bộ lọc xu thế không bảo đảm không tăng; bản có bảo đảm được và mất gì (analysis/analyze_mono.py)."""
+    f, pc, T, rng, lst, fig = (H[k] for k in ('f', 'pc', 'T', 'rng', 'lst', 'fig'))
+    S = d['mono_stats'].set_index('dataset'); F = d['mono_filter']
+    r = lambda ds: list(F[F.dataset == ds].ratio)
+    worse = [ds for ds in E28_DS if ((F.dataset == ds) & (F.p < 0.05) & (F.ratio > 1)).sum() == (F.dataset == ds).sum()]
+    flat = [ds for ds in E28_DS if max(abs(x - 1) for x in r(ds)) < 0.02]
+    return T(r"""
+\subsection{Bộ lọc có giữ SOH không tăng không}\label{sec:monores}
+
+Theo Mệnh đề~\ref{prop:filter}(iv), bộ lọc \eqref{eq:trend} không bảo đảm dãy đầu ra không tăng, và trên test điều này
+xảy ra thường xuyên: đầu ra của PINN-lai tăng ở <<UP>> số bước giữa hai chu kỳ liên tiếp, bước tăng lớn nhất là
+<<UPMAX>> SOH. Dãy \eqref{eq:mono} thì không bao giờ tăng. Khi $(w, a)$ của nó được chọn trên validation riêng cho từng
+bộ rồi so trên test với bộ lọc xu thế, tỉ số MAE gần như bằng 1 trên <<FLAT>> (<<RFLAT>>), nhưng là <<RMIT>> trên MIT và
+<<RXJTU>> trên XJTU<<WORSE>>.
+
+Nguyên nhân nằm ở nhãn, không ở bộ lọc. Dung lượng đo được của XJTU tăng trong vài chục chu kỳ đầu (trung vị
+<<EARLY>> SOH), và <<XUP>> số bước tăng quá 0,5\,\% SOH; trên NASA, tỉ lệ này là <<NUP>> vì dung lượng hồi phục sau
+mỗi lần nghỉ. TJU và HUST gần như không có bước tăng thật. Dãy không tăng bắt đầu từ dự đoán ở chu kỳ đầu nên không theo
+được đoạn dung lượng tăng (Hình~\ref{fig:mono}). PINN-lai vì vậy giữ bộ lọc xu thế, và đồ án mô tả nó đúng là làm trơn
+theo xu thế giảm, không phải ràng buộc không tăng. Ràng buộc cứng chỉ hợp với các bộ mà dung lượng đo được thật sự
+không tăng, như TJU và HUST.
+
+<<FIG>>
+""", UP=rng([100 * x for x in S.frac_up.dropna()], 0) + r'\,\%', UPMAX=f(float(S.up_max.max()), 2),
+             FLAT=lst(flat) or 'không bộ nào', RFLAT=rng([x for ds in flat for x in r(ds)], 2),
+             RMIT=rng(r('MIT'), 2), RXJTU=rng(r('XJTU'), 2),
+             WORSE=(f', kém hơn có ý nghĩa ở mọi mức nhãn trên {lst(worse)}' if worse else ''),
+             EARLY=f(float(S.loc['XJTU', 'early_rise_med']), 2), XUP=pc(float(S.loc['XJTU', 'label_up']), 0),
+             NUP=pc(float(S.loc['NASA', 'label_up']), 0),
+             FIG=fig('fig_mono_example', 'Một cell test của XJTU có dung lượng tăng đầu đời và một cell TJU (30\\,\\% nhãn, '
+                     'lần lặp 0): SOH đo được, dự đoán của PINN-lai trước khi lọc, sau bộ lọc xu thế và sau bộ lọc không '
+                     'tăng \\eqref{eq:mono} với $(w, a)$ chọn trên validation.', 'fig:mono'))
+
+
 CH4_DA = r"""\section{Thích nghi không nhãn và tự huấn luyện}\label{sec:selftrain}
 
 Khi đem mô hình học trên bộ nguồn $S$ sang bộ đích $T$, đồ án dùng một quy trình gồm vòng 0 và các vòng tự huấn
@@ -362,7 +418,7 @@ máy khác cho dự đoán trùng từng bit với kết quả báo cáo.
 
 # ───────────────────────────────────────────────────────────── ghép
 def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''), e26='', e27='', e28='', overview='',
-             tuned='', e25s=''):
+             tuned='', e25s='', mono='', e29=''):
     """c1..c8: chuỗi các chương cũ (c7 = chương cải tiến); e21: các mục kết quả E21; fig: hàm sinh hình."""
     # Chương 1
     h1, s1 = split_sections(c1)
@@ -395,7 +451,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
     lai = sub1(lai, 'Sáu hướng được thử, mỗi hướng dựa trên một kết quả đã công bố hoặc một quan sát ở Chương~\\ref{ch:ketqua}.',
                'Sáu thành phần được xem xét, mỗi thành phần dựa trên một kết quả đã công bố hoặc một quan sát ở '
                'Chương~\\ref{ch:ketqua}; Mục~\\ref{sec:devproto} chọn trong số đó chỉ bằng tập validation.')
-    ch4 = (CH4_HEAD + data + pinn + lai + CH4_DA + CH4_FC + e25[0] + pick(s4, 'Các mô hình đối chứng')
+    ch4 = (CH4_HEAD + data + pinn + lai + (CH4_HIST if e29 else '') + CH4_DA + CH4_FC + e25[0] + pick(s4, 'Các mô hình đối chứng')
            + pick(s4, 'Cấu hình huấn luyện'))
     # Chương 5: thiết kế thí nghiệm
     h5, s5 = split_sections(c5)
@@ -438,16 +494,24 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
                          improve, count=1, flags=re.S)
     assert n == 1
     ch6 = (head6 + leak + s30 + labels + pick(s6, 'So với các mô hình học có nhãn khác') + pick(s6, 'Lợi ích đến từ đâu')
-           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + e27 + e21 + e22[1] + e28 + (e25s if (e28 and e25s) else e25[1])
+           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + mono + e29 + e27 + e21 + e22[1] + e28
+           + (e25s if (e28 and e25s) else e25[1])
            + sub1(pick(s6, 'Thảo luận chung'), '\\section{Thảo luận chung}\n', '\\section{Thảo luận chung}\n' + overview)
            + ('' if e28 else demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp'))))
     ch7 = c8
     out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
     # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
-    for lab in ('fig:e20curve', 'fig:conformal', 'fig:curvebase', 'fig:split'):
+    for lab in ('fig:e20curve', 'fig:conformal', 'fig:curvebase', 'fig:split', 'fig:rowsim', 'fig:usage', 'fig:e20steps',
+                'fig:e23ex', 'tab:dev', 'tab:phys'):
         out = drop_float(out, lab)
+    out = sub1(out, ' Bảng~\\ref{tab:dev}\ntóm tắt kết quả.', '')
     out = sub1(out, 'Hình~\\ref{fig:curvephys}, \\ref{fig:curvebase}', 'Hình~\\ref{fig:curvephys}')
     out = sub1(out, ' Hình~\\ref{fig:split} minh hoạ cách chia thật của XJTU.', '')
+    # hình vẽ lại to hơn để dễ đọc khi in: bỏ bốn hình minh hoạ mà lời văn đã nêu đủ số liệu
+    out = sub1(out, 'đồ án mô phỏng hai lần (Hình~\\ref{fig:rowsim}).', 'đồ án mô phỏng hai lần.')
+    out = sub1(out, 'Hình~\\ref{fig:usage} liệt kê phần dữ liệu nào được dùng cho bước nào. Bốn quy tắc:',
+               'Bốn quy tắc về phần dữ liệu được dùng ở từng bước:')
+    out = sub1(out, 'Hình~\\ref{fig:e20steps} đi qua từng bước. Tính trung bình nhân', 'Tính trung bình nhân')
     return out
 
 
@@ -813,20 +877,32 @@ tin.
 giữ lại để dừng sớm, đánh giá trên các cell 6, 7 và 47. PINN-lai có MAE <<S6>>, <<S7>> và <<S47>>\,\% SOH, cao hơn
 SambaMixer trên cả ba cell và chỉ tốt hơn CNN-BiGRU trên cell 47. SambaMixer nhận chuỗi điện áp, dòng điện, nhiệt độ của chính lần xả cần ước lượng; với dòng xả không đổi, thời gian xả
 nhân với dòng điện chính là dung lượng, nên nhãn gần như nằm sẵn trong đầu vào. Đồ án dùng đoạn sạc trước lần xả, là
-dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Còn lại hai kiểu sai số:
-cell 6 bắt đầu ở 101\,\% SOH trong khi các cell train cùng nhóm bắt đầu quanh 92\,\%, và 75--84\,\% số chu kỳ của
-nó có đặc trưng sạc nằm ngoài khoảng phân vị 1--99\,\% của cell train, nên cả quỹ đạo dự đoán bị lệch xuống. Ở cell 7,
-đặc trưng sạc nửa sau đời nằm hoàn toàn trong miền của cell train, nhưng dự đoán đi ngang quanh 81\,\% trong khi dung
-lượng thật giảm tiếp về 70\,\%: với cùng một đường sạc, cell này cho dung lượng xả thấp hơn các cell train. Quan hệ
-giữa đường sạc và dung lượng xả không giống nhau giữa các cell là giới hạn chung của mọi phương pháp chỉ dùng đoạn
-sạc, và là cái giá của việc không phải xả sâu cell để đo.
+dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Sai số lớn nhất ở cell 6, vốn bắt đầu ở 101\,\% SOH trong khi
+các cell train cùng nhóm bắt đầu quanh 92\,\%, với 75--84\,\% số chu kỳ có đặc trưng sạc nằm ngoài miền của cell
+train.<<HIST>>
 
 <<TABS>>
 <<FIGS>>
 """, S6=f(sv('NASA', 'pinn_lai', 'B0006'), 2), S7=f(sv('NASA', 'pinn_lai', 'B0007'), 2),
              S47=f(sv('NASA', 'pinn_lai', 'B0047'), 2), TABS=tab_s,
-             FIGS='')
+             FIGS='', HIST=nasa_hist(d, f, rng))
     return out
+
+
+def nasa_hist(d, f, rng):
+    """Một câu: đầu vào có lịch sử trên NASA (tỉ số MAE validation so với đặc trưng gốc, analysis/dev_e29.py)."""
+    if 'e29_dev' not in d or 'e29_summary' not in d:
+        return ''
+    R = d['e29_dev']
+    R = R[R.dataset.isin(['NASA', 'NASAdt'])]
+    p, g = R[R.model == 'pinn_semi'].ratio, R[R.model == 'gbdt'].ratio
+    if not len(p):
+        return ''
+    txt = (r' Đầu vào có lịch sử (Mục~\ref{sec:hist_m}) không được chọn cho NASA: trên validation, cả kiểm định chéo lẫn '
+           f'cách chia NASA-L, tỉ số MAE so với đặc trưng gốc là {rng(p, 2)} với PINN-semi')
+    txt += (f' và {rng(g, 2)} với GBDT' if len(g) else '')
+    return txt + (r'. Dung lượng NASA nhảy lên sau mỗi lần nghỉ; đặc trưng sạc của chu kỳ hiện tại đã phản ánh cú nhảy '
+                  r'đó, còn trung bình trượt làm nó chậm lại.')
 
 
 # ───────────────────────────────────────────────────────────── kết quả E23: dự báo có xét hồi phục
@@ -903,21 +979,12 @@ loại này nhất (<<NX>> cell), bản mới giảm sai số <<XW>> trên toàn
 ngắn<<XSSIG>>; trên MIT, tỉ số là <<MW>> nhưng chỉ có <<NM>> cell nên chưa đủ để kết luận. Trên NASA, tỉ số là <<NW>>
 trên toàn bộ phần đời còn lại và <<NS>> trong tầm ngắn<<NSIG>>.
 
-Cặp $(\rho, \tau_r)$ ước lượng trên cell train cho thấy hai kiểu hồi phục khác hẳn nhau. Ở <<KEEP>>, phần lớn cú nhảy
-được giữ lại (trung vị $\rho$ là <<RKEEP>>), còn ở <<DROP>>, phần hồi phục mất ngay ở chu kỳ sau (<<RDROP>>); thời gian
-tắt của phần không giữ lại là $\tau_r = $ <<TR>> chu kỳ ở mọi bộ, tức không bộ nào có phần hồi phục tắt dần chậm qua
-nhiều chu kỳ. Trên NASA, điều này khớp với nhận xét của SambaMixer~\cite{olalde2024samba} rằng hồi phục gắn với thời gian
-nghỉ: sau mỗi lần nghỉ dài, cell lấy lại một phần dung lượng rồi suy giảm tiếp từ mức mới. Bản đầu tiên của mô hình để
-mạng tự học $\tau_r$; vì rất ít mẫu có phần hồi phục khác 0, $\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ, và trên
-NASA bản đó kém E22 ở tầm ngắn ngay sau hồi phục (tỉ số <<V1NS>><<V1NSIG>>), vì bỏ sót cú nhảy ở chu kỳ cuối và cho
-phần hồi phục tắt dần trong khi thực tế nó được giữ lại. Bản này được giữ vì được chọn trên tập validation<<EVW>>; cái
-giá là một phần lợi ích ở gốc thường, rõ nhất ở XJTU và TJU (trên toàn bộ phần đời còn lại, tỉ số so với E22 của bản
-đầu là <<V1STD>>, của bản này là <<V2STD>>, theo thứ tự <<DSORD>>).
-
-Dao động đều chỉ được phát hiện ở <<PERX>> số gốc của XJTU, hầu hết thuộc nhóm R2.5, và gần như không có ở các bộ khác
-(<<PERO>>): bộ lọc hai nửa cửa sổ loại được các bước nhảy đơn lẻ vốn trông giống nửa chu kỳ của một sóng dài. Về RUL, bản
-mới <<RULTXT>>. Khoảng 90\,\% của bản mới có độ phủ <<COV>> trên toàn bộ phần đời còn lại, vẫn thấp hơn mức đặt ra vì
-cùng lý do ở Mục~\ref{sec:forecastres}.
+Cặp $(\rho, \tau_r)$ ước lượng trên cell train cho thấy hai kiểu hồi phục: ở <<KEEP>>, phần lớn cú nhảy được giữ lại
+(trung vị $\rho$: <<RKEEP>>), còn ở <<DROP>>, phần hồi phục mất ngay ở chu kỳ sau (<<RDROP>>); $\tau_r = $ <<TR>> chu kỳ
+ở mọi bộ, tức không có phần hồi phục tắt dần chậm. Trên NASA, điều này khớp với nhận xét của
+SambaMixer~\cite{olalde2024samba} rằng hồi phục gắn với thời gian nghỉ. Dao động đều chỉ được phát hiện ở <<PERX>> số gốc
+của XJTU, hầu hết thuộc nhóm R2.5. Về RUL, bản mới <<RULTXT>>; khoảng 90\,\% có độ phủ <<COV>> trên toàn bộ phần đời còn
+lại, thấp hơn mức đặt ra vì cùng lý do ở Mục~\ref{sec:forecastres}.
 
 <<TAB>>
 <<FIG>>
@@ -935,15 +1002,7 @@ cùng lý do ở Mục~\ref{sec:forecastres}.
              DROP=lst(drop) or 'không bộ nào',
              RDROP=', '.join(f'{ds} $\\rho$ = {f(dec[ds].rho, 1)}' for ds in drop),
              TR=rng([dec[ds].tau for ds in E23_DS if ds in dec and dec[ds].n_ev_train >= 5], 1),
-             V1NS=f(v1n.ratio, 2) if v1n is not None else '--',
-             V1NSIG=(', có ý nghĩa thống kê' if v1n is not None and v1n.p < 0.05 else ''),
-             V1STD='; '.join(f(E['v1'](ds, 'do', 0, 'toan_bo').ratio, 2) for ds in E23_DS),
-             V2STD='; '.join(f(R(ds, 'do', 0, 'toan_bo').ratio, 2) for ds in E23_DS),
-             DSORD=', '.join(E23_DS),
-             EVW=(' và vì nó không còn kém E22 có ý nghĩa ở bất kỳ gốc ngay sau hồi phục nào' if not ev_worse else
-                  ', dù ngay sau hồi phục nó vẫn kém E22 có ý nghĩa trên ' + lst(ev_worse)),
              PERX=pc(dec['XJTU'].per, 0) if 'XJTU' in dec else '--',
-             PERO=', '.join(f'{ds} {pc(dec[ds].per, 0)}' for ds in E23_DS if ds in dec and ds != 'XJTU'),
              RULTXT=(('có sai số thấp hơn có ý nghĩa ' + txt(rb, '')) if rb else 'không khác bản cũ có ý nghĩa ở bộ nào')
                     + ((', cao hơn có ý nghĩa ' + txt(rw, '')) if rw else ''),
              COV=rng([100 * x for x in d['e23_cover'].query('otype == 0').cov_r], 0) + r'\,\%', TAB=tab,
@@ -1300,6 +1359,92 @@ def _omega_sentence(E, f, lst, qmin, qmax):
     parts = ([rf'$\omega = 0{{,}}3$ (nghiêng về GBDT) ở lịch ${fq(f, qmin)}L$ trên {lst(lo)}'] if lo else []) + \
             ([rf'$\omega = 0{{,}}7$ ở lịch ${fq(f, qmax)}L$ trên {lst(hi)}'] if hi else [])
     return (' Trọng số chọn trên validation đi theo lịch đo: ' + ', '.join(parts) + '.') if parts else ''
+
+
+# ───────────────────────────────────────────────────────────── E29: đầu vào có lịch sử của cell
+E29_LBL = {'h:x+e0.1': r'$\mathbf{x}, \mathbf{z}^{(0{,}1)}$',
+           'h:x+e0.3+e0.1+e0.03': r'$\mathbf{x}, \mathbf{z}^{(0{,}3)}, \mathbf{z}^{(0{,}1)}, \mathbf{z}^{(0{,}03)}$',
+           'h:x+e0.1+e0.03+s20': r'$\mathbf{x}, \mathbf{z}^{(0{,}1)}, \mathbf{z}^{(0{,}03)}$, độ dốc',
+           'ema': r'$\mathbf{z}^{(0{,}3)}$'}
+
+
+def e29_facts(d):
+    S, Tt = d['e29_summary'], d['e29_tests']
+    order = ['XJTU', 'TJU', 'MIT', 'HUST']
+    DSH = sorted(S.dataset.unique(), key=order.index)
+    mae = lambda ds, fr, m: float(S[(S.dataset == ds) & (S.f == fr) & (S.model == m)].mae.iloc[0])
+    pair = lambda m, ref: Tt[(Tt.model == m) & (Tt.ref == ref)]
+    one = lambda m, ref, ds, fr: (lambda r: r.iloc[0] if len(r) else None)(
+        Tt[(Tt.model == m) & (Tt.ref == ref) & (Tt.dataset == ds) & (Tt.f == fr)])
+    return dict(S=S, DS=DSH, mae=mae, pair=pair, one=one, fracs=sorted(S.f.unique()))
+
+
+def _sig(X):
+    """(số trường hợp tốt hơn có ý nghĩa, kém hơn có ý nghĩa, tổng)"""
+    return int(((X.p < 0.05) & (X.ratio < 1)).sum()), int(((X.p < 0.05) & (X.ratio > 1)).sum()), len(X)
+
+
+def e29_text(d, H):
+    f, m3, table, fig, T, rng, lst, tren = (H[k] for k in ('f', 'm3', 'table', 'fig', 'T', 'rng', 'lst', 'tren'))
+    E = e29_facts(d)
+    mae, pair, one, DSH = E['mae'], E['pair'], E['one'], E['DS']
+    mark = lambda r: '' if r is None else (r'$^{*}$' if r.p < 0.05 and r.ratio < 1 else
+                                           (r'$^{\dagger}$' if r.p < 0.05 and r.ratio > 1 else ''))
+    rows = []
+    for ds in DSH:
+        for fr in E['fracs']:
+            rows.append([ds if fr == E['fracs'][0] else '', f'{int(round(100 * fr))}\\,\\%',
+                         m3(mae(ds, fr, 'pinn'), 2), m3(mae(ds, fr, 'pinn_h'), 2) + mark(one('pinn_h', 'pinn', ds, fr)),
+                         m3(mae(ds, fr, 'gbdt_sel'), 2),
+                         m3(mae(ds, fr, 'pinn_lai'), 2), m3(mae(ds, fr, 'pinn_lai_h'), 2) + mark(one('pinn_lai_h', 'pinn_lai', ds, fr)),
+                         m3(mae(ds, fr, 'pinn_lai_v2'), 2),
+                         m3(mae(ds, fr, 'pinn_lai_h_v2'), 2) + mark(one('pinn_lai_h_v2', 'pinn_lai_v2', ds, fr))])
+    tab = table(['Bộ', 'Nhãn', 'PINN-semi', '+ lịch sử', 'GBDT', 'PINN-lai', '+ lịch sử', 'PINN-lai tc', '+ lịch sử'], rows,
+                'llrrrrrrr',
+                r'MAE theo cell ($\times10^{-3}$) trên test, 3 lần lặp $\times$ 5 fold, cùng fold và hạt giống với '
+                r'Mục~\ref{sec:e20res}; tc: trọng số trộn và cửa sổ lọc chọn trên validation. GBDT là bản đã chọn cho bộ '
+                r'(có lịch sử ở XJTU và HUST). $^{*}$/$^{\dagger}$: cột có lịch sử tốt hơn/kém hơn cột ngay trước nó có '
+                r'ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$).', 'tab:e29', size=r'\footnotesize')
+    ph, lh, lv = pair('pinn_h', 'pinn'), pair('pinn_lai_h', 'pinn_lai'), pair('pinn_lai_h_v2', 'pinn_lai_v2')
+    lg, lgv = pair('pinn_lai_h', 'gbdt_sel'), pair('pinn_lai_h_v2', 'gbdt_sel')
+    pm_h, pm = pair('pinn_h', 'mlp_h'), pair('pinn', 'mlp')
+    cnt = lambda X: (lambda b, w, n: f'{b}/{n}' + (f', kém hơn có ý nghĩa ở {w}/{n}' if w else ''))(*_sig(X))
+    # trường hợp vật lý không giúp khi đã có lịch sử: PINN-semi không tốt hơn MLP có ý nghĩa
+    nohelp = sorted({r.dataset for r in pm_h.itertuples() if not (r.p < 0.05 and r.ratio < 1)},
+                    key=['XJTU', 'TJU', 'MIT', 'HUST'].index)
+    C = d.get('e29_choice')
+    sel = ''
+    if C is not None:
+        cp = C[C.model == 'pinn_semi'].set_index('dataset'); cg = C[C.model == 'gbdt'].set_index('dataset')
+        keep_p = [ds for ds in ('XJTU', 'TJU', 'MIT', 'HUST') if ds in cp.index and cp.loc[ds, 'chosen'] != 'global']
+        drop_p = [ds for ds in ('XJTU', 'TJU', 'MIT', 'HUST') if ds in cp.index and cp.loc[ds, 'chosen'] == 'global']
+        keep_g = [ds for ds in ('XJTU', 'TJU', 'MIT', 'HUST') if ds in cg.index and cg.loc[ds, 'chosen'] != 'global']
+        sel = T(r"""Trên validation, lịch sử giảm MAE của PINN-semi <<KP>> (tỉ số <<RKP>>) nhưng không đạt ngưỡng 2\,\% <<DP>>
+(<<RDP>>); với GBDT, chỉ <<KG>> đạt ngưỡng (<<RKG>>). """,
+                KP=tren(keep_p), RKP=rng([cp.loc[ds, 'ratio'] for ds in keep_p], 2), DP=tren(drop_p) or 'ở bộ nào',
+                RDP=rng([cp.loc[ds, 'ratio'] for ds in drop_p], 2), KG=lst(keep_g) or 'không bộ nào',
+                RKG=rng([cg.loc[ds, 'ratio'] for ds in keep_g], 2))
+    return T(r"""
+\section{Đầu vào có lịch sử của cell}\label{sec:histres}
+
+<<SEL>>Trên test, với cùng fold và hạt giống như Mục~\ref{sec:e20res}, PINN-semi có lịch sử có MAE bằng <<RPH>> lần
+PINN-semi gốc, tốt hơn có ý nghĩa ở <<CPH>> trường hợp bộ $\times$ mức nhãn (Bảng~\ref{tab:e29}, Hình~\ref{fig:e29}).
+PINN-lai có lịch sử bằng <<RLH>> lần PINN-lai gốc (tốt hơn có ý nghĩa ở <<CLH>>); với trọng số trộn chọn trên
+validation, tỉ số là <<RLV>> (<<CLV>>). So với GBDT đã chọn cho bộ, PINN-lai có lịch sử bằng <<RLG>> lần, thấp hơn có ý
+nghĩa ở <<CLG>>; bản tinh chỉnh bằng <<RLGV>> lần (<<CLGV>>).
+
+Lịch sử không thay thế được vật lý, và vật lý cũng không giúp ở mọi nơi. Khi cả hai cùng có lịch sử, PINN-semi so với
+MLP có tỉ số <<RPMH>> (tốt hơn có ý nghĩa ở <<CPMH>>), so với <<RPM>> khi không có lịch sử. Ràng buộc vật lý không cho
+lợi ích có ý nghĩa ở ít nhất một mức nhãn của <<NOHELP>>.
+
+<<TAB>>
+<<FIG>>
+""", SEL=sel, RPH=rng(ph.ratio, 2), CPH=cnt(ph), RLH=rng(lh.ratio, 2), CLH=cnt(lh), RLV=rng(lv.ratio, 2), CLV=cnt(lv),
+             RLG=rng(lg.ratio, 2), CLG=cnt(lg), RLGV=rng(lgv.ratio, 2), CLGV=cnt(lgv),
+             RPMH=rng(pm_h.ratio, 2), CPMH=cnt(pm_h), RPM=rng(pm.ratio, 2), NOHELP=lst(nohelp) or 'không bộ nào',
+             TAB=tab, FIG=fig('fig_e29_hist', 'MAE theo cell trên test theo mức nhãn trên ba bộ có dạng lịch sử được chọn '
+                              '(nét đứt: đặc trưng gốc; nét liền: có lịch sử). GBDT là bản đã chọn cho bộ. Trên MIT và NASA, '
+                              'lịch sử không được chọn trên validation.', 'fig:e29'))
 
 
 def e25_short(d, H):

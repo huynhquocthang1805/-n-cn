@@ -7,7 +7,8 @@ Bài toán: ước lượng SOH (dung lượng hiện tại / dung lượng danh
 chu kỳ, từ 16 đặc trưng của đoạn sạc CC–CV. Mô hình là một mạng nơ-ron có thông tin vật lý (PINN): mạng
 nghiệm dự đoán SOH, gắn với động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn
 nên áp được lên cả cell chưa đo dung lượng. Mô hình cải tiến PINN-lai (E20) lấy trung bình ba mạng PINN với
-GBDT rồi qua một bộ lọc quỹ đạo nhân quả không cho SOH tăng, kèm khoảng dự đoán 90 %. E21 huấn luyện trên một bộ
+GBDT rồi làm trơn bằng một bộ lọc xu thế nhân quả (độ dốc trong mỗi cửa sổ không dương; chuỗi đầu ra không bảo
+đảm không tăng, xem E29), kèm khoảng dự đoán 90 %. E21 huấn luyện trên một bộ
 dữ liệu (70/30 hoặc 70/15/15), kiểm tra trên ba bộ còn lại, rồi thích nghi không nhãn và tự huấn luyện hai vòng.
 E22 dự báo SOH ở các chu kỳ tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời (RUL):
 PINN-dự báo (mạng trả tham số của nghiệm đóng của động học xám) kết hợp với GBDT, kèm khoảng dự báo 90 %.

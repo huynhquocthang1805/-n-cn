@@ -62,7 +62,7 @@ def load():
               'e23_tests', 'e23_horizon', 'e23_rul', 'e23_rul_tests', 'e23_cover', 'e23_decomp', 'e23_periodic_xjtu',
               'e24_cv', 'e24_tests', 'e24_rest', 'e24_samba', 'e23_tests_v1', 'e25_estimation', 'e25_forecast',
               'e26_params', 'e26_mae', 'e27_summary', 'e27_tests', 'e28_summary', 'e28_tests', 'e28_tuned', 'overview',
-              'e20_tuned']:
+              'e20_tuned', 'mono_stats', 'mono_filter', 'e29_summary', 'e29_tests', 'e29_tuned', 'e29_dev', 'e29_choice']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -254,6 +254,8 @@ lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại t
 \item Trên đúng cách chia của PINN4SOH, mô hình của đồ án đứng ở đâu, với tiền xử lý không rò rỉ và với tiền xử
       lý của bài?
 \item Nếu tính nhãn theo số lần đo dung lượng thay vì số cell có nhãn, nên đo ở đâu và cần bao nhiêu lần đo?
+\item Thêm lịch sử của cell vào đầu vào có giảm sai số không, ở bộ nào, và bộ lọc quỹ đạo có giữ được SOH không tăng
+      không?
 \end{enumerate}
 
 
@@ -269,8 +271,9 @@ lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại t
       (<<NCELL>> cell), tổng cộng <<NRUN>> lượt huấn luyện, có kiểm định thống kê và hiệu chỉnh đa so sánh.
 \item Hai giao thức huấn luyện trên một bộ, kiểm tra trên ba bộ còn lại, cùng quy trình thích nghi không nhãn và tự
       huấn luyện có ràng buộc vật lý.
-\item Mô hình cải tiến PINN-lai: ba mạng PINN-semi kết hợp với GBDT và một bộ lọc quỹ đạo nhân quả không cho SOH
-      tăng, chọn chỉ trên tập validation, kèm khoảng dự đoán phù hợp 90\,\%.
+\item Mô hình cải tiến PINN-lai: ba mạng PINN-semi kết hợp với GBDT và một bộ lọc xu thế nhân quả, chọn chỉ trên
+      tập validation, kèm khoảng dự đoán phù hợp 90\,\%; đầu vào có lịch sử của cell ở các bộ mà validation cho thấy
+      có lợi.
 \item Mở rộng sang dự báo SOH tương lai, dung lượng còn lại và RUL: mạng PINN-dự báo dùng nghiệm đóng của động học
       xám làm lớp đầu ra, kết hợp với GBDT; bản cải tiến tách phần hồi phục dung lượng và dao động đều ra khỏi xu thế
       suy giảm.
@@ -1813,12 +1816,10 @@ tổng biến thiên dọc quỹ đạo, nên $r$ của nó xấp xỉ tốc đ�
 
 <<FIGRC>>
 
-Hình~\ref{fig:ratesoh} xếp tốc độ suy giảm theo khoảng SOH thực đo. <<KNEE>> Mỗi khoảng SOH gồm một tập cell khác
-nhau, nên đây là đường trung bình chứ không phải đường của một cell. Độ dốc dự đoán của PINN-semi theo sát đường
-thực đo trên cả bốn bộ, nhưng $r$ gần như phẳng: giữa các khoảng SOH, $r$ chỉ thay đổi <<KR>> lần<<KRX>>, trong khi
-tốc độ thực đo thay đổi <<KT>> lần. Với $\lambda \approx 0{,}96$ (Mục~\ref{sec:physparams}), thừa số $g(u) = e^{\lambda(1-u)}$ chỉ tăng khoảng
-1,2 lần khi SOH giảm từ 1 xuống 0,8. Đầu gối trong dự đoán đến từ đặc trưng sạc, không đến từ thừa số đầu gối của
-động học.
+Hình~\ref{fig:ratesoh} xếp tốc độ suy giảm theo khoảng SOH thực đo. <<KNEE>> Giữa các khoảng SOH, $r$ chỉ thay đổi
+<<KR>> lần<<KRX>> trong khi tốc độ thực đo thay đổi <<KT>> lần, và với $\lambda \approx 0{,}96$ thừa số
+$g(u) = e^{\lambda(1-u)}$ chỉ tăng khoảng 1,2 lần khi SOH giảm từ 1 xuống 0,8: đầu gối trong dự đoán đến từ đặc trưng
+sạc, không đến từ thừa số đầu gối của động học.
 
 <<FIGRS>>
 
@@ -2495,13 +2496,21 @@ buộc độ dốc không kích hoạt, thì $\tilde y_n$ không chệch và
 $\operatorname{Var}(\tilde y_n) = \sigma^2\,\dfrac{2(2w-1)}{w(w+1)}$; với $w = 10$ là $0{,}345\,\sigma^2$.
 (iii) Giá trị cuối của hồi quy đơn điệu giảm trên $\hat y_1, \dots, \hat y_n$ luôn không lớn hơn $\hat y_n$, nên
 khi $\hat y$ có nhiễu nó lệch xuống.
+(iv) Dãy $\tilde y_1, \tilde y_2, \dots$ không nhất thiết đơn điệu: ràng buộc chỉ đặt lên độ dốc trong từng cửa sổ, còn
+hai chu kỳ liền nhau dùng hai cửa sổ khác nhau. Dãy
+\begin{equation}\label{eq:mono}
+m_1 = \tilde y_1, \qquad m_n = m_{n-1} + a\,\min(0,\ \tilde y_n - m_{n-1}), \quad 0 < a \le 1,
+\end{equation}
+thì luôn không tăng; $a = 1$ cho cực tiểu luỹ tiến của $\tilde y$.
 \end{menhde}
 \begin{proof}
 (i) Đường thẳng khớp đúng dữ liệu, độ dốc $-c \le 0$ nên ràng buộc không tác động. (ii) Đây là phương sai của giá
 trị dự đoán bình phương tối thiểu tại đầu mút: $\sigma^2\big(\frac{1}{w} + \frac{(t_n - \bar t)^2}{S_{tt}}\big)$
 với $t_n - \bar t = \frac{w-1}{2}$ và $S_{tt} = \frac{w(w^2-1)}{12}$ khi bước bằng 1; rút gọn được biểu thức trên.
 (iii) Với hồi quy đơn điệu giảm, giá trị tại điểm cuối bằng $\min_{j \le n}$ trung bình của $\hat y_j, \dots, \hat y_n$
-\cite{barlow1972}; chọn $j = n$ cho thấy nó không vượt $\hat y_n$.
+\cite{barlow1972}; chọn $j = n$ cho thấy nó không vượt $\hat y_n$. (iv) Lấy $\hat y = (0{,}9;\ 0{,}9;\ 0{,}95)$, $w = 2$:
+$\tilde y_2 = 0{,}9$, còn cửa sổ thứ ba có độ dốc dương bị chặn về 0 nên $\tilde y_3 = 0{,}925 > \tilde y_2$. Với
+\eqref{eq:mono}, $m_n - m_{n-1} = a\min(0, \tilde y_n - m_{n-1}) \le 0$.
 \end{proof}
 
 \section{Kết quả trên tập test}\label{sec:e20res}
@@ -2571,7 +2580,7 @@ tăng, đúng như hàng dưới của Hình~\ref{fig:conformal}.
 Cải tiến lớn nhất không đến từ một ràng buộc vật lý mới mà từ việc ghép hai mô hình có điểm mạnh khác nhau. Kết quả
 này khớp với hai quan sát: sai số còn lại chủ yếu là lệch theo từng cell, và lệch của PINN-semi với của GBDT
 <<RHOWORD2>>. Vật lý có vai trò ở hai chỗ: trong huấn luyện, nó giúp nhóm mạng dùng được cell không nhãn<<PHYSDISC>>;
-khi suy luận, bộ lọc quỹ đạo dùng đúng giả định SOH không tăng để làm trơn dự đoán mà không làm lệch quỹ đạo giảm. Hai hướng ràng buộc mạnh hơn thất bại cho thấy thêm vật lý vào hàm mất mát không phải
+khi suy luận, bộ lọc xu thế dùng giả định SOH giảm dần để làm trơn dự đoán mà không làm lệch quỹ đạo giảm. Hai hướng ràng buộc mạnh hơn thất bại cho thấy thêm vật lý vào hàm mất mát không phải
 lúc nào cũng tốt: khi dạng phương trình còn thô, ép nó chặt hơn làm mạng mất tự do để khớp dữ liệu.
 
 Về giới hạn: đánh giá cuối dùng ba lần lặp thay vì năm vì chi phí tính toán, và giai đoạn phát triển dùng cell
@@ -2680,7 +2689,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
       mang lại <<MONO>>\,\% mức giảm đó.<<BB>> Đo trực tiếp trên mô hình đã huấn luyện, vật lý tác động chủ yếu qua
       ràng buộc dọc quỹ đạo (Mục~\ref{sec:physcheck}).
 \item <<CH5>>
-<<CH6>><<CH7>><<CH8>><<CH9>>\end{enumerate}
+<<CH6>><<CH7>><<CH8>><<CH9>><<CH10>>\end{enumerate}
 
 Về phương pháp đánh giá, cách chia theo chu kỳ và chuẩn hoá theo cả vòng đời cell làm sai số trông thấp hơn thực tế;
 giao thức theo cell của đồ án có các tính chất được chứng minh và cho phép so ghép cặp theo cell.
@@ -2700,7 +2709,7 @@ giao thức theo cell của đồ án có các tính chất được chứng min
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
-             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), CH8=e27_concl(d), CH9=e28_concl(d),
+             BB=bb, CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), CH8=e27_concl(d), CH9=e28_concl(d), CH10=e29_concl(d),
              FW2=future_kalman(d), FW4=future_params(d))
 
 
@@ -2779,6 +2788,28 @@ def e28_concl(d):
     return txt + '\n'
 
 
+def e29_concl(d):
+    if 'e29_summary' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e29_facts(d)
+    ph, lh, lg = E['pair']('pinn_h', 'pinn'), E['pair']('pinn_lai_h', 'pinn_lai'), E['pair']('pinn_lai_h', 'gbdt_sel')
+    sig = lambda X: BK._sig(X)
+    bph, _, nph = sig(ph); blh, _, nlh = sig(lh); blg, wlg, nlg = sig(lg)
+    txt = T(r"""\item Có, ở <<DSH>>: PINN-semi có lịch sử có sai số bằng <<RPH>> lần bản gốc (tốt hơn có ý nghĩa ở <<BPH>>/<<NPH>>
+      trường hợp), PINN-lai có lịch sử bằng <<RLH>> lần PINN-lai; trên MIT và NASA lịch sử không được chọn trên
+      validation. So với GBDT, PINN-lai có lịch sử thấp hơn có ý nghĩa ở <<BLG>>/<<NLG>> trường hợp<<WLG>>.""",
+            DSH=_lst(E['DS']), RPH=_rng(ph.ratio, 2), BPH=bph, NPH=nph, RLH=_rng(lh.ratio, 2), BLG=blg, NLG=nlg,
+            WLG=(f' và kém hơn có ý nghĩa ở {wlg}' if wlg else ''))
+    if 'mono_filter' in d:
+        F = d['mono_filter']
+        txt += T(r""" Bộ lọc xu thế không bảo đảm SOH không tăng (đầu ra tăng ở <<UP>> số bước); ép không tăng làm sai số
+      trên XJTU tăng <<RX>> lần vì dung lượng đo được của XJTU tăng ở đầu đời.""",
+                 UP=_rng([100 * x for x in d['mono_stats'].frac_up.dropna()], 0) + r'\,\%',
+                 RX=_rng(F[F.dataset == 'XJTU'].ratio, 1))
+    return txt + '\n'
+
+
 def future_kalman(d):
     if 'e25_estimation' not in d:
         return (r'Cập nhật ước lượng và dự báo khi có thêm một vài lần đo dung lượng của chính cell, ví dụ bằng một bộ lọc '
@@ -2821,8 +2852,8 @@ def abstract_e20(d):
     v = lambda ds, fr, m: float(s[(s.dataset == ds) & (s.frac == fr) & (s.model == m)].MAE_cell.iloc[0])
     beats = [ds for ds in DS if v(ds, 0.3, 'pinn_lai') < min(v(ds, 0.7, 'mlp'), v(ds, 0.7, 'pinn'))]
     gb70 = [ds for ds in DS if v(ds, 0.3, 'pinn_lai') < v(ds, 0.7, 'gbdt')]
-    return T(r"""Mô hình cải tiến PINN-lai kết hợp ba mạng PINN bán giám sát với GBDT rồi qua một bộ lọc quỹ đạo nhân quả không
-cho SOH tăng, được chọn chỉ trên tập validation; trên test, sai số của nó bằng <<R>> lần PINN ban đầu, thấp hơn GBDT ở
+    return T(r"""Mô hình cải tiến PINN-lai kết hợp ba mạng PINN bán giám sát với GBDT rồi làm trơn bằng một bộ lọc xu thế nhân
+quả, được chọn chỉ trên tập validation; trên test, sai số của nó bằng <<R>> lần PINN ban đầu, thấp hơn GBDT ở
 <<BG>>/<<N>> trường hợp bộ dữ liệu × mức nhãn. Với 30\,\% cell có nhãn, PINN-lai có sai số thấp hơn MLP và PINN bán giám
 sát học với 70\,\% cell có nhãn <<BEATS>>, nhưng <<GB70>>.""", R=_rng([x for fr in FRS for x in E['pinn_r'][fr]]),
              BG=E['gbdt_better'], N=E['gbdt_n'], BEATS=_tren(beats) or 'trên không bộ nào',
@@ -2865,6 +2896,18 @@ cho PINN-lai sai số bằng <<R30>> lần gắn nhãn đầy đủ cho 30\,\% s
     return txt
 
 
+def abstract_e29(d):
+    if 'e29_summary' not in d:
+        return ''
+    import thesis_bk as BK
+    E = BK.e29_facts(d)
+    lh = E['pair']('pinn_lai_h', 'pinn_lai')
+    return T(r""" Thêm lịch sử của cell vào đầu vào (trung bình trượt nhân quả của đặc trưng sạc) giảm sai số của
+PINN-lai còn <<RLH>> lần trên <<DSH>>, nơi validation cho thấy có lợi; bộ lọc quỹ đạo được chứng minh là không bảo đảm
+SOH không tăng, và ép không tăng làm sai số tăng ở bộ có dung lượng hồi phục.""",
+             RLH=_rng(lh.ratio, 2), DSH=_lst(E['DS']))
+
+
 def abstract(d, ctx):
     F = ctx['F']
     gb = ('một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu'
@@ -2879,13 +2922,13 @@ mọi chu kỳ chưa đo dung lượng. Đồ án thiết kế và chứng minh 
 theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần), đo định lượng tác động của các dạng rò rỉ thường gặp, và so
 sánh với sáu mô hình đối chứng ở bốn mức nhãn trên bốn bộ dữ liệu công khai (<<NCELL>> cell, <<NRUN>> lượt huấn
 luyện). Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>;
-khi tăng lên 70\,\% nhãn, lợi ích giảm dần (<<R70>>), và <<GB>>. <<E20>><<E27>><<E28>><<E22>>
+khi tăng lên 70\,\% nhãn, lợi ích giảm dần (<<R70>>), và <<GB>>. <<E20>><<E29>><<E27>><<E28>><<E22>>
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
 kết hợp mô hình, ngân sách đo, dự báo tuổi thọ còn lại.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
              R70=_rng(F['r'][0.7].values()), GB=gb, E20=abstract_e20(d), E27=abstract_e27(d), E28=abstract_e28(d),
-             E22=abstract_e22(d))
+             E29=abstract_e29(d), E22=abstract_e22(d))
 
 
 def e21_concl(d):
@@ -3067,7 +3110,7 @@ def build():
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
         if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_', 'fig_e22_', 'fig_e23_',
-                           'fig_e24_', 'fig_e27_', 'fig_e28_', 'fig_overview')) \
+                           'fig_e24_', 'fig_e27_', 'fig_e28_', 'fig_e29_', 'fig_mono_', 'fig_overview')) \
                 and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
@@ -3080,7 +3123,9 @@ def build():
                             BK.e27_text(d, sys_helpers()) if 'e27_summary' in d else '',
                             BK.e28_text(d, sys_helpers()) if 'e28_summary' in d else '', overview_text(d),
                             BK.tuned_text(d, sys_helpers()) if 'e20_tuned' in d else '',
-                            BK.e25_short(d, sys_helpers()) if 'e25_estimation' in d else '')
+                            BK.e25_short(d, sys_helpers()) if 'e25_estimation' in d else '',
+                            BK.mono_text(d, sys_helpers()) if 'mono_filter' in d else '',
+                            BK.e29_text(d, sys_helpers()) if 'e29_summary' in d else '')
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
             + r'{\linespread{1.0}\selectfont\tableofcontents\listoffigures\listoftables}' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')

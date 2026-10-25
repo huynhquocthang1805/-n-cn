@@ -364,6 +364,7 @@ def E28(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E28') -> L
 #           H   'h:x+e0.3+e0.1+e0.03'    đặc trưng gốc + ba thang thời gian (khoảng 3, 10, 30 chu kỳ)
 #           H   'h:x+e0.1+e0.03+s20'     đặc trưng gốc + hai thang + độ dốc trên 20 chu kỳ gần nhất
 E29_DEV_SPECS = ('h:x+e0.1', 'h:x+e0.3+e0.1+e0.03', 'h:x+e0.1+e0.03+s20')
+E29_DEV_GBDT = ('ema',) + E29_DEV_SPECS + ('h:x+e0.1+r5', 'h:x+s20')
 
 
 def E29dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E29dev') -> List[Job]:
@@ -381,6 +382,18 @@ def E29dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E29dev') -> List[
                   save_val_predictions=True, norm=spec, **E13_NET, **E24_PHYS)
         jobs.append(Job('train', kw, os.path.join(out, run_name(Config(**kw)) + '.json'), _train_cost('pinn_semi'),
                         f'S {ds} pinn_semi {spec}', (ds,)))
+    # GBDT với cùng các dạng (thêm hai dạng chỉ thử cho GBDT ở bốn bộ chính); bản gốc lấy từ E20 / E24
+    from .baselines import cv_path, samba_path
+    for ds in list(datasets) + list(NASA_SETS):
+        specs = E29_DEV_GBDT if ds in DATASETS else ('ema',) + E29_DEV_SPECS
+        for spec, f, r, k in itertools.product(specs, (0.3, 0.7), range(repeats), range(E13_FOLDS)):
+            jobs.append(Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True, norm=spec),
+                            cv_path('gbdt', ds, f, r, k, out, spec), BASELINE_S.get(('gbdt', ds), 3),
+                            f'gbdt-h {ds} f{f} cv{r}-{k} {spec}', (ds,)))
+        if ds in NASA_SETS:
+            for spec in specs:
+                jobs.append(Job('baseline_samba', dict(model='gbdt', ds=ds, seed=0, out_dir=out, norm=spec),
+                                samba_path('gbdt', ds, 0, out, spec), 3, f'samba gbdt {ds} {spec}', (ds,)))
     return jobs
 
 
