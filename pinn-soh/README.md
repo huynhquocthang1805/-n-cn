@@ -21,7 +21,10 @@ E25 hiệu chỉnh ước lượng và dự báo theo từng cell bằng bộ l�
 E27 so với PINN4SOH trên đúng cách chia của bài (dựng lại từ nhật ký công bố kèm mã nguồn), cả chế độ đầy đủ lẫn ít mẫu,
 với tiền xử lý không rò rỉ của đồ án và với bản sao tiền xử lý của bài. E28 tính nhãn theo số lần đo dung lượng: mọi
 cell train chỉ được đo ở vài chu kỳ (đầu, mỗi q·L, cuối), vật lý lan thông tin giữa các lần đo; so với đo đầy đủ một
-phần cell, và thêm đo cell mới theo cùng lịch với bộ lọc Kalman của E25.
+phần cell, và thêm đo cell mới theo cùng lịch với bộ lọc Kalman của E25. E29 thêm lịch sử của cell vào đầu vào
+(trung bình trượt mũ nhân quả của đặc trưng sạc, độ dốc gần đây), chọn dạng trên validation cho từng bộ và từng mô
+hình, và kiểm tra bộ lọc quỹ đạo: bản hiện tại không bảo đảm SOH không tăng, bản có bảo đảm làm sai số tăng ở bộ có
+dung lượng hồi phục (XJTU, NASA).
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
 Kết quả của báo cáo dựa trên **8 938 lượt huấn luyện** (E13–E28, đếm theo tệp kết quả; bảng thời gian chạy bên dưới
@@ -208,7 +211,7 @@ python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00x
 python run.py E24 && python run.py E24f
 ```
 
-### Hướng phát triển và so sánh: E25, E26, E27, E28
+### Hướng phát triển và so sánh: E25, E26, E27, E28, E29
 
 ```bash
 python analysis/analyze_e25.py         # cần E20, E23, E24, E24f; không huấn luyện thêm
@@ -216,9 +219,14 @@ python run.py E26 && python analysis/analyze_e26.py   # cần E13 (TJU) và E24 
 python run.py E27 && python analysis/analyze_e27.py   # cách chia của PINN4SOH: pinnsoh/pinn4soh_splits.json
 python run.py E28 && python analysis/analyze_e28.py   # cần E20 (nhãn theo cell) để so sánh
 python analysis/analyze_overview.py                   # hình tổng quan 30 % / 70 % / đo thưa
+python analysis/analyze_mono.py                       # bộ lọc quỹ đạo có giữ SOH không tăng không (cần E20)
+python run.py E29dev && python analysis/dev_e29.py   # chọn dạng lịch sử trên validation
+python run.py E29 && python analysis/analyze_e29.py   # đánh giá cuối mô hình có lịch sử
+python analysis/figures_report.py                    # vẽ lại các hình của báo cáo cho dễ đọc khi in
 ```
 
-Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`.
+Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`;
+E29: `tai-lieu/de-cuong-E29.md`.
 
 ## 5. Demo — ước lượng và dự báo SOH cho một cell
 
