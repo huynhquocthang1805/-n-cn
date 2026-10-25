@@ -356,16 +356,59 @@ def E28(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E28') -> L
     return jobs
 
 
-# E29dev: đặc trưng sạc làm trơn mũ nhân quả (norm='ema') cho PINN-semi — giai đoạn phát triển, lần lặp 0, nhãn 30 và
-#         70 %, chỉ xem MAE validation (so với thành viên 0 của E20, cùng hạt giống)
+# E29dev: mô hình dùng lịch sử của cell — giai đoạn phát triển, lần lặp 0, nhãn 30 và 70 %, chỉ xem MAE validation (so
+#         với thành viên 0 của E20, cùng hạt giống). Đặc trưng ở chu kỳ n chỉ dùng chu kỳ n và các chu kỳ trước của cùng cell
+#         (data.history_features):
+#           V   'ema'                    chỉ trung bình trượt mũ a = 0,3 thay cho đặc trưng gốc (lượt thử đầu)
+#           H   'h:x+e0.1'               đặc trưng gốc + trung bình trượt mũ a = 0,1
+#           H   'h:x+e0.3+e0.1+e0.03'    đặc trưng gốc + ba thang thời gian (khoảng 3, 10, 30 chu kỳ)
+#           H   'h:x+e0.1+e0.03+s20'     đặc trưng gốc + hai thang + độ dốc trên 20 chu kỳ gần nhất
+E29_DEV_SPECS = ('h:x+e0.1', 'h:x+e0.3+e0.1+e0.03', 'h:x+e0.1+e0.03+s20')
+
+
 def E29dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E29dev') -> List[Job]:
-    return [_member_job('V', 'pinn_semi', f, dict(E13_PHYS, norm='ema'), r, ds, k, out, 0)
+    jobs = [_member_job('V', 'pinn_semi', f, dict(E13_PHYS, norm='ema'), r, ds, k, out, 0)
             for f, r, ds, k in itertools.product((0.3, 0.7), range(repeats), datasets, range(E13_FOLDS))]
+    jobs += [_member_job('H', 'pinn_semi', f, dict(E13_PHYS, norm=spec), r, ds, k, out, 0)
+             for spec, f, r, ds, k in itertools.product(E29_DEV_SPECS, (0.3, 0.7), range(repeats), datasets,
+                                                       range(E13_FOLDS))]
+    # NASA (có / không giờ nghỉ): cùng bốn dạng, kiểm định chéo như E24 và cách chia NASA-L của SambaMixer (hạt giống 0)
+    from .train import Config, run_name
+    for ds, spec in itertools.product(NASA_SETS, ('ema',) + E29_DEV_SPECS):
+        jobs += [_member_job('H', 'pinn_semi', f, dict(E24_PHYS, norm=spec), r, ds, k, out, 0)
+                 for f, r, k in itertools.product((0.3, 0.7), range(repeats), range(E13_FOLDS))]
+        kw = dict(dataset=ds, label_frac=0.7, model='pinn_semi', seed=0, split='samba', tag='S', out_dir=out, member=0,
+                  save_val_predictions=True, norm=spec, **E13_NET, **E24_PHYS)
+        jobs.append(Job('train', kw, os.path.join(out, run_name(Config(**kw)) + '.json'), _train_cost('pinn_semi'),
+                        f'S {ds} pinn_semi {spec}', (ds,)))
+    return jobs
+
+
+# E29: đánh giá cuối mô hình dùng lịch sử (xem tai-lieu/de-cuong-E29.md). Dạng lịch sử chọn trên validation ở E29dev:
+#      chỉ giữ khi giảm MAE validation trung bình ít nhất 2 %; bộ không có trong bảng giữ đặc trưng gốc (không có lượt mới).
+E29_SPEC_PINN = {'XJTU': 'h:x+e0.1', 'TJU': 'h:x+e0.1', 'HUST': 'h:x+e0.1+e0.03+s20'}
+E29_SPEC_GBDT = {'XJTU': 'h:x+e0.1', 'HUST': 'h:x+e0.1+e0.03+s20'}
+
+
+def E29(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E29') -> List[Job]:
+    from .baselines import cv_path
+    jobs = []
+    for f, r, ds, k in itertools.product(FRACS, range(repeats), datasets, range(E13_FOLDS)):
+        if ds in E29_SPEC_PINN:
+            spec = E29_SPEC_PINN[ds]
+            jobs += [_member_job('H', 'pinn_semi', f, dict(E13_PHYS, norm=spec), r, ds, k, out, m) for m in E20_MEMBERS]
+            jobs.append(_member_job('HM', 'mlp', f, dict(norm=spec), r, ds, k, out, 0))
+        if ds in E29_SPEC_GBDT:
+            spec = E29_SPEC_GBDT[ds]
+            jobs.append(Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True, norm=spec),
+                            cv_path('gbdt', ds, f, r, k, out, spec), BASELINE_S[('gbdt', ds)],
+                            f'gbdt-h {ds} f{f} cv{r}-{k}', (ds,)))
+    return jobs
 
 
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
-                                                        E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev)
+                                                        E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev, E29=E29)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
 ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26', 'E27',
-         'E28']
+         'E28', 'E29dev', 'E29']

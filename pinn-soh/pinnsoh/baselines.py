@@ -20,7 +20,7 @@ import json, os, time
 from itertools import islice
 import numpy as np
 
-from .data import load_dataset, cv_split, choose_labelled, split_cells, make_pointset, Normalizer
+from .data import load_dataset, cv_split, choose_labelled, split_cells, make_pointset, Normalizer, norm_tag
 from .metrics import evaluate
 from .train import write_json
 
@@ -85,7 +85,7 @@ def fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, wtr=None, return_val=False
 
 
 def cv_path(model, ds, frac, r, k, out_dir='runs/E16', norm='global'):
-    return f'{out_dir}/{model}{"" if norm == "global" else "-" + norm}_{ds}_f{frac}_cv{r}-{k}of5.json'
+    return f'{out_dir}/{model}{"" if norm == "global" else "-" + norm_tag(norm)}_{ds}_f{frac}_cv{r}-{k}of5.json'
 
 
 def run_cv(model, ds, frac, r, k, out_dir='runs/E16', save_val=False, norm='global'):
@@ -121,27 +121,27 @@ def run_cv(model, ds, frac, r, k, out_dir='runs/E16', save_val=False, norm='glob
     return res['test']['MAE_cell']
 
 
-def samba_path(model, ds, seed, out_dir='runs/E24'):
-    return f'{out_dir}/{model}_{ds}_samba_s{seed}.json'
+def samba_path(model, ds, seed, out_dir='runs/E24', norm='global'):
+    return f'{out_dir}/{model}{"" if norm == "global" else "-" + norm_tag(norm)}_{ds}_samba_s{seed}.json'
 
 
-def run_samba(model, ds, seed, out_dir='runs/E24'):
+def run_samba(model, ds, seed, out_dir='runs/E24', norm='global'):
     """E24: cách chia NASA-L của SambaMixer (train / validation / ba cell đánh giá #06, #07, #47), mọi cell train có nhãn."""
     from .data import SAMBA_SPLIT
-    path = samba_path(model, ds, seed, out_dir)
+    path = samba_path(model, ds, seed, out_dir, norm)
     if os.path.exists(path):
         return json.load(open(path))['test']['MAE_cell']
     t0 = time.time()
     cells = cells_of(ds); by = {c.cid: c for c in cells}
     sp = {k: [f'NASA/{c}' for c in v] for k, v in SAMBA_SPLIT.items()}
-    norm = Normalizer('global').fit([by[i] for i in sp['train']])
+    norm = Normalizer(norm).fit([by[i] for i in sp['train']])
     Xtr, ytr, _ = xy([by[i] for i in sp['train']], norm)
     Xva, yva, Sv = xy([by[i] for i in sp['val']], norm)
     te = [by[i] for i in sp['test']]
     Xte, yte, S = xy(te, norm)
     p, v, hp, pva = fit_predict(model, Xtr, ytr, Xva, yva, Xte, seed, return_val=True)
     p = np.asarray(p, dtype=np.float64)
-    res = dict(config=dict(tag='S', model=model, dataset=ds, seed=seed, split='samba'), hyper=hp, val_MAE=v,
+    res = dict(config=dict(tag='S', model=model, dataset=ds, seed=seed, split='samba', norm=norm.mode), hyper=hp, val_MAE=v,
                train_time_s=time.time() - t0, test=evaluate(yte, p, S.cell, cycle=S.cyc),
                test_predictions=dict(y=yte.tolist(), p=p.tolist(), cell=S.cell.tolist(), cycle=S.cyc.tolist(),
                                      cell_ids=[c.cid for c in te]),

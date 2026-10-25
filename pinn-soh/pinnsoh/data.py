@@ -361,7 +361,7 @@ def cv_split(cells: List[Cell], fold: int, repeat: int, n_folds: int = 5,
 class Normalizer:
     """Feature normaliser fitted on training cells only."""
     def __init__(self, mode: str = 'global', ref_cycles: int = 3):
-        assert mode in ('global', 'first_cycle', 'per_cell_minmax', 'both') or mode.startswith('ema'), mode
+        assert mode in ('global', 'first_cycle', 'per_cell_minmax', 'both') or mode.startswith(('ema', 'h:')), mode
         self.mode, self.ref_cycles = mode, ref_cycles
         self.mu = None; self.sd = None
 
@@ -370,6 +370,8 @@ class Normalizer:
         return (c.X - ref) / (np.abs(ref) + 1e-6)
 
     def _raw(self, c: Cell) -> np.ndarray:
+        if self.mode.startswith('h:'):          # đặc trưng có lịch sử của chính cell (E29), ví dụ 'h:x+e0.1+e0.03'
+            return history_features(c.X, self.mode[2:])
         if self.mode.startswith('ema'):         # 'ema' hoặc 'ema0.3': làm trơn mũ nhân quả theo các chu kỳ đã qua (E28)
             return causal_ema(c.X, float(self.mode[3:] or EMA_ALPHA))
         if self.mode == 'first_cycle':
@@ -402,6 +404,48 @@ def causal_ema(X: np.ndarray, alpha: float = EMA_ALPHA) -> np.ndarray:
         return X.astype(np.float32)
     z = lfilter([alpha], [1.0, alpha - 1.0], X, axis=0, zi=((1.0 - alpha) * X[:1]))[0]
     return z.astype(np.float32)
+
+
+def norm_tag(mode: str) -> str:
+    """Tên chế độ chuẩn hoá dùng trong tên tệp: 'h:x+e0.1' -> 'hx-e0.1' (Windows không cho ':' trong tên tệp);
+    các chế độ cũ giữ nguyên nên tên các lượt đã chạy không đổi."""
+    return mode.replace(':', '').replace('+', '-')
+
+
+def history_features(X: np.ndarray, spec: str) -> np.ndarray:
+    """Đặc trưng có lịch sử của MỘT cell, theo thứ tự hàng (chu kỳ); mỗi hàng chỉ dùng chu kỳ đó và các chu kỳ trước,
+    nên chạy được trực tuyến. spec là các thành phần nối bằng '+':
+        x       đặc trưng của chu kỳ hiện tại
+        e<a>    trung bình trượt mũ hệ số a (e0.1 nhớ khoảng 10 chu kỳ, e0.03 khoảng 30)
+        r<n>    chênh lệch so với trung bình n chu kỳ đầu của cell (trung bình luỹ tiến khi chưa đủ n chu kỳ)
+        s<w>    độ dốc bình phương tối thiểu của từng đặc trưng trên w hàng gần nhất (đơn vị: mỗi hàng)"""
+    X = np.asarray(X, dtype=np.float64)
+    n = len(X)
+    out = []
+    for tok in spec.split('+'):
+        if tok == 'x':
+            out.append(X)
+        elif tok[0] == 'e':
+            out.append(causal_ema(X, float(tok[1:])).astype(np.float64) if n else X)
+        elif tok[0] == 'r':
+            m = int(tok[1:])
+            head = np.cumsum(X[:m], axis=0) / np.arange(1, min(m, n) + 1)[:, None]
+            ref = np.vstack([head, np.repeat(head[-1:], max(n - m, 0), axis=0)]) if n else X
+            out.append(X - ref)
+        elif tok[0] == 's':
+            w = int(tok[1:])
+            i = np.arange(n); a = np.maximum(0, i - w + 1); cnt = (i - a + 1).astype(np.float64)[:, None]
+            seg = lambda Z: (lambda S: S[i + 1] - S[a])(np.concatenate([np.zeros((1,) + Z.shape[1:]), np.cumsum(Z, 0)]))
+            t = i.astype(np.float64)[:, None]
+            st, stt = seg(t), seg(t * t)
+            sy, sty = seg(X), seg(t * X)
+            sxx = stt - st * st / cnt
+            sxy = sty - st * sy / cnt
+            ok = (sxx > 1e-12) & (cnt >= 3)
+            out.append(np.where(ok, sxy / np.where(ok, sxx, 1.0), 0.0))
+        else:
+            raise ValueError(f'thành phần lịch sử không hợp lệ: {tok}')
+    return np.hstack(out).astype(np.float32)
 
 
 def cycle_input(c: Cell, mode: str = 'global') -> np.ndarray:

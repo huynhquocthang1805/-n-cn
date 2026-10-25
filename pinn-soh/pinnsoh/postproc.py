@@ -6,8 +6,13 @@ không dùng nhãn, không dùng chu kỳ tương lai, nên áp được khi ch�
                             trên bởi 0 (SOH không tăng), lấy giá trị đường thẳng tại điểm hiện tại.
                             Khi độ dốc bình phương tối thiểu dương, nghiệm có ràng buộc là độ dốc 0, tức
                             trung bình cửa sổ.
+                            CHÚ Ý: mỗi chu kỳ dùng một cửa sổ khác nên chuỗi đầu ra KHÔNG bảo đảm không tăng
+                            (trên test của E20, đầu ra tăng ở 28–44 % số bước giữa hai chu kỳ liên tiếp).
+    causal_mono(p, t, w, a) bản có bảo đảm: m_n = m_{n-1} + a·min(0, z_n − m_{n-1}), z = causal_trend(p, t, w),
+                            m_0 = z_0; chuỗi m không bao giờ tăng. a = 1 là cực tiểu luỹ tiến của z; a < 1 chỉ
+                            kéo xuống một phần nên một dự đoán thấp bất thường không ghim cả quỹ đạo về sau.
     causal_iso(p)           giá trị cuối của hồi quy đơn điệu giảm (PAVA) trên tiền tố — để so sánh;
-                            luôn <= p hiện tại nên lệch xuống khi dự đoán có nhiễu.
+                            luôn <= p hiện tại nên lệch xuống khi dự đoán có nhiễu; cũng không bảo đảm không tăng.
     by_cell(fn, p, cell, cyc, ...)  áp một bộ lọc cho từng cell theo thứ tự chu kỳ, trả mảng cùng thứ tự gốc.
 """
 from __future__ import annotations
@@ -30,6 +35,17 @@ def causal_trend(p: np.ndarray, t: np.ndarray, w: int) -> np.ndarray:
     ok = (sxx > 1e-12) & (cnt >= 3)
     slope = np.where(ok, sxy / np.where(ok, sxx, 1.0), 0.0)
     return ym + np.minimum(slope, 0.0) * (t - tm)
+
+
+def causal_mono(p: np.ndarray, t: np.ndarray, w: int, a: float = 1.0) -> np.ndarray:
+    z = causal_trend(p, t, w)
+    out = np.empty_like(z)
+    m = z[0] if len(z) else 0.0
+    for n, v in enumerate(z):
+        if v < m:
+            m += a * (v - m)
+        out[n] = m
+    return out
 
 
 def _causal_trend_loop(p, t, w):
@@ -64,7 +80,7 @@ def causal_iso(p: np.ndarray, t=None, w=None) -> np.ndarray:
     return out
 
 
-FILTERS = dict(trend=causal_trend, iso=causal_iso)
+FILTERS = dict(trend=causal_trend, iso=causal_iso, mono=causal_mono)
 
 
 def by_cell(fn, p, cell, cyc, **kw) -> np.ndarray:

@@ -26,7 +26,8 @@ import torch
 import torch.nn.functional as Fnn
 from torch.autograd import grad
 
-from .data import (Normalizer, PointSet, load_dataset, split_cells, choose_labelled, make_pointset, cv_split)
+from .data import (Normalizer, PointSet, load_dataset, split_cells, choose_labelled, make_pointset, cv_split,
+                   norm_tag)
 from .models import SOHModel
 from .metrics import evaluate as eval_metrics
 
@@ -445,7 +446,7 @@ def run_name(cfg: Config) -> str:
         extra += f'_ls{cfg.label_smooth}'
     if cfg.member:
         extra += f'_m{cfg.member}'
-    return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{cfg.norm}_{cfg.cyc}{extra}'
+    return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{norm_tag(cfg.norm)}_{cfg.cyc}{extra}'
 
 
 def write_json(res: Dict, path: str):
