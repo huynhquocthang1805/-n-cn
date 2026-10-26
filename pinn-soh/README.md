@@ -30,7 +30,7 @@ không dùng lịch sử được chọn trên validation của đủ ba lần l
 (phân tích hậu kiểm), PINN-lai có sai số thấp hơn GBDT ở cả 16 trường hợp bộ × mức nhãn, 13 có ý nghĩa thống kê.
 E30 thêm ba mô hình học sâu cho chuỗi thời gian theo đề cương (CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ
 gần nhất của cell), chọn độ dài cửa sổ trên validation (E30dev) rồi so với mọi mô hình bằng MAE, RMSE, MAPE và R² trên
-bốn bộ và NASA. <<E30RES>>
+bốn bộ và NASA.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
 Kết quả của báo cáo dựa trên **10 354 lượt huấn luyện** (E13–E29, đếm theo tệp kết quả; bảng thời gian chạy bên dưới
