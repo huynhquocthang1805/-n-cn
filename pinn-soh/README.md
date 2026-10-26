@@ -59,7 +59,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28, E29dev, E29) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28, E29dev, E29, E30dev, E30) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -135,12 +135,13 @@ pinn-soh/
 │   ├── baselines.py        Ridge, GBDT, GPR (E16, E19)
 │   ├── leakage.py          các cách chia/chuẩn hoá sai cho kiểm toán rò rỉ (E15)
 │   ├── metrics.py          MAE theo cell, R², EOL, vi phạm đơn điệu, ...
-│   ├── experiments.py      định nghĩa E13–E20 thành danh sách lượt chạy
+│   ├── experiments.py      định nghĩa E13–E30 thành danh sách lượt chạy
 │   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
 │   ├── crossds.py          E21: huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện
 │   ├── forecast.py         E22: dự báo SOH tương lai, dung lượng còn lại, RUL (nghiệm đóng + GBDT)
 │   ├── recovery.py         E23: tách xu thế / phần hồi phục giữ lại + tắt dần / dao động đều cho dự báo
 │   ├── nasa.py             đọc bộ NASA PCoE (.mat) -> 16 đặc trưng sạc + giờ nghỉ, cùng định dạng PINN4SOH
+│   ├── seqmodels.py        E30: CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất của cell
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
@@ -165,6 +166,8 @@ pinn-soh/
 │   ├── analyze_mono.py     bộ lọc quỹ đạo có giữ SOH không tăng không; bộ lọc có bảo đảm
 │   ├── dev_e29.py          E29dev: chọn dạng lịch sử trên validation
 │   ├── analyze_e29.py      E29: mô hình có lịch sử trên test, chọn có / không lịch sử trên validation
+│   ├── dev_e30.py          E30dev: chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation
+│   ├── analyze_e30.py      E30: MAE, RMSE, MAPE, R² của mọi mô hình chính; kiểm định; NASA
 │   ├── analyze_overview.py hình tổng quan 30 % / 70 % nhãn và đo thưa
 │   ├── figures_report.py   vẽ lại các hình của báo cáo cho dễ đọc khi in
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
@@ -221,7 +224,7 @@ python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00x
 python run.py E24 && python run.py E24f
 ```
 
-### Hướng phát triển và so sánh: E25, E26, E27, E28, E29
+### Hướng phát triển và so sánh: E25–E30
 
 ```bash
 python analysis/analyze_e25.py         # cần E20, E23, E24, E24f; không huấn luyện thêm
@@ -232,11 +235,13 @@ python analysis/analyze_overview.py                   # hình tổng quan 30 % /
 python analysis/analyze_mono.py                       # bộ lọc quỹ đạo có giữ SOH không tăng không (cần E20)
 python run.py E29dev && python analysis/dev_e29.py   # chọn dạng lịch sử trên validation
 python run.py E29 && python analysis/analyze_e29.py   # đánh giá cuối mô hình có lịch sử
+python run.py E30dev && python analysis/dev_e30.py   # chọn độ dài cửa sổ của CNN, LSTM, Transformer
+python run.py E30 && python analysis/analyze_e30.py   # CNN, LSTM, Transformer trên 4 bộ + NASA; bảng chỉ số đầy đủ
 python analysis/figures_report.py                    # vẽ lại các hình của báo cáo cho dễ đọc khi in
 ```
 
 Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`;
-E29: `tai-lieu/de-cuong-E29.md`.
+E29: `tai-lieu/de-cuong-E29.md`; E30: `tai-lieu/de-cuong-E30.md`.
 
 ## 5. Demo — ước lượng và dự báo SOH cho một cell
 

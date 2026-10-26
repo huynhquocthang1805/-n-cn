@@ -419,9 +419,43 @@ def E29(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E29') -> L
     return jobs
 
 
+# E30: CNN, LSTM, Transformer theo đề cương đồ án (pinnsoh/seqmodels.py, tai-lieu/de-cuong-E30.md). E30dev chọn độ dài
+#      cửa sổ L trên validation (lần lặp 0, nhãn 30 và 70 %); E30 chạy đúng giao thức E20 với L đã chọn, thêm bộ NASA.
+E30_MODELS = ('cnn', 'lstm', 'transformer')
+E30_DEV_L = (16, 48)
+# chốt theo E30dev (analysis/dev_e30.py, results/e30_dev.csv): tỉ số validation L48/L16 của CNN 1,000 (vùng nhìn 13 chu
+# kỳ < 16 nên hai cửa sổ cho cùng kết quả), LSTM 0,989, Transformer 1,005
+E30_L = {'cnn': 16, 'lstm': 48, 'transformer': 16}
+E30_COST = {'cnn': 20, 'lstm': 20, 'transformer': 40}
+
+
+def E30dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E30dev') -> List[Job]:
+    from .seqmodels import cv_path
+    return [Job('seq', dict(model=m, L=L, ds=ds, frac=f, r=r, k=k, out_dir=out), cv_path(m, L, ds, f, r, k, out),
+                E30_COST[m] * L / 16, f'{m} L{L} {ds} f{f} cv{r}-{k}', (ds,))
+            for m, L, f, r, ds, k in itertools.product(E30_MODELS, E30_DEV_L, (0.3, 0.7), range(repeats), datasets,
+                                                      range(E13_FOLDS))]
+
+
+def E30(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E30') -> List[Job]:
+    from .seqmodels import cv_path, samba_path
+    jobs = [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
+                cv_path(m, E30_L[m], ds, f, r, k, out), E30_COST[m] * E30_L[m] / 16, f'{m} {ds} f{f} cv{r}-{k}', (ds,))
+            for m, f, r, ds, k in itertools.product(E30_MODELS, FRACS, range(repeats), datasets, range(E13_FOLDS))]
+    # NASA: kiểm định chéo như E24 (30 và 70 % nhãn, có / không giờ nghỉ) và cách chia NASA-L của SambaMixer (3 hạt giống)
+    for m, ds in itertools.product(E30_MODELS, NASA_SETS):
+        jobs += [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
+                     cv_path(m, E30_L[m], ds, f, r, k, out), 5, f'{m} {ds} f{f} cv{r}-{k}', (ds,))
+                 for f, r, k in itertools.product((0.3, 0.7), range(repeats), range(E13_FOLDS))]
+        jobs += [Job('seq_samba', dict(model=m, L=E30_L[m], ds=ds, seed=s, out_dir=out),
+                     samba_path(m, E30_L[m], ds, s, out), 5, f'samba {m} {ds} s{s}', (ds,)) for s in range(3)]
+    return jobs
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
-                                                        E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev, E29=E29)
+                                                        E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev, E29=E29,
+                                                        E30dev=E30dev, E30=E30)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
 ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26', 'E27',
-         'E28', 'E29dev', 'E29']
+         'E28', 'E29dev', 'E29', 'E30dev', 'E30']

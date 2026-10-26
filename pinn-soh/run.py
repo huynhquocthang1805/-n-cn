@@ -37,6 +37,7 @@ ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['
             ['analysis/analyze_e23.py'], ['analysis/analyze_e24.py'], ['analysis/analyze_e25.py'],
             ['analysis/analyze_e26.py'], ['analysis/analyze_e27.py'], ['analysis/analyze_e28.py'],
             ['analysis/analyze_mono.py'], ['analysis/dev_e29.py'], ['analysis/analyze_e29.py'],
+            ['analysis/dev_e30.py'], ['analysis/analyze_e30.py'],
             ['analysis/analyze_overview.py'], ['analysis/figures_report.py'], ['report/diagrams.py']]
 
 
@@ -127,7 +128,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'thesis', 'all', 'reproduce',
                                         'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f',
-                                        'E26', 'E27', 'E28', 'E29dev', 'E29'])
+                                        'E26', 'E27', 'E28', 'E29dev', 'E29', 'E30dev', 'E30'])
     ap.add_argument('--workers', type=int, default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--datasets', nargs='+', default=['XJTU', 'TJU', 'MIT', 'HUST'],

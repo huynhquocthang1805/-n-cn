@@ -137,7 +137,35 @@ def main():
     if len(S):
         print(ss.assign(mae=lambda x: (100 * x.mae).round(2), rmse=lambda x: (100 * x.rmse).round(2),
                         mape=lambda x: (100 * x.mape).round(2)).to_string(index=False))
+    export_data()
+    export_traj()
     figure()
+
+
+def export_data():
+    """Dữ liệu NASA cho hình tổng quan: SOH và giờ nghỉ trước mỗi lần xả của 18 cell -> results/e24_data.csv."""
+    from pinnsoh.baselines import cells_of
+    rest = rest_of(); rows = []
+    for c in cells_of('NASA'):
+        rh = rest[c.cid]
+        for n, y in zip(c.cycle.astype(int), c.soh):
+            rows.append(dict(cell=c.cid.split('/')[1], group=c.batch, cycle=int(n), soh=float(y), rest_h=float(rh[n])))
+    pd.DataFrame(rows).to_csv(f'{OUT}/e24_data.csv', index=False)
+
+
+def export_traj():
+    """Dự đoán trên ba cell đánh giá của cách chia NASA-L (hạt giống 0) -> results/e24_samba_traj.csv."""
+    rows = []
+    for ds in SETS:
+        Pp = [f'{ROOT}/S_{ds}_pinn_semi_f0.7_s0_global_global' + ('' if m == 0 else f'_m{m}') + '.json' for m in range(3)]
+        Gp, Mp = f'{ROOT}/gbdt_{ds}_samba_s0.json', f'{ROOT}/S_{ds}_mlp_f0.7_s0_global_global.json'
+        if not all(os.path.exists(p) for p in Pp + [Gp, Mp]):
+            continue
+        base, pr = combine([_pred(p) for p in Pp], _pred(Gp), _pred(Mp))
+        for i in range(len(base['y'])):
+            rows.append(dict(ds=ds, cell=base['cell'][i].split('/')[1], cycle=int(base['cyc'][i]), y=base['y'][i],
+                             **{m: float(pr[m][i]) for m in ('mlp', 'gbdt', 'pinn3', 'pinn_lai')}))
+    pd.DataFrame(rows).to_csv(f'{OUT}/e24_samba_traj.csv', index=False)
 
 
 def figure():

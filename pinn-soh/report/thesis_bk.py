@@ -19,12 +19,14 @@ COVER = r"""\begin{titlepage}
 \textbf{KHOA KHOA HỌC VÀ KỸ THUẬT MÁY TÍNH}}\\[1.0cm]
 \includegraphics[width=3.4cm]{hinh/bk.png}\\[1.2cm]
 {\Large\textbf{ĐỒ ÁN CHUYÊN NGÀNH}}\\[1.4cm]
-{\LARGE\bfseries ƯỚC LƯỢNG TRẠNG THÁI SỨC KHOẺ\\[4pt] CỦA PIN LITHIUM-ION BẰNG MẠNG NƠ-RON\\[4pt]
-CÓ THÔNG TIN VẬT LÝ}\\[1.8cm]
+{\Large\bfseries DỰ ĐOÁN THÔNG SỐ SỨC KHOẺ CỦA PIN\\[4pt] BẰNG MÔ HÌNH HỌC SÂU ĐƯỢC HỖ TRỢ\\[4pt]
+TỪ THÔNG TIN HOÁ LÝ CỦA HỆ PIN}\\[10pt]
+{\large\itshape Health forecasting for battery systems using physics and chemistry-informed\\ deep learning methods}\\[1.6cm]
 \end{center}
-\begin{tabular}{@{\hspace{3.2cm}}ll}
+\begin{tabular}{@{\hspace{2.6cm}}ll}
+Hướng đồ án: & Khoa học Máy tính\\[4pt]
 Giảng viên hướng dẫn: & ......................................................\\[4pt]
-Sinh viên thực hiện: & Huỳnh Quốc Thắng \quad MSSV: ..................\\[4pt]
+Sinh viên thực hiện: & Huỳnh Quốc Thắng \quad MSSV: 2313178\\[4pt]
 Nhóm: & 15\\[4pt]
 Học kỳ: & HK261
 \end{tabular}
@@ -35,8 +37,8 @@ Học kỳ: & HK261
 
 FRONT = r"""
 \chapter*{Lời cam đoan}\addcontentsline{toc}{chapter}{Lời cam đoan}
-Tôi xin cam đoan đồ án chuyên ngành ``Ước lượng trạng thái sức khoẻ của pin lithium-ion bằng mạng nơ-ron có thông
-tin vật lý'' là kết quả làm việc của riêng tôi dưới sự hướng dẫn của giảng viên hướng dẫn. Các bộ dữ liệu sử dụng
+Tôi xin cam đoan đồ án chuyên ngành ``Dự đoán thông số sức khoẻ của pin bằng mô hình học sâu được hỗ trợ từ thông
+tin hoá lý của hệ pin'' là kết quả làm việc của riêng tôi dưới sự hướng dẫn của giảng viên hướng dẫn. Các bộ dữ liệu sử dụng
 đều là dữ liệu công khai và được trích dẫn nguồn đầy đủ. Mọi số liệu, bảng và hình trong báo cáo được tính trực
 tiếp từ kết quả thực nghiệm do tôi thực hiện; các phần tham khảo từ công trình khác đều được ghi rõ trong danh mục
 tài liệu tham khảo. Tôi xin chịu hoàn toàn trách nhiệm nếu có bất kỳ sai phạm nào so với lời cam đoan này.
@@ -49,7 +51,8 @@ Tôi xin chân thành cảm ơn giảng viên hướng dẫn đã định hướ
 quá trình thực hiện đồ án. Tôi cũng cảm ơn quý thầy cô Khoa Khoa học và Kỹ thuật Máy tính, Trường Đại học Bách
 khoa -- ĐHQG-HCM, đã trang bị nền tảng kiến thức để tôi có thể thực hiện đề tài này. Cảm ơn các nhóm nghiên cứu
 tại Đại học Giao thông Tây An, Đại học Thiên Tân, MIT--Stanford--Toyota Research Institute và Đại học Khoa học và
-Công nghệ Hoa Trung đã công bố dữ liệu lão hoá pin, và nhóm tác giả PINN4SOH đã công bố mã nguồn tiền xử lý.
+Công nghệ Hoa Trung, Trung tâm Nghiên cứu Ames của NASA đã công bố dữ liệu lão hoá pin, và nhóm tác giả PINN4SOH đã
+công bố mã nguồn tiền xử lý.
 Cuối cùng, tôi cảm ơn gia đình và bạn bè đã luôn động viên trong suốt thời gian thực hiện đồ án.
 """
 
@@ -62,13 +65,16 @@ Viết tắt & Ý nghĩa \\
 \midrule
 BMS & Hệ thống quản lý pin (Battery Management System)\\
 CC--CV & Sạc dòng không đổi -- áp không đổi (Constant Current -- Constant Voltage)\\
+CNN & Mạng nơ-ron tích chập (Convolutional Neural Network)\\
 GBDT & Cây quyết định tăng cường gradient (Gradient Boosting Decision Tree)\\
 GPR & Hồi quy quá trình Gauss (Gaussian Process Regression)\\
 KTC & Khoảng tin cậy\\
 LAM & Mất vật liệu hoạt động (Loss of Active Material)\\
 LFP & Lithium sắt phốt phát (LiFePO$_4$)\\
 LLI & Mất lithium khả dụng (Loss of Lithium Inventory)\\
+LSTM & Mạng bộ nhớ dài -- ngắn hạn (Long Short-Term Memory)\\
 MAE & Sai số tuyệt đối trung bình (Mean Absolute Error)\\
+MAPE & Sai số phần trăm tuyệt đối trung bình (Mean Absolute Percentage Error)\\
 MLP & Perceptron nhiều lớp (Multilayer Perceptron)\\
 NCA, NCM & Oxit niken--coban--nhôm, oxit niken--coban--mangan\\
 ODE & Phương trình vi phân thường (Ordinary Differential Equation)\\
@@ -76,6 +82,7 @@ PINN & Mạng nơ-ron có thông tin vật lý (Physics-Informed Neural Network)
 PINN-semi & PINN bán giám sát, loss vật lý áp lên cả cell không nhãn\\
 PINN-lai & Mô hình kết hợp: ba PINN-semi, GBDT và bộ lọc quỹ đạo\\
 RMSE & Căn bậc hai sai số bình phương trung bình (Root Mean Square Error)\\
+RUL & Số chu kỳ còn lại tới ngưỡng cuối đời (Remaining Useful Life)\\
 SEI & Lớp điện phân rắn trên bề mặt anode (Solid Electrolyte Interphase)\\
 SOH & Trạng thái sức khoẻ (State of Health)\\
 \bottomrule
@@ -100,6 +107,15 @@ def pick(secs, prefix):
         if t.startswith(prefix) or re.sub(r'\\texorpdfstring\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}\{.*', r'\1', t).startswith(prefix):
             return body
     raise KeyError(prefix)
+
+
+def take_float(tex: str, label: str):
+    """Tách một hình hoặc bảng ra khỏi đoạn văn: trả (đoạn văn còn lại, khối float)."""
+    pat = re.compile(r'\\begin\{(figure|table)\}\[!htbp\](?:(?!\\end\{(?:figure|table)\}).)*?\\label\{' + re.escape(label)
+                     + r'\}.*?\\end\{\1\}\n?', re.S)
+    m = pat.search(tex)
+    assert m, label
+    return tex[:m.start()] + tex[m.end():], m.group(0)
 
 
 def drop_float(tex: str, label: str) -> str:
@@ -127,21 +143,62 @@ def sub1(tex: str, a: str, b: str) -> str:
 # ───────────────────────────────────────────────────────────── văn bản mới
 CH1_GOALS = r"""\section{Mục tiêu, đối tượng và phạm vi}
 
-Mục tiêu của đồ án là xây dựng và đánh giá một mô hình ước lượng SOH tận dụng được dữ liệu không nhãn và hiểu biết
-vật lý về lão hoá pin, với ba yêu cầu: (i) sai số thấp hơn các mô hình học có nhãn thông dụng khi chỉ một phần nhỏ
-cell có nhãn; (ii) kết quả được đo bằng một giao thức không rò rỉ thông tin, có kiểm định thống kê; (iii) đánh giá
-được khả năng dùng mô hình học trên một bộ dữ liệu cho một bộ dữ liệu khác.
+Đề tài thuộc hướng Khoa học Máy tính và gồm hai giai đoạn; đồ án chuyên ngành này là giai đoạn 1, tập trung vào bài
+toán một cell (đơn pin). Theo đề cương, giai đoạn 1 có năm mục tiêu:
+\begin{enumerate}[label=(\roman*)]
+\item nắm kiến thức nền về học máy, học sâu cho dữ liệu chuỗi thời gian và về dữ liệu lão hoá pin, gồm các ràng buộc
+      hoá lý có trong dữ liệu;
+\item tái lập bảng thống kê mô tả của các bộ dữ liệu, phân tích phân phối, ngoại lai và các mẫu gây nhiễu;
+\item hiện thực và so sánh có kiểm định với ít nhất bốn mô hình nền MLP, CNN, LSTM, Transformer bằng MAE, RMSE, MAPE;
+\item tinh chỉnh các mô hình và giải thích vì sao tinh chỉnh làm kết quả tốt lên hay xấu đi;
+\item đề xuất cải tiến có cơ sở lý thuyết để chuẩn bị cho giai đoạn 2; ở đây là mô hình học sâu có thông tin vật lý
+      (PINN) bán giám sát và mô hình kết hợp.
+\end{enumerate}
 
-Đối tượng nghiên cứu là cell lithium-ion hình trụ 18650 trong bốn bộ dữ liệu lão hoá công khai (NCM, NCA/NCM, LFP)
-và bộ NASA PCoE. Đầu vào là 16 đặc trưng trích từ đoạn sạc CC--CV của từng chu kỳ; đầu ra là SOH tại chu kỳ đó và
-SOH, dung lượng, RUL ở các chu kỳ sau. Đồ án không xây dựng mô hình điện hoá chi tiết.
+Đối tượng nghiên cứu là cell lithium-ion trong bốn bộ dữ liệu lão hoá công khai (NCM, NCA/NCM, LFP) và bộ NASA PCoE.
+Đầu vào là 16 đặc trưng trích từ đoạn sạc CC--CV của từng chu kỳ; đầu ra là SOH tại chu kỳ đó, và SOH, dung lượng,
+RUL ở các chu kỳ sau. Dữ liệu nhiều cell ghép song song, phân tích mất cân bằng giữa các cell và giao diện trực quan
+thuộc giai đoạn 2. Đồ án không xây dựng mô hình điện hoá chi tiết.
 """
 
 CH2_HEAD = r"""\chapter{Cơ sở lý thuyết}\label{ch:lythuyet}
 
 Chương này trình bày các kiến thức nền mà mô hình và giao thức đánh giá của đồ án dựa vào: cơ chế suy giảm dung
-lượng của pin lithium-ion, mạng nơ-ron có thông tin vật lý, học bán giám sát, kết hợp mô hình cùng ước lượng độ
-bất định, thích nghi miền, và cách đánh giá mô hình khi dữ liệu có cấu trúc nhóm.
+lượng của pin lithium-ion, các mô hình học sâu cho dữ liệu chuỗi thời gian, mạng nơ-ron có thông tin vật lý, học bán
+giám sát, kết hợp mô hình cùng ước lượng độ bất định, dự báo tuổi thọ còn lại, và cách đánh giá mô hình khi dữ liệu
+có cấu trúc nhóm.
+"""
+
+CH2_TS = r"""\section{Học sâu cho dữ liệu chuỗi thời gian}\label{sec:ts}
+
+Dữ liệu lão hoá pin là chuỗi thời gian theo hai trục. Trong một chu kỳ, điện áp, dòng điện và nhiệt độ thay đổi theo
+thời gian (theo kênh); qua các chu kỳ, các đại lượng tóm tắt của từng chu kỳ trôi dần khi cell già đi (theo chu kỳ).
+Đồ án làm việc trên trục chu kỳ: mỗi chu kỳ được tóm thành 16 đặc trưng sạc, và mô hình ước lượng SOH ở chu kỳ $n$
+từ đặc trưng của chu kỳ đó hoặc của một cửa sổ $L$ chu kỳ gần nhất $\mathbf{x}_{n-L+1}, \dots, \mathbf{x}_n$. Bốn họ
+mô hình học sâu thường dùng cho dạng dữ liệu này:
+
+\paragraph{MLP.} Mạng truyền thẳng $\hat y = f_K \circ \dots \circ f_1(\mathbf{x}_n)$ với
+$f_k(\mathbf{h}) = \sigma(W_k \mathbf{h} + \mathbf{b}_k)$ chỉ nhìn một chu kỳ, không có khái niệm thứ tự.
+
+\paragraph{CNN.} Mạng tích chập một chiều trượt bộ lọc dọc trục chu kỳ:
+$h_n = \sigma\bigl(\sum_{j=0}^{k-1} W_j \mathbf{x}_{n - j\delta} + \mathbf{b}\bigr)$, với kích thước $k$ và độ giãn
+$\delta$. Khi bộ lọc chỉ nhìn các chu kỳ trước (tích chập nhân quả), đầu ra ở chu kỳ $n$ không dùng dữ liệu tương
+lai~\cite{bai2018tcn}.
+
+\paragraph{LSTM.} Mạng hồi quy giữ một trạng thái nhớ $\mathbf{c}_n = \mathbf{f}_n \odot \mathbf{c}_{n-1} +
+\mathbf{i}_n \odot \tanh(W_c[\mathbf{h}_{n-1}, \mathbf{x}_n] + \mathbf{b}_c)$ và đầu ra $\mathbf{h}_n = \mathbf{o}_n
+\odot \tanh(\mathbf{c}_n)$; các cổng quên $\mathbf{f}_n$, vào $\mathbf{i}_n$, ra $\mathbf{o}_n$ có dạng
+$\sigma(W[\mathbf{h}_{n-1}, \mathbf{x}_n] + \mathbf{b})$ và cho phép giữ thông tin qua nhiều bước~\cite{hochreiter1997}.
+
+\paragraph{Transformer.} Tầng tự chú ý tính $\mathrm{softmax}(QK^\top / \sqrt{d})\,V$ trên mọi cặp vị trí trong cửa sổ,
+với $Q, K, V$ là ba phép chiếu tuyến tính của đầu vào~\cite{vaswani2017}. Phép tính này không phân biệt thứ tự, nên
+một mã hoá vị trí được cộng vào đầu vào: $\mathrm{PE}_{p,2i} = \sin(p / 10000^{2i/d})$,
+$\mathrm{PE}_{p,2i+1} = \cos(p / 10000^{2i/d})$, với $p$ là vị trí trong cửa sổ.
+
+Mô hình chuỗi sang chuỗi (sequence-to-sequence) dùng một bộ mã hoá đọc lịch sử và một bộ giải mã sinh chuỗi đầu ra,
+đúng dạng của bài toán dự báo SOH ở các chu kỳ sau (Mục~\ref{sec:forecast_m}). SambaMixer~\cite{olalde2024samba} thay
+tầng chú ý bằng mô hình không gian trạng thái chọn lọc (Mamba). Với nhiều cell ghép trong một khối pin, mạng tích chập
+đồ thị coi mỗi cell là một nút~\cite{kipf2017}; hướng này thuộc giai đoạn 2.
 """
 
 CH2_DA = r"""\section{Thích nghi miền}\label{sec:da}
@@ -165,10 +222,9 @@ lai có thông tin vật lý, rồi rút ra các khoảng trống mà đồ án 
 
 CH4_HEAD = r"""\chapter{Dữ liệu và phương pháp đề xuất}\label{ch:dulieu}\label{ch:phuongphap}
 
-Chương này mô tả bốn bộ dữ liệu và cách tiền xử lý, rồi trình bày bốn thành phần của phương pháp: mô hình PINN bán
-giám sát, mô hình kết hợp PINN-lai, quy trình thích nghi không nhãn kèm tự huấn luyện để dùng mô hình trên một bộ
-dữ liệu khác, và phần mở rộng dự báo SOH tương lai, dung lượng còn lại và RUL. Cuối chương là các mô hình đối chứng
-và cấu hình huấn luyện chung.
+Chương này mô tả các bộ dữ liệu và cách tiền xử lý, rồi trình bày các thành phần của phương pháp: mô hình PINN bán
+giám sát, mô hình kết hợp PINN-lai, đầu vào có lịch sử của cell, và phần mở rộng dự báo SOH tương lai, dung lượng còn
+lại và RUL. Cuối chương là các mô hình đối chứng, gồm bốn mô hình học sâu theo đề cương, và cấu hình huấn luyện chung.
 """
 
 CH4_HIST = r"""\section{Đầu vào có lịch sử của cell}\label{sec:hist_m}
@@ -326,17 +382,13 @@ ngang bên ngoài miền đó, còn PINN-dự báo ngoại suy theo dạng hàm 
 \paragraph{Mô hình đối chứng.} (i) Giữ nguyên: $\hat y(k+h) = \ell_k$. (ii) Ngoại suy tuyến tính theo độ dốc 100 chu
 kỳ gần nhất, chặn để không dương. (iii) Khớp vật lý theo cell: khớp \eqref{eq:fcdrop} với ba tham số
 $(u_0, a_0, \lambda)$ lên nửa sau lịch sử của chính cell, có phạt nhẹ $\lambda$, rồi ngoại suy, đại diện cho nhóm
-mô hình thực nghiệm khớp theo từng cell~\cite{he2011}. Khớp trên toàn bộ lịch sử và không phạt cho đường dự báo đổ
-xuống ngay sau gốc; cấu hình trên là tốt nhất trong bốn biến thể có điểm đầu gối khi thử trên cell validation của
-fold đầu tiên.
+mô hình thực nghiệm khớp theo từng cell~\cite{he2011}.
 
 \paragraph{Xét hồi phục dung lượng.} Bản cải tiến tách lịch sử tại gốc thành ba phần, chỉ dùng 60 chu kỳ gần nhất:
 (i) xu thế, là đường thẳng khớp bằng hồi quy Huber nên vài điểm hồi phục không kéo lệch được mức và độ dốc;
-(ii) dao động đều, tìm chu kỳ $P \in [2{,}2;\,15]$ với hai hài trên phần dư và chỉ giữ khi giải thích được ít nhất
-60\,\% phương sai trên cả cửa sổ lẫn từng nửa cửa sổ, tức dao động thật sự lặp lại; (iii) phần hồi phục hiện tại $e_k$,
-là phần dư của chính chu kỳ cuối sau khi trừ hai phần trên (ngay sau một lần nghỉ dài chỉ chu kỳ cuối nhảy lên), co về 0
-một khoảng bằng hai lần mức nhiễu cục bộ ($1{,}4826$ lần độ lệch tuyệt đối trung vị của phần dư) để nhiễu đo không bị
-coi là hồi phục. Dự báo trở thành
+(ii) dao động đều, chu kỳ $P \in [2{,}2;\,15]$ với hai hài trên phần dư, chỉ giữ khi giải thích được ít nhất 60\,\%
+phương sai trên cả cửa sổ lẫn từng nửa cửa sổ; (iii) phần hồi phục hiện tại $e_k$, phần dư của chu kỳ cuối sau khi trừ hai
+phần trên, co về 0 một khoảng bằng hai lần mức nhiễu cục bộ để nhiễu đo không bị coi là hồi phục. Dự báo trở thành
 \begin{equation}\label{eq:fcrec}
   \hat y(k+h) = \ell_k + e_k\,g(h) - \Delta v(h; a, \lambda) + p_k(h), \qquad g(h) = \rho + (1 - \rho)\,e^{-h/\tau_r},
 \end{equation}
@@ -345,12 +397,9 @@ thuận nghịch, $p_k(h)$ là dao động ngoại suy, $\rho$ là phần hồi 
 còn lại. Cặp $(\rho, \tau_r)$ được ước lượng trực tiếp trên cell train của từng fold: tại mỗi lần hồi phục (SOH đo vượt
 trung vị năm chu kỳ trước đó quá 0,004), phần lệch của SOH so với xu thế cộng dao động trong 30 chu kỳ sau được khớp
 bằng $e_k\,g(h)$, dò lưới $\rho \in \{0; 0{,}1; \dots; 1\}$ và $\tau_r \in \{0{,}5; 1; \dots; 40\}$ chu kỳ; bộ có dưới năm
-lần hồi phục nhận $\rho = 0$. Bản đầu tiên để mạng học $\tau_r$ bằng gradient, nhưng vì rất ít mẫu có $e_k$ khác 0 nên
-$\tau_r$ đứng yên quanh giá trị khởi tạo 10 chu kỳ ở mọi bộ, trong khi dữ liệu cho thấy phần hồi phục hoặc được giữ gần
-như trọn, hoặc mất ngay ở chu kỳ sau. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch; trọng
-số của GBDT trong mô hình kết hợp tăng tuyến tính từ 0 tại $h = 0$ tới $\tfrac{1}{2}$ tại $h = 0{,}1L$, vì cây gom các
-tầm rất ngắn vào cùng một ngăn nên kém chính xác ngay sau gốc. Các lựa chọn này được chốt trên cell validation của lần
-lặp đầu tiên, trước khi chạy trên test.
+lần hồi phục nhận $\rho = 0$. GBDT học phần giảm của xu thế sau khi trừ hai thành phần thuận nghịch, với trọng số trong
+mô hình kết hợp tăng tuyến tính từ 0 tại $h = 0$ tới $\tfrac{1}{2}$ tại $h = 0{,}1L$. Các lựa chọn này được chốt trên cell
+validation của lần lặp đầu tiên, trước khi chạy trên test.
 
 \paragraph{Khoảng dự báo.} Sai số có dấu (thật trừ dự báo) của mô hình kết hợp trên cell validation được chia theo
 tầm tương đối $h/L$ ($L$ là trung vị số chu kỳ của bộ, các nhóm cận 0,05; 0,1; 0,25; 0,5; 1); cộng phân vị 5\,\% và
@@ -364,12 +413,12 @@ Dự báo dùng đúng các fold của Mục~\ref{sec:unit} (5 fold theo cell, 1
 nhãn, nên mọi cell được dự báo đúng một lần mỗi lần lặp. Bộ dự báo học trên lịch sử đo của cell train. Ở kịch bản
 không đo dung lượng, lịch sử của cell test là ước lượng PINN-lai của chính fold đó, tức từ mô hình chưa thấy cell này.
 
-Gốc dự báo SOH đặt ở 20, 40 và 60\,\% số chu kỳ ghi được của cell; tỉ lệ này chỉ dùng để chọn điểm đánh giá, không
-phải đầu vào của mô hình. Sai số SOH được báo cáo ở ba tầm $h = 0{,}1L$, $0{,}25L$, $0{,}5L$ và trên toàn bộ phần đời
-còn lại sau gốc. Ngưỡng cuối đời $\tau$ của mỗi bộ được ấn định trước khi dự báo, là mức SOH thấp nhất (bước 0,01) mà
-ít nhất 80\,\% cell của bộ đã chạm tới; chu kỳ cuối đời thật là chu kỳ đầu tiên mà trung vị trượt 9 chu kỳ của SOH đo
-không vượt quá $\tau$. Ngưỡng 0,8 thường dùng không áp được vì phần lớn cell của MIT và XJTU dừng đo trước mức đó. Gốc
-dự báo RUL đặt ở 25, 50 và 75\,\% chu kỳ cuối đời thật của cell. Bảng~\ref{tab:fcset} tóm tắt các tham số.
+Gốc dự báo SOH đặt ở 20, 40 và 60\,\% số chu kỳ ghi được của cell (chỉ để chọn điểm đánh giá, không phải đầu vào);
+sai số được báo cáo ở ba tầm $h = 0{,}1L$, $0{,}25L$, $0{,}5L$ và trên toàn bộ phần đời còn lại. Ngưỡng cuối đời $\tau$
+của mỗi bộ được ấn định trước, là mức SOH thấp nhất (bước 0,01) mà ít nhất 80\,\% cell đã chạm tới, vì phần lớn cell
+của MIT và XJTU dừng đo trước mức 0,8 thường dùng; chu kỳ cuối đời thật là chu kỳ đầu tiên mà trung vị trượt 9 chu kỳ
+của SOH đo không vượt quá $\tau$. Gốc dự báo RUL đặt ở 25, 50 và 75\,\% chu kỳ cuối đời thật.
+Bảng~\ref{tab:fcset} tóm tắt các tham số.
 
 <<TABFC>>
 
@@ -377,49 +426,76 @@ Chỉ số gồm MAE của SOH theo cell ở từng tầm, quy ra dung lượng 
 trong $\pm 20\,\%$ RUL thật~\cite{saxena2008}; độ phủ thực tế của khoảng 90\,\%. Sai số của một cell lấy trung bình
 qua lần lặp và các gốc; so sánh dùng Wilcoxon ghép cặp theo cell, hiệu chỉnh Holm trong mỗi bộ.
 
-Bản có xét hồi phục được chạy trên đúng các fold đó, cùng lượt với các mô hình của bản đầu (học lại với cùng hạt giống),
-nên hai bản được so ghép cặp trên cùng gốc. Ngoài các gốc trên, mỗi cell có thêm tối đa ba gốc đặt ngay sau một lần hồi
-phục: SOH đo vượt trung vị năm chu kỳ trước đó quá 0,004, chỉ xét sau đỉnh của giai đoạn kích hoạt đầu đời (ở nhiều cell,
-SOH tăng trong vài chục chu kỳ đầu, không phải hồi phục). Sai số ngắn hạn tính trên các chu kỳ trong tầm $0{,}1L$ sau
-gốc. Bộ NASA dùng cùng giao thức kiểm định chéo cho cả ước lượng lẫn dự báo, với ngưỡng cuối đời 70\,\% như tài liệu
-của NASA và SambaMixer; để so với SambaMixer, đồ án chạy thêm đúng cách chia NASA-L của bài đó.
+Bản có xét hồi phục chạy trên đúng các fold và hạt giống đó nên được so ghép cặp với bản đầu; mỗi cell có thêm tối
+đa ba gốc đặt ngay sau một lần hồi phục (SOH đo vượt trung vị năm chu kỳ trước quá 0,004, sau đỉnh của giai đoạn kích
+hoạt đầu đời), sai số ngắn hạn tính trong tầm $0{,}1L$ sau gốc. Bộ NASA dùng cùng giao thức, với ngưỡng cuối đời
+70\,\% như tài liệu của NASA và SambaMixer, và thêm đúng cách chia NASA-L của SambaMixer.
 """
 
 CH5_NEW = r"""\section{So với công trình đã công bố và ngân sách đo}\label{sec:newproto}
 
 \paragraph{Cách chia của PINN4SOH.} Để so trực tiếp với PINN4SOH~\cite{wang2024}, đồ án dựng lại đúng cách chia của
-bài từ nhật ký huấn luyện mà nhóm tác giả công bố kèm mã nguồn, nơi ghi danh sách cell train và test của từng lần chạy.
-XJTU và TJU học một mô hình riêng cho mỗi batch: cell test của XJTU là cell số 4 và 8 (thêm cell 14 ở batch 3C), của
-TJU là các cell chọn theo thứ tự tệp; MIT và HUST học một mô hình cho cả bộ, với 23 và 20 cell test cố định. Thí nghiệm
-ít mẫu của bài chỉ cho $K = 1, \dots, 4$ cell train đầu tiên có nhãn (XJTU theo từng batch, HUST cả bộ). Validation
-như bài: 20\,\% hàng ngẫu nhiên của các cell có nhãn. Ở chế độ ít mẫu, đặc trưng sạc của các cell train còn lại đi vào
-các loss vật lý, đúng ý học bán giám sát; cell test không được dùng dưới dạng nào. Mỗi nhóm chạy với 3 hạt giống và hai
-cách tiền xử lý: cách của đồ án (lọc nhân quả, chuẩn hoá theo cell train) và bản sao tiền xử lý của bài (lọc $3\sigma$
-trên cả vòng đời, kể cả cột dung lượng; min--max theo từng cell cho đặc trưng và chỉ số chu kỳ). Cách thứ hai có rò rỉ
-(Mục~\ref{sec:audit}) và chỉ dùng để so cùng điều kiện với số công bố. Số của PINN4SOH lấy từ các tệp kết quả công bố
-cùng mã nguồn; sai số tính như bài: MAE từng cell test, trung bình qua cell, qua lần chạy, rồi qua nhóm.
+bài từ nhật ký huấn luyện công bố kèm mã nguồn: XJTU và TJU học một mô hình cho mỗi batch, MIT và HUST một mô hình cho
+cả bộ với 23 và 20 cell test cố định; thí nghiệm ít mẫu chỉ cho $K = 1, \dots, 4$ cell train đầu tiên có nhãn, đặc
+trưng sạc của các cell train còn lại đi vào loss vật lý. Validation như bài (20\,\% hàng ngẫu nhiên của cell có nhãn).
+Mỗi nhóm chạy 3 hạt giống với hai cách tiền xử lý: của đồ án, và bản sao của bài (lọc $3\sigma$ trên cả vòng đời,
+min--max theo từng cell); cách sau có rò rỉ (Mục~\ref{sec:audit}) và chỉ dùng để so cùng điều kiện với số công bố, vốn
+lấy từ các tệp kết quả công bố cùng mã nguồn và tính như bài (MAE từng cell, trung bình qua cell, lần chạy, nhóm).
 
-\paragraph{Ngân sách đo.} Thí nghiệm ngân sách đo dùng đúng các fold và hạt giống của PINN-lai (3 lần lặp $\times$ 5
-fold), nhưng thay vì đo đầy đủ một phần cell, mọi cell train được đo theo lịch $q \in \{0{,}5;\ 0{,}2;\ 0{,}1;\
-0{,}05\}$ của Mục~\ref{sec:kalman_m}. Cell validation giữ nhãn đầy đủ như mọi thí nghiệm khác, cell test không có nhãn.
-Trục so sánh là phần trăm số chu kỳ của cell train có đo dung lượng. Ở chế độ đo thưa cả khi dùng, cell test cũng được
-đo theo cùng lịch $q$ (không có lần đo cuối) và ước lượng được cập nhật bằng \eqref{eq:kf}; sai số khi đó chỉ tính trên
-các chu kỳ không được đo.
+\paragraph{Ngân sách đo.} Dùng đúng các fold và hạt giống của PINN-lai (3 lần lặp $\times$ 5 fold), nhưng thay vì đo
+đầy đủ một phần cell, mọi cell train được đo theo lịch $q \in \{0{,}5;\ 0{,}2;\ 0{,}1;\ 0{,}05\}$ của
+Mục~\ref{sec:kalman_m}; cell validation giữ nhãn đầy đủ, cell test không có nhãn, trục so sánh là phần trăm số chu kỳ
+của cell train có đo dung lượng. Ở chế độ đo thưa cả khi dùng, cell test cũng được đo theo cùng lịch (không có lần đo
+cuối), ước lượng cập nhật bằng \eqref{eq:kf} và sai số chỉ tính trên các chu kỳ không được đo.
 """
 
-CH5_ENV = r"""\section{Môi trường thực nghiệm}
+CH5_IMPL = r"""\section{Kiến trúc hiện thực}\label{sec:impl}
 
-Mọi thí nghiệm chạy trên CPU (Intel Xeon 2,1\,GHz, 4 lõi), mỗi lượt huấn luyện một tiến trình một luồng để kết quả
-tái lập được từng bit. Phần mềm: Python 3.11, PyTorch, scikit-learn, NumPy, SciPy và Matplotlib. Mã nguồn được tổ
-chức thành một gói gồm các mô-đun đọc và làm sạch dữ liệu, mô hình, huấn luyện, mô hình đối chứng, hậu xử lý và
-phân tích; mỗi thí nghiệm là một danh sách lượt chạy độc lập, có thể dừng và chạy tiếp. Chạy lại 20 lượt mẫu trên
-máy khác cho dự đoán trùng từng bit với kết quả báo cáo.
+Hệ thống được hiện thực bằng Python thành một đường ống năm khối (Hình~\ref{fig:pipeline}), chạy được từ dữ liệu thô
+tới báo cáo bằng một lệnh và cho kết quả giống từng bit khi chạy lại.
+
+\begin{enumerate}
+\item Khối dữ liệu đọc dữ liệu đa định dạng của năm bộ (bảng CSV của bốn bộ chính, tệp MATLAB của NASA), trích 16 đặc
+      trưng của đoạn sạc, lọc ngoại lai chỉ bằng dữ liệu quá khứ, chuẩn hoá bằng thống kê của cell train và lưu bộ đệm.
+\item Khối mô hình gồm các mạng nơ-ron viết bằng PyTorch (MLP, CNN, LSTM, Transformer, PINN-semi, PINN-dự báo), các
+      mô hình cổ điển của scikit-learn (Ridge, GPR, GBDT) và các bước hậu xử lý độc lập: bộ lọc quỹ đạo, khoảng dự đoán
+      phù hợp, bộ lọc Kalman theo cell.
+\item Khối thí nghiệm biểu diễn mỗi thí nghiệm bằng một danh sách lượt chạy (bộ dữ liệu, mô hình, mức nhãn, lần lặp,
+      fold); bộ lập lịch chạy song song nhiều tiến trình một luồng, lượt dài trước, bỏ qua lượt đã có kết quả nên
+      chạy tiếp được sau khi dừng, và ghi mỗi lượt thành một tệp có đủ cấu hình, chỉ số, dự đoán validation và test.
+\item Khối phân tích chỉ đọc các tệp kết quả, không huấn luyện lại: tính chỉ số, kiểm định ghép cặp, chọn siêu tham số
+      trên validation, vẽ hình.
+\item Khối báo cáo sinh toàn bộ báo cáo này, mọi con số đọc từ kết quả phân tích. Một công cụ dòng lệnh nhận dữ liệu
+      sạc của một cell và trả SOH ước lượng, dự báo SOH, dung lượng còn lại, RUL kèm hình quỹ đạo, làm bản mẫu cho giao
+      diện của giai đoạn 2.
+\end{enumerate}
+
+Mọi thí nghiệm chạy trên CPU (Intel Xeon 2,1\,GHz, 4 lõi); phần mềm gồm Python 3.11, PyTorch, scikit-learn, NumPy,
+SciPy, pandas và Matplotlib. Mỗi lượt dùng một luồng và hạt giống cố định; chạy lại 20 lượt mẫu trên máy khác cho dự
+đoán trùng từng bit với kết quả báo cáo. Bảng~\ref{tab:exps} liệt kê các thí nghiệm và số lượt huấn luyện.
+
+<<FIG>>
+<<TABE>>
+"""
+
+SEQ_ROWS = r"""CNN & học có nhãn, chuỗi & tích chập nhân quả trên cửa sổ $L$ chu kỳ gần nhất\\
+LSTM & học có nhãn, chuỗi & một lớp LSTM trên cùng cửa sổ\\
+Transformer & học có nhãn, chuỗi & một lớp encoder tự chú ý, mã hoá vị trí hình sin\\
+"""
+
+CH4_SEQ = r"""
+\paragraph{CNN, LSTM, Transformer.} Đầu vào ở chu kỳ $n$ là cửa sổ nhân quả $L$ chu kỳ gần nhất của chính cell (16 đặc
+trưng sạc đã chuẩn hoá và chỉ số chu kỳ; đầu cửa sổ lặp lại chu kỳ đầu khi cell chưa đủ $L$ chu kỳ), đầu ra là SOH ở
+chu kỳ $n$, nên cả ba chạy trực tuyến như các mô hình khác. CNN có 32 kênh, kích thước 5, độ giãn 1 và 2 (vùng nhìn 13
+chu kỳ); LSTM 32 nút ẩn; Transformer 32 chiều, 4 đầu chú ý. Cả ba chỉ học có nhãn với AdamW (tốc độ học $10^{-3}$),
+batch 128, cắt gradient ở chuẩn 1, dừng sớm theo MAE trên cell validation. Độ dài cửa sổ chọn trên validation trong
+$\{16, 48\}$: <<LCHOICE>>.
 """
 
 
 # ───────────────────────────────────────────────────────────── ghép
 def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''), e26='', e27='', e28='', overview='',
-             tuned='', e25s='', mono='', e29=''):
+             tuned='', e25s='', mono='', e29='', e30=('', ''), impl_fig=''):
     """c1..c8: chuỗi các chương cũ (c7 = chương cải tiến); e21: các mục kết quả E21; fig: hàm sinh hình."""
     # Chương 1
     h1, s1 = split_sections(c1)
@@ -428,9 +504,9 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
            + pick(s1, 'Câu hỏi nghiên cứu') + pick(s1, 'Đóng góp') + retitle(pick(s1, 'Bố cục'), 'Cấu trúc báo cáo'))
     # Chương 2, 3
     h2, s2 = split_sections(c2)
-    ch2 = (CH2_HEAD + pick(s2, 'Suy giảm dung lượng') + pick(s2, 'Mạng nơ-ron có thông tin vật lý')
-           + retitle(pick(s2, 'Học bán giám sát'), 'Học bán giám sát và tự huấn luyện')
-           + pick(s2, 'Kết hợp mô hình') + CH2_DA + CH2_FC + pick(s2, 'Đánh giá mô hình'))
+    ch2 = (CH2_HEAD + pick(s2, 'Suy giảm dung lượng') + CH2_TS + pick(s2, 'Mạng nơ-ron có thông tin vật lý')
+           + retitle(pick(s2, 'Học bán giám sát'), 'Học bán giám sát')
+           + pick(s2, 'Kết hợp mô hình') + CH2_FC + pick(s2, 'Đánh giá mô hình'))
     ch3 = (CH3_HEAD + retitle(pick(s2, 'Các hướng ước lượng SOH'), 'Các hướng ước lượng SOH')
            + retitle(pick(s2, 'Tổng hợp và khoảng trống'), 'Nhận xét và khoảng trống nghiên cứu'))
     # Chương 4: dữ liệu + PINN + PINN-lai + thích nghi + đối chứng
@@ -452,40 +528,69 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
     lai = sub1(lai, 'Sáu hướng được thử, mỗi hướng dựa trên một kết quả đã công bố hoặc một quan sát ở Chương~\\ref{ch:ketqua}.',
                'Sáu thành phần được xem xét, mỗi thành phần dựa trên một kết quả đã công bố hoặc một quan sát ở '
                'Chương~\\ref{ch:ketqua}; Mục~\\ref{sec:devproto} chọn trong số đó chỉ bằng tập validation.')
-    ch4 = (CH4_HEAD + data + pinn + lai + (CH4_HIST if e29 else '') + CH4_DA + CH4_FC + e25[0] + pick(s4, 'Các mô hình đối chứng')
-           + pick(s4, 'Cấu hình huấn luyện'))
+    base = pick(s4, 'Các mô hình đối chứng')
+    if e30[0]:                     # CNN, LSTM, Transformer vào bảng mô hình; đoạn mô tả chi tiết đặt ngay sau bảng
+        base = sub1(base, 'Mọi mô hình dùng cùng đầu vào $[\\tilde{\\mathbf{x}}, t]$, cùng cách chia',
+                    'Mọi mô hình dùng cùng đặc trưng $[\\tilde{\\mathbf{x}}, t]$ (mô hình chuỗi nhận thêm các chu kỳ trước '
+                    'của chính cell), cùng cách chia')
+        base = sub1(base, 'PINN-sup & vật lý trên cell có nhãn', SEQ_ROWS + 'PINN-sup & vật lý trên cell có nhãn')
+    ch4 = (CH4_HEAD + data + pinn + lai + (CH4_HIST if e29 else '') + CH4_FC + e25[0] + base
+           + e30[0] + pick(s4, 'Cấu hình huấn luyện'))
     # Chương 5: thiết kế thí nghiệm
     h5, s5 = split_sections(c5)
     unit = drop_float(pick(s5, 'Đơn vị chia'), 'tab:rowbound')
     unit = sub1(unit, 'Bảng~\\ref{tab:rowbound} so sánh cận này với sai số đo được: bộ chép\nnhãn không học gì vẫn đạt '
                 'sai số nhỏ hơn mô hình thật nhiều lần, và khớp với cận lý thuyết.',
-                'Trên dữ liệu thật, bộ chép nhãn không học gì đạt sai số nhỏ hơn mô hình được đánh giá đúng cách nhiều '
-                'lần và khớp với cận lý thuyết.')
+                'Chu kỳ test gần như luôn có một chu kỳ kề bên trong train.')
     val = drop_float(pick(s5, 'Chọn tỉ lệ validation'), 'tab:vtrade')
     val = sub1(val, 'Bảng~\\ref{tab:vtrade} cho thấy\nđánh đổi:', 'Có một đánh đổi:')
     strat = drop_float(pick(s5, 'Phân tầng'), 'fig:strat')
-    strat = sub1(strat, ' và Hình~\\ref{fig:strat} là số cell\ntest của từng nhóm trong từng fold', '')
-    rep = drop_float(pick(s5, 'Chọn số lần lặp'), 'fig:repeats')
-    rep = sub1(rep, '(Bảng~\\ref{tab:repeats}, Hình~\\ref{fig:repeats})', '(Bảng~\\ref{tab:repeats})')
-    ch5 = (h5 + pick(s5, 'Các yêu cầu') + unit + pick(s5, 'Chọn số fold') + val + strat + rep
-           + pick(s5, 'Ghép cặp') + pick(s5, 'Quy trình chống rò rỉ')
-           + CH5_E21
+    rep = drop_float(drop_float(pick(s5, 'Chọn số lần lặp'), 'fig:repeats'), 'tab:repeats')
+    rep = sub1(rep, '\n(Bảng~\\ref{tab:repeats}, Hình~\\ref{fig:repeats}).', '.')
+    # gộp: số fold, tỉ lệ validation và số lần lặp thành một mục; bảng khả thi của K và bảng mô phỏng lấy lại được
+    # tóm tắt bằng lời
+    kf = drop_float(pick(s5, 'Chọn số fold'), 'tab:kfeas')
+    kf = sub1(kf, ' Bảng~\\ref{tab:kfeas} tóm tắt các lựa chọn.', '')
+    kf = retitle(kf, 'Chọn số fold, tỉ lệ validation và số lần lặp')
+    val = re.sub(r'^\\section\{Chọn tỉ lệ validation\}\n+', lambda _: '\\paragraph{Tỉ lệ validation.} ', val)
+    rep = re.sub(r'^\\section\{Chọn số lần lặp[^\n]*\n+', lambda _: '\\paragraph{Số lần lặp.} ', rep)
+    h5 = re.sub(r'\\chapter\{[^}]*\}', lambda _: '\\chapter{Hiện thực hệ thống và thiết kế thí nghiệm}', h5, count=1)
+    # mục ghép cặp chỉ có một đoạn: thành một đoạn cuối của mục phân tầng
+    pair, n = re.subn(r'^\\section\{Ghép cặp và hạt giống\}\n+', lambda _: '\\paragraph{Ghép cặp và hạt giống.} ',
+                      pick(s5, 'Ghép cặp'), count=1)
+    assert n == 1
+    stats, tab_exps = take_float(pick(s5, 'Phương pháp thống kê'), 'tab:exps')   # bảng thí nghiệm lên mục hiện thực
+    ch5 = (h5 + CH5_IMPL.replace('<<FIG>>', impl_fig).replace('<<TABE>>', tab_exps) + pick(s5, 'Các yêu cầu') + unit + kf
+           + val + rep
+           + strat + pair + pick(s5, 'Quy trình chống rò rỉ')
            + (CH5_FC.replace('<<TABFC>>', e22[0]) if e22[0] else '') + (CH5_NEW if (e27 or e28) else '')
-           + pick(s5, 'Kiểm toán rò rỉ') + pick(s5, 'Chỉ số đánh giá') + pick(s5, 'Phương pháp thống kê') + CH5_ENV)
+           + pick(s5, 'Kiểm toán rò rỉ') + pick(s5, 'Chỉ số đánh giá') + stats)
     # Chương 6: kết quả
     h6, s6 = split_sections(c6)
     head6 = sub1(h6, '\\chapter{Kết quả và thảo luận}', '\\chapter{Kết quả và đánh giá}')
     leak = drop_float(pick(s6, 'Kiểm toán rò rỉ'), 'tab:leak')            # hình kiểm toán rò rỉ có đủ sáu thiết lập
     leak = sub1(leak, 'Bảng~\\ref{tab:leak} cho thấy', 'Hình~\\ref{fig:leak} cho thấy')
     leak = sub1(leak, 'Hàng cuối của bảng còn rõ hơn', 'Thiết lập cuối còn rõ hơn')
+    # mục "So sánh ở 30 % nhãn" chỉ có một đoạn: gộp thành một đoạn của mục theo lượng nhãn
     s30 = drop_float(pick(s6, 'So sánh ở 30'), 'fig:cells')
+    s30 = re.sub(r'^\\section\{[^\n]*\n+Ở mức 30\\,\\% số cell có nhãn, PINN-semi', lambda _: '\\paragraph{Ở 30\\,\\% nhãn.} PINN-semi',
+                 s30, count=1)
+    assert s30.startswith('\\paragraph')
     labels = drop_float(pick(s6, 'PINN và học có nhãn'), 'fig:ratio')
+    labels = sub1(labels, '\\paragraph{Khi có nhiều nhãn.}', s30.strip() + '\n\n\\paragraph{Khi có nhiều nhãn.}')
+    # câu liệt kê mô hình tốt nhất từng bộ lặp lại phần in đậm của bảng
+    others, n = re.subn(r'Mô hình có MAE thấp nhất ở từng bộ \(Bảng~\\ref\{tab:big\}\): [^\n]*\n\n', '',
+                        pick(s6, 'So với các mô hình học có nhãn khác'), count=1)
+    assert n == 1
     ext = pick(s6, 'Các chỉ số mở rộng')
     for lab in ('tab:pred', 'fig:parity', 'fig:errsoh'):
         ext = drop_float(ext, lab)
-    rm = pick(s6, 'RMSE và')
-    for lab in ('tab:rmser2', 'tab:transr2', 'fig:rmser2'):
-        rm = drop_float(rm, lab)
+    # R², RMSE, MAPE của mọi mô hình nằm ở bảng chỉ số đầy đủ (mục E30): mục này chỉ còn hình quỹ đạo dự đoán
+    ext = retitle(ext, 'Quỹ đạo dự đoán theo lượng nhãn')
+    ext, n = re.subn(r'Ở 30\\,\\% nhãn, \$R\^2\$ của PINN-semi.*?(?= Hình~\\ref\{fig:parity\})', '', ext, count=1,
+                     flags=re.S)
+    assert n == 1
+    rm = ''
     phys = drop_float(drop_float(drop_float(pick(s6, 'Kiểm tra phần vật lý'), 'fig:ratecell'), 'fig:mono'), 'fig:ratesoh')
     phys = sub1(phys, 'Hình~\\ref{fig:ratesoh} xếp tốc độ suy giảm', 'Đồ án xếp tốc độ suy giảm')
     phys = drop_float(phys, 'tab:mono')
@@ -497,12 +602,13 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
     improve, n = re.subn(r' Hình~\\ref\{fig:e20traj\} đặt PINN-lai cạnh PINN-semi.*?Hình~\\ref\{fig:conformal\}\.', '',
                          improve, count=1, flags=re.S)
     assert n == 1
-    ch6 = (head6 + leak + s30 + labels + pick(s6, 'So với các mô hình học có nhãn khác') + pick(s6, 'Lợi ích đến từ đâu')
-           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + mono + e29 + e27 + e21 + e22[1] + e28
+    ch6 = (head6 + leak + labels + others + e30[1]
+           + pick(s6, 'Lợi ích đến từ đâu')
+           + ext + rm + pick(s6, 'Tham số vật lý') + e26 + phys + improve + tuned + mono + e29 + e27 + e22[1] + e28
            + (e25s if (e28 and e25s) else e25[1])
            + sub1(pick(s6, 'Thảo luận chung'), '\\section{Thảo luận chung}\n', '\\section{Thảo luận chung}\n' + overview)
            + ('' if e28 else demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp'))))
-    ch7 = c8
+    ch7 = sub1(c8, '\\section{Hướng phát triển}', CH7_MAP + '\n\\section{Hướng phát triển}') if e30[1] else c8
     out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
     # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
     for lab in ('fig:e20curve', 'fig:conformal', 'fig:curvebase', 'fig:split', 'fig:rowsim', 'fig:usage', 'fig:e20steps',
@@ -510,9 +616,7 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
         out = drop_float(out, lab)
     out = sub1(out, ' Bảng~\\ref{tab:dev}\ntóm tắt kết quả.', '')
     out = sub1(out, 'Hình~\\ref{fig:curvephys}, \\ref{fig:curvebase}', 'Hình~\\ref{fig:curvephys}')
-    out = sub1(out, ' Hình~\\ref{fig:split} minh hoạ cách chia thật của XJTU.', '')
     # hình vẽ lại to hơn để dễ đọc khi in: bỏ bốn hình minh hoạ mà lời văn đã nêu đủ số liệu
-    out = sub1(out, 'đồ án mô phỏng hai lần (Hình~\\ref{fig:rowsim}).', 'đồ án mô phỏng hai lần.')
     out = sub1(out, 'Hình~\\ref{fig:usage} liệt kê phần dữ liệu nào được dùng cho bước nào. Bốn quy tắc:',
                'Bốn quy tắc về phần dữ liệu được dùng ở từng bước:')
     out = sub1(out, 'Hình~\\ref{fig:e20steps} đi qua từng bước. Tính trung bình nhân', 'Tính trung bình nhân')
@@ -522,7 +626,8 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
 STRUCTURE = r"""\section{Cấu trúc báo cáo}
 
 Chương~\ref{ch:lythuyet} và~\ref{ch:lienquan} trình bày cơ sở lý thuyết và các công trình liên quan,
-Chương~\ref{ch:phuongphap} mô tả dữ liệu và các mô hình, Chương~\ref{ch:thietke} là thiết kế thí nghiệm,
+Chương~\ref{ch:phuongphap} mô tả dữ liệu và các mô hình, Chương~\ref{ch:thietke} là hiện thực hệ thống và thiết kế
+thí nghiệm,
 Chương~\ref{ch:ketqua} là kết quả, Chương~\ref{ch:ketluan} là kết luận và hướng phát triển.
 """
 
@@ -532,21 +637,15 @@ def fix_refs(t: str) -> str:
     t = re.sub(r'\\section\{Cấu trúc báo cáo\}.*?(?=\\chapter\{)', lambda _: STRUCTURE, t, count=1, flags=re.S)
     reps = [
         ('bộ lọc quỹ đạo ở Chương~\\ref{ch:caitien}', 'bộ lọc quỹ đạo ở Mục~\\ref{sec:pinnlai_m}'),
-        ('Chương~\\ref{ch:caitien} thử kết hợp', 'Mục~\\ref{sec:pinnlai_m} thử kết hợp'),
         ('Cải tiến mô hình (Chương~\\ref{ch:caitien})', 'Cải tiến mô hình (Mục~\\ref{sec:improve})'),
         (' (Hình~\\ref{fig:cells}: phần lớn cell nằm dưới đường chéo)', ''),
         (' Hình~\\ref{fig:parity}--\\ref{fig:errsoh} cho thấy dự đoán bám sát thực đo trong phần lớn vòng đời,\n'
          'PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuối đời.', ''),
-        ('Bảng~\\ref{tab:rmser2} và Hình~\\ref{fig:rmser2} bổ sung hai', 'Mục này bổ sung hai'),
-        ('rồi lấy trung bình qua năm lần lặp. Bảng dùng $R^2$', 'rồi lấy trung bình qua năm lần lặp. Mục này dùng $R^2$'),
         ('Hình~\\ref{fig:ratecell} so tốc độ suy giảm', 'Đồ án so tốc độ suy giảm'),
     ]
     for a, b in reps:
         assert t.count(a) == 1, a
         t = t.replace(a, b)
-    # đoạn R² của chuyển miền kiểu cũ (E18) — thay bằng Mục kết quả E21
-    t, n = re.subn(r'Với chuyển miền \(Bảng~\\ref\{tab:transr2\}\).*?\n\n', '', t, count=1, flags=re.S)
-    assert n == 1
     return t
 
 
@@ -842,9 +941,15 @@ def e24_text(d, H):
     out = T(r"""
 \section{Bộ dữ liệu NASA}\label{sec:nasares}
 
+\paragraph{Dữ liệu.} 18 cell của NASA chia thành sáu nhóm theo nhiệt độ và chế độ xả (Hình~\ref{fig:nasadata}). Khác
+bốn bộ kia, giữa các lần xả có những khoảng nghỉ dài, và dung lượng hồi phục sau đó: sau khoảng nghỉ dưới 10 giờ, SOH
+giảm trung vị <<J0>>\,\% so với lần xả trước; sau khoảng nghỉ 10--24 giờ, nó tăng trung vị <<J1>>\,\%; sau khoảng nghỉ
+từ 24 giờ trở lên, tăng trung vị <<J2>>\,\%. Đây là các mẫu gây nhiễu mà mọi mô hình phải xử lý khi ước lượng SOH.
+
+<<FIGDATA>>
 \paragraph{Ước lượng SOH.} Bộ NASA được đánh giá bằng đúng giao thức của Chương~\ref{ch:thietke}: kiểm định chéo 5 fold
-theo cell, phân tầng theo sáu nhóm giao thức, 3 lần lặp, ở 30 và 70\,\% nhãn (Bảng~\ref{tab:e24cv}). PINN-lai có sai số
-thấp nhất ở cả hai mức nhãn, <<L3>>\,\% và <<L7>>\,\% SOH. So với MLP, tỉ số MAE theo cell là <<RM3>> và <<RM7>>; so với
+theo cell, phân tầng theo sáu nhóm giao thức, 3 lần lặp, ở 30 và 70\,\% nhãn (Bảng~\ref{tab:e24cv},
+Hình~\ref{fig:nasacompare}). PINN-lai có sai số thấp nhất ở cả hai mức nhãn, <<L3>>\,\% và <<L7>>\,\% SOH.<<SEQCV>> So với MLP, tỉ số MAE theo cell là <<RM3>> và <<RM7>>; so với
 một PINN-semi là <<RP3>> và <<RP7>> (đều có ý nghĩa thống kê); so với GBDT là <<RG3>> và <<RG7>>, không có ý nghĩa. Sai
 số trên NASA lớn hơn nhiều so với bốn bộ kia vì bộ này chỉ có 18 cell trải trên sáu nhóm giao thức và ba mức nhiệt độ:
 khi một nhóm chỉ có hai đến bốn cell, cell test thường không có cell train nào cùng điều kiện, và SOH tính theo danh
@@ -866,16 +971,23 @@ tin.
             DT7=f(t('dt_vs_nodt', 0.7, 'pinn_lai').ratio, 2) + f' ($p = {f(t("dt_vs_nodt", 0.7, "pinn_lai").p, 2)}$)',
             LONG=f(100 * float(rs[(rs.ds == 'NASA') & (rs.frac == 0.7) & (rs.model == 'pinn_lai')].mae_long.iloc[0]), 2),
             NORM=f(100 * float(rs[(rs.ds == 'NASA') & (rs.frac == 0.7) & (rs.model == 'pinn_lai')].mae_norm.iloc[0]), 2),
-            TABCV=tab_cv)
+            TABCV=tab_cv, **nasa_data_facts(d, f, fig), SEQCV=nasa_seq_cv(d, f, rng))
     if sb is None:
         return out
+    sb = d.get('e30_samba', sb)
     sv = lambda ds, m, c: 100 * float(sb[(sb.ds == ds) & (sb.model == m) & (sb.cell == f'NASA/{c}')].mae.iloc[0])
-    rows = [[c, f(SAMBA_REF[c][0], 2), f(SAMBA_REF[c][1], 2), f(sv('NASA', 'gbdt', c), 2), f(sv('NASA', 'pinn_lai', c), 2),
-             f(sv('NASAdt', 'pinn_lai', c), 2)] for c in ('B0006', 'B0007', 'B0047')]
-    tab_s = table(['Cell', 'CNN-BiGRU', 'SambaMixer-L', 'GBDT', 'PINN-lai', 'PINN-lai, thêm giờ nghỉ'], rows, 'lrrrrr',
+    ours = [m for m in ('mlp', 'cnn', 'lstm', 'transformer', 'gbdt', 'pinn_lai') if ((sb.ds == 'NASA') & (sb.model == m)).any()]
+    rows = [[c, f(SAMBA_REF[c][0], 2), f(SAMBA_REF[c][1], 2)] + [f(sv('NASA', m, c), 2) for m in ours]
+            for c in ('B0006', 'B0007', 'B0047')]
+    rows.append(['Trung bình', f(np.mean([SAMBA_REF[c][0] for c in SAMBA_REF]), 2),
+                 f(np.mean([SAMBA_REF[c][1] for c in SAMBA_REF]), 2)]
+                + [f(np.mean([sv('NASA', m, c) for c in SAMBA_REF]), 2) for m in ours])
+    lab = dict(mlp='MLP', cnn='CNN', lstm='LSTM', transformer='Transformer', gbdt='GBDT', pinn_lai='PINN-lai')
+    tab_s = table(['Cell', 'CNN-BiGRU', 'SambaMixer-L'] + [lab[m] for m in ours], rows, 'l' + 'r' * (2 + len(ours)),
                   r'Cách chia NASA-L của SambaMixer: MAE (\% SOH) trên ba cell đánh giá. Hai cột đầu lấy từ bài của '
-                  r'SambaMixer~\cite{olalde2024samba}, đầu vào là đường xả của chính chu kỳ cần ước lượng; ba cột sau là '
-                  r'của đồ án, đầu vào là 16 đặc trưng của lần sạc trước đó, trung bình 3 hạt giống.', 'tab:e24samba')
+                  r'SambaMixer~\cite{olalde2024samba}, đầu vào là đường xả của chính chu kỳ cần ước lượng; các cột sau là '
+                  r'của đồ án, đầu vào là 16 đặc trưng của lần sạc trước đó, trung bình 3 hạt giống.', 'tab:e24samba',
+                  size=r'\footnotesize')
     out += T(r"""
 \paragraph{So với SambaMixer.} Bảng~\ref{tab:e24samba} dùng đúng cách chia NASA-L của SambaMixer: tám cell train, hai cell
 giữ lại để dừng sớm, đánh giá trên các cell 6, 7 và 47. PINN-lai có MAE <<S6>>, <<S7>> và <<S47>>\,\% SOH, cao hơn
@@ -883,14 +995,56 @@ SambaMixer trên cả ba cell và chỉ tốt hơn CNN-BiGRU trên cell 47. Samb
 nhân với dòng điện chính là dung lượng, nên nhãn gần như nằm sẵn trong đầu vào. Đồ án dùng đoạn sạc trước lần xả, là
 dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Sai số lớn nhất ở cell 6, vốn bắt đầu ở 101\,\% SOH trong khi
 các cell train cùng nhóm bắt đầu quanh 92\,\%, với 75--84\,\% số chu kỳ có đặc trưng sạc nằm ngoài miền của cell
-train.<<HIST>>
+train.<<SEQS>><<HIST>>
 
 <<TABS>>
 <<FIGS>>
 """, S6=f(sv('NASA', 'pinn_lai', 'B0006'), 2), S7=f(sv('NASA', 'pinn_lai', 'B0007'), 2),
              S47=f(sv('NASA', 'pinn_lai', 'B0047'), 2), TABS=tab_s,
-             FIGS='', HIST=nasa_hist(d, f, rng))
+             FIGS=(fig('fig_nasa_traj', 'SOH đo được và ước lượng trên ba cell đánh giá của cách chia NASA-L (hạt giống 0, '
+                       '16 đặc trưng sạc).', 'fig:nasatraj')
+                   + fig('fig_nasa_compare', 'MAE theo cell trên NASA. Trái: kiểm định chéo theo cell ở 30\\,\\% (vòng rỗng) '
+                         'và 70\\,\\% nhãn (vòng đặc). Phải: trung bình ba cell đánh giá của cách chia NASA-L, cạnh số công '
+                         'bố của bài SambaMixer (gạch chéo).', 'fig:nasacompare')),
+             HIST=nasa_hist(d, f, rng), SEQS=nasa_seq_samba(sb, f, rng))
     return out
+
+
+def nasa_data_facts(d, f, fig):
+    """Bước nhảy SOH sau khoảng nghỉ (Hình tổng quan NASA)."""
+    D = d['e24_data'].sort_values(['cell', 'cycle'])
+    D = D.assign(jump=100 * D.groupby('cell').soh.diff()).dropna(subset=['jump', 'rest_h'])
+    med = lambda lo, hi: float(D[(D.rest_h >= lo) & (D.rest_h < hi)].jump.median())
+    return dict(J0=f(abs(med(0, 10)), 2), J1=f(med(10, 24), 2), J2=f(med(24, 1e9), 2),
+                FIGDATA=fig('fig_nasa_data', 'Bộ NASA. Trái: SOH theo chu kỳ xả của 18 cell, màu theo nhóm điều kiện thí '
+                            'nghiệm. Phải: thay đổi SOH so với lần xả trước theo thời gian nghỉ trước lần xả (thang log), '
+                            'đường đậm là trung vị theo khoảng.', 'fig:nasadata'))
+
+
+def nasa_seq_cv(d, f, rng):
+    """Một câu: CNN, LSTM, Transformer trong kiểm định chéo trên NASA (E30)."""
+    if 'e30_nasa_cv' not in d:
+        return ''
+    cv = d['e30_nasa_cv']
+    v = lambda fr, m: 100 * float(cv[(cv.ds == 'NASA') & (cv.frac == fr) & (cv.model == m)].mae.iloc[0])
+    seq = [m for m in ('cnn', 'lstm', 'transformer') if ((cv.ds == 'NASA') & (cv.model == m)).any()]
+    if not seq:
+        return ''
+    return (' CNN, LSTM và Transformer có MAE ' + rng([v(0.3, m) for m in seq], 2) + r'\,\% SOH ở 30\,\% nhãn và '
+            + rng([v(0.7, m) for m in seq], 2) + r'\,\% ở 70\,\% nhãn, so với ' + f(v(0.3, 'mlp'), 2) + ' và '
+            + f(v(0.7, 'mlp'), 2) + r'\,\% của MLP.')
+
+
+def nasa_seq_samba(sb, f, rng):
+    """Một câu: CNN, LSTM, Transformer trên cách chia NASA-L (E30), trung bình ba cell đánh giá."""
+    import numpy as np
+    seq = [m for m in ('cnn', 'lstm', 'transformer') if ((sb.ds == 'NASA') & (sb.model == m)).any()]
+    if not seq:
+        return ''
+    mean = lambda m: 100 * float(sb[(sb.ds == 'NASA') & (sb.model == m)].groupby('cell').mae.mean().mean())
+    return (' Trên cùng cách chia, CNN, LSTM và Transformer có MAE trung bình ba cell ' + rng([mean(m) for m in seq], 2)
+            + r'\,\% SOH, so với ' + f(mean('pinn_lai'), 2) + r'\,\% của PINN-lai: nhìn thêm các chu kỳ trước của cell '
+            'không bù được việc thiếu đường xả của chính chu kỳ cần ước lượng.')
 
 
 def nasa_hist(d, f, rng):
@@ -1025,9 +1179,7 @@ Mục này mô tả cách mô hình dùng một số ít lần đo rải trên n
 hình cho một cell mới.
 
 \paragraph{Nhãn thưa khi huấn luyện.} Mỗi cell train được đo dung lượng ở chu kỳ đầu, sau mỗi $qL$ chu kỳ ($L$ là trung
-vị số chu kỳ của các cell train) và ở chu kỳ cuối của thử nghiệm; các chu kỳ còn lại chỉ có đặc trưng sạc. Lần đo cuối
-là lần kiểm tra khi kết thúc lão hoá, luôn có với cell thử trong phòng thí nghiệm; thiếu nó, một cell ngắn hơn một
-khoảng đo chỉ có đúng một lần đo ở chu kỳ đầu. Với PINN-semi, $\mathcal{L}_\text{data}$ chỉ tính trên các chu kỳ được
+vị số chu kỳ của các cell train) và ở chu kỳ cuối của thử nghiệm; các chu kỳ còn lại chỉ có đặc trưng sạc. Với PINN-semi, $\mathcal{L}_\text{data}$ chỉ tính trên các chu kỳ được
 đo, còn ba loss vật lý vẫn tính trên cặp chu kỳ của mọi hàng của mọi cell: ràng buộc đơn điệu và phần dư động học nối
 các lần đo với nhau, nên thông tin của một lần đo lan sang các chu kỳ lân cận mà không cần nhãn ở đó. GBDT không có cơ
 chế này; với nó, SOH ở các chu kỳ giữa hai lần đo được lấy theo nội suy tuyến tính trước khi học (lan nhãn). PINN-lai
@@ -1043,9 +1195,8 @@ nhận pin, khi bảo dưỡng định kỳ), gọi $p_n$ là SOH do mô hình �
   b_{n'} - \mu_0 = e^{-(n'-n)/\ell}\,(b_n - \mu_0) + \eta,\qquad
   \operatorname{Var}\varepsilon = R,\ \operatorname{Var} b = P_0,
 \end{equation}
-tức độ lệch $b_n$ của cell trôi chậm và hồi quy về trung bình tổng thể $\mu_0$ với độ dài tương quan $\ell$ (quá trình
-Ornstein--Uhlenbeck), còn $\varepsilon_n$ là nhiễu nhanh. Bộ lọc Kalman cập nhật $b$ mỗi khi có một lần đo; giữa hai lần
-đo, thông tin của lần đo phai dần theo khoảng cách chu kỳ. Ước lượng hiệu chỉnh là $p_n + \hat b_n$, với $\hat b_n$ chỉ
+tức độ lệch $b_n$ của cell trôi chậm và hồi quy về trung bình $\mu_0$ với độ dài tương quan $\ell$ (quá trình
+Ornstein--Uhlenbeck), còn $\varepsilon_n$ là nhiễu nhanh. Bộ lọc Kalman cập nhật $b$ mỗi khi có một lần đo. Ước lượng hiệu chỉnh là $p_n + \hat b_n$, với $\hat b_n$ chỉ
 dùng các lần đo ở chu kỳ $\le n$, kèm khoảng 90\,\% $\pm 1{,}645\sqrt{\hat P_n + R}$. Bốn tham số lấy trên cell validation
 của chính fold: $\mu_0$ là sai số trung bình, $R$ là nửa phương sai của sai phân bậc một, $P_0$ là phần phương sai còn
 lại, $\ell$ chọn trên lưới theo MAE riêng cho từng lịch đo. Với dự báo, đường dự báo của mô hình kết hợp có xét hồi phục
@@ -1306,8 +1457,8 @@ Hình~\ref{fig:e28} đặt hai cách gắn nhãn lên cùng một trục: phần
 nhãn đầy đủ cho 30\,\% số cell tương ứng <<F30>> số chu kỳ train, 70\,\% số cell là toàn bộ. Đo mỗi $<<QMIN>>L$ chu kỳ
 trên mọi cell chỉ dùng <<FQ>> số chu kỳ, ít hơn <<FEWER>> lần, nhưng PINN-lai học theo cách này có MAE thấp hơn PINN-lai
 học với 30\,\% số cell <<B30>> (tỉ số <<R30>><<S30>>; Bảng~\ref{tab:e28}). So với 70\,\% số cell, tỉ số là <<R70>>:
-<<V70>>. Phân tích thêm sau khi có các số trên: khi trọng số trộn và cửa sổ lọc được chọn trên validation cho cả hai
-cách gắn nhãn như Mục~\ref{sec:tuned}, hai tỉ số này là <<T30>> và <<T70>>.
+<<V70>>. Khi trọng số trộn và cửa sổ lọc được chọn trên validation cho cả hai cách gắn nhãn (Mục~\ref{sec:tuned},
+phân tích hậu kiểm), hai tỉ số này là <<T30>> và <<T70>>.
 
 <<FIG>>
 
@@ -1315,7 +1466,7 @@ Lợi ích nằm ở chỗ đặt nhãn hơn là ở mô hình. Phần lớn sai
 (Mục~\ref{sec:errdecomp}); mô hình chỉ học được phần này khi thấy nhãn của chính cell đó, trong khi các chu kỳ liền nhau
 của một cell gần như lặp lại thông tin của nhau. Đo kín một phần cell dồn công đo vào thông tin lặp lại và bỏ trống độ
 lệch của các cell còn lại. Vì vậy GBDT học nhãn nội suy tuyến tính giữa các lần đo ở lịch $<<QMIN>>L$ cũng có sai số
-bằng <<GI70>> lần GBDT học với 70\,\% số cell, và Hình~\ref{fig:overview} cho thấy điều tương tự ở mọi mô hình.
+bằng <<GI70>> lần GBDT học với 70\,\% số cell; điều tương tự đúng với mọi mô hình.
 
 Không thành phần nào của PINN-lai tốt nhất ở mọi lịch đo. Ở lịch $<<QMIN>>L$, GBDT học nhãn nội suy tốt hơn trung bình
 ba PINN-semi <<GBLO>>. Ở lịch thưa nhất ($<<QMAX>>L$, khoảng ba lần đo mỗi cell), nội suy tuyến tính qua nửa đời cell bỏ
@@ -1521,6 +1672,229 @@ mọi cell có thể không khớp với từng nhóm.
                       '(nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation.', 'fig:e29lai'),
              FIGC=fig('fig_e29_phys', 'MAE theo cell trên test của MLP và PINN-semi khi cả hai cùng có đầu vào lịch sử.',
                       'fig:e29phys'))
+
+
+# ───────────────────────────────────────────────────────────── E30: CNN, LSTM, Transformer theo đề cương
+E30_ORDER = ['mlp', 'cnn', 'lstm', 'transformer', 'gbdt', 'pinn', 'pinn_lai', 'final']
+E30_LBL = {'mlp': 'MLP', 'cnn': 'CNN', 'lstm': 'LSTM', 'transformer': 'Transformer', 'gbdt': 'GBDT',
+           'pinn': 'PINN-semi', 'pinn_lai': 'PINN-lai', 'final': 'Mô hình cuối'}
+E30_SEQ = ['cnn', 'lstm', 'transformer']
+
+
+def e30_method(d):
+    """Đoạn mô tả CNN, LSTM, Transformer trong mục mô hình đối chứng (Chương 4)."""
+    from pinnsoh.experiments import E30_L
+    by = {}
+    for m in E30_SEQ:
+        by.setdefault(E30_L[m], []).append(E30_LBL[m])
+    def lst(xs):
+        return xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    ch = '; '.join(f'$L = {L}$ cho {lst(ms)}' for L, ms in sorted(by.items()))
+    return CH4_SEQ.replace('<<LCHOICE>>', ch)
+
+
+def e30_tables(d, H):
+    """Ba bảng chỉ số đầy đủ: MAE theo cell, R², RMSE theo cell và MAPE ở 30 % nhãn."""
+    f, m3, table = (H[k] for k in ('f', 'm3', 'table'))
+    M = d['e30_metrics']
+    models = [m for m in E30_ORDER if m in set(M.model)]
+    get = lambda ds, fr, m, col: (lambda r: float(r[col].iloc[0]) if len(r) else None)(
+        M[(M.dataset == ds) & (M.f == fr) & (M.model == m)])
+    fr_all = sorted(M.f.unique())
+    def rows_for(col, fmt, best):
+        rows = []
+        for ds in E29_DSA:
+            for fr in fr_all:
+                vals = [get(ds, fr, m, col) for m in models]
+                ok = [v for v in vals if v is not None]
+                b = best(ok) if ok else None
+                cells = []
+                for v in vals:
+                    t = '--' if v is None else fmt(v)
+                    cells.append(r'\textbf{' + t + '}' if v is not None and v == b else t)
+                rows.append([ds if fr == fr_all[0] else '', f'{int(round(100 * fr))}\\,\\%'] + cells)
+        return rows
+    head = ['Bộ', 'Nhãn'] + [E30_LBL[m] for m in models]
+    spec = 'll' + 'r' * len(models)
+    t_mae = table(head, rows_for('MAE_cell', lambda v: m3(v, 2), min), spec,
+                  r'MAE theo cell ($\times10^{-3}$) trên test của mọi mô hình chính, 3 lần lặp $\times$ 5 fold, cùng fold '
+                  r'và cell có nhãn; in đậm là thấp nhất mỗi hàng. PINN-lai là bản tinh chỉnh trên validation; mô hình cuối '
+                  r'là PINN-lai dùng hay không dùng lịch sử theo validation (Mục~\ref{sec:histres}).', 'tab:allmae',
+                  size=r'\footnotesize')
+    t_r2 = table(head, rows_for('R2', lambda v: f(v, 3), max), spec,
+                 r'$R^2$ trên test, tính trên dự đoán ghép 5 fold của một lần lặp (mỗi cell đúng một lần), bỏ 10 chu kỳ '
+                 r'đầu mỗi cell, trung bình 3 lần lặp; in đậm là cao nhất mỗi hàng.', 'tab:allr2', size=r'\footnotesize')
+    rows = []
+    for m in models:
+        row = [E30_LBL[m]]
+        for ds in E29_DSA:
+            row += [m3(get(ds, 0.3, m, 'RMSE_cell'), 2), f(100 * get(ds, 0.3, m, 'MAPE'), 2)]
+        rows.append(row)
+    for j in range(1, len(rows[0])):                                   # in đậm giá trị nhỏ nhất mỗi cột
+        vals = [float(r[j].replace('{,}', '.')) for r in rows]
+        i = int(np.argmin(vals)); rows[i][j] = r'\textbf{' + rows[i][j] + '}'
+    head2 = ['Mô hình'] + [x for ds in E29_DSA for x in (f'{ds} RMSE', 'MAPE')]
+    t_rm = table(head2, rows, 'l' + 'rr' * 4,
+                 r'Ở 30\,\% nhãn: RMSE theo cell ($\times10^{-3}$) và MAPE (\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất '
+                 r'mỗi cột.', 'tab:allrm', size=r'\footnotesize')
+    return t_mae, t_r2, t_rm
+
+
+def e30_text(d, H):
+    """Mục kết quả: CNN, LSTM, Transformer cạnh các mô hình của đồ án, kèm ba bảng chỉ số đầy đủ."""
+    f, T, rng, lst = (H[k] for k in ('f', 'T', 'rng', 'lst'))
+    t_mae, t_r2, t_rm = e30_tables(d, H)
+    body = e30_findings(d, H)
+    return T(r"""
+\section{So với các mô hình học sâu theo đề cương}\label{sec:dlres}
+
+<<BODY>>
+
+<<TMAE>>
+<<TR2>>
+<<TRM>>
+""", BODY=body, TMAE=t_mae, TR2=t_r2, TRM=t_rm)
+
+
+def e30_facts(d):
+    """Các số liệu của mục E30 (results/e30_metrics.csv, e30_tests.csv, e30_dev*.csv)."""
+    import numpy as np
+    M, Tt = d['e30_metrics'], d['e30_tests']
+    seq = [m for m in E30_SEQ if (M.model == m).any()]
+    FR = sorted(M.f.unique())
+    cases = [(ds, fr) for ds in E29_DSA for fr in FR]
+    v = lambda ds, fr, m, col='MAE_cell': float(M[(M.dataset == ds) & (M.f == fr) & (M.model == m)][col].iloc[0])
+    pcol = 'p_holm' if 'p_holm' in Tt.columns else 'p'
+
+    def pair(m, ref):
+        """Tỉ số MAE của m so với ref và p (Holm) cho mọi (bộ, mức nhãn); dùng chiều ngược nếu chỉ có (ref, m)."""
+        g = Tt[(Tt.model == m) & (Tt.ref == ref)]
+        if len(g):
+            return g.assign(p=g[pcol])[['dataset', 'f', 'ratio', 'p']]
+        g = Tt[(Tt.model == ref) & (Tt.ref == m)]
+        return g.assign(ratio=1 / g.ratio, p=g[pcol])[['dataset', 'f', 'ratio', 'p']]
+
+    dl = ['mlp'] + seq
+    best_dl = {c: min(dl, key=lambda m: v(*c, m)) for c in cases}
+    best_seq = {c: min(seq, key=lambda m: v(*c, m)) for c in cases}
+    best_all = {c: min(E30_ORDER, key=lambda m: v(*c, m) if (M.model == m).any() else np.inf) for c in cases}
+    r2_all = {c: max(E30_ORDER, key=lambda m: v(*c, m, 'R2') if (M.model == m).any() else -np.inf) for c in cases}
+    # mô hình cuối so với mô hình chuỗi tốt nhất của từng trường hợp
+    fin = []
+    for c in cases:
+        g = pair('final', best_seq[c])
+        fin.append(g[(g.dataset == c[0]) & (g.f == c[1])].iloc[0])
+    import pandas as pd
+    fin = pd.DataFrame(fin)
+    return dict(M=M, seq=seq, FR=FR, cases=cases, v=v, pair=pair, best_dl=best_dl, best_seq=best_seq, best_all=best_all,
+                r2_all=r2_all, fin=fin)
+
+
+def e30_findings(d, H):
+    """Lời văn của mục E30, tính từ results/e30_metrics.csv và e30_tests.csv."""
+    M = d['e30_metrics']
+    seq = [m for m in E30_SEQ if (M.model == m).any()]
+    if not seq:
+        return (r'Bảng~\ref{tab:allmae}, \ref{tab:allr2} và~\ref{tab:allrm} cho MAE, $R^2$, RMSE và MAPE của các mô hình '
+                r'chính trên cùng các fold và cell có nhãn.')
+    from pinnsoh.experiments import E30_L
+    f, T, rng, lst, pc = (H[k] for k in ('f', 'T', 'rng', 'lst', 'pc'))
+    E = e30_facts(d)
+    v, pair, cases = E['v'], E['pair'], E['cases']
+    n = len(cases)
+    cnt = lambda X: _sig(X)
+    lab = lambda m: E30_LBL[m]
+    # giữa bốn mô hình học sâu
+    nbest = {m: sum(E['best_dl'][c] == m for c in cases) for m in ['mlp'] + seq}
+    order = sorted(nbest, key=lambda m: -nbest[m])
+    best_txt = ', '.join(f'{lab(m)} ở {nbest[m]}' for m in order if nbest[m]) + f' trên {n} trường hợp bộ $\\times$ mức nhãn'
+    vs_mlp = {m: pair(m, 'mlp') for m in seq}
+    vs_gb = {m: pair(m, 'gbdt') for m in seq}
+    vs_pi = {m: pair(m, 'pinn') for m in seq}
+    vs_lai = {m: pair(m, 'pinn_lai') for m in seq}
+    fin = E['fin']
+    # độ dài cửa sổ (E30dev)
+    Dv, Dd = d.get('e30_dev'), d.get('e30_dev_detail')
+    ltxt = ''
+    if Dv is not None:
+        rr = Dv.set_index('model').ratio
+        ltxt = ('Độ dài cửa sổ được chọn trên validation trong $\\{16, 48\\}$ (tỉ số MAE validation của $L = 48$ so với '
+                '$L = 16$, trung bình qua bốn bộ và hai mức nhãn): ' + '; '.join(
+                    f'{lab(m)} {f(rr[m], 3)}, chọn $L = {E30_L[m]}$' for m in seq) + '.')
+        if Dd is not None:
+            ex = Dd.groupby(['model', 'dataset']).ratio.mean()
+            parts = []
+            for m in seq:
+                if abs(rr[m] - 1) < 1e-9:
+                    parts.append(f'{lab(m)} cho đúng cùng kết quả ở hai độ dài vì vùng nhìn của hai lớp tích chập chỉ '
+                                 f'13 chu kỳ')
+                    continue
+                lo, hi = ex[m].idxmin(), ex[m].idxmax()
+                parts.append(f'với {lab(m)}, cửa sổ dài có lợi nhất trên {lo} ({f(ex[m][lo], 2)}) và bất lợi nhất trên '
+                             f'{hi} ({f(ex[m][hi], 2)})')
+            ltxt += ' ' + '; '.join(parts)[0].upper() + '; '.join(parts)[1:] + '.'
+    # chỉ số khác
+    agree = sum(E['best_all'][c] == E['r2_all'][c] for c in cases)
+    neg = [(ds, fr) for ds, fr in cases if v(ds, fr, 'mlp', 'R2') < 0]
+    body = T(r"""Bảng~\ref{tab:allmae}, \ref{tab:allr2} và~\ref{tab:allrm} đặt bốn mô hình học sâu của đề cương (MLP,
+CNN, LSTM, Transformer) cạnh GBDT, PINN-semi, PINN-lai và mô hình cuối, trên cùng fold, cùng cell có nhãn và cùng ba lần
+lặp. Trong bốn mô hình học sâu, MAE thấp nhất thuộc về <<BEST>>. So với MLP, tỉ số MAE theo cell của <<VSMLP>>.
+
+So với các mô hình còn lại, <<VSGB>>. <<VSPI>> Mô hình cuối có MAE thấp hơn mô hình chuỗi tốt nhất của từng trường hợp ở
+<<FW>>/<<N>> trường hợp (tỉ số <<FR>>), thấp hơn có ý nghĩa ở <<FS>><<FWS>>.
+
+<<LDEV>>
+
+Xếp hạng theo $R^2$ trùng với xếp hạng theo MAE ở <<AGREE>>/<<N>> trường hợp (mô hình có MAE thấp nhất cũng có $R^2$ cao
+nhất). $R^2$ gộp mọi cell của bộ nên phụ thuộc vào độ trải của SOH giữa các cell: <<NEG>>. Vì vậy $R^2$ chỉ dùng để so
+các mô hình trong cùng một bộ, còn MAE theo cell là chỉ số chính.""",
+             BEST=best_txt,
+             VSMLP='; '.join(f'{lab(m)} là {rng(vs_mlp[m].ratio, 2)}, tốt hơn có ý nghĩa ở {cnt(vs_mlp[m])[0]}'
+                             + (f' và kém hơn có ý nghĩa ở {cnt(vs_mlp[m])[1]}' if cnt(vs_mlp[m])[1] else '')
+                             for m in seq) + ' trường hợp (Wilcoxon theo cell, hiệu chỉnh Holm qua bốn bộ)',
+             VSGB='; '.join(f'{lab(m)} có MAE thấp hơn GBDT ở {int((vs_gb[m].ratio < 1).sum())}/{n} trường hợp'
+                            f' (có ý nghĩa ở {cnt(vs_gb[m])[0]})' for m in seq),
+             VSPI=' '.join([f'So với PINN-semi, tỉ số của {lst([lab(m) for m in seq])} lần lượt là '
+                            + ', '.join(rng(vs_pi[m].ratio, 2) for m in seq) + '; so với PINN-lai là '
+                            + ', '.join(rng(vs_lai[m].ratio, 2) for m in seq) + '.']),
+             FW=int((fin.ratio < 1).sum()), N=n, FR=rng(fin.ratio, 2), FS=cnt(fin)[0],
+             FWS=(f', cao hơn có ý nghĩa ở {cnt(fin)[1]}' if cnt(fin)[1] else ''),
+             LDEV=ltxt, AGREE=agree,
+             NEG=(f'MLP ở {lst([f"{ds} {pc(fr)}" for ds, fr in neg])} có $R^2$ âm, tức dự đoán kém hơn cả hằng số bằng '
+                  f'SOH trung bình' if neg else 'cùng một MAE cho $R^2$ cao hơn ở bộ có SOH trải rộng'))
+    return body
+
+
+CH7_MAP = r"""\section{Đối chiếu với đề cương}\label{sec:map}
+
+Bảng~\ref{tab:map} đối chiếu các mục tiêu và nhiệm vụ của giai đoạn 1 trong đề cương với phần đã thực hiện.
+
+\begin{table}[!htbp]\centering\footnotesize
+\caption{Đối chiếu mục tiêu và nhiệm vụ của đề cương (giai đoạn 1) với phần đã thực hiện.}\label{tab:map}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.6cm}X>{\raggedright\arraybackslash}p{1.9cm}}
+\toprule
+Đề cương & Đã thực hiện & Mục \\
+\midrule
+Kiến thức nền: học máy, học sâu cho chuỗi thời gian, dữ liệu pin và ràng buộc hoá lý & MLP, CNN, LSTM, Transformer,
+mã hoá vị trí, sequence-to-sequence, GCN; cơ chế suy giảm; PINN & \ref{sec:ts}, \ref{sec:pinn} \\
+Tái lập thống kê mô tả; phân tích dữ liệu thô, ngoại lai, mẫu gây nhiễu & Thống kê năm bộ; lọc ngoại lai nhân quả;
+hồi phục dung lượng sau khoảng nghỉ của NASA & \ref{sec:data}, \ref{sec:nasares} \\
+Chạy và so sánh $\ge 4$ mô hình nền (MLP, CNN, LSTM, Transformer) bằng MAE, RMSE, MAPE & Bốn mô hình nền cùng GBDT,
+Ridge, GPR, PINN; MAE, RMSE, MAPE, $R^2$; kiểm định ghép cặp theo cell & \ref{sec:dlres} \\
+Tinh chỉnh mô hình, giải thích vì sao tốt lên hay xấu đi & Độ dài cửa sổ; trọng số ghép và cửa sổ lọc; dạng lịch sử;
+bộ lọc đơn điệu & \ref{sec:dlres}, \ref{sec:tuned}, \ref{sec:histres}, \ref{sec:monores} \\
+Đề xuất cải tiến có cơ sở lý thuyết cho giai đoạn 2 & PINN bán giám sát, PINN-lai, dự báo bằng nghiệm đóng của động học
+& \ref{sec:pinn}, \ref{sec:pinnlai_m}, \ref{sec:forecast_m} \\
+Xác định phạm vi SOH, RUL; đầu vào, đầu ra, ràng buộc thực tế & Ước lượng SOH trực tuyến từ đoạn sạc; dự báo SOH,
+dung lượng, RUL & \ref{sec:forecastres} \\
+Thiết kế chỉ số; kịch bản lỗi; phương án dự phòng khi độ tin cậy thấp & MAE theo cell; kiểm toán rò rỉ; khoảng dự
+đoán 90\,\%; cập nhật bằng vài lần đo dung lượng & \ref{sec:leakres}, \ref{sec:conformal}, \ref{sec:kalmanres} \\
+Bản mẫu, trực quan hoá dữ liệu & Đường ống tái lập được; công cụ dòng lệnh ước lượng và dự báo cho một cell; hình
+quỹ đạo & \ref{sec:impl} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+"""
 
 
 def e25_short(d, H):
