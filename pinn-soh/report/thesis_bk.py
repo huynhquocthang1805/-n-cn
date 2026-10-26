@@ -534,7 +534,6 @@ def fix_refs(t: str) -> str:
         ('bộ lọc quỹ đạo ở Chương~\\ref{ch:caitien}', 'bộ lọc quỹ đạo ở Mục~\\ref{sec:pinnlai_m}'),
         ('Chương~\\ref{ch:caitien} thử kết hợp', 'Mục~\\ref{sec:pinnlai_m} thử kết hợp'),
         ('Cải tiến mô hình (Chương~\\ref{ch:caitien})', 'Cải tiến mô hình (Mục~\\ref{sec:improve})'),
-        ('Chương~\\ref{ch:caitien} cho thấy', 'Mục~\\ref{sec:improve} cho thấy'),
         (' (Hình~\\ref{fig:cells}: phần lớn cell nằm dưới đường chéo)', ''),
         (' Hình~\\ref{fig:parity}--\\ref{fig:errsoh} cho thấy dự đoán bám sát thực đo trong phần lớn vòng đời,\n'
          'PINN-semi cho quỹ đạo trơn hơn, và sai số tăng ở giai đoạn cuối đời.', ''),
@@ -1470,12 +1469,14 @@ Dạng lịch sử được chọn ở bước khám phá, trên validation củ
 đặc trưng gốc. Trên NASA, tính trung bình qua các cách chia, mọi dạng đều kém hơn đặc trưng gốc
 (Mục~\ref{sec:nasares}).
 
-<<FIG>>
-Trên test (Bảng~\ref{tab:e29}, Hình~\ref{fig:e29}), lịch sử giúp rõ trên <<GDS>> khi có từ <<FMIN>> nhãn: MAE của
-PINN-semi còn <<RPA>> lần bản gốc (tốt hơn có ý nghĩa ở <<CPA>> trường hợp) và của PINN-lai còn <<RLA>> lần (<<CLA>>).
+<<FIGA>>
+Trên test (Bảng~\ref{tab:e29}), lịch sử giúp rõ trên <<GDS>> khi có từ <<FMIN>> nhãn: MAE của PINN-semi còn <<RPA>>
+lần bản gốc (tốt hơn có ý nghĩa ở <<CPA>> trường hợp, Hình~\ref{fig:e29pinn}) và của PINN-lai còn <<RLA>> lần (<<CLA>>,
+Hình~\ref{fig:e29lai}).
 Trên <<BAD>> thì ngược lại: PINN-semi có lịch sử kém bản gốc ở mọi mức nhãn (<<RPX>> lần), PINN-lai kém <<RLX>> lần. Ở
 10\,\% nhãn, lịch sử không giảm sai số có ý nghĩa trên bộ nào (PINN-semi <<RP10>> lần, PINN-lai <<RL10>> lần).
 
+<<FIGB>>
 <<TAB>>
 Lựa chọn ở bước khám phá sai trên <<BAD>> vì nó chỉ dựa trên một lần lặp. Với lần lặp 0, tỉ số MAE validation của
 PINN-semi có và không có lịch sử trên <<BAD>> là <<V0>> ở 30 và 70\,\% nhãn; với lần lặp 2, nó là <<V2>>; trung bình ba
@@ -1492,8 +1493,9 @@ PINN-lai (cột cuối của Bảng~\ref{tab:e29}) có MAE thấp hơn GBDT ở 
 <<RB>>), có ý nghĩa ở <<NS>>. Khi GBDT cũng được qua
 bộ lọc xu thế với cửa sổ chọn trên validation, tỉ số là <<RF>>, thấp hơn có ý nghĩa ở <<NSF>>/<<NF>><<WF>>.
 
-Ràng buộc vật lý giúp nhiều nhất khi ít nhãn và không giúp ở mọi bộ. Khi cả hai cùng có lịch sử, PINN-semi có MAE bằng
-<<RLO>> lần MLP ở 10\,\% nhãn, tốt hơn có ý nghĩa <<SLO>>. Từ 30\,\% nhãn, tỉ số là <<RSTRONG>> trên <<STRONG>> nhưng
+<<FIGC>>
+Ràng buộc vật lý giúp nhiều nhất khi ít nhãn và không giúp ở mọi bộ (Hình~\ref{fig:e29phys}). Khi cả hai cùng có lịch
+sử, PINN-semi có MAE bằng <<RLO>> lần MLP ở 10\,\% nhãn, tốt hơn có ý nghĩa <<SLO>>. Từ 30\,\% nhãn, tỉ số là <<RSTRONG>> trên <<STRONG>> nhưng
 <<RWEAK>> trên <<WEAK>>, nơi MLP có lịch sử tốt hơn PINN-semi có lịch sử (có ý nghĩa ở <<NWEAK>>). Không có lịch sử,
 <<WEAK>> cũng như vậy
 (<<RWEAK0>> ở 50 và 70\,\% nhãn): bộ này gộp ba nhóm hoá học và nhiều nhóm điều kiện, nên một động học dùng chung cho
@@ -1512,9 +1514,13 @@ mọi cell có thể không khớp với từng nhóm.
              RWEAK=rng(hi[hi.dataset.isin(weak)].ratio, 2), WEAK=lst(weak),
              NWEAK=lst([pc(x) for x in hi[hi.dataset.isin(weak) & (hi.p < 0.05) & (hi.ratio > 1)].f]) + ' nhãn',
              RWEAK0=rng(pm[pm.dataset.isin(weak) & (pm.f >= 0.5)].ratio, 2),
-             TAB=tab, FIG=fig('fig_e29_hist', 'MAE theo cell trên test theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh '
-                              'không có (nét đứt) và có lịch sử (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên '
-                              'validation. Trên MIT không dạng lịch sử nào được chọn.', 'fig:e29'))
+             TAB=tab,
+             FIGA=fig('fig_e29_pinn', 'MAE theo cell trên test của PINN-semi không có (nét đứt) và có lịch sử (nét liền), '
+                      'trên ba bộ có dạng lịch sử được chọn; trên MIT không dạng nào được chọn.', 'fig:e29pinn'),
+             FIGB=fig('fig_e29_lai', 'MAE theo cell trên test của PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử '
+                      '(nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation.', 'fig:e29lai'),
+             FIGC=fig('fig_e29_phys', 'MAE theo cell trên test của MLP và PINN-semi khi cả hai cùng có đầu vào lịch sử.',
+                      'fig:e29phys'))
 
 
 def e25_short(d, H):

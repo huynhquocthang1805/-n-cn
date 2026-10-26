@@ -1658,7 +1658,6 @@ def ch6_metrics(d, ctx):
     c = d['thesis_curve'].rename(columns={'bo': 'dataset'})
     mm = sm.merge(c, on=['dataset', 'model', 'frac'])
     rho_all = spearmanr(mm.MAE_cell, mm.RMSE_cell).statistic
-    rho_ds = {ds: spearmanr(g.MAE_cell, g.RMSE_cell).statistic for ds, g in mm.groupby('dataset')}
     sig = lambda other, fr, better: [ds for ds in DS if ((ts.doi_chung == other) & (ts.frac == fr) & (ts.bo == ds)
                                                           & (ts.p_holm < 0.05) & ((ts.ti_so < 1) if better else (ts.ti_so > 1))).any()]
     rr = lambda other, fr: {ds: (lambda g: float(g.ti_so.iloc[0]) if len(g) else NAN)(
@@ -1667,7 +1666,6 @@ def ch6_metrics(d, ctx):
     pn_w = [f'{pc(fr)} ({_lst(sig("gbdt", fr, True))})' for fr in FRS if sig('gbdt', fr, True)]
     r2_10 = {ds: (get(ds, 'pinn_semi', 0.1, 'R2_10'), get(ds, 'mlp', 0.1, 'R2_10')) for ds in DS}
     worst = min(DS, key=lambda ds: get(ds, 'mlp', 0.1, 'R2'))
-    best10 = {ds: max(MODS, key=lambda m: get(ds, m, 0.1, 'R2_10')) for ds in DS}
     # chuyển miền
     trs = tr.groupby(['k', 'model']).R2.agg(['median', 'min', 'max']).reset_index()
     trows = []
@@ -1697,10 +1695,9 @@ kéo $R^2$ gộp xuống rất thấp: tính cả các chu kỳ đó, $R^2$ củ
 <<FIG>>
 
 Thứ hạng của các mô hình theo RMSE gần như trùng với theo MAE: hệ số tương quan hạng Spearman giữa hai chỉ số là
-<<RHO>> trên <<N>> tổ hợp bộ × mô hình × mức nhãn (<<RHODS>>). Vì vậy các kết luận ở Mục~\ref{sec:labels} giữ
-nguyên khi đổi thước đo. Ở 10\,\% nhãn, $R^2$ của PINN-semi so với MLP là <<R210>>; RMSE theo cell của PINN-semi
-bằng <<RR10>> lần MLP, có ý nghĩa thống kê <<SIG10>> (Wilcoxon theo cell, hiệu chỉnh Holm). So với GBDT, theo RMSE
-<<GBTXT>>. Mô hình có $R^2$ cao nhất ở 10\,\% nhãn là <<BEST10>>.
+<<RHO>> trên <<N>> tổ hợp bộ × mô hình × mức nhãn, nên các kết luận ở Mục~\ref{sec:labels} giữ nguyên khi đổi thước
+đo. Ở 10\,\% nhãn, $R^2$ của PINN-semi so với MLP là <<R210>>; RMSE theo cell của PINN-semi bằng <<RR10>> lần MLP, có
+ý nghĩa thống kê <<SIG10>> (Wilcoxon theo cell, hiệu chỉnh Holm). So với GBDT, theo RMSE <<GBTXT>>.
 
 Với chuyển miền (Bảng~\ref{tab:transr2}), $R^2$ trên bộ đích âm với mọi mô hình khi bộ đích không có nhãn: trung vị
 <<TRM0>> cho MLP, <<TRG0>> cho GBDT và <<TRP0>> cho PINN-semi. Khi chuyển sang bộ khác, dự đoán lệch đều một khoảng
@@ -1712,12 +1709,11 @@ hiệu chỉnh và $R^2$ trung vị lên <<TRP3>> cho PINN-semi, <<TRG3>> cho GB
 """, WORST=worst, WORSTV=f(get(worst, 'mlp', 0.1, 'R2'), 2), TAB=tab,
              FIG=fig('fig_metrics_rmse_r2', 'RMSE theo cell (hàng trên, thang log) và $R^2$ tính từ chu kỳ thứ 10 (hàng '
                      'dưới) theo lượng nhãn.', 'fig:rmser2'),
-             RHO=f(rho_all, 2), N=len(mm), RHODS=', '.join(f'{ds} {f(rho_ds[ds], 2)}' for ds in DS),
+             RHO=f(rho_all, 2), N=len(mm),
              R210=', '.join(f'{ds} {f(r2_10[ds][0], 2)} so với {f(r2_10[ds][1], 2)}' for ds in DS),
              RR10=_rng(rr('mlp', 0.1).values()), SIG10=_tren(sig('mlp', 0.1, True)) or 'trên không bộ nào',
              GBTXT=('GBDT tốt hơn có ý nghĩa ở ' + '; '.join(gb_w) if gb_w else 'GBDT không tốt hơn có ý nghĩa ở mức nào')
              + ('; PINN-semi tốt hơn có ý nghĩa ở ' + '; '.join(pn_w) if pn_w else '; PINN-semi không tốt hơn có ý nghĩa ở mức nào'),
-             BEST10='; '.join(f'{ds}: {LBL[best10[ds]]} ({f(get(ds, best10[ds], 0.1, "R2_10"), 3)})' for ds in DS),
              TRM0=f(med('mlp', 0), 0), TRG0=f(med('gbdt', 0), 1), TRP0=f(med('pinn_semi', 0), 1),
              TRM3=f(med('mlp', 3), 1), TRG3=f(med('gbdt', 3), 2), TRP3=f(med('pinn_semi', 3), 2), TTAB=ttab)
 
@@ -2063,8 +2059,8 @@ def ch6_text(d, ctx):
     weak = F['weak']
     weak_txt = (f'Khi đã có đủ nhãn (70\\,\\%), và trên {weak}, nơi tỉ số so với MLP chỉ ở mức '
                 f'{_rng([F["r"][fr][weak] for fr in FRS])} trên mọi mức nhãn.'
-                + (' TJU gộp ba nhóm hoá học và chín nhóm điều kiện; có thể phần biến thiên giữa các nhóm lớn hơn phần '
-                   'mà ràng buộc vật lý dùng chung cho mọi cell giải thích được.' if weak == 'TJU' else ''))
+                + (' TJU gộp ba nhóm hoá học và chín nhóm điều kiện; có thể biến thiên giữa các nhóm lớn hơn phần mà '
+                   'ràng buộc vật lý dùng chung giải thích được.' if weak == 'TJU' else ''))
 
     return T(r"""
 \chapter{Kết quả và thảo luận}\label{ch:ketqua}
@@ -2175,22 +2171,21 @@ lên, còn PINN-semi giữ được xu hướng giảm; khoảng cách giữa ha
 
 \section{Thảo luận chung}
 
-\paragraph{Khi nào nên dùng PINN bán giám sát?} Khi đã chọn mạng nơ-ron làm mô hình, PINN bán giám sát nên được
-dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%) và khi có nhiều cell chưa đo dung lượng. So với GBDT
-thì khác: trong cùng một bộ dữ liệu, GBDT có sai số thấp hơn ở phần lớn các trường hợp.<<TRGBD>> Trong số các mô hình đơn lẻ, nếu chỉ cần
-sai số thấp nhất trên cùng một bộ dữ liệu thì GBDT là lựa chọn đơn giản và mạnh hơn; Chương~\ref{ch:caitien} cho thấy
-ghép GBDT với nhóm PINN còn tốt hơn cả hai.
+\paragraph{Khi nào nên dùng PINN bán giám sát?} Giữa các mạng nơ-ron, PINN bán giám sát nên được dùng thay cho MLP
+khi số cell có nhãn ít (khoảng 10--30\,\%) và khi có nhiều cell chưa đo dung lượng. So với GBDT
+thì khác: trong cùng một bộ dữ liệu, GBDT đơn lẻ có sai số thấp hơn PINN-semi ở phần lớn các trường hợp.<<TRGBD>> Ghép
+GBDT với nhóm PINN thì tốt hơn cả hai (Mục~\ref{sec:improve}).
 
 \paragraph{Khi nào lợi ích nhỏ?} <<WEAKTXT>>
 
 \paragraph{Hạn chế.} (i) Khoảng dự báo 90\,\% chưa đạt độ phủ danh nghĩa, và vài lần đo dung lượng chỉ sửa được
-mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
+mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định.
 (iii) Ràng buộc vật lý chưa được đưa vào chính mô hình cây; PINN-lai chỉ ghép hai mô hình ở mức dự đoán. (iv) Cell validation có nhãn đầy đủ và nằm ngoài ngân sách nhãn ở mọi thí
 nghiệm, kể cả khi đo thưa. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững <<NB30>>. (vi) Tham số vật lý $\lambda, E_a$ không
-được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
-mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
-đánh giá với ba lần lặp thay vì năm, và việc dùng lịch sử theo từng mức nhãn được chọn sau khi đã thấy kết quả test của
-mô hình có lịch sử, dù chỉ dựa trên validation (Mục~\ref{sec:histres}).
+được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được không phải tốc độ suy giảm thật của
+cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
+đánh giá với ba lần lặp thay vì năm; quy tắc chọn có hay không lịch sử theo mức nhãn được đặt ra sau khi đã xem test
+(Mục~\ref{sec:histres}).
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
                                            'và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai '
                                            'số càng bị đánh giá thấp giả tạo.', 'fig:leak'),

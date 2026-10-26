@@ -1510,10 +1510,9 @@ kéo $R^2$ gộp xuống rất thấp: tính cả các chu kỳ đó, $R^2$ củ
 
 
 Thứ hạng của các mô hình theo RMSE gần như trùng với theo MAE: hệ số tương quan hạng Spearman giữa hai chỉ số là
-0{,}99 trên 120 tổ hợp bộ × mô hình × mức nhãn (XJTU 0{,}84, TJU 1{,}00, MIT 0{,}99, HUST 0{,}97). Vì vậy các kết luận ở Mục~\ref{sec:labels} giữ
-nguyên khi đổi thước đo. Ở 10\,\% nhãn, $R^2$ của PINN-semi so với MLP là XJTU 0{,}82 so với 0{,}45, TJU 0{,}93 so với 0{,}91, MIT 0{,}97 so với 0{,}69, HUST 0{,}78 so với 0{,}17; RMSE theo cell của PINN-semi
-bằng 0{,}41--0{,}89 lần MLP, có ý nghĩa thống kê trên cả bốn bộ (Wilcoxon theo cell, hiệu chỉnh Holm). So với GBDT, theo RMSE
-GBDT tốt hơn có ý nghĩa ở 30\,\% (XJTU, TJU và MIT); 50\,\% (XJTU, TJU và MIT); 70\,\% (XJTU, TJU và MIT); PINN-semi tốt hơn có ý nghĩa ở 10\,\% (HUST); 30\,\% (HUST). Mô hình có $R^2$ cao nhất ở 10\,\% nhãn là XJTU: PINN-semi (0{,}819); TJU: PINN-semi (0{,}933); MIT: GBDT (0{,}973); HUST: Ridge (0{,}838).
+0{,}99 trên 120 tổ hợp bộ × mô hình × mức nhãn, nên các kết luận ở Mục~\ref{sec:labels} giữ nguyên khi đổi thước
+đo. Ở 10\,\% nhãn, $R^2$ của PINN-semi so với MLP là XJTU 0{,}82 so với 0{,}45, TJU 0{,}93 so với 0{,}91, MIT 0{,}97 so với 0{,}69, HUST 0{,}78 so với 0{,}17; RMSE theo cell của PINN-semi bằng 0{,}41--0{,}89 lần MLP, có
+ý nghĩa thống kê trên cả bốn bộ (Wilcoxon theo cell, hiệu chỉnh Holm). So với GBDT, theo RMSE GBDT tốt hơn có ý nghĩa ở 30\,\% (XJTU, TJU và MIT); 50\,\% (XJTU, TJU và MIT); 70\,\% (XJTU, TJU và MIT); PINN-semi tốt hơn có ý nghĩa ở 10\,\% (HUST); 30\,\% (HUST).
 
 
 
@@ -1784,14 +1783,20 @@ Dạng lịch sử được chọn ở bước khám phá, trên validation củ
 (Mục~\ref{sec:nasares}).
 
 \begin{figure}[!htbp]\centering
-\includegraphics[width=\textwidth]{hinh/fig_e29_hist.pdf}
-\caption[MAE theo cell trên test theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation]{MAE theo cell trên test theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation. Trên MIT không dạng lịch sử nào được chọn.}\label{fig:e29}
+\includegraphics[width=\textwidth]{hinh/fig_e29_pinn.pdf}
+\caption{MAE theo cell trên test của PINN-semi không có (nét đứt) và có lịch sử (nét liền), trên ba bộ có dạng lịch sử được chọn; trên MIT không dạng nào được chọn.}\label{fig:e29pinn}
 \end{figure}
 
-Trên test (Bảng~\ref{tab:e29}, Hình~\ref{fig:e29}), lịch sử giúp rõ trên TJU và HUST khi có từ 30\,\% nhãn: MAE của
-PINN-semi còn 0{,}84--1{,}00 lần bản gốc (tốt hơn có ý nghĩa ở 5/6 trường hợp) và của PINN-lai còn 0{,}89--0{,}97 lần (6/6).
+Trên test (Bảng~\ref{tab:e29}), lịch sử giúp rõ trên TJU và HUST khi có từ 30\,\% nhãn: MAE của PINN-semi còn 0{,}84--1{,}00
+lần bản gốc (tốt hơn có ý nghĩa ở 5/6 trường hợp, Hình~\ref{fig:e29pinn}) và của PINN-lai còn 0{,}89--0{,}97 lần (6/6,
+Hình~\ref{fig:e29lai}).
 Trên XJTU thì ngược lại: PINN-semi có lịch sử kém bản gốc ở mọi mức nhãn (1{,}05--1{,}42 lần), PINN-lai kém 1{,}02--1{,}25 lần. Ở
 10\,\% nhãn, lịch sử không giảm sai số có ý nghĩa trên bộ nào (PINN-semi 1{,}04--1{,}42 lần, PINN-lai 0{,}99--1{,}25 lần).
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{hinh/fig_e29_lai.pdf}
+\caption{MAE theo cell trên test của PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation.}\label{fig:e29lai}
+\end{figure}
 
 \begin{table}[!htbp]\centering\footnotesize
 \caption[MAE theo cell ($\times10^{-3}$) trên test, 3 lần lặp $\times$ 5 fold, cùng fold và hạt giống với Mục~\ref{sec:e20res}]{MAE theo cell ($\times10^{-3}$) trên test, 3 lần lặp $\times$ 5 fold, cùng fold và hạt giống với Mục~\ref{sec:e20res}. PINN-lai là bản tinh chỉnh trên validation (Mục~\ref{sec:tuned}); GBDT là bản có hoặc không lịch sử, chọn trên validation; mô hình cuối là PINN-lai dùng hay không dùng lịch sử theo validation của từng bộ và mức nhãn. $^{*}$/$^{\dagger}$: tốt hơn/kém hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước; ở cột cuối, so với GBDT.}\label{tab:e29}
@@ -1830,8 +1835,13 @@ PINN-lai (cột cuối của Bảng~\ref{tab:e29}) có MAE thấp hơn GBDT ở 
 0{,}80--0{,}99), có ý nghĩa ở 13. Khi GBDT cũng được qua
 bộ lọc xu thế với cửa sổ chọn trên validation, tỉ số là 0{,}82--0{,}99, thấp hơn có ý nghĩa ở 11/16 và không trường hợp nào cao hơn có ý nghĩa.
 
-Ràng buộc vật lý giúp nhiều nhất khi ít nhãn và không giúp ở mọi bộ. Khi cả hai cùng có lịch sử, PINN-semi có MAE bằng
-0{,}31--0{,}89 lần MLP ở 10\,\% nhãn, tốt hơn có ý nghĩa trên cả ba bộ. Từ 30\,\% nhãn, tỉ số là 0{,}68--0{,}92 trên XJTU và HUST nhưng
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{hinh/fig_e29_phys.pdf}
+\caption{MAE theo cell trên test của MLP và PINN-semi khi cả hai cùng có đầu vào lịch sử.}\label{fig:e29phys}
+\end{figure}
+
+Ràng buộc vật lý giúp nhiều nhất khi ít nhãn và không giúp ở mọi bộ (Hình~\ref{fig:e29phys}). Khi cả hai cùng có lịch
+sử, PINN-semi có MAE bằng 0{,}31--0{,}89 lần MLP ở 10\,\% nhãn, tốt hơn có ý nghĩa trên cả ba bộ. Từ 30\,\% nhãn, tỉ số là 0{,}68--0{,}92 trên XJTU và HUST nhưng
 1{,}03--1{,}06 trên TJU, nơi MLP có lịch sử tốt hơn PINN-semi có lịch sử (có ý nghĩa ở 70\,\% nhãn). Không có lịch sử,
 TJU cũng như vậy
 (1{,}08--1{,}11 ở 50 và 70\,\% nhãn): bộ này gộp ba nhóm hoá học và nhiều nhóm điều kiện, nên một động học dùng chung cho
@@ -2130,22 +2140,21 @@ nhãn có thắng 70\,\% nhãn hay không, mà là nên đặt các lần đo du
 \end{figure}
 
 
-\paragraph{Khi nào nên dùng PINN bán giám sát?} Khi đã chọn mạng nơ-ron làm mô hình, PINN bán giám sát nên được
-dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%) và khi có nhiều cell chưa đo dung lượng. So với GBDT
-thì khác: trong cùng một bộ dữ liệu, GBDT có sai số thấp hơn ở phần lớn các trường hợp. Trong số các mô hình đơn lẻ, nếu chỉ cần
-sai số thấp nhất trên cùng một bộ dữ liệu thì GBDT là lựa chọn đơn giản và mạnh hơn; Mục~\ref{sec:improve} cho thấy
-ghép GBDT với nhóm PINN còn tốt hơn cả hai.
+\paragraph{Khi nào nên dùng PINN bán giám sát?} Giữa các mạng nơ-ron, PINN bán giám sát nên được dùng thay cho MLP
+khi số cell có nhãn ít (khoảng 10--30\,\%) và khi có nhiều cell chưa đo dung lượng. So với GBDT
+thì khác: trong cùng một bộ dữ liệu, GBDT đơn lẻ có sai số thấp hơn PINN-semi ở phần lớn các trường hợp. Ghép
+GBDT với nhóm PINN thì tốt hơn cả hai (Mục~\ref{sec:improve}).
 
-\paragraph{Khi nào lợi ích nhỏ?} Khi đã có đủ nhãn (70\,\%), và trên TJU, nơi tỉ số so với MLP chỉ ở mức 0{,}90--1{,}09 trên mọi mức nhãn. TJU gộp ba nhóm hoá học và chín nhóm điều kiện; có thể phần biến thiên giữa các nhóm lớn hơn phần mà ràng buộc vật lý dùng chung cho mọi cell giải thích được.
+\paragraph{Khi nào lợi ích nhỏ?} Khi đã có đủ nhãn (70\,\%), và trên TJU, nơi tỉ số so với MLP chỉ ở mức 0{,}90--1{,}09 trên mọi mức nhãn. TJU gộp ba nhóm hoá học và chín nhóm điều kiện; có thể biến thiên giữa các nhóm lớn hơn phần mà ràng buộc vật lý dùng chung giải thích được.
 
 \paragraph{Hạn chế.} (i) Khoảng dự báo 90\,\% chưa đạt độ phủ danh nghĩa, và vài lần đo dung lượng chỉ sửa được
-mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định; chưa tối ưu riêng cho từng mức nhãn.
+mức chứ chưa sửa được hình dạng của quỹ đạo dự báo. (ii) Trọng số vật lý được chọn ở một thí nghiệm sơ bộ và giữ cố định.
 (iii) Ràng buộc vật lý chưa được đưa vào chính mô hình cây; PINN-lai chỉ ghép hai mô hình ở mức dự đoán. (iv) Cell validation có nhãn đầy đủ và nằm ngoài ngân sách nhãn ở mọi thí
 nghiệm, kể cả khi đo thưa. (v) Ở 30\,\% nhãn, kết luận ở mức fold chỉ vững trên MIT. (vi) Tham số vật lý $\lambda, E_a$ không
-được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được chỉ phản ánh phần suy giảm mà
-mạng gán cho biến thời gian, không phải tốc độ suy giảm thật của cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
-đánh giá với ba lần lặp thay vì năm, và việc dùng lịch sử theo từng mức nhãn được chọn sau khi đã thấy kết quả test của
-mô hình có lịch sử, dù chỉ dựa trên validation (Mục~\ref{sec:histres}).
+được dữ liệu xác định, kể cả khi tăng trọng số ODE (Mục~\ref{sec:physparams}). (vii) Ở dạng đạo hàm riêng, tốc độ $r$ học được không phải tốc độ suy giảm thật của
+cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
+đánh giá với ba lần lặp thay vì năm; quy tắc chọn có hay không lịch sử theo mức nhãn được đặt ra sau khi đã xem test
+(Mục~\ref{sec:histres}).
 
 \chapter{Kết luận và hướng phát triển}\label{ch:ketluan}
 

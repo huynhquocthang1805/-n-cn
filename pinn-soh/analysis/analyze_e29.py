@@ -2,7 +2,7 @@
 E29: mô hình dùng lịch sử của cell — đánh giá cuối (tai-lieu/de-cuong-E29.md).
 
     python analysis/analyze_e29.py     # -> results/e29_summary.csv, e29_tests.csv, e29_tuned.csv, e29_select.csv,
-                                       #    e29_val.csv, fig_e29_hist
+                                       #    e29_val.csv, fig_e29_pinn, fig_e29_lai, fig_e29_phys
 
 Cùng fold, hạt giống và mức nhãn với E20 (3 lần lặp × 5 fold × 4 mức nhãn). Lượt mới chỉ ở các bộ có dạng lịch sử được
 chọn (XJTU, TJU, HUST); MIT không có dạng nào được chọn nên chỉ có các mô hình của E20. Mô hình (hậu tố _h: có lịch sử):
@@ -201,7 +201,8 @@ def summary(C):
 
 def figure(S):
     import figures_report
-    figures_report.e29_hist()
+    for f in (figures_report.e29_pinn, figures_report.e29_lai, figures_report.e29_phys):
+        f()
 
 
 def main():

@@ -33,7 +33,7 @@ def _grid(plt, h):
     return fig, axes.ravel()
 
 
-def _log_ticks(ax, lo, hi, cands=(1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50)):
+def _log_ticks(ax, lo, hi, cands=(1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100)):
     import matplotlib.pyplot as plt
     ax.set_yscale('log'); ax.set_ylim(lo, hi)
     tk = [t for t in cands if lo <= t <= hi]
@@ -345,19 +345,17 @@ def e22_traj():
 
 
 # ─────────────────────────────────────────────────────────── đầu vào có lịch sử (E29), đủ bốn bộ
-def e29_hist():
-    """MAE theo mức nhãn: PINN-semi và PINN-lai tinh chỉnh, không / có lịch sử, cạnh GBDT tốt nhất trên validation. MIT
-    không có dạng lịch sử nào được chọn ở E29dev nên chỉ có các đường không lịch sử."""
+# ─────────────────────────────────────────────────────────── E29: mỗi phép so sánh một hình riêng
+E29_DS = ['XJTU', 'TJU', 'HUST']               # MIT không có dạng lịch sử nào được chọn nên không có lượt có lịch sử
+
+
+def _e29_row(name, spec):
+    """Một hàng ba panel (XJTU, TJU, HUST): MAE theo cell trên test theo mức nhãn cho các mô hình trong spec."""
     plt = setup()
-    from pinnsoh.plotstyle import panel_title, save, CHEM
+    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
     S = pd.read_csv(f'{OUT}/e29_summary.csv')
-    spec = [('pinn', '#9fd8c1', (0, (4, 2)), 'PINN-semi'),
-            ('pinn_h', '#1baf7a', '-', 'PINN-semi + lịch sử'),
-            ('gbdt_best', '#eb6834', '-', 'GBDT'),
-            ('pinn_lai_v2', '#86b6ef', (0, (4, 2)), 'PINN-lai'),
-            ('pinn_lai_h_v2', '#0b3d73', '-', 'PINN-lai + lịch sử')]
-    fig, axes = _grid(plt, 4.5)
-    for ax, ds in zip(axes, DS):
+    fig, axes = plt.subplots(1, 3, figsize=(TW, 2.55))
+    for ax, ds in zip(axes, E29_DS):
         vals = []
         for m, col, ls, lab in spec:
             g = S[(S.dataset == ds) & (S.model == m)].sort_values('f')
@@ -365,17 +363,41 @@ def e29_hist():
             vals += list(1e3 * g.mae)
         _log_ticks(ax, min(vals) / 1.08, max(vals) * 1.08)
         ax.set_xticks([10, 30, 50, 70]); ax.set_xlim(5, 75)
-        panel_title(ax, f'{ds} ({CHEM[ds]})' + ('' if (S[S.dataset == ds].model == 'pinn_h').any() else
-                                                ', không dùng lịch sử'), pad=4)
-    _finish(fig, axes, '% số cell có nhãn', 'MAE theo cell (×10$^{-3}$)', 2, 3)
-    save(fig, f'{OUT}/fig_e29_hist')
+        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
+        ax.set_xlabel('% số cell có nhãn')
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    axes[0].set_ylabel('MAE theo cell (×10$^{-3}$)')
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc='lower center', ncol=len(spec), frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.09, 1, 1], w_pad=1.0)
+    save(fig, f'{OUT}/{name}')
+
+
+def e29_pinn():
+    """PINN-semi không / có lịch sử."""
+    _e29_row('fig_e29_pinn', [('pinn', '#9fd8c1', (0, (4, 2)), 'PINN-semi'),
+                              ('pinn_h', '#1baf7a', '-', 'PINN-semi + lịch sử')])
+
+
+def e29_lai():
+    """PINN-lai tinh chỉnh không / có lịch sử, cạnh GBDT có hoặc không lịch sử chọn trên validation."""
+    _e29_row('fig_e29_lai', [('pinn_lai_v2', '#86b6ef', (0, (4, 2)), 'PINN-lai'),
+                             ('pinn_lai_h_v2', '#0b3d73', '-', 'PINN-lai + lịch sử'),
+                             ('gbdt_best', '#eb6834', '-', 'GBDT')])
+
+
+def e29_phys():
+    """Vật lý khi đã có lịch sử: MLP và PINN-semi cùng đầu vào có lịch sử."""
+    _e29_row('fig_e29_phys', [('mlp_h', '#7d8791', '-', 'MLP + lịch sử'),
+                              ('pinn_h', '#1baf7a', '-', 'PINN-semi + lịch sử')])
 
 
 FIGS = dict(curve_physics=curve_physics, leakage=leakage, e20_steps=e20_steps, e27_compare=e27_compare,
-            e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e29_hist=e29_hist)
+            e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e29_pinn=e29_pinn,
+            e29_lai=e29_lai, e29_phys=e29_phys)
 NEEDS = dict(curve_physics='thesis_curve', leakage='thesis_leakage', e20_steps='e20_summary', e27_compare='e27_summary',
              e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon',
-             e29_hist='e29_summary')
+             e29_pinn='e29_summary', e29_lai='e29_summary', e29_phys='e29_summary')
 
 
 def main(names=None):
