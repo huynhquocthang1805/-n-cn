@@ -144,6 +144,7 @@ PREAMBLE = r"""\documentclass[12pt,a4paper,oneside]{report}
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\E}{\mathbb{E}}
 \setlist{itemsep=2pt,topsep=4pt}
+\floatstyle{ruled}\newfloat{thuattoan}{tbp}{loa}[chapter]\floatname{thuattoan}{Thuật toán}\floatstyle{plain}
 \emergencystretch=1.5em
 \setcounter{tocdepth}{1}
 \makeatletter\patchcmd{\l@chapter}{1.0em}{0.15em}{}{}\makeatother
@@ -231,7 +232,7 @@ học hàm
 \hat y = F(\mathbf{x}_{c,n}, n)
 \end{equation}
 sao cho sai số trên các cell \emph{chưa từng xuất hiện} khi huấn luyện là nhỏ nhất. Mô hình chỉ dùng dữ liệu
-của chu kỳ hiện tại, nên có thể chạy trực tuyến trong BMS.
+tới chu kỳ hiện tại (các mô hình chuỗi dùng thêm các chu kỳ trước của cùng cell), nên có thể chạy trực tuyến trong BMS.
 
 Cách đặt trên đếm nhãn theo cell, trong khi chi phí thật nằm ở số lần đo (mỗi nhãn là một lần xả đầy ở điều kiện
 chuẩn); đồ án xét thêm biến thể nhãn chỉ có ở một số chu kỳ rải trên mọi cell train.
@@ -430,6 +431,8 @@ chứng cho kiểm định chéo lặp lại. Khi thực hiện nhiều phép so
 soát xác suất mắc ít nhất một sai lầm loại I.
 
 \section{Tổng hợp và khoảng trống}
+
+Bảng~\ref{tab:related} tóm tắt các hướng tiếp cận ở trên theo việc có dùng vật lý và dữ liệu không nhãn hay không.
 
 \begin{table}[!htbp]\centering\small
 \caption{Tóm tắt các hướng tiếp cận liên quan.}\label{tab:related}
@@ -705,7 +708,7 @@ Chương~\ref{ch:ketqua}.
 
 \section{Các mô hình đối chứng}\label{sec:baselines}
 
-Mọi mô hình dùng cùng đầu vào $[\tilde{\mathbf{x}}, t]$, cùng cách chia, cùng tập cell có nhãn và cùng
+Mọi mô hình ở Bảng~\ref{tab:models} dùng cùng đầu vào $[\tilde{\mathbf{x}}, t]$, cùng cách chia, cùng tập cell có nhãn và cùng
 normaliser.
 
 \begin{table}[!htbp]\centering\small
@@ -741,7 +744,7 @@ Cắt gradient & chuẩn $L_2 \le 5$ \\
 Dừng sớm & MAE trên validation mỗi 100 bước, dừng sau 12 lần không cải thiện, giữ trọng số tốt nhất \\
 \bottomrule\end{tabularx}\end{table}
 
-Trọng số vật lý ($\alpha, \beta$) và dạng phần dư được chọn trước theo MAE validation ở một thí nghiệm sơ bộ
+Ngoài cấu hình ở Bảng~\ref{tab:train}, trọng số vật lý ($\alpha, \beta$) và dạng phần dư được chọn trước theo MAE validation ở một thí nghiệm sơ bộ
 và giữ cố định trong toàn bộ các thí nghiệm của báo cáo; không có siêu tham số nào được chọn theo tập test.
 """
 
@@ -910,18 +913,24 @@ Cell validation có nhãn và nằm ngoài “ngân sách nhãn” của các m�
 \section{Phân tầng theo chế độ thí nghiệm}
 
 Các cell trong cùng một bộ được thử ở nhiều chế độ khác nhau (Bảng~\ref{tab:datastats}). Nếu chia hoàn toàn ngẫu
-nhiên, có thể một fold không có cell nào của một chế độ, trong khi fold khác lại toàn cell của chế độ đó. Thuật
-toán chia dùng bộ đếm chạy liên tục qua các nhóm:
+nhiên, có thể một fold không có cell nào của một chế độ, trong khi fold khác lại toàn cell của chế độ đó.
+Thuật toán~\ref{alg:split} dùng một bộ đếm chạy liên tục qua các nhóm.
 
-\begin{enumerate}
-\item Xáo thứ tự cell trong từng nhóm (với hạt giống của lần lặp $r$); chọn ngẫu nhiên điểm bắt đầu $k_0$.
-\item Duyệt các nhóm theo thứ tự cố định; cell thứ $i$ trong thứ tự duyệt toàn cục được gán vào fold
-      $(k_0 + i) \bmod K$.
-\item Ở fold $k$: test là các cell thuộc fold $k$; từ phần còn lại lấy $\operatorname{round}(vN)$ cell làm
-      validation theo vòng tròn qua các nhóm; phần còn lại là train.
-\item Ở mức nhãn $f$: lấy $\operatorname{round}(fN)$ cell train làm cell có nhãn theo một thứ tự vòng tròn cố
-      định qua các nhóm; các cell train còn lại là cell không nhãn.
+\begin{thuattoan}[!htbp]
+\caption{Chia kiểm định chéo phân tầng theo nhóm thí nghiệm, cho một lần lặp $r$.}\label{alg:split}
+\small
+\textbf{Vào:} các cell $\mathcal{C}$ ($N$ cell) xếp theo nhóm thí nghiệm; số fold $K$; tỉ lệ validation $v$; các mức
+nhãn $f$; hạt giống của lần lặp $r$.\\
+\textbf{Ra:} với mỗi fold $k$, ba tập test, validation, train; với mỗi mức $f$, tập cell có nhãn.
+\begin{enumerate}[label=\arabic*:, leftmargin=2.2em, itemsep=1pt, topsep=3pt]
+\item Xáo thứ tự cell trong từng nhóm bằng hạt giống của lần lặp $r$; chọn ngẫu nhiên điểm bắt đầu $k_0$.
+\item Duyệt các nhóm theo thứ tự cố định; gán cell thứ $i$ của thứ tự duyệt toàn cục vào fold $(k_0 + i) \bmod K$.
+\item \textbf{với mỗi} fold $k$: test $\leftarrow$ các cell của fold $k$; từ phần còn lại lấy $\operatorname{round}(vN)$
+      cell làm validation theo vòng tròn qua các nhóm; train $\leftarrow$ phần còn lại.
+\item \textbf{với mỗi} mức nhãn $f$: cell có nhãn $\leftarrow$ $\operatorname{round}(fN)$ cell train đầu tiên theo một thứ tự
+      vòng tròn cố định qua các nhóm; các cell train còn lại là cell không nhãn.
 \end{enumerate}
+\end{thuattoan}
 
 \begin{menhde}[Phân hoạch và cân bằng]\label{md:partition}
 Với mỗi lần lặp: (i) các tập test của $K$ fold rời nhau và hợp lại bằng toàn bộ $\mathcal{C}$, nên mỗi cell
@@ -937,7 +946,7 @@ $\lfloor N/K\rfloor$ hoặc $\lceil N/K\rceil$. (iii) Cell của nhóm $b$ chi�
 Với cùng fold và lần lặp, nếu $f_1 < f_2$ thì tập cell có nhãn ở mức $f_1$ là tập con của tập ở mức $f_2$.
 \end{menhde}
 \begin{proof}
-Thứ tự vòng tròn ở bước 4 chỉ phụ thuộc hạt giống, không phụ thuộc $f$; tập có nhãn là $\operatorname{round}(fN)$
+Thứ tự vòng tròn ở bước 4 của Thuật toán~\ref{alg:split} chỉ phụ thuộc hạt giống, không phụ thuộc $f$; tập có nhãn là $\operatorname{round}(fN)$
 phần tử đầu của cùng một thứ tự, và $\operatorname{round}(f_1N) \le \operatorname{round}(f_2N)$.
 \end{proof}
 
@@ -2076,7 +2085,8 @@ mọi mô hình ở bốn mức nhãn.
 <<FIGCP>>
 <<FIGCB>>
 
-\paragraph{Khi có ít nhãn.} Ở 10\,\% nhãn, PINN-semi vượt MLP với khoảng cách lớn nhất: tỉ số MAE là <<R10>>,
+\paragraph{Khi có ít nhãn.} Ở 10\,\% nhãn, PINN-semi vượt MLP với khoảng cách lớn nhất: tỉ số MAE
+(Bảng~\ref{tab:cmp}) là <<R10>>,
 có ý nghĩa <<SIG10>>. Ở mức này mỗi fold chỉ có <<NLAB>> cell có nhãn, và MLP dễ quá khớp; loss vật lý trên các
 cell không nhãn buộc mạng phải cho quỹ đạo hợp lý trên chính những cell nó chưa có nhãn, nên bù được phần lớn
 thông tin thiếu.
@@ -2106,6 +2116,8 @@ dữ liệu dạng bảng. Phát biểu đúng mức vì vậy là: vật lý c�
 được tinh chỉnh tốt, cũng như hồi quy Gauss, trên phần lớn các bộ dữ liệu.
 
 \section{Lợi ích đến từ đâu}\label{sec:source}
+
+Bảng~\ref{tab:source} tách mức giảm sai số của PINN-semi so với MLP ở 30\,\% nhãn theo từng thành phần.
 
 <<TS>>
 
@@ -2149,8 +2161,8 @@ lên, còn PINN-semi giữ được xu hướng giảm; khoảng cách giữa ha
 
 \section{Thảo luận chung}
 
-\paragraph{Khi nào nên dùng PINN bán giám sát?} Giữa các mạng nơ-ron, PINN bán giám sát nên được dùng thay cho MLP
-khi số cell có nhãn ít (khoảng 10--30\,\%) và khi có nhiều cell chưa đo dung lượng. So với GBDT
+\paragraph{Khi nào nên dùng PINN bán giám sát?} Giữa các mạng nơ-ron chỉ nhìn một chu kỳ, PINN bán giám sát nên được
+dùng thay cho MLP khi số cell có nhãn ít (khoảng 10--30\,\%) và khi có nhiều cell chưa đo dung lượng.<<SEQDISC>> So với GBDT
 thì khác: trong cùng một bộ dữ liệu, GBDT đơn lẻ có sai số thấp hơn PINN-semi ở phần lớn các trường hợp.<<TRGBD>> Ghép
 GBDT với nhóm PINN thì tốt hơn cả hai (Mục~\ref{sec:improve}).
 
@@ -2201,7 +2213,7 @@ cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
                                   'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
                                   'fig:transfer', width=r'\textwidth'),
              TRTXT=tr_txt, TPH=t['PH'], METRICS=ch6_metrics(d, ctx), PHYSCHECK=ch6_physcheck(d, ctx),
-             TRGBD='' if 'e28_summary' in d else e21_discussion(d), PHTXT=ph_txt, WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
+             TRGBD='' if 'e28_summary' in d else e21_discussion(d), PHTXT=ph_txt, SEQDISC=e30_disc(d), WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
 
 
 # ═════════════════════════════════════════════════════════════ CHƯƠNG 7
@@ -2344,7 +2356,7 @@ def ch7_improve(d, ctx):
     lowfr_ml = _gm(ml[0.1]); hifr_ml = _gm(ml[0.7])
     if phys_sig >= 4 and lowfr_ml < hifr_ml:
         phys_conc = ('Phần vật lý vẫn đóng góp khi đã có GBDT, rõ nhất khi ít nhãn, và đóng góp ít dần khi nhãn nhiều lên, '
-                     r'cùng xu hướng như ở Chương~\ref{ch:ketqua}.')
+                     r'cùng xu hướng như ở Mục~\ref{sec:labels}.')
         phys_disc = ' nên PINN-lai hơn MLP-lai khi ít nhãn'
     elif phys_sig > phys_worse:
         phys_conc = ('Khi đã có GBDT, phần vật lý chỉ còn đóng góp ở một số trường hợp; phần lớn lợi ích của PINN-lai so với '
@@ -2424,20 +2436,16 @@ tóm tắt kết quả.
 
 <<TABDEV>>
 
-Ba nhóm kết quả hiện ra. Kết hợp với GBDT cho mức giảm lớn nhất: ở 10\,\% nhãn tỉ số chỉ còn <<D_HYB10>>, ở 50\,\%
-nhãn còn <<D_HYB50>>, thấp hơn cả GBDT đứng một mình (<<D_GB>>). Nhóm mạng và chưng cất cho mức giảm vừa phải, khoảng
-<<D_ENS>> và <<D_KD>>; khi đã kết hợp với GBDT, chưng cất không còn thêm lợi ích (tỉ số <<D_KDG>> so với <<D_HYB1>>
-của một mạng PINN-semi kết hợp GBDT), nên bị bỏ để mô hình gọn hơn. Ba hướng còn lại làm sai số tăng: ràng buộc đơn điệu mạnh hơn
-(<<D_M2>>), thêm phần dư Euler (<<D_EU>>) và nhất là đặc trưng tương đối (<<D_REL>>). Phần dư Euler buộc $r$ bằng tốc
-độ dọc quỹ đạo trong khi phần dư dạng đạo hàm riêng buộc $\partial F/\partial t = -r$, nên hai số hạng kéo mạng
-nghiệm về hai phía. Đặc trưng tương đối chia cho $|\mathbf{x}_\text{ref}|$, nên khuếch đại các đặc trưng có giá trị
-ban đầu gần 0 và làm phân phối đầu vào khác hẳn giữa các cell; trường hợp tệ nhất là <<RELW>>, sai số tăng
-<<RELX>> lần.
+Kết hợp với GBDT cho mức giảm lớn nhất: tỉ số còn <<D_HYB10>> ở 10\,\% và <<D_HYB50>> ở 50\,\% nhãn, thấp hơn cả
+GBDT đứng một mình (<<D_GB>>). Nhóm mạng và chưng cất giảm vừa phải (<<D_ENS>> và <<D_KD>>); khi đã kết hợp với GBDT,
+chưng cất không thêm lợi ích (<<D_KDG>> so với <<D_HYB1>>) nên bị bỏ. Ba hướng làm sai số tăng: ràng buộc đơn điệu mạnh
+hơn (<<D_M2>>); thêm phần dư Euler (<<D_EU>>), vì nó buộc $r$ bằng tốc độ dọc quỹ đạo trong khi phần dư dạng đạo hàm
+riêng buộc $\partial F/\partial t = -r$; và đặc trưng tương đối (<<D_REL>>, tệ nhất ở <<RELW>> với sai số tăng <<RELX>>
+lần), vì phép chia cho $|\mathbf{x}_\text{ref}|$ khuếch đại các đặc trưng có giá trị ban đầu gần 0.
 
-Trọng số $\omega = 0{,}5$ và $0{,}4$ cho GBDT trọng số $0{,}5$ và $0{,}6$, kết quả gần như nhau trên validation
-(<<D_W5>> và <<D_W6>>), nên chọn $\omega = 0{,}5$
-để không phải ước lượng thêm tham số. Cửa sổ lọc $w = 5, 10, 20$ cũng gần như nhau; chọn $w = 10$ vì nó gần tốt nhất
-với mọi mô hình nền đã thử. Cấu hình cuối được ấn định thành văn bản trước khi đọc bất kỳ dự đoán test nào.
+Hai trọng số $\omega = 0{,}5$ và $0{,}4$ cho kết quả gần như nhau trên validation (<<D_W5>> và <<D_W6>>) nên chọn
+$\omega = 0{,}5$; các cửa sổ $w = 5, 10, 20$ cũng gần như nhau, chọn $w = 10$. Cấu hình cuối được ấn định thành văn bản
+trước khi đọc bất kỳ dự đoán test nào.
 
 \section{Mô hình PINN-lai}\label{sec:pinnlai}
 
@@ -2480,14 +2488,14 @@ $\tilde y_2 = 0{,}9$, còn cửa sổ thứ ba có độ dốc dương bị ch�
 
 \section{Kết quả trên tập test}\label{sec:e20res}
 
-Đánh giá cuối dùng lần lặp 0, 1 và 2, cả 5 fold, 4 bộ và 4 mức nhãn. Mọi mô hình trong chương này, kể cả các mô
+Đánh giá cuối dùng lần lặp 0, 1 và 2, cả 5 fold, 4 bộ và 4 mức nhãn. Mọi mô hình trong mục này, kể cả các mô
 hình cũ, được tính lại trên đúng ba lần lặp đó. Thành viên thứ nhất của nhóm mạng chạy lại đúng cấu hình PINN-semi
 và cho dự đoán trùng từng bit với kết quả ở Mục~\ref{sec:labels} ở <<CHK_P>> lượt; GBDT trùng ở <<CHK_G>> lượt.
 
 <<TABMAIN>>
 <<FIGCURVE>>
 
-PINN-lai có MAE thấp hơn PINN-semi ở <<B_PINN>>/<<N_PINN>> trường hợp (bộ × mức nhãn), <<S_PINN>> trong đó có ý nghĩa
+PINN-lai có MAE thấp hơn PINN-semi ở <<B_PINN>>/<<N_PINN>> trường hợp (bộ × mức nhãn; Bảng~\ref{tab:e20tests}), <<S_PINN>> trong đó có ý nghĩa
 thống kê, với tỉ số <<R_PINN>>. So với GBDT, PINN-lai tốt hơn ở <<B_GB>>/<<N_GB>> trường hợp, <<S_GB>> có ý nghĩa<<GB10>>.
 <<GBLOSE>> <<WORSE_GB>>
 So với MLP, tỉ số là <<R_MLP>>; ở 10\,\% nhãn sai số chỉ còn <<R_MLP10>> của MLP. Trên hai mức nhãn đã dùng khi phát
@@ -2519,12 +2527,11 @@ hợp và kém hơn có ý nghĩa ở <<PHYS_WORSE>>; tỉ số trung bình nhâ
 \section{Khoảng dự đoán}\label{sec:conformal}
 
 Một con số SOH đơn lẻ chưa đủ cho các quyết định như thay pin hay giảm công suất~\cite{thelen2024}. PINN-lai được
-gắn thêm khoảng dự đoán bằng phương pháp dự đoán phù hợp tách tập~\cite{vovk2005,lei2018}. Trong mỗi fold, phần dư
-$|\tilde y - y|$ được tính trên tập validation của chính fold đó; với mức $1 - \alpha = 90\,\%$, lấy phân vị
-$\lceil (n+1)(1-\alpha) \rceil / n$ của các phần dư làm nửa độ rộng $q$, và khoảng cho một chu kỳ test là
-$[\tilde y - q, \tilde y + q]$. Dạng thích nghi chia phần dư cho $\sigma_n + \delta$, với
-$\sigma_n = |\bar F - g|$ là độ vênh giữa nhóm mạng và GBDT tại chu kỳ đó và $\delta$ là trung vị của $\sigma$ trên
-validation; khoảng khi đó rộng ở những chu kỳ hai mô hình không đồng ý với nhau.
+gắn thêm khoảng dự đoán bằng phương pháp dự đoán phù hợp tách tập~\cite{vovk2005,lei2018}: trong mỗi fold, nửa độ
+rộng $q$ là phân vị $\lceil (n+1)(1-\alpha) \rceil / n$ của phần dư $|\tilde y - y|$ trên validation của chính fold,
+với $1 - \alpha = 90\,\%$. Dạng thích nghi chia phần dư cho $\sigma_n + \delta$, với $\sigma_n = |\bar F - g|$ là độ
+vênh giữa nhóm mạng và GBDT và $\delta$ là trung vị của $\sigma$ trên validation, nên khoảng rộng ra ở những chu kỳ hai
+mô hình không đồng ý với nhau.
 
 <<TABCF>>
 <<FIGCF>>
@@ -2663,7 +2670,7 @@ giao thức theo cell của đồ án có các tính chất được chứng min
 \item <<FW2>>
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item <<FW4>>
-\item Giai đoạn 2 của đề cương: mở rộng từ từng cell sang khối pin nhiều cell, mô hình hoá mất cân bằng giữa các cell
+<<FWSEQ>>\item Giai đoạn 2 của đề cương: mở rộng từ từng cell sang khối pin nhiều cell, mô hình hoá mất cân bằng giữa các cell
       (chẳng hạn bằng GCN trên đồ thị các cell nối tiếp, song song) và dựng giao diện theo dõi từ công cụ dòng lệnh hiện có.
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
@@ -2672,6 +2679,8 @@ giao thức theo cell của đồ án có các tính chất được chứng min
              else 'không còn cải thiện có ý nghĩa',
              WORSE70=(f', và {_tren(F["worse"][0.7])} MLP tốt hơn' if F['worse'][0.7] else ''),
              CH3=ch3, SHARE=_rng([100 * x for x in F['share_unl10']], 0), MONO=_rng([100 * x for x in F['share_mono']], 0),
+             FWSEQ=(r'\item Gắn ràng buộc vật lý vào mô hình chuỗi: dùng LSTM hay Transformer làm mạng nghiệm của PINN, để vừa '
+                    r'nhìn được nhiều chu kỳ vừa dùng được cell không nhãn.' + '\n' if e30_concl(d) else ''),
              CH5=ch5, CH6=ch6_concl(d), CH7=e22_concl(d), CH8=e27_concl(d), CH9=e28_concl(d), CH10=e29_concl(d),
              FW2=future_kalman(d), FW4=future_params(d))
 
@@ -2828,8 +2837,7 @@ def abstract_e27(d):
     tie = [ds for ds in BK.E27_DS if 0.95 <= st[ds] <= 1.05]
     lose = [ds for ds in BK.E27_DS if st[ds] > 1.05]
     return T(r""" Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai với tiền xử lý không rò rỉ có
-sai số bằng <<WR>> lần số công bố <<WIN>><<TIE>><<LOSE>>; cùng tiền xử lý với bài, nó thấp hơn số công bố ở mọi mức của
-thí nghiệm ít mẫu.""", WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
+sai số bằng <<WR>> lần số công bố <<WIN>><<TIE>><<LOSE>>.""", WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
              TIE=(f', ngang {_tren(tie)}' if tie else ''),
              LOSE=(f', chỉ kém {_tren(lose)}, nơi số công bố nhờ chuẩn hoá theo cả vòng đời cell' if lose else ''))
 
@@ -2863,8 +2871,7 @@ def abstract_e29(d):
     fin = E['pair']('pinn_lai_sel_v2', 'gbdt_best')
     return T(r""" Thêm lịch sử của cell vào đầu vào (trung bình trượt nhân quả của đặc trưng sạc) giảm sai số của
 PINN-lai còn <<RLA>> lần trên <<GDS>> khi có từ <<FMIN>> nhãn nhưng không giúp trên <<BAD>> và khi chỉ có 10\,\% nhãn; dùng
-lịch sử theo lựa chọn trên validation, PINN-lai có sai số thấp hơn GBDT ở <<NL>>/<<N>> trường hợp. Bộ lọc quỹ đạo được chỉ
-ra là không bảo đảm SOH không tăng, và ép không tăng làm sai số tăng ở bộ có dung lượng tăng thật.""",
+lịch sử theo lựa chọn trên validation, PINN-lai có sai số thấp hơn GBDT ở <<NL>>/<<N>> trường hợp.""",
              RLA=_rng(A.ratio, 2), GDS=_lst(gds), FMIN=pc(fmin),
              BAD=_lst([ds for ds in E['DS'] if ds not in gds]), NL=int((fin.ratio < 1).sum()), N=len(fin))
 
@@ -2886,7 +2893,7 @@ luyện). Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và m
 khi tăng lên 70\,\% nhãn, lợi ích giảm dần (<<R70>>), và <<GB>>. <<E20>><<E29>><<E30>><<E27>><<E28>><<E22>>
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
-kết hợp mô hình, ngân sách đo, dự báo tuổi thọ còn lại.
+kết hợp mô hình, học sâu cho chuỗi thời gian, ngân sách đo, dự báo tuổi thọ còn lại.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
              R70=_rng(F['r'][0.7].values()), GB=gb, E20=abstract_e20(d), E27=abstract_e27(d), E28=abstract_e28(d),
              E29=abstract_e29(d), E22=abstract_e22(d), E30=abstract_e30(d),
@@ -2900,6 +2907,14 @@ def abstract_e30(d):
         return ''
     import thesis_bk as BK
     return BK.e30_abstract_text(d, sys_helpers())
+
+
+def e30_disc(d):
+    """Một câu trong phần thảo luận: mô hình chuỗi so với PINN-semi (E30); rỗng khi chưa có kết quả."""
+    if not e30_concl(d):
+        return ''
+    import thesis_bk as BK
+    return BK.e30_disc_text(d, sys_helpers())
 
 
 def e30_concl(d):
@@ -3108,7 +3123,8 @@ def build():
                             BK.e25_short(d, sys_helpers()) if 'e25_estimation' in d else '',
                             BK.mono_text(d, sys_helpers()) if 'mono_filter' in d else '',
                             BK.e29_text(d, sys_helpers()) if 'e29_summary' in d else '',
-                            (BK.e30_method(d), BK.e30_text(d, sys_helpers())) if 'e30_metrics' in d else ('', ''),
+                            (BK.e30_method(d), BK.e30_text(d, sys_helpers()), BK.e30_direction(d, sys_helpers()))
+                            if 'e30_metrics' in d else ('', ''),
                             fig('fig_thesis_pipeline', 'Kiến trúc hiện thực: năm khối của hệ thống, từ dữ liệu thô tới báo '
                                 'cáo và công cụ minh hoạ.', 'fig:pipeline'))
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)

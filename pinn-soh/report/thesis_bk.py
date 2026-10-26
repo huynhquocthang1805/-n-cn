@@ -530,9 +530,9 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
                'Chương~\\ref{ch:ketqua}; Mục~\\ref{sec:devproto} chọn trong số đó chỉ bằng tập validation.')
     base = pick(s4, 'Các mô hình đối chứng')
     if e30[0]:                     # CNN, LSTM, Transformer vào bảng mô hình; đoạn mô tả chi tiết đặt ngay sau bảng
-        base = sub1(base, 'Mọi mô hình dùng cùng đầu vào $[\\tilde{\\mathbf{x}}, t]$, cùng cách chia',
-                    'Mọi mô hình dùng cùng đặc trưng $[\\tilde{\\mathbf{x}}, t]$ (mô hình chuỗi nhận thêm các chu kỳ trước '
-                    'của chính cell), cùng cách chia')
+        base = sub1(base, 'dùng cùng đầu vào $[\\tilde{\\mathbf{x}}, t]$, cùng cách chia',
+                    'dùng cùng đặc trưng $[\\tilde{\\mathbf{x}}, t]$ (mô hình chuỗi nhận thêm các chu kỳ trước của chính '
+                    'cell), cùng cách chia')
         base = sub1(base, 'PINN-sup & vật lý trên cell có nhãn', SEQ_ROWS + 'PINN-sup & vật lý trên cell có nhãn')
     ch4 = (CH4_HEAD + data + pinn + lai + (CH4_HIST if e29 else '') + CH4_FC + e25[0] + base
            + e30[0] + pick(s4, 'Cấu hình huấn luyện'))
@@ -608,11 +608,13 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
            + (e25s if (e28 and e25s) else e25[1])
            + sub1(pick(s6, 'Thảo luận chung'), '\\section{Thảo luận chung}\n', '\\section{Thảo luận chung}\n' + overview)
            + ('' if e28 else demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp'))))
-    ch7 = sub1(c8, '\\section{Hướng phát triển}', CH7_MAP + '\n\\section{Hướng phát triển}') if e30[1] else c8
+    ch7 = (sub1(c8, '\\section{Hướng phát triển}', CH7_MAP + (e30[2] if len(e30) > 2 else '') + '\n\\section{Hướng phát triển}')
+           if e30[1] else c8)
     out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
     # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
+    # tab:e20 trùng với bảng chỉ số đầy đủ (cùng ba lần lặp; PINN-lai tinh chỉnh và mô hình cuối ở đó)
     for lab in ('fig:e20curve', 'fig:conformal', 'fig:curvebase', 'fig:split', 'fig:rowsim', 'fig:usage', 'fig:e20steps',
-                'fig:e23ex', 'tab:dev', 'tab:phys'):
+                'fig:e23ex', 'tab:dev', 'tab:phys') + (('tab:e20',) if e30[1] else ()):
         out = drop_float(out, lab)
     out = sub1(out, ' Bảng~\\ref{tab:dev}\ntóm tắt kết quả.', '')
     out = sub1(out, 'Hình~\\ref{fig:curvephys}, \\ref{fig:curvebase}', 'Hình~\\ref{fig:curvephys}')
@@ -993,7 +995,7 @@ tin.
 giữ lại để dừng sớm, đánh giá trên các cell 6, 7 và 47. PINN-lai có MAE <<S6>>, <<S7>> và <<S47>>\,\% SOH, cao hơn
 SambaMixer trên cả ba cell và chỉ tốt hơn CNN-BiGRU trên cell 47. SambaMixer nhận chuỗi điện áp, dòng điện, nhiệt độ của chính lần xả cần ước lượng; với dòng xả không đổi, thời gian xả
 nhân với dòng điện chính là dung lượng, nên nhãn gần như nằm sẵn trong đầu vào. Đồ án dùng đoạn sạc trước lần xả, là
-dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Sai số lớn nhất ở cell 6, vốn bắt đầu ở 101\,\% SOH trong khi
+dữ liệu BMS ghi được ở mọi chu kỳ mà không phải xả sâu cell. Sai số lớn nhất ở cell 6 (Hình~\ref{fig:nasatraj}), vốn bắt đầu ở 101\,\% SOH trong khi
 các cell train cùng nhóm bắt đầu quanh 92\,\%, với 75--84\,\% số chu kỳ có đặc trưng sạc nằm ngoài miền của cell
 train.<<SEQS>><<HIST>>
 
@@ -1791,78 +1793,161 @@ def e30_facts(d):
 
 
 def e30_findings(d, H):
-    """Lời văn của mục E30, tính từ results/e30_metrics.csv và e30_tests.csv."""
+    """Lời văn của mục E30, tính từ results/e30_metrics.csv, e30_tests.csv và e30_dev*.csv."""
     M = d['e30_metrics']
     seq = [m for m in E30_SEQ if (M.model == m).any()]
     if not seq:
         return (r'Bảng~\ref{tab:allmae}, \ref{tab:allr2} và~\ref{tab:allrm} cho MAE, $R^2$, RMSE và MAPE của các mô hình '
                 r'chính trên cùng các fold và cell có nhãn.')
+    import pandas as pd
     from pinnsoh.experiments import E30_L
     f, T, rng, lst, pc = (H[k] for k in ('f', 'T', 'rng', 'lst', 'pc'))
     E = e30_facts(d)
-    v, pair, cases = E['v'], E['pair'], E['cases']
+    v, pair, cases, FR = E['v'], E['pair'], E['cases'], E['FR']
     n = len(cases)
-    cnt = lambda X: _sig(X)
     lab = lambda m: E30_LBL[m]
-    # giữa bốn mô hình học sâu
-    nbest = {m: sum(E['best_dl'][c] == m for c in cases) for m in ['mlp'] + seq}
-    order = sorted(nbest, key=lambda m: -nbest[m])
-    best_txt = ', '.join(f'{lab(m)} ở {nbest[m]}' for m in order if nbest[m]) + f' trên {n} trường hợp bộ $\\times$ mức nhãn'
+    lab_lst = lambda ms: lst([lab(m) for m in ms])
+    # bốn mô hình học sâu
     vs_mlp = {m: pair(m, 'mlp') for m in seq}
-    vs_gb = {m: pair(m, 'gbdt') for m in seq}
-    vs_pi = {m: pair(m, 'pinn') for m in seq}
-    vs_lai = {m: pair(m, 'pinn_lai') for m in seq}
+    nbest = {m: sum(E['best_seq'][c] == m for c in cases) for m in seq}
+    best = max(nbest, key=nbest.get)
+    r10 = {m: vs_mlp[m][vs_mlp[m].f == min(FR)].ratio for m in seq}
+    rhi = {m: vs_mlp[m][vs_mlp[m].f > min(FR)].ratio for m in seq}
+    assert pd.concat(r10.values()).median() < pd.concat(rhi.values()).median()     # "lợi ích lớn nhất ở 10 % nhãn"
+    # mô hình chuỗi tốt nhất của từng trường hợp so với GBDT, PINN-semi
+    bs = pd.DataFrame([pair(E['best_seq'][c], ref)[lambda g: (g.dataset == c[0]) & (g.f == c[1])].iloc[0].to_dict()
+                       | dict(ref=ref) for c in cases for ref in ('gbdt', 'pinn')])
+    bg, bp = bs[bs.ref == 'gbdt'], bs[bs.ref == 'pinn']
+    gb_win = [(r.dataset, r.f) for r in bg.itertuples() if r.ratio < 1]
     fin = E['fin']
+    lai = pd.concat([pair('pinn_lai', m) for m in seq])
     # độ dài cửa sổ (E30dev)
     Dv, Dd = d.get('e30_dev'), d.get('e30_dev_detail')
     ltxt = ''
     if Dv is not None:
         rr = Dv.set_index('model').ratio
-        ltxt = ('Độ dài cửa sổ được chọn trên validation trong $\\{16, 48\\}$ (tỉ số MAE validation của $L = 48$ so với '
-                '$L = 16$, trung bình qua bốn bộ và hai mức nhãn): ' + '; '.join(
-                    f'{lab(m)} {f(rr[m], 3)}, chọn $L = {E30_L[m]}$' for m in seq) + '.')
-        if Dd is not None:
-            ex = Dd.groupby(['model', 'dataset']).ratio.mean()
-            parts = []
-            for m in seq:
-                if abs(rr[m] - 1) < 1e-9:
-                    parts.append(f'{lab(m)} cho đúng cùng kết quả ở hai độ dài vì vùng nhìn của hai lớp tích chập chỉ '
-                                 f'13 chu kỳ')
-                    continue
+        ex = Dd.groupby(['model', 'dataset']).ratio.mean() if Dd is not None else None
+        same = [m for m in seq if abs(rr[m] - 1) < 1e-9]
+        parts = [f'{lab(m)} {f(rr[m], 3)}' for m in seq]
+        ltxt = (r'\paragraph{Độ dài cửa sổ.} Tỉ số MAE validation của $L = 48$ so với $L = 16$ (trung bình qua bốn bộ và '
+                r'hai mức nhãn) là ' + ', '.join(parts) + '; theo quy tắc chốt trước, '
+                + '; '.join(f'{lab_lst([m for m in seq if E30_L[m] == L])} dùng $L = {L}$'
+                            for L in sorted({E30_L[m] for m in seq})) + '.')
+        if same:
+            ltxt += (f' {lab_lst(same)} cho đúng cùng kết quả ở hai độ dài: vùng nhìn của hai lớp tích chập chỉ 13 chu kỳ, '
+                     'nên phần cửa sổ xa hơn không tới được đầu ra.')
+        if ex is not None:
+            for m in [m for m in seq if m not in same]:
                 lo, hi = ex[m].idxmin(), ex[m].idxmax()
-                parts.append(f'với {lab(m)}, cửa sổ dài có lợi nhất trên {lo} ({f(ex[m][lo], 2)}) và bất lợi nhất trên '
-                             f'{hi} ({f(ex[m][hi], 2)})')
-            ltxt += ' ' + '; '.join(parts)[0].upper() + '; '.join(parts)[1:] + '.'
+                ltxt += (f' Với {lab(m)}, cửa sổ dài có lợi nhất trên {lo} ({f(ex[m][lo], 2)}) và bất lợi nhất trên {hi} '
+                         f'({f(ex[m][hi], 2)}).')
+            dev = float((ex - 1).abs().max())
+            ltxt += (f' Đổi độ dài cửa sổ làm sai số validation thay đổi tối đa {f(100 * dev, 0)}\,\% theo bộ, nhỏ hơn nhiều so '
+                     'với khác biệt giữa các mô hình.')
     # chỉ số khác
     agree = sum(E['best_all'][c] == E['r2_all'][c] for c in cases)
     neg = [(ds, fr) for ds, fr in cases if v(ds, fr, 'mlp', 'R2') < 0]
-    body = T(r"""Bảng~\ref{tab:allmae}, \ref{tab:allr2} và~\ref{tab:allrm} đặt bốn mô hình học sâu của đề cương (MLP,
-CNN, LSTM, Transformer) cạnh GBDT, PINN-semi, PINN-lai và mô hình cuối, trên cùng fold, cùng cell có nhãn và cùng ba lần
-lặp. Trong bốn mô hình học sâu, MAE thấp nhất thuộc về <<BEST>>. So với MLP, tỉ số MAE theo cell của <<VSMLP>>.
+    sig = lambda X: _sig(X)[0]
+    return T(r"""Bảng~\ref{tab:allmae}, \ref{tab:allr2} và~\ref{tab:allrm} đặt bốn mô hình học sâu của đề cương (MLP, CNN,
+LSTM, Transformer) cạnh GBDT, PINN-semi, PINN-lai và mô hình cuối, trên cùng fold, cùng cell có nhãn và cùng ba lần lặp.
 
-So với các mô hình còn lại, <<VSGB>>. <<VSPI>> Mô hình cuối có MAE thấp hơn mô hình chuỗi tốt nhất của từng trường hợp ở
-<<FW>>/<<N>> trường hợp (tỉ số <<FR>>), thấp hơn có ý nghĩa ở <<FS>><<FWS>>.
+\paragraph{Bốn mô hình học sâu.} Nhìn được nhiều chu kỳ giúp rõ rệt. So với MLP, tỉ số MAE theo cell <<VSMLP>>;
+mô hình chuỗi thấp hơn MLP có ý nghĩa ở <<SMLP>>/<<NMLP>> phép so (bốn bộ $\times$ bốn mức nhãn $\times$ ba mô hình;
+Wilcoxon theo cell, hiệu chỉnh Holm qua bốn bộ). Lợi ích lớn nhất ở <<F10>> nhãn
+(tỉ số <<R10>>), nơi MLP chỉ dựa vào đặc trưng của một chu kỳ và dễ quá khớp vài cell có nhãn; từ <<F30>> nhãn tỉ số là
+<<RHI>>. Cửa sổ nhiều chu kỳ cho mô hình thấy xu thế của đặc trưng sạc và làm trung bình nhiễu đo của từng chu kỳ,
+giống phần đầu vào có lịch sử ở Mục~\ref{sec:histres} nhưng do mạng tự học. Trong ba mô hình chuỗi, <<BEST>> có MAE thấp
+nhất ở <<NBEST>>/<<N>> trường hợp.
+
+\paragraph{So với GBDT và các mô hình có vật lý.} Mô hình chuỗi tốt nhất của từng trường hợp có MAE thấp hơn GBDT ở
+<<NGB>>/<<N>> trường hợp<<GBW>> và thấp hơn PINN-semi ở <<NPI>>/<<N>> (tỉ số <<RPI>>). PINN-lai thấp hơn cả ba mô hình chuỗi
+ở <<NLAI>>/<<NLAIT>> phép so (tỉ số <<RLAI>>, có ý nghĩa ở <<SLAI>>), và mô hình cuối có MAE bằng <<FR>> lần mô hình chuỗi
+tốt nhất của từng trường hợp, thấp hơn có ý nghĩa ở <<FS>>/<<N>><<FWS>>. Như vậy, trên các bộ dữ liệu này, mô hình chuỗi
+thuần dữ liệu <<VSPI>> nhưng chưa thay được việc kết hợp nhóm PINN với GBDT.
 
 <<LDEV>>
 
-Xếp hạng theo $R^2$ trùng với xếp hạng theo MAE ở <<AGREE>>/<<N>> trường hợp (mô hình có MAE thấp nhất cũng có $R^2$ cao
-nhất). $R^2$ gộp mọi cell của bộ nên phụ thuộc vào độ trải của SOH giữa các cell: <<NEG>>. Vì vậy $R^2$ chỉ dùng để so
-các mô hình trong cùng một bộ, còn MAE theo cell là chỉ số chính.""",
-             BEST=best_txt,
-             VSMLP='; '.join(f'{lab(m)} là {rng(vs_mlp[m].ratio, 2)}, tốt hơn có ý nghĩa ở {cnt(vs_mlp[m])[0]}'
-                             + (f' và kém hơn có ý nghĩa ở {cnt(vs_mlp[m])[1]}' if cnt(vs_mlp[m])[1] else '')
-                             for m in seq) + ' trường hợp (Wilcoxon theo cell, hiệu chỉnh Holm qua bốn bộ)',
-             VSGB='; '.join(f'{lab(m)} có MAE thấp hơn GBDT ở {int((vs_gb[m].ratio < 1).sum())}/{n} trường hợp'
-                            f' (có ý nghĩa ở {cnt(vs_gb[m])[0]})' for m in seq),
-             VSPI=' '.join([f'So với PINN-semi, tỉ số của {lst([lab(m) for m in seq])} lần lượt là '
-                            + ', '.join(rng(vs_pi[m].ratio, 2) for m in seq) + '; so với PINN-lai là '
-                            + ', '.join(rng(vs_lai[m].ratio, 2) for m in seq) + '.']),
-             FW=int((fin.ratio < 1).sum()), N=n, FR=rng(fin.ratio, 2), FS=cnt(fin)[0],
-             FWS=(f', cao hơn có ý nghĩa ở {cnt(fin)[1]}' if cnt(fin)[1] else ''),
+\paragraph{RMSE, MAPE và $R^2$.} Mô hình có MAE thấp nhất cũng có $R^2$ cao nhất ở <<AGREE>>/<<N>> trường hợp, và RMSE,
+MAPE ở 30\,\% nhãn (Bảng~\ref{tab:allrm}) cho cùng thứ tự giữa các nhóm mô hình. $R^2$ gộp mọi cell của bộ nên phụ
+thuộc vào độ trải của SOH giữa các cell: <<NEG>>. Vì vậy $R^2$ chỉ dùng để so các mô hình trong cùng một bộ, còn MAE theo
+cell là chỉ số chính.""",
+             VSMLP=lst([f'của {lab(m)} là {rng(vs_mlp[m].ratio, 2)}' for m in seq]),
+             SMLP=sig(pd.concat(vs_mlp.values())), NMLP=len(pd.concat(vs_mlp.values())),
+             N=n, F10=pc(min(FR)), R10=rng(pd.concat(r10.values()), 2), F30=pc(sorted(FR)[1]),
+             RHI=rng(pd.concat(rhi.values()), 2), BEST=lab(best), NBEST=nbest[best],
+             NGB=len(gb_win), GBW=(' (' + ', '.join(f'{ds} {pc(fr)}' for ds, fr in gb_win) + ')' if 0 < len(gb_win) <= 4
+                                   else ''),
+             NPI=int((bp.ratio < 1).sum()), RPI=rng(bp.ratio, 2),
+             NLAI=int((lai.ratio < 1).sum()), NLAIT=len(lai), RLAI=rng(lai.ratio, 2), SLAI=sig(lai),
+             VSPI=('đạt mức sai số của PINN-semi' if 0.85 <= float(bp.ratio.median()) <= 1.15 else
+                   ('tốt hơn PINN-semi' if float(bp.ratio.median()) < 0.85 else 'còn kém PINN-semi')),
+             FR=rng(fin.ratio, 2), FS=sig(fin), FWS=(f', cao hơn có ý nghĩa ở {_sig(fin)[1]}' if _sig(fin)[1] else ''),
              LDEV=ltxt, AGREE=agree,
-             NEG=(f'MLP ở {lst([f"{ds} {pc(fr)}" for ds, fr in neg])} có $R^2$ âm, tức dự đoán kém hơn cả hằng số bằng '
-                  f'SOH trung bình' if neg else 'cùng một MAE cho $R^2$ cao hơn ở bộ có SOH trải rộng'))
-    return body
+             NEG=(f'MLP ở {lst([ds + " " + pc(fr) for ds, fr in neg])} có $R^2$ âm, tức dự đoán kém hơn cả hằng số bằng SOH '
+                  f'trung bình của bộ' if neg else 'cùng một MAE cho $R^2$ cao hơn ở bộ có SOH trải rộng'))
+
+
+def e30_concl_text(d, H):
+    """Câu trả lời CH5 trong phần kết luận (CNN, LSTM, Transformer so với các mô hình của đồ án)."""
+    f, rng = H['f'], H['rng']
+    E = e30_facts(d)
+    seq, pair, n = E['seq'], E['pair'], len(E['cases'])
+    import pandas as pd
+    vm = pd.concat([pair(m, 'mlp') for m in seq]); vg = pd.concat([pair(m, 'gbdt') for m in seq])
+    vl = pd.concat([pair(m, 'pinn_lai') for m in seq])
+    fin = E['fin']
+    nb = {m: sum(E['best_seq'][c] == m for c in E['cases']) for m in seq}
+    best = max(nb, key=nb.get)
+    return (f'Ba mô hình chuỗi (CNN, LSTM, Transformer) có sai số bằng {rng(vm.ratio, 2)} lần MLP, thấp hơn có ý nghĩa '
+            f'ở {_sig(vm)[0]}/{len(vm)} phép so, nhờ nhìn được nhiều chu kỳ gần nhất của cell; trong ba mô hình, '
+            f'{E30_LBL[best]} tốt nhất ở {nb[best]}/{n} trường hợp. Chúng vẫn kém GBDT ở '
+            f'{int((vg.ratio > 1).sum())}/{len(vg)} và kém PINN-lai ở {int((vl.ratio > 1).sum())}/{len(vl)} phép so; mô '
+            f'hình cuối có MAE bằng {rng(fin.ratio, 2)} lần mô hình chuỗi tốt nhất của từng trường hợp, thấp hơn có ý '
+            f'nghĩa ở {_sig(fin)[0]}/{n}.')
+
+
+def e30_disc_text(d, H):
+    """Một câu trong phần thảo luận: mô hình chuỗi tốt nhất so với PINN-semi."""
+    import pandas as pd
+    E = e30_facts(d)
+    bp = pd.DataFrame([E['pair'](E['best_seq'][c], 'pinn')[lambda g: (g.dataset == c[0]) & (g.f == c[1])].iloc[0]
+                       for c in E['cases']])
+    med = float(bp.ratio.median())
+    how = ('đạt mức sai số tương tự' if 0.85 <= med <= 1.15 else ('đạt sai số thấp hơn' if med < 0.85 else
+                                                                   'tiến gần mức sai số đó'))
+    return (f' Mô hình chuỗi {how} bằng một con đường khác: nhìn nhiều chu kỳ của chính cell thay vì dùng cell không nhãn '
+            r'(Mục~\ref{sec:dlres}); hai hướng này không loại trừ nhau.')
+
+
+def e30_direction(d, H):
+    """Đoạn so sánh hướng đi của đồ án với hướng đi trong mô tả đề tài (sau bảng đối chiếu đề cương)."""
+    M = d['e30_metrics']
+    seq = [m for m in E30_SEQ if (M.model == m).any()]
+    if not seq:
+        return ''
+    E = e30_facts(d)
+    v, cases = E['v'], E['cases']
+    dl = ['mlp'] + seq
+    gb = sum(v(*c, 'gbdt') < min(v(*c, m) for m in dl) for c in cases)
+    return H['T'](r"""
+Đồ án đi đúng các bước của giai đoạn 1 trong đề cương, với ba điểm khác về hướng đi. Thứ nhất, đề cương lấy bốn mô
+hình học sâu làm mốc so sánh; trên cùng đặc trưng, GBDT có MAE thấp hơn cả bốn ở <<GB>>/<<N>> trường hợp bộ
+$\times$ mức nhãn (Mục~\ref{sec:dlres}), nên mọi so sánh ở giai đoạn 2 cần có mô hình cây. Thứ hai, thông tin hoá lý
+được đưa vào qua hàm mất mát (động học suy giảm có thừa số Arrhenius, tính đơn điệu) và qua bước lọc quỹ đạo, chưa qua
+mô hình điện hoá chi tiết; lợi ích của nó rõ nhất khi ít nhãn. Thứ ba, mã hoá vị trí được dùng ở Transformer; mô hình
+dự báo có dạng chuỗi sang chuỗi, với mạng mã hoá lịch sử của cell thành tham số và nghiệm đóng của động học sinh quỹ đạo
+tương lai; GCN để lại cho bài toán nhiều cell của giai đoạn 2.
+""", GB=gb, N=len(cases))
+
+
+def e30_abstract_text(d, H):
+    """Một câu trong tóm tắt về CNN, LSTM, Transformer."""
+    rng = H['rng']
+    E = e30_facts(d)
+    import pandas as pd
+    vm = pd.concat([E['pair'](m, 'mlp') for m in E['seq']])
+    return (f' Ba mô hình chuỗi thời gian theo đề cương (CNN, LSTM, Transformer) có sai số bằng {rng(vm.ratio, 2)} lần '
+            f'MLP, nhưng mô hình cuối của đồ án có sai số bằng {rng(E["fin"].ratio, 2)} lần mô hình chuỗi tốt nhất.')
 
 
 CH7_MAP = r"""\section{Đối chiếu với đề cương}\label{sec:map}
