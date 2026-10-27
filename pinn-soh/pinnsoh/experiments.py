@@ -248,10 +248,14 @@ NASA_SETS = ('NASA', 'NASAdt')
 
 
 def E24(repeats=E20_REPEATS, datasets=NASA_SETS, seeds=None, out='runs/E24') -> List[Job]:
+    datasets = [d for d in datasets if d in NASA_SETS] or list(NASA_SETS)    # run.py truyền bốn bộ chính: bỏ qua
+    return _nasa_jobs(datasets, range(repeats), out)
+
+
+def _nasa_jobs(datasets, rr, out) -> List[Job]:
+    """Lượt của E24 cho các biến thể NASA trong `datasets`: kiểm định chéo (30 và 70 % nhãn) và cách chia NASA-L."""
     from .baselines import cv_path, samba_path
     from .train import Config, run_name
-    rr = range(repeats)
-    datasets = [d for d in datasets if d in NASA_SETS] or list(NASA_SETS)    # run.py truyền bốn bộ chính: bỏ qua
     jobs = []
     for ds, f, r, k in itertools.product(datasets, (0.3, 0.7), rr, range(E13_FOLDS)):
         jobs += [_member_job('P', 'pinn_semi', f, E24_PHYS, r, ds, k, out, m) for m in E20_MEMBERS]
@@ -438,12 +442,18 @@ def E30dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E30dev') -> List[
 
 
 def E30(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E30') -> List[Job]:
-    from .seqmodels import cv_path, samba_path
+    from .seqmodels import cv_path
     jobs = [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
                 cv_path(m, E30_L[m], ds, f, r, k, out), E30_COST[m] * E30_L[m] / 16, f'{m} {ds} f{f} cv{r}-{k}', (ds,))
             for m, f, r, ds, k in itertools.product(E30_MODELS, FRACS, range(repeats), datasets, range(E13_FOLDS))]
     # NASA: kiểm định chéo như E24 (30 và 70 % nhãn, có / không giờ nghỉ) và cách chia NASA-L của SambaMixer (3 hạt giống)
-    for m, ds in itertools.product(E30_MODELS, NASA_SETS):
+    return jobs + _nasa_seq_jobs(NASA_SETS, repeats, out)
+
+
+def _nasa_seq_jobs(datasets, repeats, out) -> List[Job]:
+    from .seqmodels import cv_path, samba_path
+    jobs = []
+    for m, ds in itertools.product(E30_MODELS, datasets):
         jobs += [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
                      cv_path(m, E30_L[m], ds, f, r, k, out), 5, f'{m} {ds} f{f} cv{r}-{k}', (ds,))
                  for f, r, k in itertools.product((0.3, 0.7), range(repeats), range(E13_FOLDS))]
@@ -452,10 +462,17 @@ def E30(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E30') -> L
     return jobs
 
 
+# E31: so với SambaMixer trên NASA theo lượng thông tin đo được (tai-lieu/de-cuong-E31.md). Mọi mô hình của E24 và E30
+#      trên NASAfc (16 đặc trưng + 7 đặc trưng của cả lần sạc + log(1 + giờ nghỉ)); mức đo thưa và đo mọi chu kỳ trước
+#      tính sau huấn luyện trên dự đoán đã lưu (analysis/analyze_e31.py), ở bốn bộ chính dùng lượt của E20.
+def E31(repeats=E20_REPEATS, datasets=None, seeds=None, out='runs/E31') -> List[Job]:
+    return _nasa_jobs(['NASAfc'], range(repeats), out) + _nasa_seq_jobs(['NASAfc'], repeats, out)
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
                                                         E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev, E29=E29,
-                                                        E30dev=E30dev, E30=E30)
+                                                        E30dev=E30dev, E30=E30, E31=E31)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
 ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26', 'E27',
-         'E28', 'E29dev', 'E29', 'E30dev', 'E30']
+         'E28', 'E29dev', 'E29', 'E30dev', 'E30', 'E31']

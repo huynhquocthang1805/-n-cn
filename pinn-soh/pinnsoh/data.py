@@ -55,7 +55,8 @@ DATASET_INFO = {
 }
 # NASAdt: cùng 18 cell NASA, thêm cột thứ 17 = log(1 + giờ nghỉ kể từ lần xả trước) — ý "cycle time difference" của
 # SambaMixer, để mô hình thấy được nguyên nhân của hồi phục dung lượng sau khoảng nghỉ dài
-NASA_SETS = ('NASA', 'NASAdt')
+# NASAfc (E31): thêm 7 đặc trưng của cả lần sạc (pinnsoh/nasa.py: FULL_FEATURES) và log(1 + giờ nghỉ) -> 24 cột
+NASA_SETS = ('NASA', 'NASAdt', 'NASAfc')
 # cách chia NASA-L của SambaMixer (Bảng 3 trong bài): train / validation (2 cell train giữ lại để dừng sớm) / đánh giá
 SAMBA_SPLIT = dict(train=['B0005', 'B0031', 'B0034', 'B0036', 'B0046', 'B0048', 'B0054', 'B0056'],
                    val=['B0018', 'B0055'], test=['B0006', 'B0007', 'B0047'])
@@ -246,6 +247,11 @@ def _load_dataset_csv(root: str, name: str, clean: str = 'life3sigma') -> List[C
                 if name == 'NASAdt':
                     rest = np.log1p(raw['rest_h'].fillna(0.0).values.astype(np.float64))[c.cycle]
                     c.X = np.hstack([c.X, rest[:, None].astype(np.float32)])
+                elif name == 'NASAfc':
+                    from .nasa import FULL_FEATURES
+                    extra = np.column_stack([raw[k].values.astype(np.float64) for k in FULL_FEATURES]
+                                            + [np.log1p(raw['rest_h'].fillna(0.0).values.astype(np.float64))])[c.cycle]
+                    c.X = np.hstack([c.X, extra.astype(np.float32)])
                 cells.append(c)
     else:
         raise ValueError(name)

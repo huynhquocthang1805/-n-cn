@@ -14,7 +14,11 @@ Mỗi hàng là một chu kỳ xả có dung lượng hợp lệ, ghép với l�
       đoạn nào có ít hơn 5 mẫu, hoặc đoạn CC không bắt đầu từ dưới 4,02 V (lần sạc bắt đầu từ trạng thái đã đầy một phần),
       cho đặc trưng NaN và hàng bị bộ lọc nhân quả loại;
     * cột phụ: rest_h (giờ giữa thời điểm bắt đầu hai lần xả liên tiếp, như SambaMixer), ambient_c, t_start (giờ kể từ
-      lần xả đầu tiên).
+      lần xả đầu tiên);
+    * 7 đặc trưng của cả lần sạc (FULL_FEATURES, E31; lần sạc của NASA bắt đầu từ gần cạn nên các đại lượng này đo được
+      mà không cần xả): điện lượng nạp (Ah, mọi mẫu có dòng > 0,02 A), thời gian và điện lượng của pha CC từ khi dòng
+      >= 1,4 A tới khi điện áp chạm 4,195 V, thời gian pha CV tới mẫu cuối có dòng > 0,02 A, điện áp đầu pha CC, độ tăng
+      nhiệt độ trong lần sạc, tổng thời gian sạc.
 Chỉ dùng 19 cell có chế độ xả cố định như SambaMixer (CELLS). Lọc lần xả hỏng: dung lượng < 0,2 Ah hoặc thấp hơn trung
 vị 7 lần xả lân cận quá 10 %; giữ cell có ít nhất 20 hàng có đủ đặc trưng.
 """
@@ -28,7 +32,9 @@ FEATURES = ['voltage mean', 'voltage std', 'voltage kurtosis', 'voltage skewness
             'CC Q', 'CC charge time', 'voltage slope', 'voltage entropy',
             'current mean', 'current std', 'current kurtosis', 'current skewness',
             'CV Q', 'CV charge time', 'current slope', 'current entropy']
+FULL_FEATURES = ['Q charge', 'CC full time', 'CC full Q', 'CV full time', 'V charge start', 'T rise', 'charge time']
 V_LO, V_HI, V_CV, I_CC = 4.0, 4.2, 4.195, 1.4
+I_ON = 0.02                                       # dòng tối thiểu coi là đang sạc (A)
 I_HI, I_LO = 0.5, 0.1
 NOMINAL = 2.0
 # 19 cell có chế độ xả cố định mà SambaMixer (Olalde-Verano và cộng sự, 2024) dùng trong các tập NASA-S/M/L; các nhóm
@@ -86,6 +92,22 @@ def charge_features(d) -> list:
     return fv + fi
 
 
+def full_charge_features(d) -> list:
+    """7 đặc trưng của cả lần sạc (FULL_FEATURES); NaN khi lần sạc không có đủ pha CC và CV."""
+    V = np.asarray(d['Voltage_measured'], float); I = np.asarray(d['Current_measured'], float)
+    T = np.asarray(d['Temperature_measured'], float); t = np.asarray(d['Time'], float)
+    on = I > I_ON
+    if on.sum() < 20:
+        return [np.nan] * 7
+    q_all = _trapz(np.where(on, I, 0.0), t) / 3600.0
+    start, reach = np.flatnonzero(I >= I_CC), np.flatnonzero(V >= V_CV)
+    if not len(start) or not len(reach) or reach[0] <= start[0]:
+        return [q_all] + [np.nan] * 6
+    a, b, last = start[0], reach[0], np.flatnonzero(on)[-1]
+    return [q_all, t[b] - t[a], _trapz(I[a:b + 1], t[a:b + 1]) / 3600.0, t[last] - t[b], V[a],
+            T[a:last + 1].max() - T[a], t[last] - t[a]]
+
+
 def _time(v) -> _dt.datetime:
     v = np.asarray(v, float)
     sec = float(v[5]); s = int(sec)
@@ -104,8 +126,9 @@ def convert_battery(path: str) -> pd.DataFrame:
             cap = c['data'].get('Capacity', np.nan)
             cap = float(np.atleast_1d(cap)[0]) if np.size(cap) else np.nan
             feats = charge_features(last_charge['data']) if last_charge is not None else [np.nan] * 16
+            full = full_charge_features(last_charge['data']) if last_charge is not None else [np.nan] * 7
             rows.append(dict(zip(FEATURES, feats), capacity=cap, ambient_c=float(c['ambient_temperature']),
-                             t=_time(c['time'])))
+                             t=_time(c['time']), **dict(zip(FULL_FEATURES, full))))
             last_charge = None                                   # mỗi lần sạc chỉ ghép với một lần xả
     df = pd.DataFrame(rows)
     if df.empty:
@@ -118,7 +141,8 @@ def convert_battery(path: str) -> pd.DataFrame:
     q = df.capacity.values.astype(float)
     med = pd.Series(np.where(q >= 0.2, q, np.nan)).rolling(7, center=True, min_periods=3).median().values
     keep = np.isfinite(q) & (q >= 0.2) & (q >= 0.9 * med)
-    return df[keep].drop(columns=['t']).reset_index(drop=True)
+    cols = FEATURES + ['capacity', 'ambient_c', 't_start', 'rest_h'] + FULL_FEATURES     # cột E31 nối vào cuối
+    return df[keep][cols].reset_index(drop=True)
 
 
 def main(raw_dir: str, out_root: str = 'PINN4SOH/data/NASA data', min_rows: int = 20):
