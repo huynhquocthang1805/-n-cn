@@ -190,7 +190,9 @@ pinn-soh/
 │   ├── kiem_tai_lap.py     kiểm tra tái lập từng bit (python run.py reproduce)
 │   └── demo.py             ước lượng và dự báo SOH cho một cell (python run.py demo ...)
 ├── legacy/                 script giai đoạn đầu (E1–E12, pipeline v1, báo cáo HTML/LaTeX cũ)
-├── slide/  tai-lieu/  do-an/  demo/
+├── slide/
+│   └── thuyet_trinh_dacn.py  slide thuyết trình đồ án (khuôn BK, hình của báo cáo) -> Thuyet_trinh_DACN_Nhom15.pptx, .pdf
+├── tai-lieu/  do-an/  demo/
 ├── PINN4SOH/data/          dữ liệu (tải bằng python run.py data, không đưa lên git)
 ├── runs/                   kết quả từng lượt (JSON, không đưa lên git)
 └── results/                bảng + hình tổng hợp (không đưa lên git)
@@ -246,6 +248,7 @@ python run.py E29 && python analysis/analyze_e29.py   # đánh giá cuối mô h
 python run.py E30dev && python analysis/dev_e30.py   # chọn độ dài cửa sổ của CNN, LSTM, Transformer
 python run.py E30 && python analysis/analyze_e30.py   # CNN, LSTM, Transformer trên 4 bộ + NASA; bảng chỉ số đầy đủ
 python analysis/figures_report.py                    # vẽ lại các hình của báo cáo cho dễ đọc khi in
+python slide/thuyet_trinh_dacn.py                    # slide thuyết trình (cần báo cáo đã dựng; PDF qua LibreOffice)
 ```
 
 Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`;

@@ -518,13 +518,42 @@ def nasa_compare():
     save(fig, f'{OUT}/fig_nasa_compare')
 
 
+def models_compare():
+    """MAE theo cell (×10⁻³) của tám mô hình chính trên bốn bộ: 30 % (vòng rỗng) và 70 % nhãn (vòng đặc); dùng cho slide."""
+    plt = setup()
+    from pinnsoh.plotstyle import panel_title, save, GRID, INK, CHEM
+    M = pd.read_csv(f'{OUT}/e30_metrics.csv')
+    order = [m for m in ('mlp', 'cnn', 'lstm', 'transformer', 'gbdt', 'pinn', 'pinn_lai', 'final') if m in set(M.model)]
+    style = dict(MODEL_STYLE, final=('Mô hình cuối', INK))
+    fig, axes = plt.subplots(1, 4, figsize=(TW, 2.75), sharey=True)
+    y = np.arange(len(order))[::-1]
+    v = lambda ds, fr, m: 1e3 * float(M[(M.dataset == ds) & (M.f == fr) & (M.model == m)].MAE_cell.iloc[0])
+    for ax, ds in zip(axes, ['XJTU', 'TJU', 'MIT', 'HUST']):
+        for i, m in zip(y, order):
+            c = style[m][1]
+            ax.plot([v(ds, 0.7, m), v(ds, 0.3, m)], [i, i], color='#c9d0d4', lw=1.4, zorder=1)
+            ax.scatter([v(ds, 0.3, m)], [i], s=30, facecolor='white', edgecolor=c, lw=1.5, zorder=3)
+            ax.scatter([v(ds, 0.7, m)], [i], s=30, color=c, zorder=3)
+        ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5)
+        ax.locator_params(axis='x', nbins=4)
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    axes[0].set_yticks(y); axes[0].set_yticklabels([style[m][0] for m in order])
+    h = [plt.Line2D([], [], ls='', marker='o', mfc='white', mec=INK, mew=1.5, ms=6, label='30 % cell có nhãn'),
+         plt.Line2D([], [], ls='', marker='o', color=INK, ms=6, label='70 % cell có nhãn')]
+    fig.legend(handles=h, loc='lower center', ncol=2, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.15, 1, 1], w_pad=0.8)
+    fig.text(0.5, 0.125, 'MAE theo cell (×10$^{-3}$)', ha='center', va='center', fontsize=plt.rcParams['axes.labelsize'])
+    save(fig, f'{OUT}/fig_models_compare')
+
+
 FIGS = dict(curve_physics=curve_physics, leakage=leakage, e20_steps=e20_steps, e27_compare=e27_compare,
             e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e29_pinn=e29_pinn,
-            e29_lai=e29_lai, e29_phys=e29_phys, nasa_data=nasa_data, nasa_traj=nasa_traj, nasa_compare=nasa_compare)
+            e29_lai=e29_lai, e29_phys=e29_phys, nasa_data=nasa_data, nasa_traj=nasa_traj, nasa_compare=nasa_compare,
+            models_compare=models_compare)
 NEEDS = dict(curve_physics='thesis_curve', leakage='thesis_leakage', e20_steps='e20_summary', e27_compare='e27_summary',
              e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon',
              e29_pinn='e29_summary', e29_lai='e29_summary', e29_phys='e29_summary', nasa_data='e24_data',
-             nasa_traj='e24_samba_traj', nasa_compare='e24_cv')
+             nasa_traj='e24_samba_traj', nasa_compare='e24_cv', models_compare='e30_metrics')
 
 
 def main(names=None):
