@@ -179,7 +179,7 @@ s = new_slide('Nội dung')
 parts = ['Bài toán và mục tiêu theo đề cương', 'Dữ liệu: bốn bộ công khai và NASA', 'Mô hình PINN bán giám sát',
          'Hiện thực hệ thống và giao thức đánh giá', 'Kết quả theo lượng nhãn',
          'So với MLP, CNN, LSTM, Transformer; bảng MAE và R²', 'Mô hình kết hợp PINN-lai, đầu vào có lịch sử',
-         'So với PINN4SOH', 'Dự báo SOH, dung lượng, RUL', 'Bộ NASA và SambaMixer', 'Ngân sách đo dung lượng',
+         'So với PINN4SOH', 'Dự báo SOH, dung lượng, RUL', 'Bộ NASA, SambaMixer, mức đo', 'Ngân sách đo dung lượng',
          'Đối chiếu đề cương, kết luận, giai đoạn 2']
 for i, p in enumerate(parts):
     col, row = divmod(i, 6)
@@ -239,7 +239,7 @@ notes(s, 'Khi suy luận chỉ cần mạng nghiệm. Mạng tốc độ chỉ d
 # ═══════════════════════════════════════════════════════════ 6 · hiện thực
 s = new_slide('Hiện thực hệ thống')
 figure(s, 'fig_thesis_pipeline', 0.57, 1.3, 12.19, 4.2)
-nrun = chk('10.456')
+nrun = chk('10.720')
 body(s, 0.68, 5.65, 11.9, 1.3, [
     f'Python, PyTorch, scikit-learn; một lệnh chạy từ dữ liệu thô tới báo cáo; {nrun} lượt huấn luyện được trình bày',
     'Chạy lại 20 lượt mẫu trên máy khác cho dự đoán trùng từng bit; công cụ dòng lệnh ước lượng và dự báo cho một cell'],
@@ -409,7 +409,51 @@ body(s, 0.68, 6.1, 11.6, 0.85, [
 notes(s, 'Ba cell đánh giá theo đúng cách chia của SambaMixer. Mô hình chuỗi tốt nhất trên cách chia này là CNN, vẽ cùng '
          'GBDT và PINN-lai.')
 
-# ═══════════════════════════════════════════════════════════ 19 · ngân sách đo
+# ═══════════════════════════════════════════════════════════ 19 · NASA-L theo mức thông tin
+s = new_slide('NASA-L: thêm thông tin để so với SambaMixer')
+E31 = pd.read_csv(os.path.join(R, 'e31_tiers.csv'))
+L31 = E31[(E31.split == 'samba') & (E31.ds == 'NASAfc')].set_index('tier')
+TIERS = ['M0', 'q20', 'q10', 'q05', 'M2']
+SAMBA = 0.961                                     # trung bình ba cell của SambaMixer-L (1,173; 1,197; 0,512)
+rows, best = [], []
+for i, (m, lab) in enumerate([('kalman', 'PINN-lai + Kalman'), ('kalman_k', 'PINN-lai + Kalman, κ (hậu kiểm)'),
+                              ('gan_nhat', 'Gần nhất'), ('giu_nguyen', 'Giữ nguyên (không mô hình)')]):
+    row = [lab]
+    for j, t in enumerate(TIERS):
+        v = 100 * float(L31.loc[t, m]) if (m == 'kalman' or t != 'M0') else None
+        row.append('–' if v is None else chk(num(v, 2)))
+        if v is not None and v < SAMBA:
+            best.append((i, 1 + j))
+    rows.append(row)
+table(s, 0.58, 1.4, ['Cách ước lượng', 'Không đo', 'Mỗi 0,2L', 'Mỗi 0,1L', 'Mỗi 0,05L', 'Mọi lần xả trước'], rows,
+      [2.7, 0.9, 0.9, 0.9, 0.95, 1.25], font=13, row_h=0.55, best=best)
+body(s, 0.68, 4.35, 7.4, 1.4, 'MAE trung bình ba cell đánh giá (% SOH), 24 cột đầu vào, 3 hạt giống; ở mức đo thưa, sai '
+                              'số tính trên các chu kỳ không được đo. Màu xanh: thấp hơn 0,96 % của SambaMixer.', size=13)
+chk('4,12', '2,52', '2,16', '2,2', '0,96', '0,80', '0,60', '0,82')
+block(s, 8.55, 1.4, 4.2, [
+    ('Không đo cell', 'Thêm 7 đặc trưng của cả lần sạc: PINN-lai 4,12 → 2,52 %, LSTM 2,16 %, vẫn gấp 2,2 lần SambaMixer '
+                      '(0,96 %, dùng chính lần xả).'),
+    ('Đo thêm cell', 'Bộ lọc Kalman chỉ thấp hơn SambaMixer khi biết mọi lần xả trước (0,80 %); giữ nguyên lần đo '
+                     'trước cũng đạt 0,60 %. Biến thể κ: 0,82 % khi đo mỗi 0,05L, chưa lặp lại trên kiểm định chéo.'),
+], size=14)
+notes(s, 'SambaMixer nhận đường xả của chính chu kỳ cần ước lượng, nên nhãn gần như nằm trong đầu vào. Em tách ba mức thông '
+         'tin về chính cell: không đo, đo thưa, và biết mọi lần xả trước. Đồ án chỉ thấp hơn SambaMixer khi có thêm các lần '
+         'đo của chính cell; ở mức cao nhất, cách giữ nguyên lần đo trước không cần mô hình cũng thấp hơn, nên phần thắng '
+         'đến từ thông tin chứ không từ mô hình. Biến thể κ được đặt ra sau khi xem kết quả trên các bộ khác, em ghi rõ là '
+         'hậu kiểm.')
+
+# ═══════════════════════════════════════════════════════════ 20 · kiểm tra lại trên mọi bộ
+s = new_slide('Kiểm tra lại trên mọi bộ: sai số theo lượng thông tin đo được')
+figure(s, 'fig_e31_tiers', 0.57, 1.3, 12.19, 4.7)
+chk('46/48', '48/48', '23/25')
+body(s, 0.68, 6.1, 11.6, 0.85, [
+    'Đo thưa: bộ lọc thấp hơn không đo ở 46/48 và thấp hơn giữ nguyên ở 48/48 trường hợp bộ × mức nhãn × lịch đo. Biết mọi '
+    'lần xả trước: giữ nguyên thấp nhất ở 23/25 trường hợp'], size=14, bullets=True)
+notes(s, 'Cùng các mức đo trên bốn bộ chính và trên kiểm định chéo của NASA. Giữa hai lần đo thưa, mô hình biết dung lượng '
+         'giảm bao nhiêu nên tốt hơn hẳn giữ nguyên; khi đã đo mọi chu kỳ trước, thay đổi mô hình dự đoán giữa hai chu kỳ '
+         'liền nhau nhiễu hơn thay đổi thật, nên giữ nguyên thắng. Giá trị của mô hình nằm ở chỗ đo thưa.')
+
+# ═══════════════════════════════════════════════════════════ 21 · ngân sách đo
 s = new_slide('Ngân sách đo dung lượng')
 figure(s, 'fig_e28_budget', 0.57, 1.25, 7.6, 5.55)
 chk('1,2--6,0', '0,85--0,93', '0,97--1,05', '0,34--0,77')
@@ -420,13 +464,13 @@ block(s, 8.45, 1.45, 4.3, [
 ], size=15)
 notes(s, 'Nên tính nhãn theo số lần đo chứ không theo số cell: rải vài lần đo lên mọi cell tốt hơn đo kín một phần cell.')
 
-# ═══════════════════════════════════════════════════════════ 20 · đối chiếu đề cương
+# ═══════════════════════════════════════════════════════════ 22 · đối chiếu đề cương
 s = new_slide('Đối chiếu với đề cương (giai đoạn 1)')
 table(s, 0.58, 1.4, ['Mục tiêu, nhiệm vụ trong đề cương', 'Đã thực hiện'], [
     ['Kiến thức nền, ràng buộc hoá lý', 'MLP, CNN, LSTM, Transformer, mã hoá vị trí, seq2seq; cơ chế suy giảm; PINN'],
     ['Thống kê mô tả, ngoại lai, mẫu nhiễu', 'Năm bộ dữ liệu; lọc ngoại lai nhân quả; hồi phục dung lượng của NASA'],
     ['So sánh ≥ 4 mô hình nền bằng MAE, RMSE, MAPE', 'Chín mô hình đối chứng; MAE, RMSE, MAPE, R²; kiểm định Wilcoxon'],
-    ['Tinh chỉnh, giải thích', 'Độ dài cửa sổ; trọng số ghép, cửa sổ lọc; dạng lịch sử; bộ lọc đơn điệu'],
+    ['Tinh chỉnh, giải thích', 'Độ dài cửa sổ; trọng số ghép, cửa sổ lọc; dạng lịch sử; đặc trưng cả lần sạc NASA'],
     ['Đề xuất cải tiến cho giai đoạn 2', 'PINN bán giám sát, PINN-lai, dự báo bằng nghiệm đóng của động học'],
     ['Phạm vi SOH, RUL; chỉ số; dự phòng', 'SOH trực tuyến; dự báo SOH, dung lượng, RUL; khoảng 90 %; cập nhật Kalman'],
     ['Bản mẫu, trực quan hoá', 'Đường ống tái lập được; công cụ dòng lệnh cho một cell; hình quỹ đạo'],
@@ -434,14 +478,15 @@ table(s, 0.58, 1.4, ['Mục tiêu, nhiệm vụ trong đề cương', 'Đã th�
 notes(s, 'Mọi mục của giai đoạn 1 đều đã làm. Điểm khác về hướng đi: GBDT mạnh hơn cả bốn mô hình học sâu, nên giai '
          'đoạn 2 cần giữ mô hình cây làm mốc so sánh.')
 
-# ═══════════════════════════════════════════════════════════ 21 · kết luận
+# ═══════════════════════════════════════════════════════════ 23 · kết luận
 s = new_slide('Kết luận và hướng phát triển')
 heading(s, 0.68, 1.45, 6.0, 'Kết luận', size=20)
 body(s, 0.68, 1.95, 6.0, 4.6, [
     'PINN bán giám sát giảm sai số rõ nhất khi ít nhãn: 0,39–0,90 lần MLP ở 10 % nhãn',
     'Mô hình chuỗi tốt hơn MLP nhưng chưa vượt GBDT; GBDT là mốc so sánh cần có',
     'Kết hợp vật lý với GBDT (PINN-lai, mô hình cuối) cho sai số thấp nhất trong bảng tổng hợp',
-    'Rải vài lần đo lên mọi cell hiệu quả hơn đo kín một phần cell'], size=16, bullets=True)
+    'Rải vài lần đo lên mọi cell hiệu quả hơn đo kín một phần cell',
+    'NASA-L: chỉ thấp hơn SambaMixer khi biết mọi lần xả trước (0,80 %; giữ nguyên: 0,60 %)'], size=16, bullets=True)
 heading(s, 7.0, 1.45, 5.7, 'Giai đoạn 2', size=20)
 body(s, 7.0, 1.95, 5.7, 4.6, [
     'Gắn ràng buộc vật lý vào mô hình chuỗi: LSTM, Transformer làm mạng nghiệm của PINN',
@@ -455,7 +500,7 @@ assert fin_best                                   # "sai số thấp nhất tron
 notes(s, 'Tóm lại: vật lý giúp nhiều nhất khi nhãn ít, mô hình cây vẫn là đối thủ khó nhất, và ghép hai thứ lại cho kết '
          'quả tốt nhất. Giai đoạn 2 chuyển sang khối pin nhiều cell.')
 
-# ═══════════════════════════════════════════════════════════ 22 · cảm ơn
+# ═══════════════════════════════════════════════════════════ 24 · cảm ơn
 s = T.dup_slide(prs, COVER)
 for sh in list(s.shapes):
     if not sh.has_text_frame:
