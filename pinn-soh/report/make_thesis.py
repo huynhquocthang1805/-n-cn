@@ -64,7 +64,7 @@ def load():
               'e26_params', 'e26_mae', 'e27_summary', 'e27_tests', 'e28_summary', 'e28_tests', 'e28_tuned', 'overview',
               'e20_tuned', 'mono_stats', 'mono_filter', 'e29_summary', 'e29_tests', 'e29_tuned', 'e29_dev', 'e29_choice',
               'e29_val', 'e29_select', 'e24_data', 'e30_metrics', 'e30_tests', 'e30_nasa_cv', 'e30_samba', 'e30_dev',
-              'e30_dev_detail']:
+              'e30_dev_detail', 'e31_tiers', 'e31_tiers_samba', 'e31_m0_cv', 'e31_m0_samba', 'e31_m0_tests']:
         p = f'{R}/{k}.csv'
         if os.path.exists(p):
             d[k] = pd.read_csv(p, header=[0, 1], index_col=[0, 1]) if k == 'E13_physics_params' else pd.read_csv(p)
@@ -97,7 +97,8 @@ def run_counts():
              E26=len(glob.glob('runs/E26/*.json')), E27=len(glob.glob('runs/E27/*.json')),
              E28=len(glob.glob('runs/E28/*.json')),
              E29=len(glob.glob('runs/E29dev/*.json')) + len(glob.glob('runs/E29/*.json')),
-             E30=len(glob.glob('runs/E30dev/*.json')) + len(glob.glob('runs/E30/*.json')))
+             E30=len(glob.glob('runs/E30dev/*.json')) + len(glob.glob('runs/E30/*.json')),
+             E31=len(glob.glob('runs/E31/*.json')))
     # tổng chỉ gồm các thí nghiệm có trong báo cáo (bỏ E14 chuyển miền và E21 huấn luyện một bộ, kiểm tra bộ khác)
     c['tong'] = sum(v for k, v in c.items() if k not in ('E14', 'E21'))
     return c
@@ -517,7 +518,7 @@ với dòng xả 1--4\,A, chia thành sáu nhóm theo giao thức. Dữ liệu g
 trước mỗi lần xả; nhãn là dung lượng của lần xả chia cho 2,0\,Ah. Các lần xả hỏng mà tài liệu của NASA đã cảnh báo
 (dung lượng thấp hơn trung vị bảy lần xả lân cận quá 10\,\%) bị loại. Khác với bốn bộ kia, giữa các lần xả của NASA
 có những khoảng nghỉ dài tới hàng trăm giờ, và dung lượng hồi phục rõ sau mỗi khoảng nghỉ đó; khoảng nghỉ trước mỗi lần
-xả được giữ lại để dùng như một đặc trưng thứ 17.
+xả được giữ lại để dùng như một đặc trưng thứ 17.<<NASAFC>>
 
 \section{Đặc trưng đầu vào}
 
@@ -559,7 +560,10 @@ Bốn bộ khác nhau rõ rệt về hoá học, tuổi thọ và mức đa dạ
 tuổi thọ ngắn và nhiều chế độ; MIT và HUST (LFP) có tuổi thọ dài hơn nhiều. SOH đầu đời của HUST lớn hơn 1 do
 dung lượng thực tế của cell mới cao hơn dung lượng danh định. TJU là bộ duy nhất có nhiều mức nhiệt độ, nên
 cũng là bộ duy nhất mà hệ số Arrhenius có thể học được (Mục~\ref{sec:physparams}).
-""", NROW=num(st.n.sum()), TAB=tab)
+""", NROW=num(st.n.sum()), TAB=tab,
+             NASAFC=(r' Đầu vào 24 cột của Mục~\ref{sec:e31res} thêm cả 7 đặc trưng của toàn lần sạc: điện lượng nạp, '
+                     r'thời gian và điện lượng pha CC, thời gian pha CV, điện áp đầu, độ tăng nhiệt độ, tổng thời gian sạc.'
+                     if 'e31_tiers' in d else ''))
 
 
 # ═════════════════════════════════════════════════════════════ CHƯƠNG 4
@@ -814,6 +818,8 @@ def ch5(d, ctx):
                num(rc['E29'])],
               ['CNN, LSTM, Transformer', 'chọn cửa sổ trên validation; 4 mức nhãn × 4 bộ × 3 lần lặp × 5 fold; NASA',
                num(rc['E30'])],
+              ['NASA, đặc trưng cả lần sạc', 'PINN-semi, MLP, GBDT, CNN, LSTM, Transformer với 24 cột; chéo và NASA-L',
+               num(rc['E31'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
@@ -2175,7 +2181,7 @@ nghiệm, kể cả khi đo thưa. (v) Ở 30\,\% nhãn, kết luận ở mức 
 cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
 đánh giá với ba lần lặp thay vì năm; quy tắc chọn có hay không lịch sử theo mức nhãn được đặt ra sau khi đã xem test
 (Mục~\ref{sec:histres}). (ix) CNN, LSTM, Transformer chỉ được chọn độ dài cửa sổ; kích thước mạng và tốc độ học giữ cố
-định, nên sai số của chúng có thể còn giảm khi tinh chỉnh kỹ hơn.
+định, nên sai số của chúng có thể còn giảm khi tinh chỉnh kỹ hơn.<<LIM10>>
 """, TL=t['L'], FIGL=fig('fig_thesis_leakage', 'MAE theo cell của cùng một mô hình (MLP, 70\\,\\% nhãn) dưới các cách chia '
                                            'và chuẩn hoá khác nhau; vạch đứt là cách chia đúng (theo cell). Điểm càng lệch trái so với vạch, sai '
                                            'số càng bị đánh giá thấp giả tạo.', 'fig:leak'),
@@ -2212,7 +2218,9 @@ cell (Mục~\ref{sec:physcheck}). (viii) PINN-lai được
                                   'đích có nhãn $k$, cột: mô hình; ô gạch chéo: cùng một bộ, không chuyển miền.',
                                   'fig:transfer', width=r'\textwidth'),
              TRTXT=tr_txt, TPH=t['PH'], METRICS=ch6_metrics(d, ctx), PHYSCHECK=ch6_physcheck(d, ctx),
-             TRGBD='' if 'e28_summary' in d else e21_discussion(d), PHTXT=ph_txt, SEQDISC=e30_disc(d), WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào')
+             TRGBD='' if 'e28_summary' in d else e21_discussion(d), PHTXT=ph_txt, SEQDISC=e30_disc(d), WEAKTXT=weak_txt, NB30=_tren(nb30) or 'trên không bộ nào',
+             LIM10=(r' (x) Biến thể $\kappa$ của bộ lọc được đặt ra sau khi đã xem kết quả ở mức M2 trên bốn bộ chính, và '
+                    r'cách chia NASA-L chỉ có ba cell đánh giá.' if 'e31_tiers' in d else ''))
 
 
 # ═════════════════════════════════════════════════════════════ CHƯƠNG 7
@@ -2667,8 +2675,8 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai; kiể
 \item <<FW2>>
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item <<FW4>>
-<<FWSEQ>>\item Giai đoạn 2 của đề cương: mở rộng sang khối pin nhiều cell, mô hình hoá mất cân bằng giữa các cell (chẳng hạn
-      bằng GCN trên đồ thị các cell) và dựng giao diện theo dõi từ công cụ dòng lệnh hiện có.
+<<FWSEQ>>\item Giai đoạn 2 của đề cương: mở rộng sang khối pin nhiều cell, mô hình hoá mất cân bằng giữa các cell (ví dụ
+      bằng GCN) và dựng giao diện theo dõi từ công cụ dòng lệnh hiện có.
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
              R10=_rng(F['r'][0.1].values()), SIG10=_tren(F['sig'][0.1]) or 'trên không bộ nào',
@@ -2723,8 +2731,8 @@ def e27_concl(d):
     small = [x for (ds, n, p), x in E['small'].items() if p == 'paper']
     return T(r"""\item Trên đúng cách chia của PINN4SOH, với tiền xử lý không rò rỉ, PINN-lai có sai số bằng <<WR>> lần số công
       bố <<WIN>><<TIE>><<LOSE>>. Cùng tiền xử lý với bài, PINN-lai bằng <<LFL>> lần ở chế độ đầy đủ và <<SMP>> lần ở chế độ
-      ít mẫu, nhờ các cell không nhãn đi vào loss vật lý.
-""", WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
+      ít mẫu, nhờ các cell không nhãn đi vào loss vật lý.<<E31>>
+""", E31=(__import__('thesis_bk').e31_concl(d, sys_helpers()) if 'e31_tiers' in d else ''), WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
              TIE=(f', ngang {_tren(tie)}' if tie else ''),
              LOSE=(f' và chỉ kém {_tren(lose)}, nơi chỉ số chu kỳ chuẩn hoá theo từng cell cho mô hình của bài biết phần '
                    'đời đã qua' if lose else ''),
@@ -2833,7 +2841,7 @@ def abstract_e27(d):
     win = [ds for ds in BK.E27_DS if st[ds] < 0.95]
     tie = [ds for ds in BK.E27_DS if 0.95 <= st[ds] <= 1.05]
     lose = [ds for ds in BK.E27_DS if st[ds] > 1.05]
-    return T(r""" Trên đúng cách chia của PINN4SOH, dựng lại từ nhật ký công bố, PINN-lai với tiền xử lý không rò rỉ có
+    return T(r""" Trên đúng cách chia của PINN4SOH, PINN-lai với tiền xử lý không rò rỉ có
 sai số bằng <<WR>> lần số công bố <<WIN>><<TIE>><<LOSE>>.""", WR=_rng([st[ds] for ds in win], 2) if win else '--', WIN=_tren(win) or 'trên không bộ nào',
              TIE=(f', ngang {_tren(tie)}' if tie else ''),
              LOSE=(f', chỉ kém {_tren(lose)}, nơi số công bố nhờ chuẩn hoá theo cả vòng đời cell' if lose else ''))
@@ -2866,7 +2874,7 @@ def abstract_e29(d):
     lv, good, gds, fmin = BK.e29_groups(E)
     A = lv[lv.dataset.isin(gds) & (lv.f >= fmin)]
     fin = E['pair']('pinn_lai_sel_v2', 'gbdt_best')
-    return T(r""" Thêm lịch sử của cell vào đầu vào (trung bình trượt nhân quả của đặc trưng sạc) giảm sai số của
+    return T(r""" Thêm lịch sử của cell vào đầu vào giảm sai số của
 PINN-lai còn <<RLA>> lần trên <<GDS>> khi có từ <<FMIN>> nhãn nhưng không giúp trên <<BAD>> và khi chỉ có 10\,\% nhãn; dùng
 lịch sử theo lựa chọn trên validation, PINN-lai có sai số thấp hơn GBDT ở <<NL>>/<<N>> trường hợp.""",
              RLA=_rng(A.ratio, 2), GDS=_lst(gds), FMIN=pc(fmin),
@@ -2887,13 +2895,14 @@ mọi chu kỳ chưa đo dung lượng. Đồ án thiết kế và chứng minh 
 theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần), đo định lượng tác động của các dạng rò rỉ thường gặp, và so
 sánh với <<NBASE>> ở bốn mức nhãn trên bốn bộ dữ liệu công khai (<<NCELL>> cell, <<NRUN>> lượt huấn
 luyện). Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là <<R10>>;
-khi tăng lên 70\,\% nhãn, lợi ích giảm dần (<<R70>>), và <<GB>>. <<E20>><<E29>><<E30>><<E27>><<E28>><<E22>>
+khi tăng lên 70\,\% nhãn, lợi ích giảm dần (<<R70>>), và <<GB>>. <<E20>><<E29>><<E30>><<E27>><<E28>><<E22>><<E31>>
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
 kết hợp mô hình, học sâu cho chuỗi thời gian, ngân sách đo, dự báo tuổi thọ còn lại.
 """, NCELL=num(ctx['ncell']), NRUN=num(ctx['runs']['tong']), R10=_rng(F['r'][0.1].values()),
              R70=_rng(F['r'][0.7].values()), GB=gb, E20=abstract_e20(d), E27=abstract_e27(d), E28=abstract_e28(d),
              E29=abstract_e29(d), E22=abstract_e22(d), E30=abstract_e30(d),
+             E31=(__import__('thesis_bk').e31_abstract(d, sys_helpers()) if 'e31_tiers' in d else ''),
              NBASE=('chín mô hình đối chứng, gồm bốn mô hình học sâu cho chuỗi thời gian (MLP, CNN, LSTM, Transformer),'
                     if e30_concl(d) else 'sáu mô hình đối chứng'))
 
@@ -3033,7 +3042,7 @@ def abstract_e22(d):
         return ''
     import thesis_bk as BK
     E = BK.e22_facts(d)
-    return T(r""" Đồ án mở rộng sang dự báo SOH tương lai, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối đời bằng
+    return T(r""" Đồ án mở rộng sang dự báo SOH tương lai, dung lượng còn lại và tuổi thọ còn lại (RUL) bằng
 mạng PINN-dự báo trả tham số của nghiệm đóng của động học xám; khi cell không được đo lần nào, sai số SOH chỉ bằng <<RB>>
 lần các mô hình ngoại suy theo từng cell và sai số RUL thấp hơn GBDT <<RG>> lần.""",
              RB=_rng([x for vs in ('giu', 'tuyen', 'vatly') for x in E['ratio'][vs]], 2),
@@ -3076,6 +3085,8 @@ LOT_SHORT = {
     'tab:e29': r'MAE theo cell khi có và không có lịch sử',
     'tab:e27': r'So với PINN4SOH trên đúng cách chia của bài',
     'tab:e28': r'MAE theo cell theo ngân sách đo dung lượng',
+    'tab:e31m0': r'NASA khi không đo cell: 16 đặc trưng và 24 cột',
+    'tab:e31': r'NASA-L theo lượng thông tin đo được',
 }
 
 
@@ -3111,7 +3122,8 @@ def build():
     os.makedirs(f'{OUT}/hinh', exist_ok=True)
     for fn in os.listdir(R):
         if fn.startswith(('fig_thesis_', 'fig_pred_', 'fig_E13_', 'fig_metrics_', 'fig_physics_', 'fig_e20_', 'fig_e21_', 'fig_e22_', 'fig_e23_',
-                           'fig_e24_', 'fig_e27_', 'fig_e28_', 'fig_e29_', 'fig_mono_', 'fig_overview', 'fig_nasa_')) \
+                           'fig_e24_', 'fig_e27_', 'fig_e28_', 'fig_e29_', 'fig_e31_', 'fig_mono_', 'fig_overview',
+                           'fig_nasa_')) \
                 and fn.endswith('.pdf'):
             shutil.copy(f'{R}/{fn}', f'{OUT}/hinh/{fn}')
     shutil.copy('slide/mau/bk.png', f'{OUT}/hinh/bk.png')
@@ -3124,13 +3136,22 @@ def build():
                             BK.e27_text(d, sys_helpers()) if 'e27_summary' in d else '',
                             BK.e28_text(d, sys_helpers()) if 'e28_summary' in d else '', overview_text(d),
                             BK.tuned_text(d, sys_helpers()) if 'e20_tuned' in d else '',
-                            BK.e25_short(d, sys_helpers()) if 'e25_estimation' in d else '',
+                            (BK.e25_short(d, sys_helpers()) if 'e25_estimation' in d else '')
+                            + (BK.e31_text(d, sys_helpers()) if 'e31_tiers' in d else ''),
                             BK.mono_text(d, sys_helpers()) if 'mono_filter' in d else '',
                             BK.e29_text(d, sys_helpers()) if 'e29_summary' in d else '',
                             (BK.e30_method(d), BK.e30_text(d, sys_helpers()), BK.e30_direction(d, sys_helpers()))
                             if 'e30_metrics' in d else ('', ''),
                             fig('fig_thesis_pipeline', 'Kiến trúc hiện thực: năm khối của hệ thống, từ dữ liệu thô tới báo '
                                 'cáo và công cụ minh hoạ.', 'fig:pipeline'))
+    if 'e31_tiers' in d:          # mục so với SambaMixer theo mức thông tin vào bảng đối chiếu đề cương
+        for a, b in [(r'bộ lọc đơn điệu & \ref{sec:dlres}, \ref{sec:tuned}, \ref{sec:histres}, \ref{sec:monores}',
+                      r'bộ lọc đơn điệu; đặc trưng của cả lần sạc (NASA) & \ref{sec:dlres}, \ref{sec:tuned}, '
+                      r'\ref{sec:histres}, \ref{sec:monores}, \ref{sec:e31res}'),
+                     (r'\ref{sec:leakres}, \ref{sec:conformal}, \ref{sec:kalmanres}',
+                      r'\ref{sec:leakres}, \ref{sec:conformal}, \ref{sec:kalmanres}, \ref{sec:e31res}')]:
+            assert main_body.count(a) == 1, a
+            main_body = main_body.replace(a, b)
     body = (PREAMBLE + BK.COVER + r'\pagenumbering{roman}' + BK.FRONT + abstract(d, ctx)
             + r'{\linespread{1.0}\selectfont\tableofcontents\listoffigures\listoftables}' + BK.ABBR
             + '\n\\clearpage\\pagenumbering{arabic}\n' + main_body + REFS + r'\end{document}' + '\n')

@@ -616,8 +616,22 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
     # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
     # tab:e20 trùng với bảng chỉ số đầy đủ (cùng ba lần lặp; PINN-lai tinh chỉnh và mô hình cuối ở đó)
     for lab in ('fig:e20curve', 'fig:conformal', 'fig:curvebase', 'fig:split', 'fig:rowsim', 'fig:usage', 'fig:e20steps',
-                'fig:e23ex', 'tab:dev', 'tab:phys') + (('tab:e20',) if e30[1] else ()):
+                'fig:e23ex', 'tab:dev', 'tab:phys', 'fig:mono', 'fig:e29phys', 'tab:e20tests') + (('tab:e20',) if e30[1] else ()):
         out = drop_float(out, lab)
+    # ba hình, bảng vừa bỏ: số liệu của chúng đã có trong lời văn ngay cạnh
+    out = sub1(out, ' (Hình~\\ref{fig:mono})', '')
+    out = sub1(out, ' (Hình~\\ref{fig:e29phys})', '')
+    out = sub1(out, '; Bảng~\\ref{tab:e20tests})', ')')
+    out = drop_float(out, 'tab:equiv')
+    # hình so sánh mô hình trên NASA lặp lại số của hai bảng NASA; NASA-L có bảng theo mức thông tin ở mục so với SambaMixer
+    if '\\label{sec:e31res}' in out:
+        out = drop_float(out, 'fig:nasacompare')
+        out = sub1(out, '(Bảng~\\ref{tab:e24cv},\nHình~\\ref{fig:nasacompare})', '(Bảng~\\ref{tab:e24cv})')
+    out = sub1(out, 'Bảng~\\ref{tab:equiv} quy đổi kết quả sang số nhãn tiết kiệm được. Một giá trị\n'
+               '“$> 70\\,\\%$” nghĩa là mô hình học có nhãn chưa đạt được sai số đó ngay cả khi dùng toàn bộ nhãn train; “$\\le\n'
+               '10\\,\\%$” nghĩa là mô hình học có nhãn đã đạt sai số đó ngay ở mức nhãn thấp nhất.',
+               'Quy đổi sang số nhãn tiết kiệm được (nội suy log-tuyến tính giữa các mức nhãn; “$> 70\\,\\%$”: chưa đạt được '
+               'ngay cả với toàn bộ nhãn train).')
     out = sub1(out, ' Bảng~\\ref{tab:dev}\ntóm tắt kết quả.', '')
     out = sub1(out, 'Hình~\\ref{fig:curvephys}, \\ref{fig:curvebase}', 'Hình~\\ref{fig:curvephys}')
     # hình vẽ lại to hơn để dễ đọc khi in: bỏ bốn hình minh hoạ mà lời văn đã nêu đủ số liệu
@@ -1070,6 +1084,152 @@ def nasa_hist(d, f, rng):
            'PINN-semi' + (f' và {rng(g, 2)} lần với GBDT' if len(g) else ''))
     return txt + (r'. Có thể vì dung lượng NASA nhảy lên sau mỗi lần nghỉ: đặc trưng sạc của chu kỳ hiện tại phản ánh '
                   r'ngay cú nhảy đó, còn trung bình trượt làm nó trễ đi.')
+
+
+# ───────────────────────────────────────────────────────────── E31: so với SambaMixer theo lượng thông tin đo được
+E31_TIERS = [('M0', 'Không đo'), ('q20', r'Mỗi $0{,}2L$'), ('q10', r'Mỗi $0{,}1L$'), ('q05', r'Mỗi $0{,}05L$'),
+             ('M2', 'Mọi lần xả trước')]
+E31_M0 = [('mlp', 'MLP'), ('cnn', 'CNN'), ('lstm', 'LSTM'), ('transformer', 'Transformer'), ('gbdt', 'GBDT'),
+          ('pinn', 'PINN-semi'), ('pinn_lai', 'PINN-lai'), ('pinn_lai_t', 'PINN-lai tinh chỉnh')]
+E31_MAIN = ['XJTU', 'TJU', 'MIT', 'HUST']
+
+
+def e31_facts(d):
+    """Các số của mục so với SambaMixer theo mức thông tin (analysis/analyze_e31.py)."""
+    import numpy as np
+    S, sb, cv0, t0, m0 = d['e31_tiers'], d['e31_tiers_samba'], d['e31_m0_cv'], d['e31_m0_tests'], d['e31_m0_samba']
+    E = dict(S=S, samba={c: SAMBA_REF[c][1] for c in SAMBA_REF})
+    E['samba_mean'] = float(np.mean(list(E['samba'].values())))
+    E['tier'] = lambda split, ds, f, tier: S[(S.split == split) & (S.ds == ds) & (S.f == f) & (S.tier == tier)].iloc[0]
+    E['L'] = lambda tier: E['tier']('samba', 'NASAfc', 0.7, tier)            # NASA-L, 24 cột
+    E['cell'] = lambda tier, m: {c.split('/')[1]: 100 * float(v) for c, v in
+                                 sb[(sb.ds == 'NASAfc') & (sb.tier == tier)].set_index('cell')[m].items()}
+    E['cv0'] = lambda ds, f, m: 100 * float(cv0[(cv0.ds == ds) & (cv0.f == f) & (cv0.model == m)].mae.iloc[0])
+    E['l0'] = lambda ds, m: 100 * float(m0[(m0.ds == ds) & (m0.model == m)].groupby('cell').mae.mean().mean())
+    E['t0'] = lambda f, m: t0[(t0.kind == 'NASAfc_vs_NASA') & (t0.f == f) & (t0.model == m)].iloc[0]
+    main = S[(S.split == 'cv') & S.ds.isin(E31_MAIN)]
+    E['main'] = main
+    E['nasa_cv'] = S[(S.split == 'cv') & S.ds.isin(['NASA', 'NASAdt', 'NASAfc'])]
+    return E
+
+
+def e31_text(d, H):
+    f, table, fig, T, rng, lst = (H[k] for k in ('f', 'table', 'fig', 'T', 'rng', 'lst'))
+    E = e31_facts(d)
+    l0, t0, L, cell = E['l0'], E['t0'], E['L'], E['cell']
+    sm = E['samba_mean']
+    TM = [t for t, _ in E31_TIERS]
+    lab = [('kalman', 'PINN-lai + Kalman'), ('kalman_k', r'PINN-lai + Kalman, $\kappa$ (hậu kiểm)'),
+           ('gan_nhat', 'Gần nhất'), ('giu_nguyen', 'Giữ nguyên (không mô hình)')]
+    cellv = lambda m, t: f(100 * float(L(t)[m]), 2) if (m == 'kalman' or t != 'M0') else '--'
+    rows = [[name] + [cellv(m, t) for t in TM] for m, name in lab]
+    rows.append(['Số lần đo mỗi cell'] + [f(float(L(t).n_meas), 0) if t not in ('M0', 'M2') else
+                                          ('0' if t == 'M0' else 'mọi chu kỳ') for t in TM])
+    tab1 = table(['Cách ước lượng'] + [x for _, x in E31_TIERS], rows, 'l' + 'r' * len(TM),
+                 r'Cách chia NASA-L với 24 cột đầu vào: MAE trung bình ba cell đánh giá (\% SOH, 3 hạt giống) theo lượng '
+                 r'thông tin về chính cell; ở mức đo thưa, sai số tính trên các chu kỳ không được đo. SambaMixer có '
+                 + f(sm, 2) + r'\,\% với đầu vào là đường xả của chính chu kỳ cần ước lượng.', 'tab:e31',
+                 size=r'\footnotesize')
+    below = [t for t in TM if t != 'M0' and 100 * float(L(t).kalman) < sm]
+    assert below == ['M2']
+    q05k, q05s = cell('q05', 'kalman_k'), E['samba']
+    worse47 = min(cell(t, m)['B0047'] for t in TM if t != 'M0'
+                  for m in ('kalman', 'kalman_k', 'gan_nhat', 'giu_nguyen')) > q05s['B0047']
+    main = E['main']
+    m1 = main[main.tier.isin(['q20', 'q10', 'q05'])]
+    rg = lambda a, b, tier: rng((m1[m1.tier == tier][a] / m1[m1.tier == tier][b]).values, 2)
+    n_sig0 = int(((m1.p_holm_kalman_goc < 0.05) & (m1.kalman < m1.goc)).sum())
+    n_sigg = int(((m1.p_holm_kalman_giu_nguyen < 0.05) & (m1.kalman < m1.giu_nguyen)).sum())
+    m2 = main[main.tier == 'M2']
+    nc = E['nasa_cv']
+    nc2 = nc[nc.tier.isin(['q05', 'M2'])]
+    assert (((nc2.giu_nguyen < nc2.kalman) & (nc2.giu_nguyen < nc2.kalman_k)).all()
+            and (nc2.p_kalman_k_giu_nguyen < 0.05).all() and (nc2.p_kalman_giu_nguyen < 0.05).all())
+    allm2 = E['S'][E['S'].tier == 'M2']
+    n_pers = int(((allm2.giu_nguyen <= allm2.kalman) & (allm2.giu_nguyen <= allm2.kalman_k)
+                  & (allm2.giu_nguyen <= allm2.gan_nhat)).sum())
+    kr = {ds: (m2[m2.ds == ds].kalman_k / m2[m2.ds == ds].giu_nguyen).max() for ds in E31_MAIN}
+    tie = [ds for ds in E31_MAIN if kr[ds] <= 1.05]
+    lose = [ds for ds in E31_MAIN if kr[ds] > 1.05]
+    best0 = min(E31_M0, key=lambda x: l0('NASAfc', x[0]))
+    sig = lambda m: all(t0(fr, m).p < 0.05 and t0(fr, m).ratio < 1 for fr in (0.3, 0.7))
+    assert all(sig(m) for m in ('gbdt', 'cnn', 'lstm', 'transformer', 'pinn_lai_t'))
+    assert not any(t0(fr, 'pinn').p < 0.05 for fr in (0.3, 0.7))
+    return T(r"""
+\section{So với SambaMixer theo lượng thông tin đo được}\label{sec:e31res}
+
+Trên NASA-L, PINN-lai có MAE trung bình ba cell <<L16>>\,\%, còn SambaMixer có <<SM>>\,\% nhờ nhận đường xả của chính
+chu kỳ cần ước lượng (Mục~\ref{sec:nasares}). Mục này thu hẹp khoảng cách bằng thông tin từ lần sạc và bằng các lần đo
+dung lượng của chính cell, theo ba mức: M0, chưa đo lần nào (như mọi kết quả khác); M1, đo ở chu kỳ đầu và sau mỗi $qL$
+chu kỳ, sai số tính trên các chu kỳ không đo; M2, đã biết mọi lần xả trước, ước lượng là dự báo một bước. Ở M1 và M2,
+bộ lọc \eqref{eq:kf} được so với \emph{gần nhất} (dịch ước lượng theo sai số của lần đo gần nhất) và \emph{giữ nguyên}
+(lấy đúng SOH của lần đo gần nhất, không dùng mô hình). Một biến thể đặt ra sau khi thấy giữ nguyên thắng ở M2 trên bốn
+bộ chính (hậu kiểm) chỉ tin phần $\kappa$ của thay đổi mô hình dự đoán giữa hai chu kỳ: độ lệch nhận thêm
+$-(1-\kappa)(p_n - p_{n-1})$ mỗi bước; $(\ell, \kappa)$ chọn trên validation.
+
+\paragraph{Đặc trưng của cả lần sạc.} Với 24 cột đầu vào (Mục~\ref{sec:data}), MAE trong kiểm định chéo giảm còn
+<<RSEQ>> lần với GBDT và ba mô hình chuỗi, <<RLT>> lần với PINN-lai tinh chỉnh, đều có ý nghĩa ở cả hai mức nhãn; với
+PINN-semi, tỉ số <<RP>> không có ý nghĩa. Trên NASA-L, PINN-lai giảm từ <<L16>> xuống <<L24>>\,\%, thấp nhất là <<BEST>>
+với <<B24>>\,\%, vẫn gấp <<XS>> lần SambaMixer. Mỗi lần sạc bắt đầu từ gần cạn nên điện lượng nạp gần bằng dung lượng
+của lần xả trước, nhưng tỉ số giữa hai đại lượng này khác nhau giữa các cell, nên cell chưa đo lần nào vẫn bị lệch mức.
+
+\paragraph{Khi đo thêm cell cần ước lượng.} Trên NASA-L với 24 cột (Bảng~\ref{tab:e31}), bộ lọc gốc chỉ xuống
+dưới mức của SambaMixer ở M2 (<<KM2>>\,\%); biến thể $\kappa$ xuống dưới từ lịch $0{,}05L$ (<<K05>>\,\%, khoảng 1/4 số chu kỳ
+được đo), với <<C6>>, <<C7>> và <<C47>>\,\% trên các cell 6, 7, 47 so với <<S6>>, <<S7>> và <<S47>>\,\% của
+SambaMixer<<W47>>. Giữ nguyên cho <<G05>>\,\% ở lịch $0{,}05L$ và <<GM2>>\,\% ở M2: ở mức thông tin M2, NASA-L là bài toán dễ.
+
+<<TAB1>>
+\paragraph{Kiểm tra lại trên mọi bộ.} Hình~\ref{fig:e31} lặp lại các mức trên bốn bộ chính và trên kiểm định chéo của
+NASA. Ở mức đo thưa, bộ lọc thấp hơn không đo ở <<NS0>>/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (có ý nghĩa
+sau hiệu chỉnh Holm; tỉ số <<R20>> ở lịch $0{,}2L$, <<R05>> ở lịch $0{,}05L$) và thấp hơn giữ nguyên ở <<NSG>>/48 (tỉ số
+<<G20>> và <<G05R>>): giữa hai lần đo thưa, mô hình biết dung lượng giảm bao nhiêu. Ở M2, giữ nguyên thấp nhất ở
+<<NP>>/<<NM2>> trường hợp, vì thay đổi mô hình dự đoán giữa hai chu kỳ liền nhau nhiễu hơn thay đổi thật; biến thể $\kappa$
+đưa tỉ số so với giữ nguyên từ <<KG1>> về <<KG2>>, ngang <<TIE>>, vẫn kém <<LOSE>>. Trên kiểm định chéo 18 cell của NASA,
+giữ nguyên tốt hơn cả hai bộ lọc ở lịch $0{,}05L$ và ở M2 ($p < 0{,}05$ ở từng phép so, chưa hiệu chỉnh): lợi thế của
+biến thể $\kappa$ trên ba cell của NASA-L chưa lặp lại được.
+
+<<FIG>>
+\paragraph{Đọc kết quả.} Đồ án chỉ thấp hơn SambaMixer khi có thêm các lần đo dung lượng của chính cell; ở M2, phần
+thắng đến từ thông tin chứ không từ mô hình. Giá trị của mô hình nằm ở chỗ đo thưa, nơi nó giảm sai số của giữ nguyên
+nhiều lần trên cả bốn bộ chính.
+""", L16=f(l0('NASA', 'pinn_lai'), 2), SM=f(sm, 2),
+             RSEQ=rng([t0(fr, m).ratio for m in ('gbdt', 'cnn', 'lstm', 'transformer') for fr in (0.3, 0.7)], 2),
+             RLT=rng([t0(fr, 'pinn_lai_t').ratio for fr in (0.3, 0.7)], 2),
+             RP=rng([t0(fr, 'pinn').ratio for fr in (0.3, 0.7)], 2), L24=f(l0('NASAfc', 'pinn_lai'), 2), BEST=best0[1],
+             B24=f(l0('NASAfc', best0[0]), 2), XS=f(l0('NASAfc', best0[0]) / sm, 1),
+             KM2=f(100 * float(L('M2').kalman), 2), K05=f(100 * float(L('q05').kalman_k), 2), C6=f(q05k['B0006'], 2),
+             C7=f(q05k['B0007'], 2), C47=f(q05k['B0047'], 2), S6=f(q05s['B0006'], 2), S7=f(q05s['B0007'], 2),
+             S47=f(q05s['B0047'], 2), W47=('; cell 47 cao hơn SambaMixer ở mọi mức và mọi cách' if worse47 else ''),
+             G05=f(100 * float(L('q05').giu_nguyen), 2), GM2=f(100 * float(L('M2').giu_nguyen), 2), TAB1=tab1,
+             NS0=n_sig0, R20=rg('kalman', 'goc', 'q20'), R05=rg('kalman', 'goc', 'q05'), NSG=n_sigg,
+             G20=rg('kalman', 'giu_nguyen', 'q20'), G05R=rg('kalman', 'giu_nguyen', 'q05'), NP=n_pers, NM2=len(allm2),
+             KG1=rng((m2.kalman / m2.giu_nguyen).values, 2), KG2=rng((m2.kalman_k / m2.giu_nguyen).values, 2),
+             TIE=('trên ' + lst(tie)) if tie else 'trên không bộ nào', LOSE=('trên ' + lst(lose)) if lose else 'ở không bộ nào',
+             FIG=fig('fig_e31_tiers', r'MAE theo lượng thông tin về chính cell cần ước lượng. MAE theo cell, \% SOH, '
+                     r'thang log; không đo (M0), đo ở chu kỳ đầu và sau mỗi $0{,}2L$, $0{,}1L$, $0{,}05L$ chu kỳ, đo mọi '
+                     r'lần xả trước (M2). Bốn bộ chính và NASA: kiểm định chéo, 70\,\% nhãn; NASA và NASA-L dùng 24 cột '
+                     r'đầu vào. Đường đứt: SambaMixer trên NASA-L.', 'fig:e31'))
+
+
+def e31_abstract(d, H):
+    f = H['f']
+    E = e31_facts(d)
+    L = E['L']
+    return (r' Trên NASA-L, đặc trưng của cả lần sạc giảm sai số của PINN-lai từ ' + f(E['l0']('NASA', 'pinn_lai'), 2)
+            + ' xuống ' + f(E['l0']('NASAfc', 'pinn_lai'), 2) + r'\,\% SOH, vẫn cao hơn ' + f(E['samba_mean'], 2)
+            + r'\,\% của SambaMixer (dùng chính lần xả cần ước lượng); khi biết mọi lần xả trước, sai số còn '
+            + f(100 * float(L('M2').kalman), 2) + r'\,\%, nhưng giữ nguyên lần đo trước cho '
+            + f(100 * float(L('M2').giu_nguyen), 2) + r'\,\%.')
+
+
+def e31_concl(d, H):
+    f = H['f']
+    E = e31_facts(d)
+    L = E['L']
+    best = min(E31_M0, key=lambda x: E['l0']('NASAfc', x[0]))
+    return (r' Trên NASA-L, PINN-lai với bộ lọc Kalman chỉ thấp hơn SambaMixer khi biết mọi lần xả trước ('
+            + f(100 * float(L('M2').kalman), 2) + r'\,\%; giữ nguyên lần đo trước: ' + f(100 * float(L('M2').giu_nguyen), 2)
+            + r'\,\%).')
 
 
 # ───────────────────────────────────────────────────────────── kết quả E23: dự báo có xét hồi phục
@@ -2049,14 +2209,10 @@ def e25_short(d, H):
 Với mô hình học từ nhãn theo cell (10--70\,\% cell có nhãn, năm bộ kể cả NASA), đo cell mới mỗi $0{,}1L$ đưa sai số
 xuống còn <<R10>> lần không hiệu chỉnh, mỗi $0{,}25L$ còn <<R25>> lần. Một lần đo duy nhất lúc nhận pin gần như không giúp (tỉ số
 <<RD>>) và còn làm kém đi có ý nghĩa ở <<WD>>: dung lượng của nhiều cell còn tăng trong vài chục chu kỳ đầu, nên độ lệch
-đo ở chu kỳ đầu không đại diện cho về sau. Khi đo dày, dịch ước lượng theo sai số của lần đo gần nhất đã đủ tốt
-(<<GAN>>); bộ lọc có lợi khi đo thưa (mỗi $0{,}25L$, tốt hơn có ý nghĩa trên <<K25>>), vì nó trả độ lệch về mức chung
-khi lần đo đã xa. Khoảng 90\,\% của bộ lọc hẹp hơn nhiều so với khoảng phù hợp cố định nhưng độ phủ thực tế chỉ <<COV>>.
+đo ở chu kỳ đầu không đại diện cho về sau. Khoảng 90\,\% của bộ lọc hẹp hơn nhiều so với khoảng phù hợp cố định nhưng
+độ phủ thực tế chỉ <<COV>>.
 """, R10=rng(rq('q10'), 2), R25=rng(rq('q25'), 2), RD=rng(rq('dau'), 2),
              WD=lst([x for x in DSX if x in worse_dau]) or 'không bộ nào',
-             GAN=(('hơn bộ lọc có ý nghĩa ở ' + lst([x for x in DSX if x in gan_better])) if gan_better
-                  else 'không kém bộ lọc ở bộ nào'),
-             K25=lst([x for x in DSX if x in kal_better25]) or 'không bộ nào',
              COV=rng([100 * x for x in nk.cov_kalman], 0) + r'\,\%')
 
 

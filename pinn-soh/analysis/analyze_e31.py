@@ -44,7 +44,8 @@ OMEGAS, WINDOWS = (0.3, 0.4, 0.5, 0.6, 0.7), (5, 10, 20, 40)
 SCHED = {'q20': 0.2, 'q10': 0.1, 'q05': 0.05, 'M2': None}        # M1: ba lịch đo thưa; M2: đo mọi chu kỳ trước
 TIERS = ['M0'] + list(SCHED)
 ELL_GRID = np.array([0.05, 0.1, 0.25, 0.5, 1.0, 3.0, np.inf])  # như E25, theo đơn vị L
-METHODS = ['kalman', 'gan_nhat', 'giu_nguyen']
+METHODS = ['kalman', 'kalman_k', 'gan_nhat', 'giu_nguyen']
+KAPPAS = (0.0, 0.25, 0.5, 0.75, 1.0)                           # kalman_k (hậu kiểm, xem đề cương): phần thay đổi của mô hình được tin
 # SambaMixer (Olalde-Verano và cộng sự, 2024), Bảng 4: MAE và RMSE (SOH) trên ba cell đánh giá của NASA-L
 SAMBA = {'NASA/B0006': (0.01173, 0.02068), 'NASA/B0007': (0.01197, 0.01285), 'NASA/B0047': (0.00512, 0.00645)}
 
@@ -164,18 +165,23 @@ def _pad(groups, key):
     return out
 
 
-def kalman_batch(cyc, r, meas, mu0, P0, R, ell):
+def kalman_batch(cyc, r, meas, mu0, P0, R, ell, du=None, kappa=None):
     """Đúng bộ lọc của analyze_e25.kalman, chạy song song cho nhiều chuỗi: cyc, r, meas dạng (chuỗi, hàng), NaN ở hàng
-    đệm; ell (chuỗi,) theo chu kỳ, có thể là inf. B[:, m] chỉ dùng các lần đo ở hàng < m."""
+    đệm; ell (chuỗi,) theo chu kỳ, có thể là inf. B[:, m] chỉ dùng các lần đo ở hàng < m.
+    kalman_k (hậu kiểm): du = p_n − p_{n−1} (0 ở hàng đầu), kappa (chuỗi,); độ lệch nhận thêm −(1 − κ)·du ở mỗi bước, tức
+    ước lượng chỉ tin κ phần thay đổi của mô hình. κ = 1 cho đúng từng bit bộ lọc gốc."""
     S, N = cyc.shape
     b = np.full(S, mu0, float); P = np.full(S, P0, float); last = cyc[:, 0].copy()
     inv = np.where(np.isfinite(ell), 1.0 / np.where(np.isfinite(ell), ell, 1.0), 0.0)
+    drop = np.zeros(S) if kappa is None else 1.0 - np.asarray(kappa, float)
     B = np.full((S, N), np.nan); V = np.full((S, N), np.nan)
     for m in range(N):
         c = cyc[:, m]; ok = np.isfinite(c)
         a = np.where(ok, np.exp(-(np.where(ok, c, last) - last) * inv), 1.0)
         last = np.where(ok, c, last)
         b = mu0 + a * (b - mu0); P = a * a * P + (1 - a * a) * P0
+        if du is not None:
+            b = b - drop * np.where(ok, du[:, m], 0.0)
         B[:, m], V[:, m] = b, P
         u = meas[:, m] & ok
         K = np.where(u, P / (P + R), 0.0)
@@ -204,29 +210,41 @@ def _last_measured(is_m):
     return np.concatenate([[-1], prev[:-1]])
 
 
+def _groups(cells, q, L):
+    out = []
+    for c in cells:
+        is_m, ev = schedule(c['cyc'], q, L)
+        out.append(dict(cyc=c['cyc'], r=c['y'] - c['p'], m=is_m, ev=ev, du=np.diff(c['p'], prepend=c['p'][0])))
+    return out
+
+
 def fit_params(cells, L):
-    """μ0, R, P0 trên cell validation như E25; ℓ chọn trên lưới bằng MAE theo cell riêng cho từng lịch đo."""
+    """μ0, R, P0 trên cell validation như E25; ℓ chọn trên lưới bằng MAE theo cell riêng cho từng lịch đo (bộ lọc chốt
+    trước, κ = 1), và (ℓ, κ) chọn cùng lúc cho kalman_k."""
     r = np.concatenate([c['y'] - c['p'] for c in cells])
     mu0 = float(r.mean())
     dr = np.concatenate([np.diff(c['y'] - c['p']) for c in cells])
     R = max(float(dr.var(ddof=1)) / 2, 1e-8)
     P0 = max(float(((r - mu0) ** 2).mean()) - R, 1e-8)
     th = dict(mu0=mu0, P0=P0, R=R)
+    grid = [(e, k) for k in KAPPAS for e in ELL_GRID]             # κ = 1 (bộ lọc chốt trước) ở cuối lưới
+    n_g = len(grid)
     for sc, q in SCHED.items():
-        groups = []
-        for c in cells:
-            is_m, ev = schedule(c['cyc'], q, L)
-            groups.append(dict(cyc=c['cyc'], r=c['y'] - c['p'], m=is_m, ev=ev))
-        n_e = len(ELL_GRID)
-        cyc = np.repeat(_pad(groups, 'cyc'), n_e, axis=0); res = np.repeat(_pad(groups, 'r'), n_e, axis=0)
-        mm = np.repeat(_pad(groups, 'm') == 1, n_e, axis=0); ev = np.repeat(_pad(groups, 'ev') == 1, n_e, axis=0)
-        ell = np.tile(ELL_GRID * L, len(groups))
-        B, _ = kalman_batch(cyc, res, mm, mu0, P0, R, ell)
-        e = np.where(ev, np.abs(res - B), np.nan)
-        per = np.nanmean(e, axis=1).reshape(len(groups), n_e)          # (cell, ℓ)
-        ok = ev.reshape(len(groups), n_e, -1)[:, 0].any(axis=1)
-        j = int(np.argmin(per[ok].mean(axis=0)))
-        th[f'ell_{sc}'] = float(ELL_GRID[j])
+        groups = _groups(cells, q, L)
+        rep = lambda key: np.repeat(_pad(groups, key), n_g, axis=0)
+        cyc, res, du = rep('cyc'), rep('r'), rep('du')
+        mm, ev = rep('m') == 1, rep('ev') == 1
+        ell = np.tile([e * L for e, _ in grid], len(groups)); kap = np.tile([k for _, k in grid], len(groups))
+        B, _ = kalman_batch(cyc, res, mm, mu0, P0, R, ell, du, kap)
+        with np.errstate(invalid='ignore'):
+            per = np.nanmean(np.where(ev, np.abs(res - B), np.nan), axis=1).reshape(len(groups), n_g)   # (cell, lưới)
+        ok = ev.reshape(len(groups), n_g, -1)[:, 0].any(axis=1)
+        v = per[ok].mean(axis=0)
+        one = [i for i, (_, k) in enumerate(grid) if k == 1.0]
+        j = one[int(np.argmin(v[one]))]
+        th[f'ell_{sc}'] = float(grid[j][0])
+        j = int(np.argmin(v))
+        th[f'ellk_{sc}'], th[f'kappa_{sc}'] = float(grid[j][0]), float(grid[j][1])
     return th
 
 
@@ -238,20 +256,19 @@ def tiers(cells, th, L):
         rows.append(dict(cell=c['cell'], tier='M0', n_meas=0, goc=np.abs(e0).mean(), kalman=np.abs(e0).mean(),
                          rmse_kalman=np.sqrt((e0 ** 2).mean())))
     for sc, q in SCHED.items():
-        groups = []
-        for c in cells:
-            is_m, ev = schedule(c['cyc'], q, L)
-            groups.append(dict(cyc=c['cyc'], r=c['y'] - c['p'], m=is_m, ev=ev))
-        cyc, res, mm = _pad(groups, 'cyc'), _pad(groups, 'r'), _pad(groups, 'm') == 1
-        ell = np.full(len(groups), th[f'ell_{sc}'] * L)
-        B, _ = kalman_batch(cyc, res, mm, th['mu0'], th['P0'], th['R'], ell)
+        groups = _groups(cells, q, L)
+        cyc, res, mm, du = _pad(groups, 'cyc'), _pad(groups, 'r'), _pad(groups, 'm') == 1, _pad(groups, 'du')
+        n_c = len(groups)
+        B, _ = kalman_batch(cyc, res, mm, th['mu0'], th['P0'], th['R'], np.full(n_c, th[f'ell_{sc}'] * L))
+        Bk, _ = kalman_batch(cyc, res, mm, th['mu0'], th['P0'], th['R'], np.full(n_c, th[f'ellk_{sc}'] * L), du,
+                             np.full(n_c, th[f'kappa_{sc}']))
         for i, (c, g) in enumerate(zip(cells, groups)):
             ev = g['ev']
             if not ev.any():
                 continue
             n = len(c['cyc']); prev = _last_measured(g['m'])
             have = prev >= 0
-            est = dict(kalman=c['p'] + B[i, :n],
+            est = dict(kalman=c['p'] + B[i, :n], kalman_k=c['p'] + Bk[i, :n],
                        gan_nhat=c['p'] + np.where(have, g['r'][np.maximum(prev, 0)], 0.0),
                        giu_nguyen=np.where(have, c['y'][np.maximum(prev, 0)], c['p']))
             row = dict(cell=c['cell'], tier=sc, n_meas=int(g['m'].sum()), goc=np.abs(c['p'] - c['y'])[ev].mean())
@@ -294,17 +311,21 @@ def summarize(T):
         row = dict(split=split, ds=ds, f=f, tier=tier, n_cell=len(g), n_meas=g.n_meas.mean(), goc=g.goc.mean(),
                    **{m: g[m].mean() for m in METHODS}, **{f'rmse_{m}': g[f'rmse_{m}'].mean() for m in METHODS})
         if tier != 'M0' and split == 'cv':
-            for ref in ('goc', 'gan_nhat', 'giu_nguyen'):
-                d = (g.kalman - g[ref]).values
-                row[f'better_{ref}'] = int((d < 0).sum())
-                row[f'p_{ref}'] = stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0
+            for m, ref in PAIRS:
+                d = (g[m] - g[ref]).values
+                row[f'better_{m}_{ref}'] = int((d < 0).sum())
+                row[f'p_{m}_{ref}'] = stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0
         rows.append(row)
     S = pd.DataFrame(rows)
     from analyze_e20 import holm
     main = (S.split == 'cv') & S.ds.isin(MAIN) & (S.tier != 'M0')
-    for ref in ('goc', 'gan_nhat', 'giu_nguyen'):
-        S.loc[main, f'p_holm_{ref}'] = S[main].groupby(['f', 'tier'])[f'p_{ref}'].transform(lambda p: holm(p.values))
+    for m, ref in PAIRS:
+        S.loc[main, f'p_holm_{m}_{ref}'] = S[main].groupby(['f', 'tier'])[f'p_{m}_{ref}'].transform(
+            lambda p: holm(p.values))
     return S, pc
+
+
+PAIRS = [(m, ref) for m in ('kalman', 'kalman_k') for ref in ('goc', 'gan_nhat', 'giu_nguyen')] + [('kalman_k', 'kalman')]
 
 
 # --------------------------------------------------------------------------- M0: các mô hình trên NASA
@@ -351,16 +372,17 @@ def m0_tables(recs, best):
 
 
 # --------------------------------------------------------------------------- hình
-def figure(S, show_ds='NASAfc'):
+def figure(S=None, show_ds='NASAfc'):
     """MAE theo mức thông tin: bốn bộ chính và NASA (kiểm định chéo) ở 70 % nhãn, NASA-L với mức của SambaMixer."""
     import matplotlib.pyplot as plt
     from pinnsoh.plotstyle import apply_theme, GRID, INK2, MUTED, panel_title, save
     apply_theme()
+    S = pd.read_csv(f'{OUT}/e31_tiers.csv') if S is None else S
     panels = [('cv', ds, 0.7, ds) for ds in MAIN] + [('cv', show_ds, 0.7, 'NASA'), ('samba', show_ds, 0.7, 'NASA-L')]
-    style = {'kalman': ('PINN-lai + Kalman', '#0b3d73', '-', 'o'), 'gan_nhat': ('gần nhất', '#2a78d6', '--', 's'),
-             'giu_nguyen': ('giữ nguyên', '#eb6834', ':', '^')}
-    xl = ['M0', 'q=0,2', 'q=0,1', 'q=0,05', 'M2']
-    fig, axes = plt.subplots(2, 3, figsize=(6.3, 4.1))
+    style = {'kalman': ('PINN-lai + Kalman', '#0b3d73', '-', 'o'), 'kalman_k': ('PINN-lai + Kalman, κ', '#1baf7a', '-', 'D'),
+             'gan_nhat': ('gần nhất', '#2a78d6', '--', 's'), 'giu_nguyen': ('giữ nguyên', '#eb6834', ':', '^')}
+    xl = ['M0', '0,2L', '0,1L', '0,05L', 'M2']
+    fig, axes = plt.subplots(2, 3, figsize=(6.3, 3.7))
     for ax, (split, ds, f, title) in zip(axes.ravel(), panels):
         g = S[(S.split == split) & (S.ds == ds) & (S.f == f)].set_index('tier').reindex(TIERS)
         for m, (lab, col, ls, mk) in style.items():
@@ -371,7 +393,10 @@ def figure(S, show_ds='NASAfc'):
                        label='SambaMixer (dùng chính lần xả)')
         ax.set_yscale('log')
         lo, hi = ax.get_ylim()
-        ax.set_yticks([t for t in (0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10) if lo <= t <= hi])
+        ticks = [t for t in (0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5) if lo <= t <= hi]
+        if len(ticks) < 4:
+            ticks = [t for t in (0.3, 0.5, 0.7, 1, 1.5, 2, 3, 5) if lo <= t <= hi]
+        ax.set_yticks(ticks)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'.replace('.', ',')))
         ax.yaxis.set_minor_formatter(plt.NullFormatter())
         ax.set_xticks(range(len(TIERS))); ax.set_xticklabels(xl, fontsize=6.5)
@@ -412,9 +437,12 @@ def main():
             V[c] = (100 * V[c]).round(3)
         print(V.drop(columns=[c for c in V if c.startswith('rmse_')]).round(4).to_string(index=False))
         ps = pc[pc.split == 'samba'].assign(**{m: lambda x, m=m: 100 * x[m] for m in METHODS})
-        print(ps.pivot_table(index=['ds', 'tier'], columns='cell', values='kalman').assign(
-            mean=lambda d: d.mean(axis=1)).round(3))
+        for m in METHODS:
+            print(m)
+            print(ps.pivot_table(index=['ds', 'tier'], columns='cell', values=m).assign(
+                mean=lambda d: d.mean(axis=1)).round(3))
         print(params.groupby(['split', 'ds'])[['mu0', 'P0', 'R'] + [f'ell_{s}' for s in SCHED]].median())
+        print(params.groupby(['split', 'ds'])[[f'kappa_{s}' for s in SCHED] + [f'ellk_{s}' for s in SCHED]].median())
     figure(S)
 
 

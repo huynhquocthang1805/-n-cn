@@ -37,7 +37,7 @@ ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['
             ['analysis/analyze_e23.py'], ['analysis/analyze_e24.py'], ['analysis/analyze_e25.py'],
             ['analysis/analyze_e26.py'], ['analysis/analyze_e27.py'], ['analysis/analyze_e28.py'],
             ['analysis/analyze_mono.py'], ['analysis/dev_e29.py'], ['analysis/analyze_e29.py'],
-            ['analysis/dev_e30.py'], ['analysis/analyze_e30.py'],
+            ['analysis/dev_e30.py'], ['analysis/analyze_e30.py'], ['analysis/analyze_e31.py'],
             ['analysis/analyze_overview.py'], ['analysis/figures_report.py'], ['report/diagrams.py']]
 
 

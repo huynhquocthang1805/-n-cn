@@ -64,3 +64,72 @@ nghỉ). Lọc ngoại lai nhân quả, chuẩn hoá theo cell train như mọi 
 Trên NASA-L, mỗi mức thông tin được so với 0,96 % (trung bình ba cell của SambaMixer) bằng MAE trung bình ba cell, trung
 bình 3 hạt giống; báo cáo cả từng cell. Chỉ nói "thấp hơn SambaMixer" ở mức nào có MAE trung bình ba cell thấp hơn 0,96 %,
 và luôn nói kèm mức thông tin đó.
+
+## Bổ sung trước khi có kết quả NASAfc (hậu kiểm, ghi rõ trong báo cáo)
+
+Chạy thử phần phân tích trên các lượt đã có (bốn bộ chính, NASA và NASAdt; các lượt NASAfc chưa xong) cho thấy ở M2 cách
+"giữ nguyên" tốt hơn bộ lọc ở mọi bộ, kể cả trên NASA-L (0,60 % so với 0,70–0,84 %). Lý do: với dự báo một bước, bộ lọc
+gần như cộng thay đổi của mô hình giữa hai chu kỳ liền nhau, p_n − p_{n−1}, vào lần đo trước, mà thay đổi này nhiễu hơn
+thay đổi thật. Vì vậy thêm một biến thể, quyết định trước khi có bất kỳ kết quả M1, M2 nào trên NASAfc (nhật ký chạy chỉ in
+MAE ở M0 của từng lượt):
+
+* kalman_k: cùng bộ lọc, nhưng độ lệch nhận thêm đầu vào −(1 − κ)(p_n − p_{n−1}) ở mỗi bước, tức ước lượng chỉ tin κ phần
+  thay đổi của mô hình. κ = 1 trùng bộ lọc chốt ở trên; κ = 0 với nhiễu đo nhỏ trùng "giữ nguyên". (ℓ, κ) chọn cùng lúc
+  trên cell validation, κ ∈ {0; 0,25; 0,5; 0,75; 1}, ℓ trên cùng lưới, riêng cho từng lịch đo; μ0, R, P0 như trên.
+* Bộ lọc chốt ở trên vẫn là kết quả chính; kalman_k được báo cáo là phân tích hậu kiểm. Kết quả M1, M2 của NASAfc là phần
+  duy nhất mà thiết kế của kalman_k chưa nhìn thấy.
+
+## Kết quả (analysis/analyze_e31.py, results/e31_*.csv)
+
+264 lượt, không lượt nào lỗi (lần chạy đầu bị ngắt giữa chừng vì thư mục dữ liệu bị xoá nhầm; dữ liệu tải lại và dựng
+lại trùng từng bit với bộ nhớ đệm dựng trước đó ở cả bảy biến thể, các lượt đã xong được giữ nguyên, các lượt còn lại
+chạy tiếp).
+
+M0 — đặc trưng của cả lần sạc (tỉ số MAE 24 cột / 16 đặc trưng, kiểm định chéo, Wilcoxon theo 18 cell):
+
+| Mô hình | 30 % nhãn | 70 % nhãn | NASA-L, 16 → 24 cột (MAE %, trung bình 3 cell × 3 hạt giống) |
+|---|---|---|---|
+| MLP | 0,95 | 0,78* | 4,64 → 3,16 |
+| CNN | 0,66* | 0,58* | 5,04 → 2,25 |
+| LSTM | 0,63* | 0,61* | 6,49 → 2,16 |
+| Transformer | 0,65* | 0,61* | 7,08 → 2,31 |
+| GBDT | 0,73* | 0,64* | 5,54 → 2,74 |
+| PINN-semi | 0,97 | 0,86 | 5,23 → 3,32 |
+| PINN-lai (ω = ½, w = 10) | 0,81 | 0,80 | 4,12 → 2,52 |
+| PINN-lai tinh chỉnh | 0,73* | 0,71* | 4,64 → 2,54 |
+
+\* p < 0,05. Ở M0, mô hình tốt nhất trên NASA-L (LSTM, 2,16 %) vẫn gấp 2,2 lần SambaMixer.
+
+M1, M2 trên NASA-L với 24 cột (MAE trung bình ba cell, %; trên dự đoán của PINN-lai tinh chỉnh):
+
+| Cách | M0 | mỗi 0,2L | mỗi 0,1L | mỗi 0,05L | M2 |
+|---|---|---|---|---|---|
+| Kalman (chốt trước) | 2,54 | 1,89 | 1,58 | 1,08 | 0,80 |
+| Kalman κ (hậu kiểm) | – | 1,64 | 1,32 | 0,82 | 0,64 |
+| gần nhất | – | 2,18 | 1,57 | 1,19 | 0,75 |
+| giữ nguyên | – | 2,54 | 1,48 | 0,99 | 0,60 |
+| số lần đo mỗi cell | 0 | 8 | 16 | 31 | mọi chu kỳ |
+
+Theo cell ở mỗi 0,05L, Kalman κ: B0006 1,09, B0007 0,47, B0047 0,89 % (SambaMixer 1,17; 1,20; 0,51). Ở M2, Kalman
+chốt trước: 1,03; 0,41; 0,96 %. B0047 cao hơn SambaMixer ở mọi mức và mọi cách.
+
+Kiểm tra lại trên mọi bộ (kiểm định chéo, Wilcoxon theo cell, Holm qua bốn bộ chính):
+
+* Đo thưa (M1): bộ lọc thấp hơn không đo ở 46/48 trường hợp bộ × mức nhãn × lịch đo, thấp hơn giữ nguyên ở 48/48
+  (tỉ số 0,11–0,94); so với gần nhất, tốt hơn có ý nghĩa ở 12, kém ở 11, còn lại không khác. Ở mức đo thưa, validation
+  chọn κ = 1 ở 71–91 % số fold của bốn bộ chính, nên Kalman κ gần như trùng bộ lọc gốc; ở M2 chỉ 6 %.
+* Đo mọi chu kỳ trước (M2): giữ nguyên thấp nhất ở 23/25 trường hợp (bốn bộ × 4 mức nhãn, NASA ba bộ đặc trưng × 2 mức
+  nhãn, NASA-L ba bộ đặc trưng). Kalman κ đưa tỉ số so với giữ nguyên từ 1,17–1,52 về 0,98–1,30 trên bốn bộ chính.
+* NASA, kiểm định chéo 18 cell: giữ nguyên tốt hơn cả hai bộ lọc ở mỗi 0,05L và ở M2 (p < 0,05 ở từng phép so, chưa
+  hiệu chỉnh), với cả ba bộ đặc trưng; lợi thế của Kalman κ trên ba cell của NASA-L không lặp lại.
+
+## Đối chiếu với tiêu chí
+
+* M0: không thấp hơn SambaMixer (thấp nhất 2,16 %).
+* M1: bộ lọc chốt trước không thấp hơn ở lịch nào (thấp nhất 1,08 % ở mỗi 0,05L). Biến thể κ (hậu kiểm) thấp hơn ở mỗi
+  0,05L (0,82 %), nhưng không lặp lại trên kiểm định chéo của NASA.
+* M2: thấp hơn SambaMixer (bộ lọc chốt trước 0,80 %, κ 0,64 %), nhưng giữ nguyên, không dùng mô hình, cũng thấp hơn
+  (0,60 %): ở mức thông tin này NASA-L dễ, và phần thắng đến từ thông tin chứ không từ mô hình.
+* Cách nói được phép: "khi biết dung lượng của mọi lần xả trước, PINN-lai với bộ lọc Kalman có MAE trung bình ba cell
+  0,80 %, thấp hơn 0,96 % của SambaMixer (mô hình nhận chính lần xả cần ước lượng); cách giữ nguyên lần đo trước cũng
+  đạt 0,60 %".
