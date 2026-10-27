@@ -41,3 +41,14 @@ RMSE, MAE, MAPE. Đồ án đã có MLP (E13); E30 thêm ba mô hình chuỗi th
 CNN cho đúng cùng kết quả ở hai độ dài: vùng nhìn của hai lớp tích chập (kernel 5, dilation 1 và 2) là 1 + 4 + 8 = 13
 chu kỳ, ngắn hơn cả L = 16, nên phần cửa sổ dài hơn không ảnh hưởng tới đầu ra ở bước cuối. Theo quy tắc, CNN giữ
 L = 16. Chi tiết theo bộ và mức nhãn: results/e30_dev_detail.csv.
+
+## Kết quả E30 (results/e30_metrics.csv, e30_tests.csv)
+
+* So với MLP: tỉ số MAE theo cell 0,36–0,93 (CNN 0,37–0,90, LSTM 0,36–0,90, Transformer 0,43–0,93); thấp hơn có ý
+  nghĩa ở 42/48 phép so. Lợi ích lớn nhất ở 10 % nhãn.
+* So với GBDT: mô hình chuỗi kém ở 40/48 phép so; mô hình chuỗi tốt nhất chỉ thấp hơn GBDT ở cả bốn mức nhãn trên HUST.
+* So với PINN-semi (một mạng, không lịch sử): mô hình chuỗi tốt nhất thấp hơn ở 14/16 trường hợp.
+* PINN-lai thấp hơn cả ba mô hình chuỗi ở 47/48 phép so; mô hình cuối có MAE bằng 0,77–0,96 lần mô hình chuỗi tốt nhất,
+  thấp hơn có ý nghĩa ở 14/16 trường hợp.
+* NASA: kiểm định chéo cho MAE 7,86–9,18 % SOH (30 % nhãn) và 6,34–7,16 % (70 % nhãn), bằng 0,86–1,02 lần MLP; cách
+  chia NASA-L cho 5,04–7,08 % so với 4,12 % của PINN-lai.

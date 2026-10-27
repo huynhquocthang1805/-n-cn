@@ -266,9 +266,8 @@ lượng ở các chu kỳ $k + h$ sắp tới, cùng số chu kỳ còn lại t
       vật lý không dùng nhãn.
 \item Một giao thức đánh giá không rò rỉ: chia theo cell, kiểm định chéo <<K>> fold phân tầng, lặp <<R>> lần, kèm kiểm
       toán rò rỉ định lượng.
-\item So sánh với chín mô hình đối chứng, gồm bốn mô hình học sâu theo đề cương (MLP, CNN, LSTM, Transformer), ở bốn
-      mức nhãn trên bốn bộ dữ liệu công khai (<<NCELL>> cell) và bộ NASA, bằng MAE, RMSE, MAPE, $R^2$; <<NRUN>> lượt
-      huấn luyện, có kiểm định thống kê.
+\item So sánh có kiểm định với chín mô hình đối chứng, gồm bốn mô hình học sâu theo đề cương, ở bốn mức nhãn trên
+      bốn bộ dữ liệu công khai (<<NCELL>> cell) và bộ NASA, bằng MAE, RMSE, MAPE, $R^2$; <<NRUN>> lượt huấn luyện.
 \item Mô hình cải tiến PINN-lai: ba PINN-semi kết hợp GBDT và một bộ lọc xu thế nhân quả, chọn trên validation, kèm
       khoảng dự đoán phù hợp; đầu vào có lịch sử của cell ở các bộ mà validation cho thấy có lợi.
 \item Dự báo SOH tương lai, dung lượng còn lại và RUL bằng mạng PINN-dự báo có nghiệm đóng của động học xám làm lớp đầu
@@ -2632,7 +2631,7 @@ def ch8(d, ctx):
            f'{w["ridge"][0]}/{w["ridge"][1]}' + (f' và GPR trong {w["gpr"][0]}/{w["gpr"][1]}' if w['gpr'][1] else '')
            + ' trường hợp (bộ × mức nhãn), nhưng GBDT tốt hơn PINN-semi trong '
            f'{w["gbdt"][1] - w["gbdt"][0]}/{w["gbdt"][1]} trường hợp, {F["n_gb_sig"]} trong đó có ý nghĩa thống kê: '
-           'trong các mô hình đơn lẻ, GBDT mạnh nhất.')
+           'trong các mô hình đơn lẻ, GBDT mạnh nhất' + gbdt_exc(d) + '.')
     Tr = F['tr']
     ch5 = e30_concl(d) or e21_concl(d) or (f'Khi bộ đích không có nhãn, PINN-semi giữ MAE ở mức {_rng(F["tr_k0_pinn"], 3)} trong khi MLP lệch tới '
            f'{_rng(F["tr_k0_mlp"])}; với 3 cell đích có nhãn, khoảng cách thu hẹp nhưng PINN-semi vẫn tốt hơn ở '
@@ -2645,7 +2644,8 @@ def ch8(d, ctx):
 \section{Kết luận}
 
 Đồ án xây dựng một mô hình PINN bán giám sát cho bài toán ước lượng SOH của cell lithium-ion và đánh giá nó bằng
-một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả lời các câu hỏi nghiên cứu:
+một giao thức không rò rỉ trên bốn bộ dữ liệu công khai; kiểm toán cho thấy chia theo chu kỳ và chuẩn hoá theo cả vòng
+đời cell làm sai số trông thấp hơn thực tế. Trả lời các câu hỏi nghiên cứu:
 
 \begin{enumerate}[label=\textbf{CH\arabic*.}]
 \item Cùng 30\,\% nhãn, PINN-semi có sai số thấp hơn MLP có ý nghĩa thống kê <<SIG30>> (tỉ số MAE <<R30>>).
@@ -2659,9 +2659,6 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai. Trả
 \item <<CH5>>
 <<CH6>><<CH7>><<CH8>><<CH9>><<CH10>>\end{enumerate}
 
-Về phương pháp đánh giá, cách chia theo chu kỳ và chuẩn hoá theo cả vòng đời cell làm sai số trông thấp hơn thực tế;
-giao thức theo cell của đồ án có các tính chất được chứng minh và cho phép so ghép cặp theo cell.
-
 \section{Hướng phát triển}
 
 \begin{enumerate}
@@ -2670,8 +2667,8 @@ giao thức theo cell của đồ án có các tính chất được chứng min
 \item <<FW2>>
 \item Dùng điện lượng tích luỹ thay cho chỉ số chu kỳ làm biến thời gian, để chuyển giữa các giao thức sạc tốt hơn.
 \item <<FW4>>
-<<FWSEQ>>\item Giai đoạn 2 của đề cương: mở rộng từ từng cell sang khối pin nhiều cell, mô hình hoá mất cân bằng giữa các cell
-      (chẳng hạn bằng GCN trên đồ thị các cell nối tiếp, song song) và dựng giao diện theo dõi từ công cụ dòng lệnh hiện có.
+<<FWSEQ>>\item Giai đoạn 2 của đề cương: mở rộng sang khối pin nhiều cell, mô hình hoá mất cân bằng giữa các cell (chẳng hạn
+      bằng GCN trên đồ thị các cell) và dựng giao diện theo dõi từ công cụ dòng lệnh hiện có.
 \end{enumerate}
 """, SIG30=_tren(F['sig'][0.3]) or 'trên không bộ nào', R30=_rng(F['r'][0.3].values()),
              R10=_rng(F['r'][0.1].values()), SIG10=_tren(F['sig'][0.1]) or 'trên không bộ nào',
@@ -2785,8 +2782,8 @@ def future_kalman(d):
     if 'e25_estimation' not in d:
         return (r'Cập nhật ước lượng và dự báo khi có thêm một vài lần đo dung lượng của chính cell, ví dụ bằng một bộ lọc '
                 r'Bayes theo từng cell.')
-    return (r'Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình thay vì lịch đều, và kiểm '
-            r'chứng trên dữ liệu vận hành thật, nơi các lần kiểm tra dung lượng cách nhau không đều.')
+    return (r'Lịch đo chủ động: chọn cell và chu kỳ đo tiếp theo theo độ bất định của mô hình, kiểm chứng trên dữ liệu '
+            r'vận hành thật, nơi các lần đo dung lượng cách nhau không đều.')
 
 
 def future_params(d):
@@ -2907,6 +2904,13 @@ def abstract_e30(d):
         return ''
     import thesis_bk as BK
     return BK.e30_abstract_text(d, sys_helpers())
+
+
+def gbdt_exc(d):
+    """', trừ trên HUST, nơi các mô hình chuỗi tốt hơn (CH5)' khi E30 có kết quả."""
+    import thesis_bk as BK
+    ex = BK.e30_gbdt_exceptions(d)
+    return f', trừ {_tren(ex)}, nơi các mô hình chuỗi ở CH5 tốt hơn' if ex else ''
 
 
 def e30_disc(d):

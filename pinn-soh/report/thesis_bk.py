@@ -608,8 +608,10 @@ def assemble(c1, c2, c3, c4, c5, c6, c7, c8, e21, fig, e22=('', ''), e25=('', ''
            + (e25s if (e28 and e25s) else e25[1])
            + sub1(pick(s6, 'Thảo luận chung'), '\\section{Thảo luận chung}\n', '\\section{Thảo luận chung}\n' + overview)
            + ('' if e28 else demote(retitle(pick(s7, 'Thảo luận'), 'Về mô hình kết hợp'))))
-    ch7 = (sub1(c8, '\\section{Hướng phát triển}', CH7_MAP + (e30[2] if len(e30) > 2 else '') + '\n\\section{Hướng phát triển}')
-           if e30[1] else c8)
+    mp = CH7_MAP.replace('<<DIR>>', (e30[2] if len(e30) > 2 and e30[2] else
+                                     r'Bảng~\ref{tab:map} đối chiếu các mục tiêu và nhiệm vụ của giai đoạn 1 trong đề cương '
+                                     r'với phần đã thực hiện.').strip())
+    ch7 = sub1(c8, '\\section{Hướng phát triển}', mp + '\n\\section{Hướng phát triển}') if e30[1] else c8
     out = fix_refs(ch1 + ch2 + ch3 + ch4 + ch5 + ch6 + ch7)
     # giữ báo cáo trong 75 trang: bỏ các hình mà bảng hoặc lời văn đã có cùng thông tin
     # tab:e20 trùng với bảng chỉ số đầy đủ (cùng ba lần lặp; PINN-lai tinh chỉnh và mô hình cuối ở đó)
@@ -951,8 +953,9 @@ từ 24 giờ trở lên, tăng trung vị <<J2>>\,\%. Đây là các mẫu gây
 <<FIGDATA>>
 \paragraph{Ước lượng SOH.} Bộ NASA được đánh giá bằng đúng giao thức của Chương~\ref{ch:thietke}: kiểm định chéo 5 fold
 theo cell, phân tầng theo sáu nhóm giao thức, 3 lần lặp, ở 30 và 70\,\% nhãn (Bảng~\ref{tab:e24cv},
-Hình~\ref{fig:nasacompare}). PINN-lai có sai số thấp nhất ở cả hai mức nhãn, <<L3>>\,\% và <<L7>>\,\% SOH.<<SEQCV>> So với MLP, tỉ số MAE theo cell là <<RM3>> và <<RM7>>; so với
-một PINN-semi là <<RP3>> và <<RP7>> (đều có ý nghĩa thống kê); so với GBDT là <<RG3>> và <<RG7>>, không có ý nghĩa. Sai
+Hình~\ref{fig:nasacompare}). PINN-lai có sai số thấp nhất ở cả hai mức nhãn, <<L3>>\,\% và <<L7>>\,\% SOH. So với MLP,
+tỉ số MAE theo cell của nó là <<RM3>> và <<RM7>>; so với một PINN-semi là <<RP3>> và <<RP7>> (đều có ý nghĩa thống kê); so
+với GBDT là <<RG3>> và <<RG7>>, không có ý nghĩa.<<SEQCV>> Sai
 số trên NASA lớn hơn nhiều so với bốn bộ kia vì bộ này chỉ có 18 cell trải trên sáu nhóm giao thức và ba mức nhiệt độ:
 khi một nhóm chỉ có hai đến bốn cell, cell test thường không có cell train nào cùng điều kiện, và SOH tính theo danh
 định 2,0\,Ah của cell 4\,\textdegree C thấp hơn cell 24\,\textdegree C ở cùng số chu kỳ tới 0,4.
@@ -1032,9 +1035,11 @@ def nasa_seq_cv(d, f, rng):
     seq = [m for m in ('cnn', 'lstm', 'transformer') if ((cv.ds == 'NASA') & (cv.model == m)).any()]
     if not seq:
         return ''
+    rat = [v(fr, m) / v(fr, 'mlp') for m in seq for fr in (0.3, 0.7)]
     return (' CNN, LSTM và Transformer có MAE ' + rng([v(0.3, m) for m in seq], 2) + r'\,\% SOH ở 30\,\% nhãn và '
-            + rng([v(0.7, m) for m in seq], 2) + r'\,\% ở 70\,\% nhãn, so với ' + f(v(0.3, 'mlp'), 2) + ' và '
-            + f(v(0.7, 'mlp'), 2) + r'\,\% của MLP.')
+            + rng([v(0.7, m) for m in seq], 2) + r'\,\% ở 70\,\% nhãn, bằng ' + rng(rat, 2) + ' lần MLP: cửa sổ nhiều chu '
+            'kỳ giúp ít hơn so với ở bốn bộ kia, có thể vì dung lượng nhảy lên sau mỗi khoảng nghỉ làm xu thế trong cửa sổ kém ổn '
+            'định.')
 
 
 def nasa_seq_samba(sb, f, rng):
@@ -1044,6 +1049,7 @@ def nasa_seq_samba(sb, f, rng):
     if not seq:
         return ''
     mean = lambda m: 100 * float(sb[(sb.ds == 'NASA') & (sb.model == m)].groupby('cell').mae.mean().mean())
+    assert min(mean(m) for m in seq) > 2 * np.mean([SAMBA_REF[c][1] for c in SAMBA_REF])   # xa số của SambaMixer
     return (' Trên cùng cách chia, CNN, LSTM và Transformer có MAE trung bình ba cell ' + rng([mean(m) for m in seq], 2)
             + r'\,\% SOH, so với ' + f(mean('pinn_lai'), 2) + r'\,\% của PINN-lai: nhìn thêm các chu kỳ trước của cell '
             'không bù được việc thiếu đường xả của chính chu kỳ cần ước lượng.')
@@ -1758,6 +1764,51 @@ def e30_text(d, H):
 """, BODY=body, TMAE=t_mae, TR2=t_r2, TRM=t_rm)
 
 
+def _cases_txt(cases, FR, pc, lst):
+    """'mọi mức nhãn trên HUST' / 'XJTU 10 %, 30 %' — gom các trường hợp (bộ, mức nhãn) theo bộ."""
+    by = {}
+    for ds, fr in cases:
+        by.setdefault(ds, []).append(fr)
+    parts = [(f'mọi mức nhãn trên {ds}' if len(frs) == len(FR) else f'{ds} ' + ', '.join(pc(x) for x in sorted(frs)))
+             for ds, frs in by.items()]
+    return lst(parts)
+
+
+def _vs_pinn_word(bp, n):
+    nb = int((bp.ratio < 1).sum())
+    return ('thường tốt hơn một PINN-semi đơn lẻ' if nb >= 0.75 * n else
+            ('ngang PINN-semi' if nb > 0.25 * n else 'còn kém PINN-semi'))
+
+
+def _rm_txt(M, lst):
+    """Câu về RMSE, MAPE ở 30 % nhãn: mô hình thấp nhất và cao nhất ở từng bộ (có kiểm tra)."""
+    g = M[M.f == 0.3]
+    lo_ok, hi_ok = True, True
+    for ds in E29_DSA:
+        h = g[g.dataset == ds].set_index('model')
+        for col in ('RMSE_cell', 'MAPE'):
+            lo_ok &= bool(h[col].loc[['pinn_lai', 'final']].min() <= h[col].min() + 1e-12)
+            hi_ok &= h[col].idxmax() == 'mlp'
+    if lo_ok and hi_ok:
+        return (r'Ở 30\,\% nhãn, RMSE và MAPE (Bảng~\ref{tab:allrm}) cũng thấp nhất ở PINN-lai hoặc mô hình cuối và cao '
+                r'nhất ở MLP trên cả bốn bộ.')
+    return r'Bảng~\ref{tab:allrm} cho RMSE và MAPE ở 30\,\% nhãn.'
+
+
+def e30_gbdt_exceptions(d):
+    """Các bộ mà mô hình chuỗi tốt nhất có MAE thấp hơn GBDT ở ít nhất 3/4 mức nhãn."""
+    M = d.get('e30_metrics')
+    if M is None or not M.model.isin(E30_SEQ).any():
+        return []
+    E = e30_facts(d)
+    out = []
+    for ds in E29_DSA:
+        c = [x for x in E['cases'] if x[0] == ds]
+        if sum(E['v'](*x, E['best_seq'][x]) < E['v'](*x, 'gbdt') for x in c) >= 0.75 * len(c):
+            out.append(ds)
+    return out
+
+
 def e30_facts(d):
     """Các số liệu của mục E30 (results/e30_metrics.csv, e30_tests.csv, e30_dev*.csv)."""
     import numpy as np
@@ -1867,22 +1918,20 @@ thuần dữ liệu <<VSPI>> nhưng chưa thay được việc kết hợp nhóm
 
 <<LDEV>>
 
-\paragraph{RMSE, MAPE và $R^2$.} Mô hình có MAE thấp nhất cũng có $R^2$ cao nhất ở <<AGREE>>/<<N>> trường hợp, và RMSE,
-MAPE ở 30\,\% nhãn (Bảng~\ref{tab:allrm}) cho cùng thứ tự giữa các nhóm mô hình. $R^2$ gộp mọi cell của bộ nên phụ
+\paragraph{RMSE, MAPE và $R^2$.} Mô hình có MAE thấp nhất cũng có $R^2$ cao nhất ở <<AGREE>>/<<N>> trường hợp. <<RMTXT>>
+$R^2$ gộp mọi cell của bộ nên phụ
 thuộc vào độ trải của SOH giữa các cell: <<NEG>>. Vì vậy $R^2$ chỉ dùng để so các mô hình trong cùng một bộ, còn MAE theo
 cell là chỉ số chính.""",
              VSMLP=lst([f'của {lab(m)} là {rng(vs_mlp[m].ratio, 2)}' for m in seq]),
              SMLP=sig(pd.concat(vs_mlp.values())), NMLP=len(pd.concat(vs_mlp.values())),
              N=n, F10=pc(min(FR)), R10=rng(pd.concat(r10.values()), 2), F30=pc(sorted(FR)[1]),
              RHI=rng(pd.concat(rhi.values()), 2), BEST=lab(best), NBEST=nbest[best],
-             NGB=len(gb_win), GBW=(' (' + ', '.join(f'{ds} {pc(fr)}' for ds, fr in gb_win) + ')' if 0 < len(gb_win) <= 4
-                                   else ''),
+             NGB=len(gb_win), GBW=(' (' + _cases_txt(gb_win, FR, pc, lst) + ')' if 0 < len(gb_win) <= 6 else ''),
              NPI=int((bp.ratio < 1).sum()), RPI=rng(bp.ratio, 2),
              NLAI=int((lai.ratio < 1).sum()), NLAIT=len(lai), RLAI=rng(lai.ratio, 2), SLAI=sig(lai),
-             VSPI=('đạt mức sai số của PINN-semi' if 0.85 <= float(bp.ratio.median()) <= 1.15 else
-                   ('tốt hơn PINN-semi' if float(bp.ratio.median()) < 0.85 else 'còn kém PINN-semi')),
+             VSPI=_vs_pinn_word(bp, n),
              FR=rng(fin.ratio, 2), FS=sig(fin), FWS=(f', cao hơn có ý nghĩa ở {_sig(fin)[1]}' if _sig(fin)[1] else ''),
-             LDEV=ltxt, AGREE=agree,
+             LDEV=ltxt, AGREE=agree, RMTXT=_rm_txt(M, lst),
              NEG=(f'MLP ở {lst([ds + " " + pc(fr) for ds, fr in neg])} có $R^2$ âm, tức dự đoán kém hơn cả hằng số bằng SOH '
                   f'trung bình của bộ' if neg else 'cùng một MAE cho $R^2$ cao hơn ở bộ có SOH trải rộng'))
 
@@ -1912,9 +1961,9 @@ def e30_disc_text(d, H):
     E = e30_facts(d)
     bp = pd.DataFrame([E['pair'](E['best_seq'][c], 'pinn')[lambda g: (g.dataset == c[0]) & (g.f == c[1])].iloc[0]
                        for c in E['cases']])
-    med = float(bp.ratio.median())
-    how = ('đạt mức sai số tương tự' if 0.85 <= med <= 1.15 else ('đạt sai số thấp hơn' if med < 0.85 else
-                                                                   'tiến gần mức sai số đó'))
+    nb = int((bp.ratio < 1).sum())
+    how = (f'có sai số thấp hơn PINN-semi ở {nb}/{len(bp)} trường hợp' if nb >= 0.75 * len(bp) else
+           ('ngang PINN-semi' if nb > 0.25 * len(bp) else 'chưa bằng PINN-semi'))
     return (f' Mô hình chuỗi {how} bằng một con đường khác: nhìn nhiều chu kỳ của chính cell thay vì dùng cell không nhãn '
             r'(Mục~\ref{sec:dlres}); hai hướng này không loại trừ nhau.')
 
@@ -1930,7 +1979,8 @@ def e30_direction(d, H):
     dl = ['mlp'] + seq
     gb = sum(v(*c, 'gbdt') < min(v(*c, m) for m in dl) for c in cases)
     return H['T'](r"""
-Đồ án đi đúng các bước của giai đoạn 1 trong đề cương, với ba điểm khác về hướng đi. Thứ nhất, đề cương lấy bốn mô
+Bảng~\ref{tab:map} đối chiếu các mục tiêu và nhiệm vụ của giai đoạn 1 trong đề cương với phần đã thực hiện. Đồ án đi
+đúng các bước đó, với ba điểm khác về hướng đi. Thứ nhất, đề cương lấy bốn mô
 hình học sâu làm mốc so sánh; trên cùng đặc trưng, GBDT có MAE thấp hơn cả bốn ở <<GB>>/<<N>> trường hợp bộ
 $\times$ mức nhãn (Mục~\ref{sec:dlres}), nên mọi so sánh ở giai đoạn 2 cần có mô hình cây. Thứ hai, thông tin hoá lý
 được đưa vào qua hàm mất mát (động học suy giảm có thừa số Arrhenius, tính đơn điệu) và qua bước lọc quỹ đạo, chưa qua
@@ -1952,7 +2002,7 @@ def e30_abstract_text(d, H):
 
 CH7_MAP = r"""\section{Đối chiếu với đề cương}\label{sec:map}
 
-Bảng~\ref{tab:map} đối chiếu các mục tiêu và nhiệm vụ của giai đoạn 1 trong đề cương với phần đã thực hiện.
+<<DIR>>
 
 \begin{table}[!htbp]\centering\footnotesize
 \caption{Đối chiếu mục tiêu và nhiệm vụ của đề cương (giai đoạn 1) với phần đã thực hiện.}\label{tab:map}

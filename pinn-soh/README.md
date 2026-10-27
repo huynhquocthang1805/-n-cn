@@ -30,10 +30,13 @@ không dùng lịch sử được chọn trên validation của đủ ba lần l
 (phân tích hậu kiểm), PINN-lai có sai số thấp hơn GBDT ở cả 16 trường hợp bộ × mức nhãn, 13 có ý nghĩa thống kê.
 E30 thêm ba mô hình học sâu cho chuỗi thời gian theo đề cương (CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ
 gần nhất của cell), chọn độ dài cửa sổ trên validation (E30dev) rồi so với mọi mô hình bằng MAE, RMSE, MAPE và R² trên
-bốn bộ và NASA.
+bốn bộ và NASA. Ba mô hình chuỗi có sai số bằng 0,36–0,93 lần MLP (thấp hơn có ý nghĩa ở 42/48 phép so) nhưng kém
+GBDT ở 40/48 phép so (chỉ tốt hơn trên HUST) và kém PINN-lai ở 47/48; mô hình cuối có MAE bằng 0,77–0,96 lần mô hình
+chuỗi tốt nhất của từng bộ × mức nhãn.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
-Kết quả của báo cáo dựa trên **10 354 lượt huấn luyện** (E13–E29, đếm theo tệp kết quả; bảng thời gian chạy bên dưới
+Các thí nghiệm gồm **11 512 lượt huấn luyện** (E13–E30, đếm theo tệp kết quả; báo cáo không còn trình bày phần chuyển
+miền E14, E21 nên tổng trong báo cáo là 10 456; bảng thời gian chạy bên dưới
 đếm theo lượt phải chạy nên tổng khác) trên **387 cell** của bốn bộ dữ liệu công khai XJTU, TJU, MIT, HUST, cộng 18
 cell của NASA PCoE ở E24.
 
@@ -108,7 +111,9 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E28 | Ngân sách đo: mọi cell train đo mỗi q·L, q ∈ {0,5; 0,2; 0,1; 0,05}; 3 PINN-semi, MLP, GBDT trên lần đo / nhãn nội suy (3 lần lặp × 5 fold) | 1 560 | 9 | 2,2 | 1,1 |
 | E29dev | Chọn dạng lịch sử trên validation (lần lặp 0, nhãn 30 và 70 %): PINN-semi 4 dạng, GBDT 6 dạng; NASA cả cách chia SambaMixer | 576 | 3 | 0,8 | 0,4 |
 | E29 | Đầu vào có lịch sử, cùng fold với E20: 3 PINN-semi, MLP, GBDT trên XJTU, TJU, HUST (3 lần lặp × 5 fold × 4 mức nhãn) | 840 | 5,4 | 1,4 | 0,7 |
-| **Tổng** | | **9 826** | **≈ 72** | **≈ 18** | **≈ 9** |
+| E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}; lần lặp 0, nhãn 30 và 70 %) | 240 | 1,8 | 0,5 | 0,2 |
+| E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ); NASA: kiểm định chéo và cách chia SambaMixer | 918 | 4,0 | 1,0 | 0,5 |
+| **Tổng** | | **10 984** | **≈ 78** | **≈ 20** | **≈ 10** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
