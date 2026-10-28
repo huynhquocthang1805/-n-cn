@@ -1183,7 +1183,7 @@ với <<B24>>\,\%, vẫn gấp <<XS>> lần SambaMixer: điện lượng nạp g
 SambaMixer ở mọi lịch đo: <<U20>>\,\% khi đo <<N20>> lần mỗi cell (mỗi $0{,}2L$), <<U10>>\,\% khi đo mỗi $0{,}1L$. Ở lịch
 này nó có <<C6>>, <<C7>> và <<C47>>\,\% trên các cell 6, 7, 47, so với <<S6>>, <<S7>> và <<S47>>\,\% của SambaMixer, thấp hơn
 trên cả ba cell; RMSE trung bình là <<RM10>> so với <<RMS>>\,\%. Bộ lọc gốc chỉ xuống dưới mức của SambaMixer ở M2
-(<<KM2>>\,\%); giữ nguyên cho <<G05>>\,\% ở lịch $0{,}05L$ và <<GM2>>\,\% ở M2. Một lần đo đủ để mô hình cập nhật biết mức của
+(<<KM2>>\,\%); giữ nguyên cho <<G05>>\,\% ở lịch $0{,}05L$ và <<GM2>>\,\% ở M2. Lần đo cho mô hình cập nhật biết mức của
 cell, còn thay đổi điện lượng nạp giữa hai chu kỳ cho biết dung lượng đã đổi bao nhiêu; với 16 đặc trưng đoạn sạc, nó
 xuống dưới SambaMixer từ <<FIRST16>> (<<U16>>\,\%).
 

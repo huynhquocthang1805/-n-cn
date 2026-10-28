@@ -40,10 +40,16 @@ và cập nhật bằng bộ lọc Kalman của E25, sai số chỉ xuống dư�
 hậu kiểm κ (chỉ tin một phần thay đổi do mô hình dự đoán) cho 0,82 % khi đo mỗi 0,05L và 0,64 % ở mức đó, nhưng giữ
 nguyên lần đo trước, không dùng mô hình, cũng cho 0,60 %. Kiểm tra lại trên bốn bộ chính: khi đo thưa, bộ lọc thấp hơn
 không đo ở 46/48 và thấp hơn giữ nguyên ở 48/48 trường hợp; khi biết mọi lần xả trước, giữ nguyên tốt nhất ở 23/25.
+E32 thay bộ lọc bằng mô hình học cập nhật từ lần đo gần nhất (`tai-lieu/de-cuong-E32.md`): ước lượng = SOH đo gần nhất
++ GBDT học dung lượng đã đổi bao nhiêu từ đặc trưng hiện tại, thay đổi đặc trưng, khoảng chu kỳ và độ dốc của hai lần đo.
+Trên NASA-L (24 cột), đo thêm cell 8 lần (mỗi 0,2L) cho MAE 0,63 %, mỗi 0,1L 0,40 % (thấp hơn SambaMixer trên cả ba
+cell), so với 1,89 và 1,58 % của bộ lọc; trên kiểm định chéo 18 cell của NASA, nó thấp hơn giữ nguyên có ý nghĩa ở 5/6
+trường hợp đo thưa. Trên bốn bộ chính, khi đo thưa nó thấp hơn bộ lọc ở 47/48 và thấp hơn giữ nguyên ở 48/48 trường hợp;
+khi biết mọi lần xả trước, thấp hơn giữ nguyên ở 12/16.
 Báo cáo: `do-an/bao-cao-do-an.pdf`.
 
-Các thí nghiệm gồm **11 776 lượt huấn luyện** (E13–E31, đếm theo tệp kết quả; báo cáo không còn trình bày phần chuyển
-miền E14, E21 nên tổng trong báo cáo là 10 720; bảng thời gian chạy bên dưới
+Các thí nghiệm gồm **12 082 lượt huấn luyện** (E13–E32, đếm theo tệp kết quả; báo cáo không còn trình bày phần chuyển
+miền E14, E21 nên tổng trong báo cáo là 11 026; bảng thời gian chạy bên dưới
 đếm theo lượt phải chạy nên tổng khác) trên **387 cell** của bốn bộ dữ liệu công khai XJTU, TJU, MIT, HUST, cộng 18
 cell của NASA PCoE ở E24 và E31.
 
@@ -72,7 +78,7 @@ python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, k
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28, E29dev, E29, E30dev, E30, E31) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28, E29dev, E29, E30dev, E30, E31, E32) → `analyze` → `thesis`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -121,7 +127,8 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}; lần lặp 0, nhãn 30 và 70 %) | 240 | 1,8 | 0,5 | 0,2 |
 | E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ); NASA: kiểm định chéo và cách chia SambaMixer | 918 | 4,0 | 1,0 | 0,5 |
 | E31 | NASA với 24 cột (thêm 7 đặc trưng của cả lần sạc và giờ nghỉ): 3 PINN-semi, MLP, GBDT, CNN, LSTM, Transformer; kiểm định chéo và cách chia SambaMixer | 264 | 1,2 | 0,3 | 0,2 |
-| **Tổng** | | **11 248** | **≈ 79** | **≈ 20** | **≈ 10** |
+| E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) và E31 (NASA, NASAfc; cách chia SambaMixer) | 306 | 6,8 | 1,7 | 0,9 |
+| **Tổng** | | **11 554** | **≈ 86** | **≈ 22** | **≈ 11** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
 `runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
@@ -151,13 +158,14 @@ pinn-soh/
 │   ├── baselines.py        Ridge, GBDT, GPR (E16, E19)
 │   ├── leakage.py          các cách chia/chuẩn hoá sai cho kiểm toán rò rỉ (E15)
 │   ├── metrics.py          MAE theo cell, R², EOL, vi phạm đơn điệu, ...
-│   ├── experiments.py      định nghĩa E13–E31 thành danh sách lượt chạy
+│   ├── experiments.py      định nghĩa E13–E32 thành danh sách lượt chạy
 │   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
 │   ├── crossds.py          E21: huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện
 │   ├── forecast.py         E22: dự báo SOH tương lai, dung lượng còn lại, RUL (nghiệm đóng + GBDT)
 │   ├── recovery.py         E23: tách xu thế / phần hồi phục giữ lại + tắt dần / dao động đều cho dự báo
 │   ├── nasa.py             đọc bộ NASA PCoE (.mat) -> 16 đặc trưng sạc, giờ nghỉ, 7 đặc trưng cả lần sạc (E31)
 │   ├── seqmodels.py        E30: CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất của cell
+│   ├── update.py           E32: mô hình học cập nhật từ lần đo dung lượng gần nhất
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
@@ -184,7 +192,8 @@ pinn-soh/
 │   ├── analyze_e29.py      E29: mô hình có lịch sử trên test, chọn có / không lịch sử trên validation
 │   ├── dev_e30.py          E30dev: chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation
 │   ├── analyze_e30.py      E30: MAE, RMSE, MAPE, R² của mọi mô hình chính; kiểm định; NASA
-│   ├── analyze_e31.py      E31: NASA 24 cột; mức thông tin M0/M1/M2, bộ lọc Kalman so với SambaMixer, mọi bộ
+│   ├── analyze_e31.py      E31, E32: NASA 24 cột; mức thông tin M0/M1/M2, bộ lọc Kalman và mô hình cập nhật so với
+│   │                       SambaMixer, mọi bộ
 │   ├── analyze_overview.py hình tổng quan 30 % / 70 % nhãn và đo thưa
 │   ├── figures_report.py   vẽ lại các hình của báo cáo cho dễ đọc khi in
 │   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
@@ -243,7 +252,7 @@ python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00x
 python run.py E24 && python run.py E24f
 ```
 
-### Hướng phát triển và so sánh: E25–E31
+### Hướng phát triển và so sánh: E25–E32
 
 ```bash
 python analysis/analyze_e25.py         # cần E20, E23, E24, E24f; không huấn luyện thêm
@@ -256,13 +265,15 @@ python run.py E29dev && python analysis/dev_e29.py   # chọn dạng lịch sử
 python run.py E29 && python analysis/analyze_e29.py   # đánh giá cuối mô hình có lịch sử
 python run.py E30dev && python analysis/dev_e30.py   # chọn độ dài cửa sổ của CNN, LSTM, Transformer
 python run.py E30 && python analysis/analyze_e30.py   # CNN, LSTM, Transformer trên 4 bộ + NASA; bảng chỉ số đầy đủ
-python run.py E31 && python analysis/analyze_e31.py   # NASA 24 cột; so với SambaMixer theo mức thông tin, mọi bộ
+python run.py E31 && python run.py E32 && python analysis/analyze_e31.py   # NASA 24 cột; mô hình cập nhật; so với
+                                                    # SambaMixer theo mức thông tin, mọi bộ
 python analysis/figures_report.py                    # vẽ lại các hình của báo cáo cho dễ đọc khi in
 python slide/thuyet_trinh_dacn.py                    # slide thuyết trình (cần báo cáo đã dựng; PDF qua LibreOffice)
 ```
 
 Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`;
-E29: `tai-lieu/de-cuong-E29.md`; E30: `tai-lieu/de-cuong-E30.md`; E31: `tai-lieu/de-cuong-E31.md`.
+E29: `tai-lieu/de-cuong-E29.md`; E30: `tai-lieu/de-cuong-E30.md`; E31: `tai-lieu/de-cuong-E31.md`;
+E32: `tai-lieu/de-cuong-E32.md`.
 
 ## 5. Demo — ước lượng và dự báo SOH cho một cell
 

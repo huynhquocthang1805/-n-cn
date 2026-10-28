@@ -71,3 +71,42 @@ giá. "Gần nhất" ở đây dịch dự đoán của một GBDT M0 theo sai s
 
 Bản không có độ dốc của hai lần đo (chỉ y_m, khoảng chu kỳ và đặc trưng) cho NASAfc 1,12 / 0,90 / 0,78: độ dốc giúp ở lịch
 dày, không giúp ở lịch 0,2L; giữ lại vì trên bốn bộ chính, nơi SOH giảm đều, nó là thông tin chính giữa hai lần đo thưa.
+
+## Kết quả (runs/E32, analysis/analyze_e31.py, results/e31_tiers*.csv)
+
+306 lượt, không lượt nào lỗi, 6,8 giờ CPU. Ước lượng của mô hình cập nhật được ghép theo (cell, chu kỳ) vào đúng các
+hàng đánh giá của E31 (kiểm tra trùng hàng ở mọi đơn vị), nên mọi so sánh dưới đây là ghép cặp.
+
+NASA-L, 24 cột (MAE trung bình ba cell × 3 hạt giống, %; SambaMixer 0,96):
+
+| Cách | mỗi 0,2L (8 lần đo) | mỗi 0,1L (16) | mỗi 0,05L (31) | M2 |
+|---|---|---|---|---|
+| mô hình cập nhật | 0,63 | 0,40 | 0,35 | 0,33 |
+| Kalman (E31, chốt trước) | 1,89 | 1,58 | 1,08 | 0,80 |
+| giữ nguyên | 2,54 | 1,48 | 0,99 | 0,60 |
+
+Theo cell (B0006, B0007, B0047; SambaMixer 1,17; 1,20; 0,51): mỗi 0,2L 0,85; 0,33; 0,70; mỗi 0,1L 0,54; 0,23; 0,43;
+mỗi 0,05L 0,41; 0,22; 0,43; M2 0,39; 0,22; 0,39. RMSE ở mỗi 0,1L: 0,86; 0,31; 0,53 (SambaMixer 2,07; 1,29; 0,65). Với 16
+đặc trưng (NASA): 1,11 / 0,75 / 0,62 / 0,59, tức xuống dưới 0,96 từ lịch 0,1L.
+
+Kiểm định chéo NASA, 24 cột, 18 cell (mô hình cập nhật so với giữ nguyên, Wilcoxon): 70 % nhãn — mỗi 0,2L 0,79 so với
+2,12 (18/18 cell tốt hơn, p < 10⁻⁴), mỗi 0,1L 0,75 so với 1,36 (17/18), mỗi 0,05L 0,67 so với 1,02 (15/18, p = 0,0007),
+M2 0,60 so với 0,68 (11/18, p = 0,12); 30 % nhãn — 1,02 / 0,91 / 0,81 / 0,73 so với 2,12 / 1,36 / 1,02 / 0,68 (có ý nghĩa ở
+0,2L và 0,1L, không ở 0,05L và M2).
+
+Bốn bộ chính (3 lần lặp × 5 fold × 4 mức nhãn, Holm qua bốn bộ):
+
+* Đo thưa: mô hình cập nhật thấp hơn bộ lọc Kalman ở 47/48 trường hợp bộ × mức nhãn × lịch đo (tỉ số 0,15–1,06; ngoại lệ
+  MIT 10 % nhãn ở lịch 0,2L, nơi phần lớn cell tốt hơn nhưng MAE trung bình cao hơn một chút) và thấp hơn giữ nguyên ở 48/48
+  (tỉ số 0,07–0,53).
+* M2: thấp hơn bộ lọc ở 16/16; thấp hơn giữ nguyên có ý nghĩa ở 12/16, kém hơn ở 1 (XJTU 10 % nhãn), không khác ở 3 (XJTU
+  30–70 % nhãn), tỉ số 0,37–1,13.
+
+## Đối chiếu với tiêu chí
+
+* Trên NASA-L với 24 cột, mô hình cập nhật thấp hơn SambaMixer ở mọi lịch đo, từ 8 lần đo mỗi cell; từ lịch 0,1L thấp
+  hơn trên cả ba cell. Trên kiểm định chéo 18 cell, nó thấp hơn giữ nguyên có ý nghĩa ở 5/6 trường hợp mức nhãn × lịch đo
+  thưa và không khác ở M2, nên lợi thế không chỉ đến từ ba cell của NASA-L.
+* Cách nói được phép: "khi đo thêm dung lượng của cell 8 lần trong đời (mỗi 0,2L), mô hình học cập nhật từ lần đo gần
+  nhất có MAE trung bình ba cell 0,63 % trên NASA-L, thấp hơn 0,96 % của SambaMixer, mô hình nhận chính lần xả cần ước
+  lượng ở mọi chu kỳ".

@@ -239,7 +239,7 @@ notes(s, 'Khi suy luận chỉ cần mạng nghiệm. Mạng tốc độ chỉ d
 # ═══════════════════════════════════════════════════════════ 6 · hiện thực
 s = new_slide('Hiện thực hệ thống')
 figure(s, 'fig_thesis_pipeline', 0.57, 1.3, 12.19, 4.2)
-nrun = chk('10.720')
+nrun = chk('11.026')
 body(s, 0.68, 5.65, 11.9, 1.3, [
     f'Python, PyTorch, scikit-learn; một lệnh chạy từ dữ liệu thô tới báo cáo; {nrun} lượt huấn luyện được trình bày',
     'Chạy lại 20 lượt mẫu trên máy khác cho dự đoán trùng từng bit; công cụ dòng lệnh ước lượng và dự báo cho một cell'],
@@ -417,7 +417,8 @@ TIERS = ['M0', 'q20', 'q10', 'q05', 'M2']
 SAMBA = 0.961                                     # trung bình ba cell của SambaMixer-L (1,173; 1,197; 0,512)
 rows, best = [], []
 for i, (m, lab) in enumerate([('kalman', 'PINN-lai + Kalman'), ('kalman_k', 'PINN-lai + Kalman, κ (hậu kiểm)'),
-                              ('gan_nhat', 'Gần nhất'), ('giu_nguyen', 'Giữ nguyên (không mô hình)')]):
+                              ('capnhat', 'Mô hình cập nhật'), ('gan_nhat', 'Gần nhất'),
+                              ('giu_nguyen', 'Giữ nguyên (không mô hình)')]):
     row = [lab]
     for j, t in enumerate(TIERS):
         v = 100 * float(L31.loc[t, m]) if (m == 'kalman' or t != 'M0') else None
@@ -426,32 +427,32 @@ for i, (m, lab) in enumerate([('kalman', 'PINN-lai + Kalman'), ('kalman_k', 'PIN
             best.append((i, 1 + j))
     rows.append(row)
 table(s, 0.58, 1.4, ['Cách ước lượng', 'Không đo', 'Mỗi 0,2L', 'Mỗi 0,1L', 'Mỗi 0,05L', 'Mọi lần xả trước'], rows,
-      [2.7, 0.9, 0.9, 0.9, 0.95, 1.25], font=13, row_h=0.55, best=best)
-body(s, 0.68, 4.35, 7.4, 1.4, 'MAE trung bình ba cell đánh giá (% SOH), 24 cột đầu vào, 3 hạt giống; ở mức đo thưa, sai '
+      [2.7, 0.9, 0.9, 0.9, 0.95, 1.25], font=13, row_h=0.52, best=best)
+body(s, 0.68, 4.75, 7.4, 1.4, 'MAE trung bình ba cell đánh giá (% SOH), 24 cột đầu vào, 3 hạt giống; ở mức đo thưa, sai '
                               'số tính trên các chu kỳ không được đo. Màu xanh: thấp hơn 0,96 % của SambaMixer.', size=13)
-chk('4,12', '2,52', '2,16', '2,2', '0,96', '0,80', '0,60', '0,82')
+chk('4,12', '2,52', '2,16', '2,2', '0,96', '0,80', '0,63', '0,40')
 block(s, 8.55, 1.4, 4.2, [
     ('Không đo cell', 'Thêm 7 đặc trưng của cả lần sạc: PINN-lai 4,12 → 2,52 %, LSTM 2,16 %, vẫn gấp 2,2 lần SambaMixer '
                       '(0,96 %, dùng chính lần xả).'),
-    ('Đo thêm cell', 'Bộ lọc Kalman chỉ thấp hơn SambaMixer khi biết mọi lần xả trước (0,80 %); giữ nguyên lần đo '
-                     'trước cũng đạt 0,60 %. Biến thể κ: 0,82 % khi đo mỗi 0,05L, chưa lặp lại trên kiểm định chéo.'),
+    ('Đo thêm cell', 'Mô hình học cập nhật từ lần đo gần nhất: 0,63 % khi đo 8 lần mỗi cell, 0,40 % khi đo mỗi 0,1L, thấp '
+                     'hơn SambaMixer trên cả ba cell. Bộ lọc Kalman chỉ thấp hơn khi biết mọi lần xả trước (0,80 %).'),
 ], size=14)
 notes(s, 'SambaMixer nhận đường xả của chính chu kỳ cần ước lượng, nên nhãn gần như nằm trong đầu vào. Em tách ba mức thông '
-         'tin về chính cell: không đo, đo thưa, và biết mọi lần xả trước. Đồ án chỉ thấp hơn SambaMixer khi có thêm các lần '
-         'đo của chính cell; ở mức cao nhất, cách giữ nguyên lần đo trước không cần mô hình cũng thấp hơn, nên phần thắng '
-         'đến từ thông tin chứ không từ mô hình. Biến thể κ được đặt ra sau khi xem kết quả trên các bộ khác, em ghi rõ là '
-         'hậu kiểm.')
+         'tin về chính cell: không đo, đo thưa, và biết mọi lần xả trước. Không đo cell thì đồ án vẫn kém. Khi đo thêm '
+         'vài lần, mô hình cập nhật học thẳng dung lượng đã đổi bao nhiêu kể từ lần đo gần nhất, từ thay đổi của đặc trưng '
+         'sạc; với tám lần đo trong đời cell nó đã thấp hơn SambaMixer. Thiết kế của mô hình này chốt trước khi chạy, chọn '
+         'chỉ trên các cell không thuộc tập đánh giá.')
 
 # ═══════════════════════════════════════════════════════════ 20 · kiểm tra lại trên mọi bộ
 s = new_slide('Kiểm tra lại trên mọi bộ: sai số theo lượng thông tin đo được')
 figure(s, 'fig_e31_tiers', 0.57, 1.3, 12.19, 4.7)
-chk('46/48', '48/48', '23/25')
+chk('47/48', '48/48', '12/16')
 body(s, 0.68, 6.1, 11.6, 0.85, [
-    'Đo thưa: bộ lọc thấp hơn không đo ở 46/48 và thấp hơn giữ nguyên ở 48/48 trường hợp bộ × mức nhãn × lịch đo. Biết mọi '
-    'lần xả trước: giữ nguyên thấp nhất ở 23/25 trường hợp'], size=14, bullets=True)
-notes(s, 'Cùng các mức đo trên bốn bộ chính và trên kiểm định chéo của NASA. Giữa hai lần đo thưa, mô hình biết dung lượng '
-         'giảm bao nhiêu nên tốt hơn hẳn giữ nguyên; khi đã đo mọi chu kỳ trước, thay đổi mô hình dự đoán giữa hai chu kỳ '
-         'liền nhau nhiễu hơn thay đổi thật, nên giữ nguyên thắng. Giá trị của mô hình nằm ở chỗ đo thưa.')
+    'Đo thưa: mô hình cập nhật thấp hơn bộ lọc Kalman ở 47/48 và thấp hơn giữ nguyên ở 48/48 trường hợp bộ × mức nhãn × '
+    'lịch đo. Biết mọi lần xả trước: thấp hơn giữ nguyên ở 12/16'], size=14, bullets=True)
+notes(s, 'Cùng các mức đo trên bốn bộ chính và trên kiểm định chéo của NASA. Đường tím là mô hình cập nhật, thấp nhất ở mọi '
+         'ô. Bộ lọc Kalman chỉ sửa độ lệch của mô hình không đo, nên khi đã đo mọi chu kỳ trước nó còn kém cách giữ nguyên; '
+         'mô hình cập nhật học thẳng thay đổi kể từ lần đo nên thắng cả hai.')
 
 # ═══════════════════════════════════════════════════════════ 21 · ngân sách đo
 s = new_slide('Ngân sách đo dung lượng')
@@ -486,7 +487,7 @@ body(s, 0.68, 1.95, 6.0, 4.6, [
     'Mô hình chuỗi tốt hơn MLP nhưng chưa vượt GBDT; GBDT là mốc so sánh cần có',
     'Kết hợp vật lý với GBDT (PINN-lai, mô hình cuối) cho sai số thấp nhất trong bảng tổng hợp',
     'Rải vài lần đo lên mọi cell hiệu quả hơn đo kín một phần cell',
-    'NASA-L: chỉ thấp hơn SambaMixer khi biết mọi lần xả trước (0,80 %; giữ nguyên: 0,60 %)'], size=16, bullets=True)
+    'NASA-L: đo thêm cell 8 lần, mô hình cập nhật cho 0,63 %, thấp hơn 0,96 % của SambaMixer'], size=16, bullets=True)
 heading(s, 7.0, 1.45, 5.7, 'Giai đoạn 2', size=20)
 body(s, 7.0, 1.95, 5.7, 4.6, [
     'Gắn ràng buộc vật lý vào mô hình chuỗi: LSTM, Transformer làm mạng nghiệm của PINN',

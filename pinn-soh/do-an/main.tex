@@ -90,7 +90,7 @@ Mô hình đề xuất là một mạng nơ-ron có thông tin vật lý (PINN) 
 đoạn sạc, gắn với một động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn nên áp được lên
 mọi chu kỳ chưa đo dung lượng. Đồ án thiết kế và chứng minh một giao thức đánh giá không rò rỉ (kiểm định chéo 5 fold
 theo cell, phân tầng theo chế độ thí nghiệm, lặp 5 lần), đo định lượng tác động của các dạng rò rỉ thường gặp, và so
-sánh với chín mô hình đối chứng, gồm bốn mô hình học sâu cho chuỗi thời gian (MLP, CNN, LSTM, Transformer), ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 10.720 lượt huấn
+sánh với chín mô hình đối chứng, gồm bốn mô hình học sâu cho chuỗi thời gian (MLP, CNN, LSTM, Transformer), ở bốn mức nhãn trên bốn bộ dữ liệu công khai (387 cell, 11.026 lượt huấn
 luyện). Ở 10\,\% nhãn, tỉ số sai số giữa PINN bán giám sát và mạng nơ-ron cùng kiến trúc chỉ học có nhãn là 0{,}39--0{,}90;
 khi tăng lên 70\,\% nhãn, lợi ích giảm dần (0{,}85--1{,}09), và một mô hình gradient boosting được tinh chỉnh tốt vẫn có sai số thấp nhất trên phần lớn các bộ dữ liệu. Mô hình cải tiến PINN-lai kết hợp ba mạng PINN bán giám sát với GBDT rồi làm trơn bằng một bộ lọc xu thế nhân
 quả, được chọn chỉ trên tập validation; trên test, sai số của nó bằng 0{,}67--0{,}95 lần PINN ban đầu, thấp hơn GBDT ở
@@ -102,7 +102,7 @@ sai số bằng 0{,}23--0{,}63 lần số công bố trên TJU và MIT, ngang tr
 cho PINN-lai sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell và 0{,}97--1{,}05 lần khi gắn cho 70\,\% số cell. Đo thêm cell mới theo cùng lịch và cập nhật bằng bộ lọc Kalman, sai số còn 0{,}34--0{,}77 lần GBDT học với
 70\,\% số cell có nhãn đầy đủ. Đồ án mở rộng sang dự báo SOH tương lai, dung lượng còn lại và tuổi thọ còn lại (RUL) bằng
 mạng PINN-dự báo trả tham số của nghiệm đóng của động học xám; khi cell không được đo lần nào, sai số SOH chỉ bằng 0{,}21--0{,}60
-lần các mô hình ngoại suy theo từng cell và sai số RUL thấp hơn GBDT 1{,}1--1{,}5 lần. Trên NASA-L, đặc trưng của cả lần sạc giảm sai số của PINN-lai từ 4{,}12 xuống 2{,}52\,\% SOH, vẫn cao hơn 0{,}96\,\% của SambaMixer (dùng chính lần xả cần ước lượng); khi biết mọi lần xả trước, sai số còn 0{,}80\,\%, nhưng giữ nguyên lần đo trước cho 0{,}60\,\%.
+lần các mô hình ngoại suy theo từng cell và sai số RUL thấp hơn GBDT 1{,}1--1{,}5 lần. Trên NASA-L, đặc trưng của cả lần sạc giảm sai số của PINN-lai từ 4{,}12 xuống 2{,}52\,\% SOH, vẫn cao hơn 0{,}96\,\% của SambaMixer (dùng chính lần xả cần ước lượng); đo thêm cell 8 lần, mô hình học cập nhật từ lần đo gần nhất cho 0{,}63\,\%.
 
 \noindent\textbf{Từ khoá:} pin lithium-ion, trạng thái sức khoẻ, PINN, học bán giám sát, rò rỉ dữ liệu, kiểm định chéo,
 kết hợp mô hình, học sâu cho chuỗi thời gian, ngân sách đo, dự báo tuổi thọ còn lại.
@@ -225,7 +225,7 @@ thuộc giai đoạn 2. Đồ án không xây dựng mô hình điện hoá chi 
 \item Một giao thức đánh giá không rò rỉ: chia theo cell, kiểm định chéo 5 fold phân tầng, lặp 5 lần, kèm kiểm
       toán rò rỉ định lượng.
 \item So sánh có kiểm định với chín mô hình đối chứng, gồm bốn mô hình học sâu theo đề cương, ở bốn mức nhãn trên
-      bốn bộ dữ liệu công khai (387 cell) và bộ NASA, bằng MAE, RMSE, MAPE, $R^2$; 10.720 lượt huấn luyện.
+      bốn bộ dữ liệu công khai (387 cell) và bộ NASA, bằng MAE, RMSE, MAPE, $R^2$; 11.026 lượt huấn luyện.
 \item Mô hình cải tiến PINN-lai: ba PINN-semi kết hợp GBDT và một bộ lọc xu thế nhân quả, chọn trên validation, kèm
       khoảng dự đoán phù hợp; đầu vào có lịch sử của cell ở các bộ mà validation cho thấy có lợi.
 \item Dự báo SOH tương lai, dung lượng còn lại và RUL bằng mạng PINN-dự báo có nghiệm đóng của động học xám làm lớp đầu
@@ -997,7 +997,8 @@ Ngân sách đo & đo thưa mọi cell train, 4 lịch đo × 4 bộ × 5 fold �
 Đầu vào có lịch sử & chọn dạng trên validation; PINN-semi, MLP, GBDT có lịch sử, 3 lần lặp × 5 fold & 1.416 \\
 CNN, LSTM, Transformer & chọn cửa sổ trên validation; 4 mức nhãn × 4 bộ × 3 lần lặp × 5 fold; NASA & 1.158 \\
 NASA, đặc trưng cả lần sạc & PINN-semi, MLP, GBDT, CNN, LSTM, Transformer với 24 cột; chéo và NASA-L & 264 \\
-\textbf{Tổng} &  & \textbf{10.720} \\
+Mô hình cập nhật & GBDT học thay đổi SOH kể từ lần đo gần nhất; 4 bộ × 4 mức nhãn; NASA, NASA-L & 306 \\
+\textbf{Tổng} &  & \textbf{11.026} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \section{Các yêu cầu đối với giao thức}
@@ -2063,21 +2064,26 @@ Trên NASA-L, PINN-lai có MAE trung bình ba cell 4{,}12\,\%, còn SambaMixer c
 chu kỳ cần ước lượng (Mục~\ref{sec:nasares}). Mục này thu hẹp khoảng cách bằng thông tin từ lần sạc và bằng các lần đo
 dung lượng của chính cell, theo ba mức: M0, chưa đo lần nào (như mọi kết quả khác); M1, đo ở chu kỳ đầu và sau mỗi $qL$
 chu kỳ, sai số tính trên các chu kỳ không đo; M2, đã biết mọi lần xả trước, ước lượng là dự báo một bước. Ở M1 và M2,
-bộ lọc \eqref{eq:kf} được so với \emph{gần nhất} (dịch ước lượng theo sai số của lần đo gần nhất) và \emph{giữ nguyên}
-(lấy đúng SOH của lần đo gần nhất, không dùng mô hình). Một biến thể đặt ra sau khi thấy giữ nguyên thắng ở M2 trên bốn
-bộ chính (hậu kiểm) chỉ tin phần $\kappa$ của thay đổi mô hình dự đoán giữa hai chu kỳ: độ lệch nhận thêm
-$-(1-\kappa)(p_n - p_{n-1})$ mỗi bước; $(\ell, \kappa)$ chọn trên validation.
+các lần đo được dùng theo hai cách: bộ lọc \eqref{eq:kf} trên dự đoán của PINN-lai, và \emph{mô hình cập nhật} học thẳng
+dung lượng đã đổi bao nhiêu kể từ lần đo gần nhất $m$: $\hat y_n = y_m + f(\tilde{\mathbf{x}}_n, \tilde{\mathbf{x}}_n -
+\tilde{\mathbf{x}}_m, y_m, n - m, \dots)$, với $f$ là GBDT học trên cell train có nhãn, đầu vào có cả độ dốc của hai lần đo
+gần nhất (thiết kế chốt trước khi chạy). Cả hai được so với \emph{gần nhất} (dịch ước lượng theo sai số của lần đo gần
+nhất) và \emph{giữ nguyên} (lấy đúng SOH của lần đo gần nhất, không dùng mô hình). Biến thể $\kappa$ của bộ lọc, đặt ra
+sau khi thấy giữ nguyên thắng ở M2 (hậu kiểm), chỉ tin phần $\kappa$ của thay đổi mô hình dự đoán giữa hai chu kỳ.
 
 \paragraph{Đặc trưng của cả lần sạc.} Với 24 cột đầu vào (Mục~\ref{sec:data}), MAE trong kiểm định chéo giảm còn
 0{,}58--0{,}73 lần với GBDT và ba mô hình chuỗi, 0{,}71--0{,}73 lần với PINN-lai tinh chỉnh, đều có ý nghĩa ở cả hai mức nhãn; với
 PINN-semi, tỉ số 0{,}86--0{,}97 không có ý nghĩa. Trên NASA-L, PINN-lai giảm từ 4{,}12 xuống 2{,}52\,\%, thấp nhất là LSTM
-với 2{,}16\,\%, vẫn gấp 2{,}2 lần SambaMixer. Mỗi lần sạc bắt đầu từ gần cạn nên điện lượng nạp gần bằng dung lượng
-của lần xả trước, nhưng tỉ số giữa hai đại lượng này khác nhau giữa các cell, nên cell chưa đo lần nào vẫn bị lệch mức.
+với 2{,}16\,\%, vẫn gấp 2{,}2 lần SambaMixer: điện lượng nạp gần bằng dung lượng của lần xả trước, nhưng tỉ số giữa hai
+đại lượng này khác nhau giữa các cell, nên cell chưa đo lần nào vẫn bị lệch mức.
 
-\paragraph{Khi đo thêm cell cần ước lượng.} Trên NASA-L với 24 cột (Bảng~\ref{tab:e31}), bộ lọc gốc chỉ xuống
-dưới mức của SambaMixer ở M2 (0{,}80\,\%); biến thể $\kappa$ xuống dưới từ lịch $0{,}05L$ (0{,}82\,\%, khoảng 1/4 số chu kỳ
-được đo), với 1{,}09, 0{,}47 và 0{,}89\,\% trên các cell 6, 7, 47 so với 1{,}17, 1{,}20 và 0{,}51\,\% của
-SambaMixer; cell 47 cao hơn SambaMixer ở mọi mức và mọi cách. Giữ nguyên cho 0{,}99\,\% ở lịch $0{,}05L$ và 0{,}60\,\% ở M2: ở mức thông tin M2, NASA-L là bài toán dễ.
+\paragraph{Khi đo thêm cell cần ước lượng.} Trên NASA-L với 24 cột (Bảng~\ref{tab:e31}), mô hình cập nhật thấp hơn
+SambaMixer ở mọi lịch đo: 0{,}63\,\% khi đo 8 lần mỗi cell (mỗi $0{,}2L$), 0{,}40\,\% khi đo mỗi $0{,}1L$. Ở lịch
+này nó có 0{,}54, 0{,}23 và 0{,}43\,\% trên các cell 6, 7, 47, so với 1{,}17, 1{,}20 và 0{,}51\,\% của SambaMixer, thấp hơn
+trên cả ba cell; RMSE trung bình là 0{,}57 so với 1{,}33\,\%. Bộ lọc gốc chỉ xuống dưới mức của SambaMixer ở M2
+(0{,}80\,\%); giữ nguyên cho 0{,}99\,\% ở lịch $0{,}05L$ và 0{,}60\,\% ở M2. Lần đo cho mô hình cập nhật biết mức của
+cell, còn thay đổi điện lượng nạp giữa hai chu kỳ cho biết dung lượng đã đổi bao nhiêu; với 16 đặc trưng đoạn sạc, nó
+xuống dưới SambaMixer từ lịch mỗi $0{,}1L$ (0{,}75\,\%).
 
 \begin{table}[!htbp]\centering\footnotesize
 \caption[NASA-L theo lượng thông tin đo được]{Cách chia NASA-L với 24 cột đầu vào: MAE trung bình ba cell đánh giá (\% SOH, 3 hạt giống) theo lượng thông tin về chính cell; ở mức đo thưa, sai số tính trên các chu kỳ không được đo. SambaMixer có 0{,}96\,\% với đầu vào là đường xả của chính chu kỳ cần ước lượng.}\label{tab:e31}
@@ -2085,28 +2091,29 @@ SambaMixer; cell 47 cao hơn SambaMixer ở mọi mức và mọi cách. Giữ n
 Cách ước lượng & Không đo & Mỗi $0{,}2L$ & Mỗi $0{,}1L$ & Mỗi $0{,}05L$ & Mọi lần xả trước \\\midrule
 PINN-lai + Kalman & 2{,}54 & 1{,}89 & 1{,}58 & 1{,}08 & 0{,}80 \\
 PINN-lai + Kalman, $\kappa$ (hậu kiểm) & -- & 1{,}64 & 1{,}32 & 0{,}82 & 0{,}64 \\
+Mô hình cập nhật & -- & 0{,}63 & 0{,}40 & 0{,}35 & 0{,}33 \\
 Gần nhất & -- & 2{,}18 & 1{,}57 & 1{,}19 & 0{,}75 \\
 Giữ nguyên (không mô hình) & -- & 2{,}54 & 1{,}48 & 0{,}99 & 0{,}60 \\
 Số lần đo mỗi cell & 0 & 8 & 16 & 31 & mọi chu kỳ \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \paragraph{Kiểm tra lại trên mọi bộ.} Hình~\ref{fig:e31} lặp lại các mức trên bốn bộ chính và trên kiểm định chéo của
-NASA. Ở mức đo thưa, bộ lọc thấp hơn không đo ở 46/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (có ý nghĩa
-sau hiệu chỉnh Holm; tỉ số 0{,}49--0{,}91 ở lịch $0{,}2L$, 0{,}17--0{,}62 ở lịch $0{,}05L$) và thấp hơn giữ nguyên ở 48/48 (tỉ số
-0{,}11--0{,}56 và 0{,}26--0{,}94): giữa hai lần đo thưa, mô hình biết dung lượng giảm bao nhiêu. Ở M2, giữ nguyên thấp nhất ở
-23/25 trường hợp, vì thay đổi mô hình dự đoán giữa hai chu kỳ liền nhau nhiễu hơn thay đổi thật; biến thể $\kappa$
-đưa tỉ số so với giữ nguyên từ 1{,}17--1{,}52 về 0{,}98--1{,}30, ngang trên TJU và HUST, vẫn kém trên XJTU và MIT. Trên kiểm định chéo 18 cell của NASA,
-giữ nguyên tốt hơn cả hai bộ lọc ở lịch $0{,}05L$ và ở M2 ($p < 0{,}05$ ở từng phép so, chưa hiệu chỉnh): lợi thế của
-biến thể $\kappa$ trên ba cell của NASA-L chưa lặp lại được.
+NASA. Ở mức đo thưa, mô hình cập nhật thấp hơn bộ lọc ở 47/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (có ý
+nghĩa sau hiệu chỉnh Holm; tỉ số 0{,}15--1{,}06) và thấp hơn giữ nguyên ở 48/48 (tỉ số 0{,}07--0{,}53); bộ lọc thấp hơn giữ nguyên
+ở 48/48. Ở M2, mô hình cập nhật thấp hơn giữ nguyên ở 12/16 trường hợp, kém hơn ở 1 (tỉ số 0{,}37--1{,}13), trong khi
+bộ lọc kém giữ nguyên ở 16/16: thay đổi mà PINN-lai dự đoán giữa hai chu kỳ liền nhau nhiễu hơn thay đổi thật. Trên
+kiểm định chéo 18 cell của NASA (24 cột), mô hình cập nhật thấp hơn giữ nguyên có ý nghĩa ở 5/6 trường hợp mức nhãn
+$\times$ lịch đo thưa và không khác ở M2, còn bộ lọc kém giữ nguyên ở lịch $0{,}05L$ và ở M2.
 
 \begin{figure}[!htbp]\centering
 \includegraphics[width=\textwidth]{hinh/fig_e31_tiers.pdf}
 \caption[MAE theo lượng thông tin về chính cell cần ước lượng]{MAE theo lượng thông tin về chính cell cần ước lượng. MAE theo cell, \% SOH, thang log; không đo (M0), đo ở chu kỳ đầu và sau mỗi $0{,}2L$, $0{,}1L$, $0{,}05L$ chu kỳ, đo mọi lần xả trước (M2). Bốn bộ chính và NASA: kiểm định chéo, 70\,\% nhãn; NASA và NASA-L dùng 24 cột đầu vào. Đường đứt: SambaMixer trên NASA-L.}\label{fig:e31}
 \end{figure}
 
-\paragraph{Đọc kết quả.} Đồ án chỉ thấp hơn SambaMixer khi có thêm các lần đo dung lượng của chính cell; ở M2, phần
-thắng đến từ thông tin chứ không từ mô hình. Giá trị của mô hình nằm ở chỗ đo thưa, nơi nó giảm sai số của giữ nguyên
-nhiều lần trên cả bốn bộ chính.
+\paragraph{Đọc kết quả.} Khi không đo cell, sai số thấp nhất của đồ án trên NASA-L vẫn gấp 2{,}2 lần SambaMixer. Khi có
+vài lần đo dung lượng của chính cell, mô hình cập nhật thấp hơn SambaMixer, mô hình nhận chính lần xả cần ước lượng ở
+mọi chu kỳ; lợi thế đó lặp lại trên kiểm định chéo của NASA và trên bốn bộ chính, nơi nó giảm sai số của bộ lọc
+1{,}3--6{,}6 lần ở lịch $0{,}05L$.
 \section{Thảo luận chung}
 
 Gộp các so sánh chính lại: PINN-lai ở 30\,\% số cell có nhãn có MAE thấp hơn MLP và PINN-semi ở 70\,\% trên cả bốn bộ,
@@ -2161,7 +2168,7 @@ một giao thức không rò rỉ trên bốn bộ dữ liệu công khai; kiể
       tầm đã học nên sai số RUL gấp 1{,}1--1{,}5 lần. Khoảng 90\,\% chỉ đạt độ phủ 78--84\,\%. Tách phần hồi phục và dao động đều ra khỏi xu thế giảm sai số tầm ngắn có ý nghĩa trên XJTU, MIT và HUST.
 \item Trên đúng cách chia của PINN4SOH, với tiền xử lý không rò rỉ, PINN-lai có sai số bằng 0{,}23--0{,}63 lần số công
       bố trên TJU và MIT, ngang trên XJTU và chỉ kém trên HUST, nơi chỉ số chu kỳ chuẩn hoá theo từng cell cho mô hình của bài biết phần đời đã qua. Cùng tiền xử lý với bài, PINN-lai bằng 0{,}84--1{,}10 lần ở chế độ đầy đủ và 0{,}33--0{,}94 lần ở chế độ
-      ít mẫu, nhờ các cell không nhãn đi vào loss vật lý. Trên NASA-L, PINN-lai với bộ lọc Kalman chỉ thấp hơn SambaMixer khi biết mọi lần xả trước (0{,}80\,\%; giữ nguyên lần đo trước: 0{,}60\,\%).
+      ít mẫu, nhờ các cell không nhãn đi vào loss vật lý. Trên NASA-L, khi đo thêm cell 8 lần, mô hình học cập nhật từ lần đo gần nhất có MAE 0{,}63\,\%, thấp hơn 0{,}96\,\% của SambaMixer; khi không đo cell, sai số thấp nhất vẫn gấp 2{,}2 lần.
 \item Nên tính nhãn theo số lần đo dung lượng và rải các lần đo lên mọi cell thay vì đo kín một phần cell. Đo mỗi
       $0{,}05L$ (1{,}2--6{,}0\,\% số chu kỳ train) cho PINN-lai sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell (43--44\,\% số
       chu kỳ) và 0{,}97--1{,}05 lần khi gắn cho 70\,\% số cell; cả năm mô hình đều hưởng lợi theo cùng hướng. Đo thêm cell mới theo lịch $0{,}1L$ và cập nhật bằng bộ lọc Kalman đưa MAE xuống 1{,}2--7{,}5

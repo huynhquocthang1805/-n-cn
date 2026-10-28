@@ -98,7 +98,7 @@ def run_counts():
              E28=len(glob.glob('runs/E28/*.json')),
              E29=len(glob.glob('runs/E29dev/*.json')) + len(glob.glob('runs/E29/*.json')),
              E30=len(glob.glob('runs/E30dev/*.json')) + len(glob.glob('runs/E30/*.json')),
-             E31=len(glob.glob('runs/E31/*.json')))
+             E31=len(glob.glob('runs/E31/*.json')), E32=len(glob.glob('runs/E32/*.json')))
     # tổng chỉ gồm các thí nghiệm có trong báo cáo (bỏ E14 chuyển miền và E21 huấn luyện một bộ, kiểm tra bộ khác)
     c['tong'] = sum(v for k, v in c.items() if k not in ('E14', 'E21'))
     return c
@@ -820,6 +820,8 @@ def ch5(d, ctx):
                num(rc['E30'])],
               ['NASA, đặc trưng cả lần sạc', 'PINN-semi, MLP, GBDT, CNN, LSTM, Transformer với 24 cột; chéo và NASA-L',
                num(rc['E31'])],
+              ['Mô hình cập nhật', 'GBDT học thay đổi SOH kể từ lần đo gần nhất; 4 bộ × 4 mức nhãn; NASA, NASA-L',
+               num(rc['E32'])],
               [r'\textbf{Tổng}', '', r'\textbf{' + num(rc['tong']) + '}']]
     tabE = table(['Thí nghiệm', 'Nội dung', 'Lượt'], exrows, 'llr', 'Các thí nghiệm và số lượt huấn luyện.', 'tab:exps')
     rs = d['thesis_rowsim']; mc = rs[rs.bo == 'mo_phong']; real = rs[rs.bo != 'mo_phong']
