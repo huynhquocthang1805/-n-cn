@@ -44,7 +44,8 @@ OMEGAS, WINDOWS = (0.3, 0.4, 0.5, 0.6, 0.7), (5, 10, 20, 40)
 SCHED = {'q20': 0.2, 'q10': 0.1, 'q05': 0.05, 'M2': None}        # M1: ba lịch đo thưa; M2: đo mọi chu kỳ trước
 TIERS = ['M0'] + list(SCHED)
 ELL_GRID = np.array([0.05, 0.1, 0.25, 0.5, 1.0, 3.0, np.inf])  # như E25, theo đơn vị L
-METHODS = ['kalman', 'kalman_k', 'gan_nhat', 'giu_nguyen']
+METHODS = ['kalman', 'kalman_k', 'capnhat', 'gan_nhat', 'giu_nguyen']
+UPD_SRC = 'runs/E32'                                           # capnhat: mô hình học cập nhật (E32, pinnsoh/update.py)
 KAPPAS = (0.0, 0.25, 0.5, 0.75, 1.0)                           # kalman_k (hậu kiểm, xem đề cương): phần thay đổi của mô hình được tin
 # SambaMixer (Olalde-Verano và cộng sự, 2024), Bảng 4: MAE và RMSE (SOH) trên ba cell đánh giá của NASA-L
 SAMBA = {'NASA/B0006': (0.01173, 0.02068), 'NASA/B0007': (0.01197, 0.01285), 'NASA/B0047': (0.00512, 0.00645)}
@@ -248,8 +249,23 @@ def fit_params(cells, L):
     return th
 
 
-def tiers(cells, th, L):
-    """MAE (và RMSE) theo cell ở M0 và ở mọi lịch đo, cho Kalman và hai đối chứng."""
+def load_update(split, ds, f, r, k):
+    """Ước lượng của mô hình cập nhật (E32) trên cell test của một đơn vị: {lịch đo: {cell: (chu kỳ, ước lượng)}}; None
+    khi chưa có lượt E32 tương ứng."""
+    from pinnsoh.update import cv_path, samba_path
+    p = cv_path(ds, f, r, k, UPD_SRC) if split == 'cv' else samba_path(ds, r, UPD_SRC)
+    if not os.path.exists(p):
+        return None
+    d = json.load(open(p))
+    ids, out = d['cell_ids'], {}
+    for sc, t in d['test_tiers'].items():
+        cell, cyc, est = np.asarray(t['cell'], int), np.asarray(t['cycle'], float), np.asarray(t['est'], float)
+        out[sc] = {ids[i]: (cyc[cell == i], est[cell == i]) for i in np.unique(cell)}
+    return out
+
+
+def tiers(cells, th, L, upd=None):
+    """MAE (và RMSE) theo cell ở M0 và ở mọi lịch đo, cho Kalman, mô hình cập nhật (nếu có) và hai đối chứng."""
     rows = []
     for c in cells:
         e0 = c['p'] - c['y']
@@ -271,6 +287,11 @@ def tiers(cells, th, L):
             est = dict(kalman=c['p'] + B[i, :n], kalman_k=c['p'] + Bk[i, :n],
                        gan_nhat=c['p'] + np.where(have, g['r'][np.maximum(prev, 0)], 0.0),
                        giu_nguyen=np.where(have, c['y'][np.maximum(prev, 0)], c['p']))
+            if upd is not None:                    # cùng đúng các hàng được đánh giá (lịch đo pha 0, hàng có nhãn)
+                uc, ue = upd[sc][c['cell']]
+                assert np.array_equal(uc, c['cyc'][ev]), (c['cell'], sc)
+                full = np.full(n, np.nan); full[ev] = ue
+                est['capnhat'] = full
             row = dict(cell=c['cell'], tier=sc, n_meas=int(g['m'].sum()), goc=np.abs(c['p'] - c['y'])[ev].mean())
             for m, p in est.items():
                 d = (p - c['y'])[ev]
@@ -297,7 +318,7 @@ def run_tiers(recs, best):
         L = Lof[ds]
         th = fit_params(split_cells(rec['val'], lai(rec['val'], om, w)), L)
         params.append(dict(split=split, ds=ds, f=f, r=r, k=k, L=L, **th))
-        for row in tiers(split_cells(rec['test'], lai(rec['test'], om, w)), th, L):
+        for row in tiers(split_cells(rec['test'], lai(rec['test'], om, w)), th, L, load_update(*key)):
             rows.append(dict(split=split, ds=ds, f=f, r=r, k=k, **row))
     return pd.DataFrame(rows), pd.DataFrame(params)
 
@@ -305,6 +326,7 @@ def run_tiers(recs, best):
 def summarize(T):
     """Theo cell (trung bình qua lần lặp / hạt giống), rồi theo (cách chia, bộ, mức nhãn, mức thông tin)."""
     cols = ['goc'] + METHODS + [f'rmse_{m}' for m in METHODS] + ['n_meas']
+    T = T.reindex(columns=list(T.columns) + [c for c in cols if c not in T.columns])   # chưa có lượt E32: cột NaN
     pc = T.groupby(['split', 'ds', 'f', 'tier', 'cell'])[cols].mean().reset_index()
     rows = []
     for (split, ds, f, tier), g in pc.groupby(['split', 'ds', 'f', 'tier']):
@@ -312,9 +334,9 @@ def summarize(T):
                    **{m: g[m].mean() for m in METHODS}, **{f'rmse_{m}': g[f'rmse_{m}'].mean() for m in METHODS})
         if tier != 'M0' and split == 'cv':
             for m, ref in PAIRS:
-                d = (g[m] - g[ref]).values
+                d = (g[m] - g[ref]).dropna().values
                 row[f'better_{m}_{ref}'] = int((d < 0).sum())
-                row[f'p_{m}_{ref}'] = stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0
+                row[f'p_{m}_{ref}'] = (stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0) if len(d) > 1 else np.nan
         rows.append(row)
     S = pd.DataFrame(rows)
     from analyze_e20 import holm
@@ -325,7 +347,8 @@ def summarize(T):
     return S, pc
 
 
-PAIRS = [(m, ref) for m in ('kalman', 'kalman_k') for ref in ('goc', 'gan_nhat', 'giu_nguyen')] + [('kalman_k', 'kalman')]
+PAIRS = ([(m, ref) for m in ('kalman', 'kalman_k') for ref in ('goc', 'gan_nhat', 'giu_nguyen')] + [('kalman_k', 'kalman')]
+         + [('capnhat', ref) for ref in ('goc', 'kalman', 'kalman_k', 'gan_nhat', 'giu_nguyen')])
 
 
 # --------------------------------------------------------------------------- M0: các mô hình trên NASA
@@ -380,6 +403,7 @@ def figure(S=None, show_ds='NASAfc'):
     S = pd.read_csv(f'{OUT}/e31_tiers.csv') if S is None else S
     panels = [('cv', ds, 0.7, ds) for ds in MAIN] + [('cv', show_ds, 0.7, 'NASA'), ('samba', show_ds, 0.7, 'NASA-L')]
     style = {'kalman': ('PINN-lai + Kalman', '#0b3d73', '-', 'o'), 'kalman_k': ('PINN-lai + Kalman, κ', '#1baf7a', '-', 'D'),
+             'capnhat': ('mô hình cập nhật', '#6250d6', '-', 'v'),
              'gan_nhat': ('gần nhất', '#2a78d6', '--', 's'), 'giu_nguyen': ('giữ nguyên', '#eb6834', ':', '^')}
     xl = ['M0', '0,2L', '0,1L', '0,05L', 'M2']
     fig, axes = plt.subplots(2, 3, figsize=(6.3, 3.7))
@@ -405,7 +429,7 @@ def figure(S=None, show_ds='NASAfc'):
     for ax in axes[:, 0]:
         ax.set_ylabel('MAE theo cell (% SOH)')
     h, l = axes[1, 2].get_legend_handles_labels()
-    fig.legend(h, l, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0), fontsize=7)
+    fig.legend(h, l, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0), fontsize=7)
     fig.tight_layout(rect=[0, 0.07, 1, 1], h_pad=1.0, w_pad=0.8)
     save(fig, f'{OUT}/fig_e31_tiers')
 
