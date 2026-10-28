@@ -67,6 +67,12 @@ def _execute(kind: str, args: dict):
     if kind == 'seq_samba':
         from .seqmodels import run_samba
         return run_samba(**args)
+    if kind == 'update':
+        from .update import run_cv
+        return run_cv(**args)
+    if kind == 'update_samba':
+        from .update import run_samba
+        return run_samba(**args)
     raise ValueError(kind)
 
 

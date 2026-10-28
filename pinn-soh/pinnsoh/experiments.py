@@ -469,10 +469,29 @@ def E31(repeats=E20_REPEATS, datasets=None, seeds=None, out='runs/E31') -> List[
     return _nasa_jobs(['NASAfc'], range(repeats), out) + _nasa_seq_jobs(['NASAfc'], repeats, out)
 
 
+# E32: mô hình học cập nhật từ lần đo dung lượng gần nhất (pinnsoh/update.py, tai-lieu/de-cuong-E32.md): cùng fold, cùng
+#      cell có nhãn với E20 (bốn bộ chính) và E24/E31 (NASA, NASAfc); cách chia NASA-L với 3 hạt giống
+E32_COST = {'XJTU': 20, 'TJU': 50, 'MIT': 60, 'HUST': 90, 'NASA': 3, 'NASAfc': 3}
+
+
+def E32(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E32') -> List[Job]:
+    from .update import cv_path, samba_path
+    rr = range(repeats)
+    jobs = [Job('update', dict(ds=ds, frac=f, r=r, k=k, out_dir=out), cv_path(ds, f, r, k, out), E32_COST[ds],
+                f'update {ds} f{f} cv{r}-{k}', (ds,))
+            for ds, f, r, k in itertools.product(datasets, FRACS, rr, range(E13_FOLDS))]
+    jobs += [Job('update', dict(ds=ds, frac=f, r=r, k=k, out_dir=out), cv_path(ds, f, r, k, out), E32_COST[ds],
+                 f'update {ds} f{f} cv{r}-{k}', (ds,))
+             for ds, f, r, k in itertools.product(('NASA', 'NASAfc'), (0.3, 0.7), rr, range(E13_FOLDS))]
+    jobs += [Job('update_samba', dict(ds=ds, seed=s, out_dir=out), samba_path(ds, s, out), 3, f'samba update {ds} s{s}',
+                 (ds,)) for ds, s in itertools.product(('NASA', 'NASAfc'), range(3))]
+    return jobs
+
+
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
                                                         E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev, E29=E29,
-                                                        E30dev=E30dev, E30=E30, E31=E31)
+                                                        E30dev=E30dev, E30=E30, E31=E31, E32=E32)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
 ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26', 'E27',
-         'E28', 'E29dev', 'E29', 'E30dev', 'E30', 'E31']
+         'E28', 'E29dev', 'E29', 'E30dev', 'E30', 'E31', 'E32']
