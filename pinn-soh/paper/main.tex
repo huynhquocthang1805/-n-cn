@@ -47,9 +47,9 @@ remains the strongest single model. Averaging three PINNs with a GBDT and smooth
 result with a causal trend filter gives an estimator that is better than GBDT in 10 of 16 dataset--label settings,
 and better than CNN, LSTM and Transformer baselines in 47 of 48 comparisons. A leakage audit shows that row-wise
 splits make the error of the same model look \LeakRowAbstract\ times smaller, and that per-cell min--max
-normalisation over the whole life changes it by a factor of \LeakMinmaxAbstract, depending on the dataset. We re-run the original code of a widely cited PINN
-benchmark on its own splits and find that its published runs used a monotonicity term computed from labels only, which
-contributes no gradient; under identical splits and preprocessing our hybrid estimator \BenchAbstract. Finally, counting
+normalisation over the whole life changes it by a factor of \LeakMinmaxAbstract, depending on the dataset. We re-run the original code of PINN4SOH, a published PINN
+benchmark on the same datasets, on its own splits and find that its published runs used a monotonicity term computed
+from labels only, which contributes no gradient; under identical splits and preprocessing our hybrid estimator \BenchAbstract. Finally, counting
 labels as capacity measurements rather than cells, measuring every training cell at 1.2--6.0\,\% of its cycles gives
 0.85--0.93 times the error of fully labelling 30\,\% of the cells, and a few measurements of the cell in service,
 combined through a learned update model, lower the error further. Code, splits and run configurations are released.
