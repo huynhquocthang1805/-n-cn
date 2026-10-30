@@ -1,9 +1,9 @@
 \begin{table}[t]\centering\small
-\caption{Leakage audit: ratio of the per-cell MAE of the same MLP (70\,\% labels) under each faulty protocol to its MAE under the leakage-free protocol (below 1: the error looks smaller than it is).}\label{tab:leak}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lcccc}\toprule
-Dataset & row-wise split & per-cell min--max & whole-life $3\sigma$ filter & normaliser incl.\ test \\\midrule
-XJTU & \multirow{4}{*}{0.56--0.83} & 0.80 & \multirow{4}{*}{0.87--1.01} & \multirow{4}{*}{0.98--1.03} \\
-TJU &  & 1.51 &  &  \\
-MIT &  & 2.76 &  &  \\
-HUST &  & 0.46 &  &  \\
+\caption{Leakage audit: per-cell MAE of the same MLP (70\,\% labels, two repetitions $\times$ five folds) under the leakage-free protocol, and the ratio of the MAE under each faulty protocol to it (below 1: the error looks smaller than it is). Last column: copying the label of the nearest training cycle of the same cell under the row-wise split, without any feature.}\label{tab:leak}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule
+Dataset & MAE ($\times10^{-3}$) & row-wise split & per-cell min--max & whole-life $3\sigma$ filter & normaliser incl.\ test & copy nearest \\\midrule
+XJTU & 13.11 & 0.55 & 0.80 & 0.87 & 1.03 & 0.14 \\
+TJU & 9.86 & 0.85 & 1.51 & 0.98 & 1.01 & 0.10 \\
+MIT & 2.80 & 0.81 & 2.76 & 1.01 & 1.01 & 0.15 \\
+HUST & 17.46 & 0.64 & 0.46 & 0.96 & 0.98 & 0.01 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}

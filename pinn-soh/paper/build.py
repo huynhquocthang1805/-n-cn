@@ -175,7 +175,12 @@ LEAK_SETTINGS = [('row', 'row-wise split'), ('minmax', 'per-cell min--max'), ('l
 
 
 def leak_part():
-    path = 'results/thesis_leakage.csv'
+    path, kept = 'results/thesis_leakage.csv', os.path.join(GEN, 'leakage.csv')
+    if os.path.exists(path):                     # giữ một bản trong paper/ (results/ không lên git)
+        os.makedirs(GEN, exist_ok=True)
+        shutil.copy(path, kept)
+    elif os.path.exists(kept):
+        path = kept
     if os.path.exists(path):
         T = pd.read_csv(path).set_index('bo').reindex(DS)
         out = [r'\begin{table}[t]\centering\small',
