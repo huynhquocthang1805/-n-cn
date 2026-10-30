@@ -41,8 +41,8 @@ OURS = ('pinn_lai', 'gbdt', 'pinn3')
 ROWS = [(ds, 'full') for ds in ('XJTU', 'TJU', 'MIT', 'HUST')] + [(ds, f'n{k}') for ds in ('XJTU', 'HUST')
                                                                    for k in (1, 2, 3, 4)]
 PAIRS = [('paper_pinn_lai', 'rerun_published'), ('paper_pinn_lai', 'rerun_current'), ('paper_pinn_lai', 'published'),
-         ('paper_gbdt', 'rerun_published'), ('strict_pinn_lai', 'rerun_published'),
-         ('rerun_current', 'rerun_published'), ('rerun_published', 'published')]
+         ('paper_gbdt', 'rerun_published'), ('paper_gbdt', 'paper_pinn_lai'), ('strict_pinn_lai', 'rerun_published'),
+         ('strict_pinn_lai', 'published'), ('rerun_current', 'rerun_published'), ('rerun_published', 'published')]
 
 
 def _cell_metrics(y, p, cell):

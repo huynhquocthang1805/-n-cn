@@ -350,17 +350,30 @@ def bench_text(S, T):
              r'\path{relu(u2-u1).sum()} and then by \path{relu((u2-u1)*(y1-y2)).sum()}, and the latest commit '
              r'notes that the loss weights $\alpha$ and $\beta$ changed after a bug fix; the default weights in the '
              r'released scripts no longer match those in the logs.')
+    rep_sig = wins('rerun_published', 'published', full)
+    gb_full = r('paper_gbdt', 'rerun_published', full)
+    gb_few = r('paper_gbdt', 'rerun_published', few)
+    gb_vs_hyb = r('paper_gbdt', 'paper_pinn_lai', full + few)
+    gw, gl = wins('paper_gbdt', 'paper_pinn_lai', full + few)
+    sd_rel = [S.loc[k, 'rerun_published_sd'] / S.loc[k, 'rerun_published'] for k in BENCH_ROWS
+              if have(k, 'rerun_published') and pd.notna(S.loc[k, 'rerun_published_sd'])]
     if rep_full:
         s.append(r'\paragraph{Re-running the original code.} We ran the released model and data-loading classes '
-                 r'unchanged, on the reconstructed splits, with ten seeded runs per group ' + (
-                 f'(at least {runs} so far) ' if runs < 10 else '') +
-                 r'for two versions: the version that produced the published numbers with the logged hyperparameters, '
-                 r'and the current version with its default weights (Table~\ref{tab:bench}, Figure~\ref{fig:bench}). '
+                 r'unchanged on the reconstructed splits, with ten seeded runs per group as in the paper ' +
+                 (f'(at least {runs} so far) ' if runs < 10 else '') +
+                 r'and two versions of the model: the version that produced the published numbers, with the logged '
+                 r'hyperparameters, and the current version with its default weights (Table~\ref{tab:bench}, '
+                 r'Figure~\ref{fig:bench}). The original code needs pandas~1.x semantics; we used pandas~2.3, '
+                 r'PyTorch~2 and CPUs, whereas the original runs used GPUs and older libraries. '
                  f'The re-run of the published version gives {_rng(rep_full)} times the published error on the four '
                  f'full datasets' + (f' and {_rng(rep_few)} times in the few-shot settings' if rep_few else '') +
-                 '. The run-to-run standard deviation is of the same order as these differences, and the original '
-                 'runs used GPUs and older library versions, so we treat the published numbers as reproduced up to '
-                 'run-to-run variation where the ratio is close to one. ' +
+                 f'. Per test cell, the re-run is significantly worse on {rep_sig[1]} of the 4 full datasets. The '
+                 f'standard deviation over runs is {_rng([100 * v for v in sd_rel], 0)}\,\% of the mean, so single runs '
+                 'differ by as much as these gaps. Since the training rows are identical, the remaining differences are '
+                 'hardware, library versions and random seeds; we could not reproduce the original environment and do '
+                 'not know which of them causes the systematic part. We therefore report both the '
+                 'published numbers and the re-run, and use the re-run for paired tests because it gives per-cell '
+                 'predictions under known conditions. ' +
                  (f'The corrected current version gives {_rng(cur)} times the error of the published version across '
                   'the 12 settings.' if cur else ''))
     if hyb_full:
@@ -372,13 +385,20 @@ def bench_text(S, T):
                  f'the few-shot settings (lower in {w_few}, higher in {l_few} of 8). Against the published numbers the '
                  f'ratios are {_rng(hyb_pub_full)} and {_rng(hyb_pub_few)}. In the few-shot settings the unlabelled '
                  'training cells enter the physics losses of our model, which is where the semi-supervised design '
-                 'pays off.')
+                 'pays off. The strongest model under these conditions, however, is not a PINN: a GBDT with the same '
+                 f'preprocessing has {_rng(gb_full)} times the re-run error on the full datasets and {_rng(gb_few)} '
+                 f'times in the few-shot settings, and is significantly lower than PINN-hybrid in {gw} of the 12 '
+                 f'settings (higher in {gl}; ratio {_rng(gb_vs_hyb)}). With per-cell min--max normalisation, the '
+                 'normalised cycle index is the fraction of life already elapsed, a feature that a tree exploits '
+                 'directly.')
     if strict_full:
         better = [d for d, v in strict_full.items() if v < 0.95]
         worse = [d for d, v in strict_full.items() if v > 1.05]
+        sw, sl = wins('strict_pinn_lai', 'published', full)
         s.append(r'\paragraph{Without the leaks.} With our leakage-free preprocessing the same model has '
                  + ', '.join(f'{v:.2f} ({d})' for d, v in strict_full.items()) +
-                 r' times the published error on the full datasets. The direction follows the leakage audit '
+                 f' times the published error on the full datasets (per test cell significantly lower on {sw} and '
+                 f'higher on {sl} of 4). The direction follows the leakage audit '
                  r'(Section~\ref{sec:leak}): the original preprocessing helps on datasets where the elapsed fraction of '
                  r'life determines SOH' + (f' ({", ".join(worse)})' if worse else '') +
                  r' and hurts where the absolute feature level matters' + (f' ({", ".join(better)})' if better else '')
