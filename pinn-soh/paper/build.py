@@ -264,9 +264,9 @@ def bench_table(S, T):
                 mark[(r.dataset, r.mode)] = '*' if r.ratio < 1 else r'\dagger'
     out = [r'\begin{table}[t]\centering\small\setlength{\tabcolsep}{4pt}',
            r'\caption{Per-cell MAE ($\times10^{-3}$) on the PINN4SOH splits, averaged over test cells, runs and groups '
-           r'as in the original paper. Re-runs: the released code, ten runs per group (seeds 0--9), as published '
-           r'(label-only monotonicity term, logged hyperparameters) and as currently released (corrected term, new '
-           r'defaults); $\pm$: standard deviation over runs. Ours: three seeds. $K$: labelled training cells in the '
+           r'as in the original paper. Re-runs: the released code as published (label-only monotonicity term, logged '
+           r'hyperparameters; ten runs per group, seeds 0--9) and as currently released (corrected term, new defaults; '
+           r'three runs per group, seeds 0--2); $\pm$: standard deviation over runs. Ours: three seeds. $K$: labelled training cells in the '
            r'few-shot experiments. $^{*}$/$^{\dagger}$: hybrid with the original preprocessing significantly lower/higher '
            r'than the re-run as published (Wilcoxon over test cells, Holm across the 12 rows).}\label{tab:bench}',
            r'\begin{adjustbox}{max width=\textwidth}'
@@ -323,8 +323,10 @@ def bench_text(S, T):
                    if have(k, 'strict_pinn_lai')}
     w_full, l_full = wins('paper_pinn_lai', 'rerun_published', full)
     w_few, l_few = wins('paper_pinn_lai', 'rerun_published', few)
-    runs = int(np.nanmin([S.loc[k, 'rerun_published_runs'] for k in BENCH_ROWS if have(k, 'rerun_published')])) \
-        if any(have(k, 'rerun_published') for k in BENCH_ROWS) else 0
+    def nruns(col):
+        v = [S.loc[k, f'{col}_runs'] for k in BENCH_ROWS if have(k, col)]
+        return int(np.nanmin(v)) if v else 0
+    runs, runs_cur = nruns('rerun_published'), nruns('rerun_current')
     s = []
     s.append(r'PINN4SOH~\citep{wang2024} is the reference result on these four datasets. We reconstructed its 39 '
              r'evaluation groups (one model per batch for XJTU and TJU, one per dataset for MIT and HUST with 23 and 20 '
@@ -359,16 +361,16 @@ def bench_text(S, T):
               if have(k, 'rerun_published') and pd.notna(S.loc[k, 'rerun_published_sd'])]
     if rep_full:
         s.append(r'\paragraph{Re-running the original code.} We ran the released model and data-loading classes '
-                 r'unchanged on the reconstructed splits, with ten seeded runs per group as in the paper ' +
-                 (f'(at least {runs} so far) ' if runs < 10 else '') +
-                 r'and two versions of the model: the version that produced the published numbers, with the logged '
-                 r'hyperparameters, and the current version with its default weights (Table~\ref{tab:bench}, '
-                 r'Figure~\ref{fig:bench}). The original code needs pandas~1.x semantics; we used pandas~2.3, '
+                 r'unchanged on the reconstructed splits, for two versions of the model: the version that produced the '
+                 f'published numbers, with the logged hyperparameters ({runs} seeded runs per group, as in the paper), '
+                 f'and the current version with its default weights ({runs_cur} runs per group) '
+                 r'(Table~\ref{tab:bench}, Figure~\ref{fig:bench}). The original code needs pandas~1.x semantics; we '
+                 r'used pandas~2.3, '
                  r'PyTorch~2 and CPUs, whereas the original runs used GPUs and older libraries. '
                  f'The re-run of the published version gives {_rng(rep_full)} times the published error on the four '
                  f'full datasets' + (f' and {_rng(rep_few)} times in the few-shot settings' if rep_few else '') +
                  f'. Per test cell, the re-run is significantly worse on {rep_sig[1]} of the 4 full datasets. The '
-                 f'standard deviation over runs is {_rng([100 * v for v in sd_rel], 0)}\,\% of the mean, so single runs '
+                 rf'standard deviation over runs is {_rng([100 * v for v in sd_rel], 0)}\,\% of the mean, so single runs '
                  'differ by as much as these gaps. Since the training rows are identical, the remaining differences are '
                  'hardware, library versions and random seeds; we could not reproduce the original environment and do '
                  'not know which of them causes the systematic part. We therefore report both the '

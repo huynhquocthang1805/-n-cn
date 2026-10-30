@@ -1,12 +1,12 @@
 \begin{table}[t]\centering\small\setlength{\tabcolsep}{4pt}
-\caption{Per-cell MAE ($\times10^{-3}$) on the PINN4SOH splits, averaged over test cells, runs and groups as in the original paper. Re-runs: the released code, ten runs per group (seeds 0--9), as published (label-only monotonicity term, logged hyperparameters) and as currently released (corrected term, new defaults); $\pm$: standard deviation over runs. Ours: three seeds. $K$: labelled training cells in the few-shot experiments. $^{*}$/$^{\dagger}$: hybrid with the original preprocessing significantly lower/higher than the re-run as published (Wilcoxon over test cells, Holm across the 12 rows).}\label{tab:bench}
+\caption{Per-cell MAE ($\times10^{-3}$) on the PINN4SOH splits, averaged over test cells, runs and groups as in the original paper. Re-runs: the released code as published (label-only monotonicity term, logged hyperparameters; ten runs per group, seeds 0--9) and as currently released (corrected term, new defaults; three runs per group, seeds 0--2); $\pm$: standard deviation over runs. Ours: three seeds. $K$: labelled training cells in the few-shot experiments. $^{*}$/$^{\dagger}$: hybrid with the original preprocessing significantly lower/higher than the re-run as published (Wilcoxon over test cells, Holm across the 12 rows).}\label{tab:bench}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
  & & \multicolumn{3}{c}{PINN4SOH} & \multicolumn{3}{c}{ours} \\\cmidrule(lr){3-5}\cmidrule(lr){6-8}
 Dataset & Setting & published & re-run, as published & re-run, current & hybrid, orig.\ prep. & GBDT, orig.\ prep. & hybrid, leakage-free \\\midrule
-XJTU & all cells & 7.85 & 8.66 $\pm$ 1.04 & -- & -- & -- & -- \\
+XJTU & all cells & 7.85 & 8.66 $\pm$ 1.04 & -- & 6.62 & 6.82 & 7.81 \\
 TJU & all cells & 9.79 & 11.21 $\pm$ 0.47 & -- & 8.78$^{*}$ & 8.63 & 6.16 \\
-MIT & all cells & 6.18 & 7.36 $\pm$ 0.69 & -- & 6.80 & 6.15 & 1.43 \\
-HUST & all cells & 7.57 & 7.90 $\pm$ 0.80 & -- & 6.45$^{*}$ & 6.16 & 12.51 \\
+MIT & all cells & 6.18 & 7.36 $\pm$ 0.69 & 7.48 $\pm$ 0.97 & 6.80 & 6.15 & 1.43 \\
+HUST & all cells & 7.57 & 7.90 $\pm$ 0.80 & 7.38 $\pm$ 0.37 & 6.45$^{*}$ & 6.16 & 12.51 \\
 \addlinespace
 XJTU & $K = 1$ & 31.54 & 30.70 $\pm$ 8.47 & -- & -- & -- & -- \\
  & $K = 2$ & 10.06 & 11.54 $\pm$ 1.34 & -- & -- & -- & -- \\
