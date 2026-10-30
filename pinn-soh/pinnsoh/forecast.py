@@ -49,7 +49,7 @@ from .postproc import by_cell, causal_trend
 
 ROOT = 'runs/E22'
 DATASETS = ['XJTU', 'TJU', 'MIT', 'HUST']
-TAU = {'XJTU': 0.84, 'TJU': 0.81, 'MIT': 0.87, 'HUST': 0.81, 'NASA': 0.70}   # NASA: 70 % như README và SambaMixer
+TAU = {'XJTU': 0.84, 'TJU': 0.81, 'MIT': 0.87, 'HUST': 0.81}
 ORIGINS = (0.2, 0.4, 0.6)            # gốc dự báo SOH: tỉ lệ số hàng đã qua của cell (chỉ để chọn điểm đánh giá)
 RUL_ORIGINS = (0.25, 0.5, 0.75)      # gốc dự báo RUL: tỉ lệ của chu kỳ cuối đời thật
 H_REL = (0.1, 0.25, 0.5)             # tầm dự báo báo cáo trong bảng, theo L của bộ
@@ -59,7 +59,7 @@ W_LEVEL, W_FEAT = 10, 10
 MODELS = ['giu', 'tuyen', 'vatly', 'gbdt', 'pinn', 'ket_hop']
 SCEN = ['do', 'uoc']
 CLIP = (0.40, 1.15)
-NOMINAL = {'XJTU': 2.0, 'MIT': 1.1, 'HUST': 1.1, 'NASA': 2.0}
+NOMINAL = {'XJTU': 2.0, 'MIT': 1.1, 'HUST': 1.1}
 
 
 def nominal_ah(c) -> float:
@@ -333,7 +333,7 @@ def e20_estimates(ds, r, k, part='test', raw=False):
     dict cell_id -> (chu kỳ, SOH ước lượng). Đúng công thức của analysis/analyze_e20.py. raw=True trả trung bình
     ½ + ½ trước bộ lọc (E23 tự tách xu thế, hồi phục và dao động từ chuỗi này)."""
     s = 100 * r + k
-    src = 'runs/E24' if ds.startswith('NASA') else 'runs/E20'          # NASA: cùng công thức, lượt của E24
+    src = 'runs/E20'
     P = [f'{src}/P_{ds}_pinn_semi_f0.7_s{s}_global_global_cv{r}-{k}of5' + ('' if m == 0 else f'_m{m}') + '.json'
          for m in range(3)]
     G = f'{src}/gbdt_{ds}_f0.7_cv{r}-{k}of5.json'

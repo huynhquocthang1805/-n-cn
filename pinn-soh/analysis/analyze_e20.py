@@ -3,7 +3,7 @@ E20: đánh giá mô hình cải tiến PINN-lai trên test, phân rã lợi íc
 
     python analysis/analyze_e20.py    # -> results/e20_*.csv, results/fig_e20_*.png|pdf
 
-Cấu hình chốt trong tai-lieu/de-cuong-E20.md. Mọi mô hình so trên đúng 3 lần lặp đầu (0, 1, 2):
+Cấu hình chốt trong docs/de-cuong-E20.md. Mọi mô hình so trên đúng 3 lần lặp đầu (0, 1, 2):
   pinn       PINN-semi đơn lẻ (thành viên 0, trùng E13)
   pinn3      trung bình 3 PINN-semi
   gbdt       GBDT (trùng E16)

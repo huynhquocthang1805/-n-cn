@@ -1,21 +1,22 @@
 """
-E32: mô hình học cập nhật từ lần đo dung lượng gần nhất (tai-lieu/de-cuong-E32.md).
+E32: mô hình học cập nhật từ lần đo dung lượng gần nhất (docs/de-cuong-E32.md).
 
-Khi cell cần ước lượng có vài lần đo dung lượng (mức M1, M2 của E31), ước lượng ở hàng n là
+Khi cell cần ước lượng có vài lần đo dung lượng (mức thông tin M1, M2 của analysis/analyze_e32.py), ước lượng ở
+hàng n là
 
     ŷ_n = y_m + f(z_n, z_n − z_m, y_m, (c_n − c_m)/L, độ dốc của hai lần đo gần nhất),
 
 với m là hàng được đo gần nhất trước n, z là đặc trưng đã chuẩn hoá, c là chỉ số chu kỳ, L là trung vị số chu kỳ của bộ
-và f là GBDT học trên cell train có nhãn. Cặp (n, m) để học lấy theo đúng các lịch đo của E31 (đo ở chu kỳ đầu và sau mỗi
-qL chu kỳ, q = 0,2; 0,1; 0,05, với pha 0 và hai pha ngẫu nhiên; và đo mọi chu kỳ trước), một mô hình chung cho mọi lịch;
-số cây chọn theo MAE trên cặp của cell validation. Trên cell test, lịch đo có pha 0 như E31 nên hàng đánh giá trùng hàng
-của E31 và so ghép cặp được với bộ lọc Kalman, gần nhất, giữ nguyên.
+và f là GBDT học trên cell train có nhãn. Cặp (n, m) để học lấy theo đúng các lịch đo của phần đánh giá (đo ở chu kỳ
+đầu và sau mỗi qL chu kỳ, q = 0,2; 0,1; 0,05, với pha 0 và hai pha ngẫu nhiên; và đo mọi chu kỳ trước), một mô hình
+chung cho mọi lịch; số cây chọn theo MAE trên cặp của cell validation. Trên cell test, lịch đo có pha 0 nên hàng đánh
+giá trùng hàng của bộ lọc Kalman (E25) và so ghép cặp được với bộ lọc Kalman, gần nhất, giữ nguyên.
 """
 from __future__ import annotations
 import json, os, time
 import numpy as np
 
-from .data import cv_split, choose_labelled, Normalizer, SAMBA_SPLIT
+from .data import cv_split, choose_labelled, Normalizer
 
 TIERS = {'q20': 0.2, 'q10': 0.1, 'q05': 0.05, 'M2': None}     # None: đo mọi chu kỳ trước (M2)
 MAX_PAIRS, MAX_PAIRS_VAL = 300_000, 100_000
@@ -150,19 +151,3 @@ def run_cv(ds, frac, r, k, out_dir='runs/E32'):
     lab, unl = choose_labelled(sp['train'], frac, len(cells), seed, by)
     cfg = dict(tag='U', model='update', label_frac=frac, dataset=ds, repeat=r, fold=k, seed=seed, split='cv', n_folds=5)
     return _run(cells, lab, sp['val'], sp['test'], lab + unl, seed, cfg, path)
-
-
-def samba_path(ds, seed, out_dir='runs/E32'):
-    return f'{out_dir}/update_{ds}_samba_s{seed}.json'
-
-
-def run_samba(ds, seed, out_dir='runs/E32'):
-    """Cách chia NASA-L của SambaMixer: 8 cell train, B0018 và B0055 validation, B0006, B0007, B0047 đánh giá."""
-    from .baselines import cells_of
-    path = samba_path(ds, seed, out_dir)
-    if os.path.exists(path):
-        return json.load(open(path))['test']['MAE_cell']['q05']
-    cells = cells_of(ds)
-    sp = {k: [f'NASA/{c}' for c in v] for k, v in SAMBA_SPLIT.items()}
-    cfg = dict(tag='US', model='update', dataset=ds, seed=seed, split='samba')
-    return _run(cells, sp['train'], sp['val'], sp['test'], sp['train'], seed, cfg, path)

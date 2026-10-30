@@ -1,5 +1,5 @@
 """
-E29: mô hình dùng lịch sử của cell — đánh giá cuối (tai-lieu/de-cuong-E29.md).
+E29: mô hình dùng lịch sử của cell — đánh giá cuối (docs/de-cuong-E29.md).
 
     python analysis/analyze_e29.py     # -> results/e29_summary.csv, e29_tests.csv, e29_tuned.csv, e29_select.csv,
                                        #    e29_val.csv, fig_e29_pinn, fig_e29_lai, fig_e29_phys

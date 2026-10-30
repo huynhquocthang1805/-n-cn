@@ -3,7 +3,7 @@ E30dev: chọn độ dài cửa sổ L của CNN, LSTM, Transformer trên VALIDA
 
     python analysis/dev_e30.py     # -> results/e30_dev.csv
 
-Quy tắc (tai-lieu/de-cuong-E30.md): với mỗi mô hình, tỉ số MAE theo cell trên validation của L = 48 so với L = 16, trung
+Quy tắc (docs/de-cuong-E30.md): với mỗi mô hình, tỉ số MAE theo cell trên validation của L = 48 so với L = 16, trung
 bình theo fold rồi qua bộ và mức nhãn; chọn L = 48 nếu tỉ số < 1, ngược lại L = 16. Một giá trị L cho mỗi mô hình.
 """
 from __future__ import annotations

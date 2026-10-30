@@ -1,7 +1,7 @@
 """
 Tài liệu ngắn: phần vật lý của PINN nằm ở đâu, kiểm chứng trên mô hình đã huấn luyện, và các chỉ số R², RMSE.
 
-    python report/make_physics_doc.py    # -> tai-lieu/phan-tich-vat-ly-PINN.md, .pdf (cần pandoc + XeLaTeX)
+    python tools/make_physics_doc.py     # -> docs/phan-tich-vat-ly-PINN.md, .pdf (cần pandoc + XeLaTeX)
 
 Đọc results/ (chạy sau analysis/analyze_metrics.py và analysis/analyze_physics.py). Mọi con số lấy từ dữ liệu.
 """
@@ -13,7 +13,7 @@ import math, os, shutil, subprocess
 import numpy as np
 import pandas as pd
 
-R, DOC = 'results', 'tai-lieu'
+R, DOC = 'results', 'docs'
 IMG = 'phan-tich-vat-ly'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 FRS = [0.1, 0.3, 0.5, 0.7]

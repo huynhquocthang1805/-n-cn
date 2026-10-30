@@ -1,8 +1,7 @@
 """
 E30: CNN, LSTM, Transformer so với các mô hình của đồ án; bảng chỉ số đầy đủ (MAE, RMSE, MAPE, R²) cho mọi mô hình chính.
 
-    python analysis/analyze_e30.py     # -> results/e30_metrics.csv, e30_tests.csv, e30_nasa_cv.csv, e30_samba.csv,
-                                       #    e30_samba_traj.csv
+    python analysis/analyze_e30.py     # -> results/e30_metrics.csv, e30_tests.csv
 
 Bốn bộ chính, 3 lần lặp × 5 fold × 4 mức nhãn, cùng fold và hạt giống với E20:
     mlp, gbdt, pinn           MLP, GBDT, PINN-semi (thành viên 0) — lượt E13 / E16 qua E20
@@ -12,8 +11,6 @@ Bốn bộ chính, 3 lần lặp × 5 fold × 4 mức nhãn, cùng fold và hạ
 Chỉ số: MAE_cell, RMSE_cell (mỗi cell trung bình qua lần lặp rồi trung bình theo cell), MAPE (gộp mọi chu kỳ của một lần
 lặp), R² (gộp 5 fold của một lần lặp, bỏ 10 chu kỳ đầu mỗi cell, như Mục RMSE và R² của báo cáo); MAPE và R² trung bình qua
 lần lặp. Kiểm định: Wilcoxon ghép cặp theo cell (trung bình 3 lần lặp), p hiệu chỉnh Holm qua bốn bộ.
-NASA: kiểm định chéo (30 và 70 % nhãn, có / không giờ nghỉ) và cách chia NASA-L của SambaMixer (3 hạt giống), cùng dạng
-bảng với analyze_e24.py.
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -25,10 +22,10 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from pinnsoh.experiments import E30_MODELS, E30_L, NASA_SETS
+from pinnsoh.experiments import E30_MODELS, E30_L
 from pinnsoh.postproc import by_cell, causal_trend
 from pinnsoh.runcache import cached_map
-from pinnsoh.seqmodels import cv_path, samba_path
+from pinnsoh.seqmodels import cv_path
 
 OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
@@ -127,41 +124,6 @@ def tests(pc):
     return T
 
 
-def nasa():
-    """Bộ NASA: kiểm định chéo và cách chia NASA-L cho CNN, LSTM, Transformer (cùng dạng bảng với analyze_e24.py)."""
-    import analyze_e20 as A
-    from analyze_e24 import cell_rows
-    rows, srows, traj = [], [], []
-    for m in E30_MODELS:
-        for ds in NASA_SETS:
-            for f, r, k in [(f, r, k) for f in (0.3, 0.7) for r in range(3) for k in range(5)]:
-                p = cv_path(m, E30_L[m], ds, f, r, k)
-                if os.path.exists(p):
-                    q = A._both(p)['test']
-                    rows += cell_rows(q, {m: q['p']}, ds=ds, frac=f, r=r, k=k)
-            for s in range(3):
-                p = samba_path(m, E30_L[m], ds, s)
-                if os.path.exists(p):
-                    q = A._both(p)['test']
-                    srows += cell_rows(q, {m: q['p']}, ds=ds, seed=s)
-                    if s == 0:
-                        traj += [dict(ds=ds, cell=c.split('/')[1], cycle=int(n), model=m, p=float(v))
-                                 for c, n, v in zip(q['cell'], q['cyc'], q['p'])]
-    if rows:
-        C = pd.DataFrame(rows)
-        pc = C.groupby(['ds', 'frac', 'model', 'cell'])[['mae', 'rmse', 'mape']].mean().reset_index()
-        cv = pc.groupby(['ds', 'frac', 'model'])[['mae', 'rmse', 'mape']].mean().reset_index()
-        cv['n_cell'] = pc.groupby(['ds', 'frac', 'model']).size().values
-        old = pd.read_csv(f'{OUT}/e24_cv.csv')
-        pd.concat([old, cv], ignore_index=True).to_csv(f'{OUT}/e30_nasa_cv.csv', index=False)
-    if srows:
-        S = pd.DataFrame(srows).groupby(['ds', 'model', 'cell'])[['mae', 'rmse', 'mape']].mean().reset_index()
-        old = pd.read_csv(f'{OUT}/e24_samba.csv')
-        pd.concat([old, S], ignore_index=True).to_csv(f'{OUT}/e30_samba.csv', index=False)
-    if traj:
-        pd.DataFrame(traj).to_csv(f'{OUT}/e30_samba_traj.csv', index=False)
-
-
 def main():
     recs = build()
     M, pc = metrics(recs)
@@ -169,7 +131,6 @@ def main():
     M.to_csv(f'{OUT}/e30_metrics.csv', index=False)
     Tt = tests(pc)
     Tt.to_csv(f'{OUT}/e30_tests.csv', index=False)
-    nasa()
     with pd.option_context('display.width', 220, 'display.max_rows', 400):
         V = M.assign(MAE=1e3 * M.MAE_cell).pivot_table(index=['dataset', 'f'], columns='model', values='MAE')
         print(V.reindex(columns=[m for m in MODELS if m in V.columns]).round(2))
@@ -177,8 +138,6 @@ def main():
         print(V.reindex(columns=[m for m in MODELS if m in V.columns]).round(3))
         if len(Tt):
             print(Tt.round(4).to_string(index=False))
-    import figures_report
-    figures_report.main(['nasa_traj', 'nasa_compare'])
 
 
 if __name__ == '__main__':

@@ -30,7 +30,7 @@ WINDOWS, ALPHAS = (5, 10, 20, 40), (1.0, 0.5, 0.3, 0.1)
 def label_stats():
     from pinnsoh.baselines import cells_of
     rows = []
-    for ds in DS + ['NASA']:
+    for ds in DS:
         for c in cells_of(ds):
             y = c.soh
             rows.append(dict(dataset=ds, up=float((np.diff(y) > 0.005).mean()),

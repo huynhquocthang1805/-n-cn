@@ -1,7 +1,7 @@
 """
 Sơ đồ kiến trúc mô hình cho báo cáo đồ án.
 
-    python report/diagrams.py         # -> results/fig_thesis_arch.png|pdf
+    python analysis/diagrams.py       # -> results/fig_thesis_arch.png|pdf
 """
 from __future__ import annotations
 import os as _os, sys as _sys

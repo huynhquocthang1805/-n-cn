@@ -1,63 +1,42 @@
 # Ước lượng SOH pin lithium-ion bằng PINN bán giám sát
 
-Mã nguồn của Đồ án chuyên ngành HK261 — nhóm 15.
+Mã nguồn của Đồ án chuyên ngành HK261 — nhóm 15, và bản thảo bài báo phát triển từ đồ án.
 Huỳnh Quốc Thắng, Khoa KH&KT Máy tính, Trường ĐH Bách khoa — ĐHQG-HCM.
 
-Bài toán: ước lượng SOH (dung lượng hiện tại / dung lượng danh định) của từng cell lithium-ion, tại từng
-chu kỳ, từ 16 đặc trưng của đoạn sạc CC–CV. Mô hình là một mạng nơ-ron có thông tin vật lý (PINN): mạng
-nghiệm dự đoán SOH, gắn với động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn
-nên áp được lên cả cell chưa đo dung lượng. Mô hình cải tiến PINN-lai (E20) lấy trung bình ba mạng PINN với
-GBDT rồi làm trơn bằng một bộ lọc xu thế nhân quả (độ dốc trong mỗi cửa sổ không dương; chuỗi đầu ra không bảo
-đảm không tăng, xem E29), kèm khoảng dự đoán 90 %. E21 huấn luyện trên một bộ
-dữ liệu (70/30 hoặc 70/15/15), kiểm tra trên ba bộ còn lại, rồi thích nghi không nhãn và tự huấn luyện hai vòng.
-E22 dự báo SOH ở các chu kỳ tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời (RUL):
-PINN-dự báo (mạng trả tham số của nghiệm đóng của động học xám) kết hợp với GBDT, kèm khoảng dự báo 90 %.
-E23 tách lịch sử SOH thành xu thế, phần hồi phục (một phần giữ lại, một phần mất ngay; tỉ lệ ước lượng trên cell train)
-và dao động đều để dự báo đúng hơn khi dung lượng hồi phục.
-E24 thêm bộ NASA PCoE (18 cell), thử thời gian nghỉ làm đặc trưng như SambaMixer và so trên đúng cách chia của bài đó.
-E25 hiệu chỉnh ước lượng và dự báo theo từng cell bằng bộ lọc Kalman khi đo được dung lượng vài lần trong đời cell
-(không huấn luyện thêm). E26 kiểm tra λ và Ea có được dữ liệu xác định không: tăng trọng số ODE, thêm ràng buộc Euler,
-đổi giá trị khởi tạo trên NASA và TJU (nhiều mức nhiệt độ).
-E27 so với PINN4SOH trên đúng cách chia của bài (dựng lại từ nhật ký công bố kèm mã nguồn), cả chế độ đầy đủ lẫn ít mẫu,
-với tiền xử lý không rò rỉ của đồ án và với bản sao tiền xử lý của bài. E28 tính nhãn theo số lần đo dung lượng: mọi
-cell train chỉ được đo ở vài chu kỳ (đầu, mỗi q·L, cuối), vật lý lan thông tin giữa các lần đo; so với đo đầy đủ một
-phần cell, và thêm đo cell mới theo cùng lịch với bộ lọc Kalman của E25. E29 thêm lịch sử của cell vào đầu vào
-(trung bình trượt mũ nhân quả của đặc trưng sạc, độ dốc gần đây), chọn dạng trên validation cho từng bộ và từng mô
-hình, và kiểm tra bộ lọc quỹ đạo: bản hiện tại không bảo đảm SOH không tăng, bản có bảo đảm làm sai số tăng ở bộ có
-dung lượng hồi phục (XJTU, NASA). Lịch sử giảm sai số của PINN-lai trên TJU và HUST khi có từ 30 % nhãn nhưng không
-giúp trên XJTU và ở 10 % nhãn, và không được chọn cho MIT, NASA vì không giảm sai số trên validation; khi dùng hay
-không dùng lịch sử được chọn trên validation của đủ ba lần lặp
-(phân tích hậu kiểm), PINN-lai có sai số thấp hơn GBDT ở cả 16 trường hợp bộ × mức nhãn, 13 có ý nghĩa thống kê.
-E30 thêm ba mô hình học sâu cho chuỗi thời gian theo đề cương (CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ
-gần nhất của cell), chọn độ dài cửa sổ trên validation (E30dev) rồi so với mọi mô hình bằng MAE, RMSE, MAPE và R² trên
-bốn bộ và NASA. Ba mô hình chuỗi có sai số bằng 0,36–0,93 lần MLP (thấp hơn có ý nghĩa ở 42/48 phép so) nhưng kém
-GBDT ở 40/48 phép so (chỉ tốt hơn trên HUST) và kém PINN-lai ở 47/48; mô hình cuối có MAE bằng 0,77–0,96 lần mô hình
-chuỗi tốt nhất của từng bộ × mức nhãn.
-E31 so với SambaMixer trên NASA theo lượng thông tin về chính cell cần ước lượng (`tai-lieu/de-cuong-E31.md`). Thêm
-7 đặc trưng của cả lần sạc và giờ nghỉ (24 cột) giảm MAE của PINN-lai trên cách chia NASA-L từ 4,12 xuống 2,52 %
-(thấp nhất LSTM 2,16 %), vẫn gấp 2,2 lần SambaMixer (0,96 %, mô hình nhận chính lần xả cần ước lượng). Khi đo thêm cell
-và cập nhật bằng bộ lọc Kalman của E25, sai số chỉ xuống dưới 0,96 % ở mức biết mọi lần xả trước (0,80 %); biến thể
-hậu kiểm κ (chỉ tin một phần thay đổi do mô hình dự đoán) cho 0,82 % khi đo mỗi 0,05L và 0,64 % ở mức đó, nhưng giữ
-nguyên lần đo trước, không dùng mô hình, cũng cho 0,60 %. Kiểm tra lại trên bốn bộ chính: khi đo thưa, bộ lọc thấp hơn
-không đo ở 46/48 và thấp hơn giữ nguyên ở 48/48 trường hợp; khi biết mọi lần xả trước, giữ nguyên tốt nhất ở 23/25.
-E32 thay bộ lọc bằng mô hình học cập nhật từ lần đo gần nhất (`tai-lieu/de-cuong-E32.md`): ước lượng = SOH đo gần nhất
-+ GBDT học dung lượng đã đổi bao nhiêu từ đặc trưng hiện tại, thay đổi đặc trưng, khoảng chu kỳ và độ dốc của hai lần đo.
-Trên NASA-L (24 cột), đo thêm cell 8 lần (mỗi 0,2L) cho MAE 0,63 %, mỗi 0,1L 0,40 % (thấp hơn SambaMixer trên cả ba
-cell), so với 1,89 và 1,58 % của bộ lọc; trên kiểm định chéo 18 cell của NASA, nó thấp hơn giữ nguyên có ý nghĩa ở 5/6
-trường hợp đo thưa. Trên bốn bộ chính, khi đo thưa nó thấp hơn bộ lọc ở 47/48 và thấp hơn giữ nguyên ở 48/48 trường hợp;
-khi biết mọi lần xả trước, thấp hơn giữ nguyên ở 12/16.
-Báo cáo: `do-an/bao-cao-do-an.pdf`.
+Bài toán: ước lượng SOH (dung lượng hiện tại / dung lượng danh định) của từng cell lithium-ion, tại từng chu kỳ, từ 16
+đặc trưng của đoạn sạc CC–CV, khi chỉ một phần cell được đo dung lượng. Mô hình là mạng nơ-ron có thông tin vật lý
+(PINN): mạng nghiệm dự đoán SOH, gắn với động học suy giảm dạng xám luôn không âm; ba hàm mất mát vật lý không dùng nhãn
+nên áp được lên cả cell chưa đo dung lượng (PINN-semi). Mô hình cải tiến PINN-lai lấy trung bình ba PINN-semi với GBDT
+rồi làm trơn bằng bộ lọc xu thế nhân quả.
 
-Các thí nghiệm gồm **12 082 lượt huấn luyện** (E13–E32, đếm theo tệp kết quả; báo cáo không còn trình bày phần chuyển
-miền E14, E21 nên tổng trong báo cáo là 11 026; bảng thời gian chạy bên dưới
-đếm theo lượt phải chạy nên tổng khác) trên **387 cell** của bốn bộ dữ liệu công khai XJTU, TJU, MIT, HUST, cộng 18
-cell của NASA PCoE ở E24 và E31.
+Mọi so sánh dùng một giao thức không rò rỉ: chia theo cell (kiểm định chéo 5 fold), bộ lọc ngoại lai chỉ dùng quá khứ
+của chính cell, chuẩn hoá chỉ học trên cell train. Các thí nghiệm, trên 387 cell của bốn bộ dữ liệu công khai XJTU,
+TJU, MIT, HUST:
+
+| Mã | Câu hỏi |
+|---|---|
+| E13, E16, E17 | PINN-semi so với MLP, PINN có giám sát, PINN hộp đen, Ridge, GPR, GBDT ở 10–70 % cell có nhãn; đề cương chốt trước |
+| E15 | kiểm toán rò rỉ: bốn cách chia và chuẩn hoá sai làm sai số thấp đi bao nhiêu |
+| E14, E18, E19, E21 | chuyển miền giữa các bộ, thích nghi không nhãn, tự huấn luyện |
+| E20 | PINN-lai: 3 PINN-semi + GBDT + bộ lọc xu thế, khoảng dự đoán 90 % |
+| E22, E23 | dự báo SOH tương lai, dung lượng còn lại, RUL; dự báo có xét hồi phục dung lượng |
+| E25, E32 | cập nhật ước lượng khi đo được dung lượng vài lần trong đời cell: bộ lọc Kalman (E25) và mô hình học cập nhật (E32) |
+| E26 | λ và Ea của động học có được dữ liệu xác định không (TJU, 25/35/45 °C) |
+| E27 | so với PINN4SOH (Wang và cộng sự, Nature Communications 2024) trên đúng cách chia của bài |
+| E28 | ngân sách đo: đo thưa mọi cell train thay vì đo đầy đủ một phần cell |
+| E29 | thêm lịch sử của cell vào đầu vào |
+| E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
+| benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
+
+Tổng cộng 10 575 lượt huấn luyện (đếm theo tệp kết quả của `pinnsoh/experiments.py`), cộng các lần chạy lại mã gốc
+PINN4SOH ở `benchmark/`. Bản thảo bài báo: `paper/main.pdf` (dựng bằng `python run.py paper`). Báo cáo đồ án đã nộp
+(có thêm phần bộ NASA PCoE): `archive/thesis/do-an/bao-cao-do-an.pdf`.
 
 ---
 
 ## 1. Cài đặt
 
-Cần Python ≥ 3.10 (đã dùng 3.11.15). XeLaTeX (TeX Live / MiKTeX) chỉ cần cho bước dựng báo cáo PDF.
+Cần Python ≥ 3.10 (đã dùng 3.11). XeLaTeX (TeX Live / MiKTeX) chỉ cần cho bước dựng bản thảo PDF.
 
 ```bash
 python -m venv .venv
@@ -65,7 +44,7 @@ source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## 2. Chạy lại trên máy cá nhân
+## 2. Chạy lại
 
 Mọi bước đều qua một lệnh `python run.py <lệnh>`, chạy từ thư mục nào cũng được.
 
@@ -75,34 +54,35 @@ python run.py data           # tải 387 file CSV (~94 MB) từ repo gốc và d
 python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
 python run.py bench          # đo tốc độ máy để ước lượng thời gian chính xác hơn
 python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, không chạy gì
-python run.py all            # toàn bộ: thí nghiệm -> phân tích -> báo cáo PDF
+python run.py all            # toàn bộ: thí nghiệm -> phân tích -> benchmark -> bản thảo PDF
 ```
 
-`all` = `experiments` (E13, E15, E16, E17, E18, E19, E20dev, E20, E21, E22, E23, E24, E24f, E26, E27, E28, E29dev, E29, E30dev, E30, E31, E32) → `analyze` → `thesis`. Có thể chạy từng bước:
+`all` = `experiments` (E13, E15–E23, E26–E30, E32 theo thứ tự trong `pinnsoh/experiments.py`) → `analyze` →
+`benchmark` → `paper`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
 python run.py E16 --datasets XJTU      # chỉ một bộ dữ liệu
 python run.py experiments --quick      # chạy thử: 1 lần lặp thay vì 5, 1 hạt giống thay vì 5
-python run.py analyze                  # runs/ -> results/ (bảng CSV/MD, hình PNG/PDF)
-python run.py thesis                   # results/ -> do-an/bao-cao-do-an.pdf, tai-lieu/phan-tich-vat-ly-PINN.pdf
+python run.py analyze                  # runs/ -> results/ (bảng CSV, hình PNG/PDF)
+python run.py benchmark                # mã gốc PINN4SOH trên cách chia của bài -> results/benchmark_*
+python run.py paper                    # results/ -> paper/main.pdf
 ```
 
-* **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/`, ghi nguyên tử;
-  chạy lại đúng lệnh cũ sẽ bỏ qua lượt đã xong và chạy tiếp.
-* `--workers N`: mặc định bằng số lõi CPU. Mỗi tiến trình dùng 1 luồng — với mạng nhỏ thế này, N tiến
-  trình × 1 luồng nhanh hơn nhiều so với 1 tiến trình × N luồng.
-* `--quick` cho tập con của bản đầy đủ (lần lặp 0, hạt giống 0); chạy bản đầy đủ sau đó sẽ không phải chạy
-  lại phần đã có. Kết quả `--quick` đi trọn được tới PDF nhưng chỉ để kiểm tra, không phải số liệu của báo cáo.
+* **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/`, ghi nguyên tử; chạy lại
+  đúng lệnh cũ sẽ bỏ qua lượt đã xong và chạy tiếp.
+* `--workers N`: mặc định bằng số lõi CPU. Mỗi tiến trình dùng 1 luồng — với mạng nhỏ thế này, N tiến trình × 1 luồng
+  nhanh hơn nhiều so với 1 tiến trình × N luồng.
+* `--quick` cho tập con của bản đầy đủ (lần lặp 0, hạt giống 0); chạy bản đầy đủ sau đó sẽ không phải chạy lại phần
+  đã có. Kết quả `--quick` chỉ để kiểm tra, không phải số liệu công bố.
 * `--device cuda`: dùng GPU. Kết quả lệch ở mức làm tròn số thực nên không tái lập từng bit.
-* Dữ liệu để ở chỗ khác: đặt biến môi trường `PINNSOH_DATA=<thư mục chứa "XJTU data", "TJU data", ...>`.
-  Không tải tự động được (mạng chặn GitHub): tải zip của repo `wang-fujin/PINN4SOH` rồi
-  `python tools/tai_du_lieu.py --zip <file.zip>`.
+* Dữ liệu để ở chỗ khác: đặt biến môi trường `PINNSOH_DATA=<thư mục chứa "XJTU data", "TJU data", ...>`. Không tải
+  tự động được (mạng chặn GitHub): tải zip của repo `wang-fujin/PINN4SOH` rồi `python tools/tai_du_lieu.py --zip <file.zip>`.
 
 ### Thời gian
 
-Ước lượng trên CPU của máy chạy thử, 1 luồng mỗi tiến trình. `python run.py bench` đo hệ số cho máy của bạn
-và `--dry-run` sẽ dùng hệ số đó.
+Ước lượng trên CPU của máy chạy thử, 1 luồng mỗi tiến trình. `python run.py bench` đo hệ số cho máy của bạn và
+`--dry-run` sẽ dùng hệ số đó.
 
 | Thí nghiệm | Nội dung | Lượt | Giờ CPU | Giờ, 4 lõi | Giờ, 8 lõi |
 |---|---|---:|---:|---:|---:|
@@ -115,34 +95,25 @@ và `--dry-run` sẽ dùng hệ số đó.
 | E20dev | 9 hướng cải tiến, chọn trên validation (lần lặp 0, nhãn 10 và 50 %) | 400 | 2,2 | 0,6 | 0,3 |
 | E20 | PINN-lai: 3 PINN-semi, 2 MLP thêm, GBDT lưu dự đoán validation (3 lần lặp) | 1 280 | 7,2 | 1,8 | 0,9 |
 | E21 | Huấn luyện một bộ, kiểm tra bộ khác (2 giao thức, 3 hạt giống) + 48 chuỗi thích nghi, 2 vòng học lặp | 168 | 12 | 3 | 1,5 |
-| E22 | Dự báo SOH tương lai, dung lượng, RUL: GBDT + 3 PINN-dự báo mỗi fold (CV 5 fold × 3 lần lặp, cần E20) | 60 | 0,6 | 0,2 | 0,1 |
+| E22 | Dự báo SOH tương lai, dung lượng, RUL: GBDT + 3 PINN-dự báo mỗi fold (cần E20) | 60 | 0,6 | 0,2 | 0,1 |
 | E23 | Dự báo có xét hồi phục, cùng fold E22, học lại cả mô hình E22 để so ghép cặp | 60 | 3 | 0,8 | 0,4 |
-| E24 | Bộ NASA: 3 PINN-semi, MLP, GBDT ở 30/70 % nhãn, có/không giờ nghỉ; cách chia SambaMixer | 330 | 1,9 | 0,5 | 0,3 |
-| E24f | Dự báo E22 và E23 trên NASA (cần E24) | 30 | 0,4 | 0,1 | 0,1 |
-| E26 | λ, Ea trên NASA và TJU: trọng số ODE 0,2/1, ràng buộc Euler, khởi tạo khác (PINN-semi, 70 % nhãn) | 100 | 0,7 | 0,2 | 0,1 |
-| E27 | Cách chia của PINN4SOH (39 nhóm, đầy đủ + ít mẫu), 2 cách tiền xử lý × 3 hạt giống: 3 PINN-semi, GBDT, PINN hộp đen | 1 002 | 7 | 1,8 | 0,9 |
-| E28 | Ngân sách đo: mọi cell train đo mỗi q·L, q ∈ {0,5; 0,2; 0,1; 0,05}; 3 PINN-semi, MLP, GBDT trên lần đo / nhãn nội suy (3 lần lặp × 5 fold) | 1 560 | 9 | 2,2 | 1,1 |
-| E29dev | Chọn dạng lịch sử trên validation (lần lặp 0, nhãn 30 và 70 %): PINN-semi 4 dạng, GBDT 6 dạng; NASA cả cách chia SambaMixer | 576 | 3 | 0,8 | 0,4 |
-| E29 | Đầu vào có lịch sử, cùng fold với E20: 3 PINN-semi, MLP, GBDT trên XJTU, TJU, HUST (3 lần lặp × 5 fold × 4 mức nhãn) | 840 | 5,4 | 1,4 | 0,7 |
-| E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}; lần lặp 0, nhãn 30 và 70 %) | 240 | 1,8 | 0,5 | 0,2 |
-| E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ); NASA: kiểm định chéo và cách chia SambaMixer | 918 | 4,0 | 1,0 | 0,5 |
-| E31 | NASA với 24 cột (thêm 7 đặc trưng của cả lần sạc và giờ nghỉ): 3 PINN-semi, MLP, GBDT, CNN, LSTM, Transformer; kiểm định chéo và cách chia SambaMixer | 264 | 1,2 | 0,3 | 0,2 |
-| E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) và E31 (NASA, NASAfc; cách chia SambaMixer) | 306 | 6,8 | 1,7 | 0,9 |
-| **Tổng** | | **11 554** | **≈ 86** | **≈ 22** | **≈ 11** |
+| E26 | λ, Ea trên TJU: trọng số ODE 0,2/1, ràng buộc Euler, khởi tạo khác (PINN-semi, 70 % nhãn) | 25 | 0,2 | 0,1 | 0,1 |
+| E27 | Cách chia của PINN4SOH (39 nhóm, đầy đủ + ít mẫu), 2 cách tiền xử lý × 3 hạt giống: 3 PINN-semi, GBDT, PINN hộp đen | 1 002 | 7,9 | 2,0 | 1,0 |
+| E28 | Ngân sách đo: mọi cell train đo mỗi q·L, q ∈ {0,5; 0,2; 0,1; 0,05} (3 lần lặp × 5 fold) | 1 560 | 9 | 2,2 | 1,1 |
+| E29dev | Chọn dạng lịch sử trên validation (lần lặp 0, nhãn 30 và 70 %): PINN-semi 4 dạng, GBDT 6 dạng | 400 | 2,2 | 0,6 | 0,3 |
+| E29 | Đầu vào có lịch sử, cùng fold với E20: 3 PINN-semi, MLP, GBDT trên XJTU, TJU, HUST | 840 | 5,4 | 1,4 | 0,7 |
+| E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}) | 240 | 1,8 | 0,5 | 0,2 |
+| E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ) | 720 | 3,7 | 0,9 | 0,5 |
+| E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) | 240 | 6,7 | 1,7 | 0,8 |
+| benchmark | Mã gốc PINN4SOH, 39 nhóm × 10 lần chạy × 2 bản mã | 780 | ≈ 8 | ≈ 2 | ≈ 1 |
+| **Tổng** | | **11 195** | **≈ 90** | **≈ 23** | **≈ 11** |
 
-E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và
-`runs/E20dev/gbdt_*` sang `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `tai-lieu/de-cuong-E20.md`.
+E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và `runs/E20dev/gbdt_*` sang
+`runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `docs/de-cuong-E20.md`.
 
 `--quick` cần khoảng 1/5 thời gian trên. Phân tích (`analyze`) mất ~5 phút lần đầu cộng ~40 phút CPU để
-`analyze_physics.py` huấn luyện lại 120 lượt (đo đạo hàm và tốc độ suy giảm cần chính mô hình, mà trọng số không
-được lưu; huấn luyện tất định nên mô hình giống từng bit lượt đã công bố); các lần sau ~2 phút nhờ bộ nhớ đệm.
-Dựng PDF ~10 giây.
-
-### Đã có sẵn `runs/`?
-
-Nếu đã có thư mục `runs/` của lần chạy công bố (ví dụ nhận kèm dạng zip, giải nén vào thư mục gốc) thì
-không cần huấn luyện: `python run.py analyze && python run.py thesis` dựng lại đúng từng byte các bảng,
-hình và file PDF của báo cáo.
+`analyze_physics.py` huấn luyện lại 120 lượt (đo đạo hàm và tốc độ suy giảm cần chính mô hình, mà trọng số không được
+lưu; huấn luyện tất định nên mô hình giống từng bit lượt đã công bố); các lần sau ~2 phút nhờ bộ nhớ đệm.
 
 ## 3. Cấu trúc
 
@@ -150,73 +121,69 @@ hình và file PDF của báo cáo.
 pinn-soh/
 ├── run.py                  lệnh duy nhất cho mọi bước
 ├── pinnsoh/                thư viện
-│   ├── data.py             đọc 387 CSV -> Cell; lọc ngoại lai nhân quả; chia theo cell (cv_split);
-│   │                       chuẩn hoá; bộ nhớ đệm .cache/
+│   ├── data.py             đọc 387 CSV -> Cell; lọc ngoại lai nhân quả; chia theo cell (cv_split); chuẩn hoá;
+│   │                       bộ nhớ đệm .cache/
 │   ├── models.py           mạng nghiệm F_φ; động học xám r = softplus(G_θ(x))·e^{λ(1-u)}·A(T); hộp đen
 │   ├── train.py            Config, bốn hàm mất mát, huấn luyện + dừng sớm
-│   ├── transfer.py         huấn luyện chuyển miền nguồn -> đích
-│   ├── baselines.py        Ridge, GBDT, GPR (E16, E19)
-│   ├── leakage.py          các cách chia/chuẩn hoá sai cho kiểm toán rò rỉ (E15)
+│   ├── baselines.py        Ridge, GBDT, GPR
+│   ├── seqmodels.py        CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất của cell (E30)
+│   ├── postproc.py         bộ lọc quỹ đạo nhân quả của PINN-lai (E20)
 │   ├── metrics.py          MAE theo cell, R², EOL, vi phạm đơn điệu, ...
+│   ├── leakage.py          các cách chia/chuẩn hoá sai cho kiểm toán rò rỉ (E15)
+│   ├── transfer.py         huấn luyện chuyển miền nguồn -> đích (E14, E18)
+│   ├── crossds.py          huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện (E21)
+│   ├── forecast.py         dự báo SOH tương lai, dung lượng còn lại, RUL (E22)
+│   ├── recovery.py         dự báo có xét hồi phục dung lượng (E23)
+│   ├── paper.py            cách chia của PINN4SOH, GBDT trên cách chia đó (E27)
+│   ├── budget.py           ngân sách đo dung lượng (E28)
+│   ├── update.py           mô hình học cập nhật từ lần đo dung lượng gần nhất (E32)
+│   ├── pinn4soh_splits.json, pinn4soh_reported.csv   cách chia và số công bố của PINN4SOH
 │   ├── experiments.py      định nghĩa E13–E32 thành danh sách lượt chạy
-│   ├── postproc.py         bộ lọc quỹ đạo nhân quả (E20)
-│   ├── crossds.py          E21: huấn luyện một bộ, kiểm tra bộ khác; thích nghi + tự huấn luyện
-│   ├── forecast.py         E22: dự báo SOH tương lai, dung lượng còn lại, RUL (nghiệm đóng + GBDT)
-│   ├── recovery.py         E23: tách xu thế / phần hồi phục giữ lại + tắt dần / dao động đều cho dự báo
-│   ├── nasa.py             đọc bộ NASA PCoE (.mat) -> 16 đặc trưng sạc, giờ nghỉ, 7 đặc trưng cả lần sạc (E31)
-│   ├── seqmodels.py        E30: CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất của cell
-│   ├── update.py           E32: mô hình học cập nhật từ lần đo dung lượng gần nhất
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
-├── analysis/               runs/ -> results/
-│   ├── analyze_e13.py      bảng và kiểm định của E13, E14
-│   ├── analyze_predictions.py  R², MAPE, hình dự đoán
-│   ├── analyze_thesis.py   chọn số chia, mô phỏng, so sánh theo lượng nhãn, rò rỉ, chuyển miền
-│   ├── analyze_metrics.py  RMSE, R² cho mọi mô hình; tỉ lệ dự đoán tăng ngược (tính đơn điệu)
-│   ├── analyze_physics.py  phần vật lý tác động ở đâu: ∂F/∂t, phần dư ODE, tốc độ suy giảm học được
-│   ├── error_decomp.py     phân rã sai số theo cell: lệch mức, trôi chậm, dao động nhanh
-│   ├── dev_e20.py          E20dev: so 9 hướng cải tiến trên validation
-│   ├── analyze_e20.py      E20: PINN-lai trên test, phân rã lợi ích, khoảng dự đoán phù hợp
-│   ├── analyze_e21.py      E21: ma trận nguồn → đích, sai số qua các vòng học lặp
-│   ├── analyze_e22.py      E22: sai số theo tầm dự báo, RUL, độ phủ khoảng 90 %
-│   ├── analyze_e23.py      E23: so với E22 trên gốc thường và gốc ngay sau hồi phục
-│   ├── analyze_e24.py      E24: NASA, có/không giờ nghỉ, so với SambaMixer
-│   ├── analyze_e25.py      E25: bộ lọc Kalman theo cell với vài lần đo dung lượng
-│   ├── analyze_e26.py      E26: λ, Ea theo trọng số ODE và giá trị khởi tạo
-│   ├── analyze_e27.py      E27: so với PINN4SOH trên đúng cách chia của bài (hai cách tiền xử lý)
-│   ├── analyze_e28.py      E28: ngân sách đo dung lượng — đo thưa mọi cell so với nhãn theo cell
-│   ├── analyze_tuning.py   chọn trọng số ghép và cửa sổ lọc của PINN-lai trên validation
-│   ├── analyze_mono.py     bộ lọc quỹ đạo có giữ SOH không tăng không; bộ lọc có bảo đảm
-│   ├── dev_e29.py          E29dev: chọn dạng lịch sử trên validation
-│   ├── analyze_e29.py      E29: mô hình có lịch sử trên test, chọn có / không lịch sử trên validation
-│   ├── dev_e30.py          E30dev: chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation
-│   ├── analyze_e30.py      E30: MAE, RMSE, MAPE, R² của mọi mô hình chính; kiểm định; NASA
-│   ├── analyze_e31.py      E31, E32: NASA 24 cột; mức thông tin M0/M1/M2, bộ lọc Kalman và mô hình cập nhật so với
-│   │                       SambaMixer, mọi bộ
-│   ├── analyze_overview.py hình tổng quan 30 % / 70 % nhãn và đo thưa
-│   ├── figures_report.py   vẽ lại các hình của báo cáo cho dễ đọc khi in
-│   ├── verify_pipeline.py  21 phép kiểm cho pipeline (chia, lọc, chuẩn hoá)
-│   └── section_e13.py      mục kết quả E13 (Markdown, slide)
-├── report/                 results/ -> báo cáo
-│   ├── make_thesis.py      do-an/main.tex + PDF; mọi con số đọc từ results/
-│   ├── thesis_bk.py        khuôn đồ án Bách Khoa: bìa, lời cam đoan, sắp xếp 7 chương
-│   ├── make_physics_doc.py tai-lieu/phan-tich-vat-ly-PINN (vật lý nằm ở đâu, R², RMSE)
-│   └── diagrams.py         sơ đồ kiến trúc
+├── analysis/               runs/ -> results/: một script cho mỗi thí nghiệm (analyze_eXX.py, dev_eXX.py cho giai
+│                           đoạn chọn trên validation), cùng các phân tích chung (chỉ số, phần vật lý, phân rã sai số,
+│                           tính đơn điệu, hình tổng quan, figures_report.py vẽ lại hình cho bản in, diagrams.py sơ đồ)
+├── benchmark/
+│   ├── rerun_pinn4soh.py   chạy lại mã gốc PINN4SOH (nguyên trạng) trên 39 nhóm chia của bài, hai bản mã
+│   └── compare.py          bảng so sánh: số công bố, chạy lại, mô hình của đồ án (E27)
+├── paper/                  bản thảo bài báo (LaTeX), hình và script dựng
+├── docs/                   đề cương chốt trước (de-cuong-E13, E20, E27-E28, E29, E30, E32), phương pháp, chứng minh,
+│                           phân tích phần vật lý, kết quả E13, các phương trình (equations.tex)
 ├── tools/
 │   ├── tai_du_lieu.py      tải dữ liệu
 │   ├── kiem_tai_lap.py     kiểm tra tái lập từng bit (python run.py reproduce)
+│   ├── make_physics_doc.py docs/phan-tich-vat-ly-PINN (vật lý nằm ở đâu, R², RMSE)
 │   └── demo.py             ước lượng và dự báo SOH cho một cell (python run.py demo ...)
-├── legacy/                 script giai đoạn đầu (E1–E12, pipeline v1, báo cáo HTML/LaTeX cũ)
-├── slide/
-│   └── thuyet_trinh_dacn.py  slide thuyết trình đồ án (khuôn BK, hình của báo cáo) -> Thuyet_trinh_DACN_Nhom15.pptx, .pdf
-├── tai-lieu/  do-an/  demo/
+├── demo/                   mô hình demo đã huấn luyện và ví dụ đầu ra
+├── archive/                báo cáo đồ án, slide, pipeline v1 — giữ nguyên như lúc nộp (archive/README.md)
 ├── PINN4SOH/data/          dữ liệu (tải bằng python run.py data, không đưa lên git)
 ├── runs/                   kết quả từng lượt (JSON, không đưa lên git)
 └── results/                bảng + hình tổng hợp (không đưa lên git)
 ```
 
-## 4. Tối ưu và tái lập
+## 4. So với PINN4SOH (benchmark)
+
+E27 huấn luyện mô hình của đồ án trên đúng 39 nhóm chia của PINN4SOH (dựng lại từ dòng `data path:` trong nhật ký
+huấn luyện công bố kèm mã), với hai cách tiền xử lý: `strict` (không rò rỉ, của đồ án) và `paper` (bản sao tiền xử lý
+của bài: lọc 3σ trên cả vòng đời kể cả cột dung lượng, min–max theo từng cell kể cả cell test).
+
+`benchmark/rerun_pinn4soh.py` chạy lại chính mã của bài (lớp PINN và lớp đọc dữ liệu import nguyên trạng) trên cùng
+39 nhóm, 10 lần chạy mỗi nhóm như bài, để có dự đoán theo từng cell và so ghép cặp được. Hai bản mã:
+
+* `published` — bản tải lên đầu tiên (commit `5d57a9d`), siêu tham số lấy từ nhật ký công bố. Ở bản này loss đơn điệu
+  là `relu(y2 − y1).sum()`, chỉ tính từ nhãn nên không có gradient: nhật ký công bố ghi "physics loss" là một hằng số
+  qua mọi epoch (0,043214 ở XJTU 2C), và biểu thức này trên dữ liệu train cho đúng 0,043214. Số liệu công bố của bài
+  vì vậy đến từ mô hình không có ràng buộc đơn điệu.
+* `current` — bản hiện tại của repo (commit `cc3cc50`), loss đơn điệu đã sửa thành `relu((u2 − u1)(y1 − y2)).sum()`,
+  α và β theo giá trị mặc định mới trong `main_*.py` (`fix.md` của repo: sau khi sửa lỗi, α và β khác Supplementary).
+
+Mã gốc viết cho pandas 1.3.5 và lỗi kiểu dữ liệu với pandas 3; `python run.py benchmark` tự dựng một môi trường ảo
+có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả: `results/benchmark_summary.csv` (theo bộ × chế độ),
+`results/benchmark_cells.csv` (theo cell), `results/benchmark_tests.csv` (Wilcoxon ghép cặp theo cell).
+
+## 5. Tối ưu và tái lập
 
 Code được tối ưu mà **không đổi một bit kết quả nào** — `python run.py reproduce` kiểm đúng điều đó:
 
@@ -231,51 +198,11 @@ Code được tối ưu mà **không đổi một bit kết quả nào** — `py
 | Phân tích chỉ đọc file JSON mới hoặc đã đổi | `analyze` lần hai ~1 phút thay vì ~2 phút |
 | Hình và PDF không ghi thời điểm tạo | dựng lại cho file giống từng byte, git không báo đổi |
 
-Đo trên cùng máy, 1 luồng: một lượt MLP 13,6 s → 10,7 s, PINN-semi 34,6 s → 32,1 s, PINN hộp đen
-28,5 s → 26,3 s. Bước huấn luyện của mạng nhỏ này đã bị giới hạn bởi chính phép tính (lan truyền xuôi/ngược
-và đạo hàm bậc hai của ∂u/∂t), nên cách tăng tốc chính trên máy cá nhân là chạy song song nhiều tiến trình.
-Hai hướng đã thử nhưng không dùng: gộp ba lần lan truyền xuôi thành một (chậm hơn gấp đôi vì đạo hàm bậc hai
-phải đi qua cả batch gộp) và tính ∂u/∂t bằng đạo hàm xuôi (nhanh hơn ~10 % nhưng lệch ở mức làm tròn, mất
-tính tái lập từng bit).
+**Tái lập từng bit** được bảo đảm khi cùng phiên bản thư viện (`requirements.txt`) và cùng loại CPU. Khác CPU (ví dụ
+AVX-512 so với AVX2, Apple Silicon) hoặc khác phiên bản torch có thể lệch ở mức làm tròn số thực; khi đó `reproduce`
+báo độ lệch, các con số trong bảng có thể khác ở chữ số thứ ba–thứ tư nhưng kết luận không đổi.
 
-**Tái lập từng bit** được bảo đảm khi cùng phiên bản thư viện (`requirements.txt`) và cùng loại CPU. Khác
-CPU (ví dụ AVX-512 so với AVX2, Apple Silicon) hoặc khác phiên bản torch có thể lệch ở mức làm tròn số thực;
-khi đó `reproduce` báo độ lệch, các con số trong bảng có thể khác ở chữ số thứ ba–thứ tư nhưng kết luận
-không đổi.
-
-### Bộ NASA (E24)
-
-```bash
-mkdir -p NASA/raw && curl -o NASA/raw/nasa.zip "https://phm-datasets.s3.amazonaws.com/NASA/5.+Battery+Data+Set.zip"
-cd NASA/raw && unzip nasa.zip && cd "5. Battery Data Set" && for z in *.zip; do unzip -o "$z" -d "x_${z%.zip}"; done; cd ../../..
-python -m pinnsoh.nasa NASA/raw        # -> PINN4SOH/data/NASA data/<nhóm>/B00xx.csv (18 cell)
-python run.py E24 && python run.py E24f
-```
-
-### Hướng phát triển và so sánh: E25–E32
-
-```bash
-python analysis/analyze_e25.py         # cần E20, E23, E24, E24f; không huấn luyện thêm
-python run.py E26 && python analysis/analyze_e26.py   # cần E13 (TJU) và E24 (NASA) làm nhánh chuẩn
-python run.py E27 && python analysis/analyze_e27.py   # cách chia của PINN4SOH: pinnsoh/pinn4soh_splits.json
-python run.py E28 && python analysis/analyze_e28.py   # cần E20 (nhãn theo cell) để so sánh
-python analysis/analyze_overview.py                   # hình tổng quan 30 % / 70 % / đo thưa
-python analysis/analyze_mono.py                       # bộ lọc quỹ đạo có giữ SOH không tăng không (cần E20)
-python run.py E29dev && python analysis/dev_e29.py   # chọn dạng lịch sử trên validation
-python run.py E29 && python analysis/analyze_e29.py   # đánh giá cuối mô hình có lịch sử
-python run.py E30dev && python analysis/dev_e30.py   # chọn độ dài cửa sổ của CNN, LSTM, Transformer
-python run.py E30 && python analysis/analyze_e30.py   # CNN, LSTM, Transformer trên 4 bộ + NASA; bảng chỉ số đầy đủ
-python run.py E31 && python run.py E32 && python analysis/analyze_e31.py   # NASA 24 cột; mô hình cập nhật; so với
-                                                    # SambaMixer theo mức thông tin, mọi bộ
-python analysis/figures_report.py                    # vẽ lại các hình của báo cáo cho dễ đọc khi in
-python slide/thuyet_trinh_dacn.py                    # slide thuyết trình (cần báo cáo đã dựng; PDF qua LibreOffice)
-```
-
-Thiết kế E27, E28 và các hướng đã thử trên validation nhưng không giữ lại: `tai-lieu/de-cuong-E27-E28.md`;
-E29: `tai-lieu/de-cuong-E29.md`; E30: `tai-lieu/de-cuong-E30.md`; E31: `tai-lieu/de-cuong-E31.md`;
-E32: `tai-lieu/de-cuong-E32.md`.
-
-## 5. Demo — ước lượng và dự báo SOH cho một cell
+## 6. Demo — ước lượng và dự báo SOH cho một cell
 
 ```bash
 python run.py demo train --dataset XJTU          # PINN-semi, 30 % nhãn -> demo/XJTU.pt (~1 phút)
@@ -288,31 +215,25 @@ python run.py demo forecast --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/
 python run.py demo forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 --an-nhan   # lịch sử SOH ước lượng
 ```
 
-Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng bản có xét hồi phục
-(E23) và in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động đều nếu có. Lần đầu chạy `forecast`, bộ dự báo
-được huấn luyện trên các cell có nhãn của cùng fold với mô hình ước lượng (vài phút) và lưu ở `demo/<bộ>_dubao.pkl`.
-Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv` và các hình `.png`.
-
-## 6. Giai đoạn đầu
-
-Các thí nghiệm E1–E12 (pipeline v1), báo cáo HTML/LaTeX cũ và các script kiểm toán của tháng 9/2026 nằm ở
-`legacy/` — xem `legacy/README.md`. Chúng vẫn chạy được (`python legacy/<tên>.py`) nhưng không thuộc báo cáo
-đồ án.
+Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng bản có xét hồi phục (E23)
+và in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động đều nếu có. Lần đầu
+chạy `forecast`, bộ dự báo được huấn luyện trên các cell có nhãn của cùng fold với mô hình ước lượng (vài phút) và lưu ở
+`demo/<bộ>_dubao.pkl`. Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv` và các hình `.png`.
 
 ## 7. Nguyên tắc của repo
 
-1. **Không có số nào gõ tay.** Mọi bảng và mọi con số trong báo cáo đều sinh từ `results/*.csv`, và các CSV
-   đó sinh từ `runs/**/*.json`.
-2. **Chia theo cell, không theo chu kỳ.** Cell test không bao giờ xuất hiện trong train ở bất kỳ chu kỳ
-   nào; chuẩn hoá chỉ dùng đặc trưng của cell train; bộ lọc ngoại lai chỉ dùng quá khứ của chính cell.
-   E15 đo định lượng mức sai lệch khi vi phạm từng điều.
-3. **So sánh ghép cặp.** Mọi mô hình dùng đúng cùng cách chia, cùng tập cell có nhãn, cùng normaliser và
-   cùng hạt giống; khác biệt duy nhất là mô hình và hàm mất mát.
-4. **Chốt tiêu chí trước khi xem test.** Đề cương E13 (`tai-lieu/de-cuong-E13.md`) được commit trước lượt
-   huấn luyện đầu tiên; cấu hình E13 trong `pinnsoh/experiments.py` không sửa sau đó.
-5. **Phát biểu đúng mức.** Báo cáo nêu cả kết quả bất lợi: GBDT tinh chỉnh tốt có sai số thấp hơn PINN-semi
-   trong cùng một bộ dữ liệu ở phần lớn trường hợp; lợi ích của vật lý lớn ở mức nhãn thấp và nhỏ dần khi
-   nhiều nhãn.
+1. **Không có số nào gõ tay.** Mọi bảng và mọi con số đều sinh từ `results/*.csv`, và các CSV đó sinh từ
+   `runs/**/*.json`.
+2. **Chia theo cell, không theo chu kỳ.** Cell test không bao giờ xuất hiện trong train ở bất kỳ chu kỳ nào; chuẩn hoá
+   chỉ dùng đặc trưng của cell train; bộ lọc ngoại lai chỉ dùng quá khứ của chính cell. E15 đo định lượng mức sai lệch
+   khi vi phạm từng điều.
+3. **So sánh ghép cặp.** Mọi mô hình dùng đúng cùng cách chia, cùng tập cell có nhãn, cùng normaliser và cùng hạt
+   giống; khác biệt duy nhất là mô hình và hàm mất mát.
+4. **Chốt tiêu chí trước khi xem test.** Đề cương E13 (`docs/de-cuong-E13.md`) được commit trước lượt huấn luyện đầu
+   tiên; cấu hình E13 trong `pinnsoh/experiments.py` không sửa sau đó. Các phân tích thêm sau khi đã xem test được ghi
+   rõ là phân tích phụ trong đề cương tương ứng.
+5. **Phát biểu đúng mức.** Nêu cả kết quả bất lợi: GBDT tinh chỉnh tốt có sai số thấp hơn PINN-semi trong cùng một bộ
+   dữ liệu ở phần lớn trường hợp; lợi ích của vật lý lớn ở mức nhãn thấp và nhỏ dần khi nhiều nhãn.
 
 ## 8. Nguồn dữ liệu
 

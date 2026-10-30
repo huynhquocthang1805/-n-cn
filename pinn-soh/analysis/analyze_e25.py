@@ -3,7 +3,7 @@ E25: cập nhật ước lượng và dự báo khi có thêm vài lần đo dun
 
     python analysis/analyze_e25.py      # -> results/e25_*.csv, results/fig_e25_*.png|pdf
 
-Không huấn luyện thêm gì: dùng dự đoán ngoài fold của PINN-lai (E20; NASA từ E24) trên cell test và cell validation.
+Không huấn luyện thêm gì: dùng dự đoán ngoài fold của PINN-lai (E20) trên cell test và cell validation.
 
 Mô hình. Gọi p_n là SOH do PINN-lai ước lượng ở hàng n của một cell, y_n là SOH thật. Sai số y_n − p_n = b_n + e_n, trong
 đó b_n là độ lệch riêng của cell, biến đổi chậm và hồi quy về trung bình của tổng thể (quá trình Ornstein–Uhlenbeck:
@@ -41,8 +41,8 @@ from pinnsoh.forecast import life_scale
 from pinnsoh.postproc import by_cell, causal_trend
 
 OUT = 'results'
-DS = ['XJTU', 'TJU', 'MIT', 'HUST', 'NASA']
-FRACS = {ds: (0.1, 0.3, 0.5, 0.7) for ds in DS}; FRACS['NASA'] = (0.3, 0.7)
+DS = ['XJTU', 'TJU', 'MIT', 'HUST']
+FRACS = {ds: (0.1, 0.3, 0.5, 0.7) for ds in DS}
 REPEATS = (0, 1, 2)
 SCHED = {'dau': None, 'q25': 0.25, 'q10': 0.10}
 ELL_GRID = [0.05, 0.1, 0.25, 0.5, 1.0, 3.0, np.inf]      # độ dài tương quan, theo đơn vị L
@@ -50,7 +50,7 @@ Z90 = 1.645
 
 
 def _src(ds):
-    return 'runs/E24' if ds == 'NASA' else 'runs/E20'
+    return 'runs/E20'
 
 
 def _read(path, key):

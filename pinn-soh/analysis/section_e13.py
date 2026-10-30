@@ -1,11 +1,11 @@
 """
 Sinh mục "Thí nghiệm xác nhận E13" (kèm E14) từ results/E13_*.csv, E14_table.csv, verify_pipeline.csv.
 
-    python analysis/section_e13.py       # -> tai-lieu/ket-qua-E13.md  (bản Markdown, đọc trên GitHub)
+    python analysis/section_e13.py       # -> docs/ket-qua-E13.md  (bản Markdown, đọc trên GitHub)
     make_latex.py import build_section() để chèn mục này vào báo cáo LaTeX.
 
 Không gõ tay số nào: mọi con số và mọi câu kết luận có điều kiện đều tính từ CSV. Câu chữ kết luận
-đi theo đúng quy tắc quyết định đã ấn định ở tai-lieu/de-cuong-E13.md.
+đi theo đúng quy tắc quyết định đã ấn định ở docs/de-cuong-E13.md.
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -242,7 +242,7 @@ def build_markdown(d) -> str:
     md.append('## 1. Vì sao cần E13\n')
     md.append('Bản rà soát ngày 29/09 chỉ ra năm điểm làm phép so MLP–PINN chưa công bằng hoặc chưa đúng '
               '(slide 16) và đề ra khung kết quả còn thiếu (slide 18). E13 sửa cả năm điểm rồi chạy lại phép so '
-              'dưới một đề cương **ấn định trước**: `tai-lieu/de-cuong-E13.md`, commit '
+              'dưới một đề cương **ấn định trước**: `docs/de-cuong-E13.md`, commit '
               f'`{PREREG_COMMIT}`, đẩy lên git trước lượt huấn luyện đầu tiên.\n')
     md.append(md_table(['#', 'Vấn đề (v1)', 'Sửa trong v2', 'Kiểm chứng'], [
         ['1', 'Lọc 3σ dùng thống kê cả vòng đời cell', 'Cửa sổ 50 chu kỳ quá khứ, z bền vững > 5',
@@ -346,7 +346,7 @@ normaliser, cùng lượng nhãn và cùng ngân sách chọn mô hình --- hai 
 Năm điểm yếu của pipeline cũ (lọc ngoại lai dùng thống kê cả vòng đời, \texttt{{dropna}} trên nhãn,
 normaliser khác nhau giữa MLP và PINN, horizon đếm theo hàng, EOL theo chỉ số hàng) được sửa trong
 pipeline v2 và kiểm bằng {nver} phép kiểm của \texttt{{verify\_pipeline.py}}. Đề cương
-(\texttt{{tai-lieu/de-cuong-E13.md}}) được commit (\texttt{{{PREREG_COMMIT}}}) trước lượt huấn luyện đầu tiên.
+(\texttt{{docs/de-cuong-E13.md}}) được commit (\texttt{{{PREREG_COMMIT}}}) trước lượt huấn luyện đầu tiên.
 
 \paragraph{{Thiết kế.}} Kiểm định chéo {F['folds']} fold theo cell $\times$ {F['repeats']} lần lặp, phân tầng
 theo batch; mỗi cell được test đúng một lần mỗi lần lặp nên ghép cặp theo cell được. {F['n_arms']} nhánh,
@@ -389,7 +389,7 @@ cell (Wilcoxon, Holm cho bốn bộ). Phép t hiệu chỉnh Nadeau--Bengio ở 
     return s
 
 
-EXPORT = 'tai-lieu/ket-qua-E13'
+EXPORT = 'docs/ket-qua-E13'
 EXPORT_FILES = ['E13_tests.csv', 'E13_tests.md', 'E13_curve.csv', 'E13_secondary.csv', 'E13_perfold.csv',
                 'E13_physics_params.csv', 'E13_traj_cells.csv', 'E14_table.csv', 'verify_pipeline.csv',
                 'fig_E13_forest.png', 'fig_E13_curve.png', 'fig_E13_cells.png', 'fig_E13_traj.png']
@@ -411,9 +411,9 @@ def export():
 if __name__ == '__main__':
     d = load()
     md = build_markdown(d)
-    os.makedirs('tai-lieu', exist_ok=True)
-    open('tai-lieu/ket-qua-E13.md', 'w').write(md)
+    os.makedirs('docs', exist_ok=True)
+    open('docs/ket-qua-E13.md', 'w').write(md)
     export()
-    print(f'đã ghi tai-lieu/ket-qua-E13.md và {EXPORT}/')
+    print(f'đã ghi docs/ket-qua-E13.md và {EXPORT}/')
     for x in conclusion_lines(d, facts(d)):
         print(' -', x)

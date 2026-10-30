@@ -5,9 +5,9 @@ E26: dữ liệu có xác định được hai tham số vật lý của động
 
 Ở cấu hình chuẩn (trọng số ODE 0,02), λ và Ea học được nằm sát giá trị khởi tạo (1 và 30 kJ/mol) trên mọi bộ. Hai cách
 giải thích: dữ liệu không chứa thông tin về chúng (không nhận dạng được), hoặc ràng buộc ODE quá yếu để kéo chúng đi. E26
-phân biệt hai khả năng trên hai bộ có nhiều mức nhiệt độ môi trường (NASA: 4, 24, 43 °C; TJU: 25, 35, 45 °C), nơi Ea
-có cơ hội được đo. PINN-semi, 70 % nhãn, cùng fold và hạt giống với nhánh chuẩn:
-    A0   chuẩn: alpha_ode 0,02, khởi tạo λ = 1, Ea = 30 kJ/mol (lấy lại từ E24 cho NASA, E13 nhánh G cho TJU)
+phân biệt hai khả năng trên bộ có nhiều mức nhiệt độ môi trường (TJU: 25, 35, 45 °C), nơi Ea có cơ hội được đo.
+PINN-semi, 70 % nhãn, cùng fold và hạt giống với nhánh chuẩn:
+    A0   chuẩn: alpha_ode 0,02, khởi tạo λ = 1, Ea = 30 kJ/mol (lấy lại từ E13 nhánh G)
     A0i  như A0, khởi tạo λ = 3, Ea = 60 kJ/mol
     A1   alpha_ode 0,2
     A2   alpha_ode 1,0
@@ -31,7 +31,7 @@ from scipy import stats
 from pinnsoh.train import Config
 
 OUT = 'results'
-BASE = {'NASA': 'runs/E24/P_NASA_pinn_semi_f0.7_*of5.json', 'TJU': 'runs/E13/G_TJU_pinn_semi_f0.7_*_cv0-*of5.json'}
+BASE = {'TJU': 'runs/E13/G_TJU_pinn_semi_f0.7_*_cv0-*of5.json'}
 ARMS = ['A0', 'A0i', 'A1', 'A2', 'A2i', 'A3']
 PAIRS = [('A0i', 'A0'), ('A2i', 'A2')]           # (khởi tạo khác, khởi tạo chuẩn)
 # khoá cấu hình được phép khác giữa các nhánh (các khoá save_* chỉ quyết định lưu gì); mọi khoá khác phải trùng nhánh chuẩn
@@ -43,7 +43,7 @@ def runs(ds, arm):
     pat = BASE[ds] if arm == 'A0' else f'runs/E26/E26{arm}_{ds}_pinn_semi_f0.7_*of5.json'
     out = []
     for p in sorted(glob.glob(pat)):
-        if re.search(r'_m\d+\.json$', p):        # thành viên phụ của nhóm mạng trong E24
+        if re.search(r'_m\d+\.json$', p):        # thành viên phụ của một nhóm mạng
             continue
         d = json.load(open(p)); c = d['config']
         tp = d['test_predictions']

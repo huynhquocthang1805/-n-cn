@@ -58,21 +58,12 @@ def _execute(kind: str, args: dict):
     if kind == 'recovery':
         from .recovery import run_fold
         return run_fold(**args)
-    if kind == 'baseline_samba':
-        from .baselines import run_samba
-        return run_samba(**args)
     if kind == 'seq':
         from .seqmodels import run_cv
         return run_cv(**args)
-    if kind == 'seq_samba':
-        from .seqmodels import run_samba
-        return run_samba(**args)
     if kind == 'update':
         from .update import run_cv
         return run_cv(**args)
-    if kind == 'update_samba':
-        from .update import run_samba
-        return run_samba(**args)
     raise ValueError(kind)
 
 

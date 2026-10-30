@@ -19,7 +19,7 @@ from pinnsoh.recovery import MODELS_R, ROOT
 from pinnsoh.forecast import SCEN, H_REL, TAU
 
 OUT = 'results'
-DS = ['XJTU', 'TJU', 'MIT', 'HUST', 'NASA']
+DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 TCOL = ['scen', 'cell', 'otype', 'oq', 'k', 'h', 'y'] + MODELS_R + ['lo', 'hi', 'lo_r', 'hi_r']
 RCOL = ['scen', 'cell', 'q', 'k', 'true'] + MODELS_R + ['lo_r', 'hi_r']
 DCOL = ['scen', 'cell', 'otype', 'oq', 'k', 'level', 'e', 'P', 'amp', 'r2', 'slope']
@@ -135,7 +135,7 @@ def main():
 
 
 def figure(T):
-    """Ba ví dụ, lịch sử đo: dao động đều (XJTU R2.5), gốc ngay sau hồi phục (XJTU) và (NASA)."""
+    """Ba ví dụ, lịch sử đo: dao động đều (XJTU R2.5) và gốc ngay sau hồi phục (XJTU, TJU)."""
     import matplotlib.pyplot as plt
     from pinnsoh.plotstyle import apply_theme, GRID, panel_title, save, MODEL_COLOR
     from pinnsoh.data import load_dataset
@@ -145,7 +145,7 @@ def figure(T):
     a = t[(t.ds == 'XJTU') & (t.otype == 0) & (t.oq == 1) & t.cid.str.contains('R2.5')]
     if len(a):
         picks.append(('XJTU', a.cid.iloc[0], 0, 1, 'dao động đều (R2.5)'))
-    for ds, lab in (('XJTU', 'sau hồi phục'), ('NASA', 'sau khoảng nghỉ dài')):
+    for ds, lab in (('XJTU', 'sau hồi phục'), ('TJU', 'sau hồi phục')):
         b = t[(t.ds == ds) & (t.otype == 1)]
         if ds == 'XJTU':
             b = b[~b.cid.str.contains('R2.5')]

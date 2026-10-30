@@ -1,5 +1,5 @@
 """
-Phân tích E13 (và E14) đúng theo đề cương ấn định trước — tai-lieu/de-cuong-E13.md.
+Phân tích E13 (và E14) đúng theo đề cương ấn định trước — docs/de-cuong-E13.md.
 
     python analysis/analyze_e13.py           # runs/E13/*.json, runs/E14/*.json -> results/E13_*, E14_*, fig_E13_*
 

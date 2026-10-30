@@ -392,130 +392,10 @@ def e29_phys():
                               ('pinn_h', '#1baf7a', '-', 'PINN-semi + lịch sử')])
 
 
-# ─────────────────────────────────────────────────────────── bộ NASA
-NASA_GROUPS = {'G1_24C_2A': '24 °C, xả 2 A', 'G2_24C_PWM4A': '24 °C, xả xung 4 A', 'G3_43C_4A': '43 °C, xả 4 A',
-               'G4_24C_4A2A': '24 °C, xả 4 A rồi 2 A', 'G7_4C_1A': '4 °C, xả 1 A', 'G9_4C_2A': '4 °C, xả 2 A'}
-
-
-def nasa_data():
-    """Tổng quan bộ NASA: SOH theo chu kỳ của 18 cell (màu theo nhóm điều kiện) và bước nhảy SOH sau khoảng nghỉ."""
-    plt = setup()
-    from pinnsoh.plotstyle import panel_title, save, SERIES, GRID, INK
-    D = pd.read_csv(f'{OUT}/e24_data.csv')
-    col = {g: SERIES[i] for i, g in enumerate(NASA_GROUPS)}
-    fig, (a, b) = plt.subplots(1, 2, figsize=(TW, 2.9))
-    for cell, g in D.groupby('cell'):
-        a.plot(g.cycle, 100 * g.soh, color=col[g.group.iloc[0]], lw=1.2)
-    a.set_xlabel('chu kỳ xả'); a.set_ylabel('SOH (%)')
-    panel_title(a, 'SOH của 18 cell', pad=4)
-    D = D.sort_values(['cell', 'cycle'])
-    D['jump'] = 100 * D.groupby('cell').soh.diff()
-    J = D.dropna(subset=['jump', 'rest_h'])
-    J = J[J.rest_h > 0]
-    for gname in NASA_GROUPS:
-        g = J[J.group == gname]
-        b.scatter(g.rest_h, g.jump, s=9, color=col[gname], alpha=0.7, lw=0)
-    edges = np.logspace(np.log10(J.rest_h.min()), np.log10(J.rest_h.max()), 9)
-    mid = np.sqrt(edges[:-1] * edges[1:])
-    med = [J[(J.rest_h >= lo) & (J.rest_h < hi)].jump.median() for lo, hi in zip(edges[:-1], edges[1:])]
-    b.plot(mid, med, color=INK, lw=1.8, marker='o', ms=4, label='trung vị theo khoảng')
-    b.axhline(0, color='#9aa5ad', lw=0.8)
-    b.set_xscale('log'); b.set_xlabel('giờ nghỉ trước lần xả'); b.set_ylabel('bước nhảy SOH (%)')
-    b.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'))
-    panel_title(b, 'Dung lượng hồi phục sau khi nghỉ', pad=4)
-    for ax in (a, b):
-        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
-    h = [plt.Line2D([], [], color=col[g], lw=2.2, label=NASA_GROUPS[g]) for g in NASA_GROUPS]
-    h.append(plt.Line2D([], [], color=INK, lw=1.8, marker='o', ms=4, label='trung vị theo khoảng giờ nghỉ'))
-    fig.legend(handles=h, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.tight_layout(rect=[0, 0.16, 1, 1], w_pad=1.5)
-    save(fig, f'{OUT}/fig_nasa_data')
-
-
 MODEL_STYLE = {   # màu theo mô hình, giữ nguyên giữa các hình (SERIES của plotstyle, thứ tự cố định)
     'mlp': ('MLP', '#7d8791'), 'cnn': ('CNN', '#e87ba4'), 'lstm': ('LSTM', '#6250d6'),
     'transformer': ('Transformer', '#eda100'), 'gbdt': ('GBDT', '#eb6834'), 'pinn': ('PINN-semi', '#1baf7a'),
     'pinn3': ('3 PINN-semi', '#1baf7a'), 'pinn_lai': ('PINN-lai', '#0b3d73')}
-SAMBA_PUB = {'samba': ('SambaMixer-L', {'B0006': 1.173, 'B0007': 1.197, 'B0047': 0.512}),
-             'cnn_bigru': ('CNN-BiGRU', {'B0006': 2.448, 'B0007': 1.861, 'B0047': 2.549})}
-
-
-def _best_seq(sb):
-    """Mô hình chuỗi thời gian có MAE trung bình thấp nhất trên ba cell NASA-L (16 đặc trưng), nếu đã có E30."""
-    g = sb[(sb.ds == 'NASA') & sb.model.isin(['cnn', 'lstm', 'transformer'])].groupby('model').mae.mean()
-    return g.idxmin() if len(g) else None
-
-
-def nasa_traj():
-    """Ba cell đánh giá của cách chia NASA-L (hạt giống 0, 16 đặc trưng): SOH đo được, PINN-lai, GBDT và mô hình chuỗi
-    thời gian tốt nhất."""
-    plt = setup()
-    from pinnsoh.plotstyle import panel_title, save, GRID, INK
-    Tr = pd.read_csv(f'{OUT}/e24_samba_traj.csv'); Tr = Tr[Tr.ds == 'NASA']
-    sb = pd.read_csv(f'{OUT}/e30_samba.csv' if os.path.exists(f'{OUT}/e30_samba.csv') else f'{OUT}/e24_samba.csv')
-    seq = _best_seq(sb)
-    Q = pd.read_csv(f'{OUT}/e30_samba_traj.csv') if seq and os.path.exists(f'{OUT}/e30_samba_traj.csv') else None
-    fig, axes = plt.subplots(1, 3, figsize=(TW, 2.6))
-    for ax, c in zip(axes, ['B0006', 'B0007', 'B0047']):
-        g = Tr[Tr.cell == c].sort_values('cycle')
-        ax.plot(g.cycle, 100 * g.y, color=INK, lw=2.0, label='SOH đo được', zorder=5)
-        for m in ('gbdt', 'pinn_lai'):
-            ax.plot(g.cycle, 100 * g[m], color=MODEL_STYLE[m][1], lw=1.4, label=MODEL_STYLE[m][0], zorder=4)
-        if Q is not None:
-            q = Q[(Q.ds == 'NASA') & (Q.cell == c) & (Q.model == seq)].sort_values('cycle')
-            ax.plot(q.cycle, 100 * q.p, color=MODEL_STYLE[seq][1], lw=1.4, label=MODEL_STYLE[seq][0], zorder=3)
-        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
-        ax.set_xlabel('chu kỳ xả')
-        panel_title(ax, c, pad=4)
-    axes[0].set_ylabel('SOH (%)')
-    h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, loc='lower center', ncol=len(h), frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.tight_layout(rect=[0, 0.09, 1, 1], w_pad=1.0)
-    save(fig, f'{OUT}/fig_nasa_traj')
-
-
-def nasa_compare():
-    """MAE (% SOH) trên NASA: kiểm định chéo ở 30 và 70 % nhãn, và cách chia NASA-L so với số công bố của SambaMixer."""
-    plt = setup()
-    from pinnsoh.plotstyle import panel_title, save, GRID, INK, MUTED
-    cv = pd.read_csv(f'{OUT}/e30_nasa_cv.csv' if os.path.exists(f'{OUT}/e30_nasa_cv.csv') else f'{OUT}/e24_cv.csv')
-    sb = pd.read_csv(f'{OUT}/e30_samba.csv' if os.path.exists(f'{OUT}/e30_samba.csv') else f'{OUT}/e24_samba.csv')
-    order = [m for m in ('mlp', 'cnn', 'lstm', 'transformer', 'gbdt', 'pinn', 'pinn_lai') if m in set(cv.model)]
-    fig, (a, b) = plt.subplots(1, 2, figsize=(TW, 2.9), gridspec_kw=dict(width_ratios=[1, 1.15]))
-    y = np.arange(len(order))[::-1]
-    for i, m in zip(y, order):
-        v3 = 100 * float(cv[(cv.ds == 'NASA') & (cv.frac == 0.3) & (cv.model == m)].mae.iloc[0])
-        v7 = 100 * float(cv[(cv.ds == 'NASA') & (cv.frac == 0.7) & (cv.model == m)].mae.iloc[0])
-        a.plot([v7, v3], [i, i], color='#c9d0d4', lw=1.6, zorder=1)
-        a.scatter([v3], [i], s=46, facecolor='white', edgecolor=MODEL_STYLE[m][1], lw=1.8, zorder=3)
-        a.scatter([v7], [i], s=46, color=MODEL_STYLE[m][1], zorder=3)
-    a.set_yticks(y); a.set_yticklabels([MODEL_STYLE[m][0] for m in order])
-    a.set_xlabel('MAE theo cell (% SOH)')
-    panel_title(a, 'Kiểm định chéo theo cell', pad=4)
-    rows = [(MODEL_STYLE[m][0], 100 * sb[(sb.ds == 'NASA') & (sb.model == m)].mae.mean(), MODEL_STYLE[m][1])
-            for m in order if ((sb.ds == 'NASA') & (sb.model == m)).any()]
-    rows += [(lab, float(np.mean(list(v.values()))), None) for lab, v in SAMBA_PUB.values()]
-    rows.sort(key=lambda r: -r[1])
-    yy = np.arange(len(rows))
-    for i, r in enumerate(rows):
-        if r[2] is None:                                   # số công bố: nền nhạt, gạch chéo
-            b.barh(i, r[1], height=0.62, facecolor='#eef0f1', edgecolor=MUTED, hatch='////', lw=0.8)
-        else:
-            b.barh(i, r[1], height=0.62, color=r[2])
-    for i, r in enumerate(rows):
-        b.text(r[1] + 0.06, i, f'{r[1]:.2f}'.replace('.', ','), va='center', fontsize=8, color=INK)
-    b.set_yticks(yy); b.set_yticklabels([r[0] for r in rows])
-    b.set_xlabel('MAE trung bình 3 cell đánh giá (% SOH)'); b.set_xlim(0, max(r[1] for r in rows) * 1.18)
-    panel_title(b, 'Cách chia NASA-L của SambaMixer', pad=4)
-    for ax in (a, b):
-        ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5)
-    h = [plt.Line2D([], [], ls='', marker='o', mfc='white', mec=INK, mew=1.6, ms=6.5, label='30 % cell có nhãn'),
-         plt.Line2D([], [], ls='', marker='o', color=INK, ms=6.5, label='70 % cell có nhãn'),
-         plt.Rectangle((0, 0), 1, 1, facecolor='#eef0f1', edgecolor=MUTED, hatch='////', lw=0.8,
-                       label='số công bố của bài SambaMixer')]
-    fig.legend(handles=h, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0))
-    fig.tight_layout(rect=[0, 0.09, 1, 1], w_pad=2.0)
-    save(fig, f'{OUT}/fig_nasa_compare')
 
 
 def models_compare():
@@ -548,12 +428,10 @@ def models_compare():
 
 FIGS = dict(curve_physics=curve_physics, leakage=leakage, e20_steps=e20_steps, e27_compare=e27_compare,
             e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e29_pinn=e29_pinn,
-            e29_lai=e29_lai, e29_phys=e29_phys, nasa_data=nasa_data, nasa_traj=nasa_traj, nasa_compare=nasa_compare,
-            models_compare=models_compare)
+            e29_lai=e29_lai, e29_phys=e29_phys, models_compare=models_compare)
 NEEDS = dict(curve_physics='thesis_curve', leakage='thesis_leakage', e20_steps='e20_summary', e27_compare='e27_summary',
              e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon',
-             e29_pinn='e29_summary', e29_lai='e29_summary', e29_phys='e29_summary', nasa_data='e24_data',
-             nasa_traj='e24_samba_traj', nasa_compare='e24_cv', models_compare='e30_metrics')
+             e29_pinn='e29_summary', e29_lai='e29_summary', e29_phys='e29_summary', models_compare='e30_metrics')
 
 
 def main(names=None):

@@ -20,7 +20,7 @@ trong đó l_k là giá trị xu thế tại k, dv là nghiệm đóng của đ�
 phận của phần hồi phục: một phần rho được giữ lại, phần còn lại tắt dần với thời gian tau. (rho, tau) ước lượng trực
 tiếp trên cell train (fit_recovery): dò lưới để khớp phần lệch so với đường xu thế trong 30 chu kỳ sau mỗi lần hồi phục.
 Bản đầu học tau bằng gradient cùng mạng, nhưng chỉ vài mẫu có e_k khác 0 nên tau gần như đứng yên ở giá trị khởi tạo
-(10–12 chu kỳ ở mọi bộ), trong khi trên NASA phần lớn cú nhảy sau nghỉ dài được giữ lại và trên MIT tắt sau 1–3 chu kỳ.
+(10–12 chu kỳ ở mọi bộ), trong khi trên MIT phần hồi phục tắt sau 1–3 chu kỳ.
     pinn_r   mạng (đặc trưng gốc bền) -> (a, lam); 3 thành viên
     gbdt_r   GBDT học phần giảm của xu thế l_k + e_k·g(h) + p_k(h) − SOH(k+h), đơn điệu theo h;
              dưới tầm h1 (bề rộng ngăn đầu tiên của trục h trong cây) phần giảm nội suy tuyến tính từ 0, để đường dự báo

@@ -1,10 +1,10 @@
 """
-E29dev: chọn dạng lịch sử của đầu vào trên VALIDATION (lần lặp 0, 5 fold, 30 và 70 % nhãn; NASA thêm cách chia NASA-L).
+E29dev: chọn dạng lịch sử của đầu vào trên VALIDATION (lần lặp 0, 5 fold, 30 và 70 % nhãn).
 
     python analysis/dev_e29.py     # -> results/e29_dev.csv, results/e29_choice.csv
 
 Tỉ số = MAE theo cell trên validation của mô hình có lịch sử / cùng mô hình với đặc trưng gốc, cùng fold và hạt giống
-(PINN-semi thành viên 0 của E20, E24; GBDT của E20, E24). Quy tắc chọn (tai-lieu/de-cuong-E29.md): với mỗi bộ và mỗi
+(PINN-semi thành viên 0 của E20; GBDT của E20). Quy tắc chọn (docs/de-cuong-E29.md): với mỗi bộ và mỗi
 loại mô hình, dạng có tỉ số trung bình nhỏ nhất, chỉ giữ khi tỉ số đó <= 0,98.
 """
 from __future__ import annotations
@@ -15,9 +15,9 @@ import json, os
 import numpy as np
 import pandas as pd
 
-from pinnsoh.experiments import E29dev, NASA_SETS
+from pinnsoh.experiments import E29dev
 from pinnsoh.train import Config, run_name
-from pinnsoh.baselines import cv_path, samba_path
+from pinnsoh.baselines import cv_path
 
 OUT = 'results'
 KEEP = 0.98
@@ -39,19 +39,13 @@ def rows():
             continue
         a = j.args
         if j.kind == 'train':
-            ds = a['dataset']; samba = a.get('split') == 'samba'
-            src = 'runs/E24' if ds in NASA_SETS else 'runs/E20'
-            base = os.path.join(src, run_name(Config(**{**a, 'norm': 'global', 'tag': 'S' if samba else 'P'})) + '.json')
-            split = 'samba' if samba else f"cv{a['label_frac']}"
-            model, spec = 'pinn_semi', a['norm']
-        elif j.kind == 'baseline':
-            ds = a['ds']; src = 'runs/E24' if ds in NASA_SETS else 'runs/E20'
-            base = cv_path('gbdt', ds, a['frac'], a['r'], a['k'], src)
-            split, model, spec = f"cv{a['frac']}", 'gbdt', a['norm']
+            ds = a['dataset']
+            base = os.path.join('runs/E20', run_name(Config(**{**a, 'norm': 'global', 'tag': 'P'})) + '.json')
+            split, model, spec = f"cv{a['label_frac']}", 'pinn_semi', a['norm']
         else:
             ds = a['ds']
-            base = samba_path('gbdt', ds, a['seed'], 'runs/E24')
-            split, model, spec = 'samba', 'gbdt', a['norm']
+            base = cv_path('gbdt', ds, a['frac'], a['r'], a['k'], 'runs/E20')
+            split, model, spec = f"cv{a['frac']}", 'gbdt', a['norm']
         if not os.path.exists(base):
             continue
         out.append(dict(model=model, dataset=ds, split=split, spec=spec, ratio=val_cell(j.out) / val_cell(base)))

@@ -4,7 +4,7 @@ Các script ở đây sinh kết quả của các báo cáo tiến độ trướ
 bộ slide 14–29/09). Chúng **không** thuộc báo cáo đồ án cuối — báo cáo đó dùng E13–E19 ở
 `pinnsoh/experiments.py`, chạy bằng `python run.py`.
 
-Vẫn chạy được, từ thư mục nào cũng được (mỗi script tự chuyển về gốc dự án):
+Chạy được ở commit `2d66f75`, khi thư mục này còn là `legacy/` ở gốc dự án (xem `archive/README.md`):
 
 | Script | Việc |
 |---|---|

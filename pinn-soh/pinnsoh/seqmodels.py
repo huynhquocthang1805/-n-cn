@@ -18,7 +18,7 @@ from __future__ import annotations
 import json, math, os, time
 import numpy as np
 
-from .data import cv_split, choose_labelled, make_pointset, Normalizer, SAMBA_SPLIT
+from .data import cv_split, choose_labelled, make_pointset, Normalizer
 from .metrics import evaluate
 from .train import write_json
 
@@ -168,30 +168,5 @@ def run_cv(model, L, ds, frac, r, k, out_dir='runs/E30'):
     cfg = dict(tag='Q', model=model, label_frac=frac, dataset=ds, repeat=r, fold=k, seed=seed, split='cv', n_folds=5,
                norm='global', window=L)
     n_cells = dict(train_labelled=len(lab), train_unlabelled=len(unl), val=len(sp['val']), test=len(te), all=len(cells))
-    write_json(_result(cfg, n_cells, hp, v, t0, te, Ste.Y.ravel(), p, Ste, Sva, sp['val'], pva), path)
-    return json.load(open(path))['test']['MAE_cell']
-
-
-def samba_path(model, L, ds, seed, out_dir='runs/E30'):
-    return f'{out_dir}/{model}-L{L}_{ds}_samba_s{seed}.json'
-
-
-def run_samba(model, L, ds, seed, out_dir='runs/E30'):
-    """Cách chia NASA-L của SambaMixer: 8 cell train, B0018 và B0055 validation, B0006, B0007, B0047 đánh giá."""
-    from .baselines import cells_of
-    path = samba_path(model, L, ds, seed, out_dir)
-    if os.path.exists(path):
-        return json.load(open(path))['test']['MAE_cell']
-    t0 = time.time()
-    cells = cells_of(ds); by = {c.cid: c for c in cells}
-    sp = {k: [f'NASA/{c}' for c in v] for k, v in SAMBA_SPLIT.items()}
-    norm = Normalizer('global').fit([by[i] for i in sp['train']])
-    Str = make_pointset([by[i] for i in sp['train']], norm, 'global', labelled_only=True)
-    Sva = make_pointset([by[i] for i in sp['val']], norm, 'global', labelled_only=True)
-    te = [by[i] for i in sp['test']]
-    Ste = make_pointset(te, norm, 'global', labelled_only=True)
-    p, pva, v, hp = fit_predict(model, L, Str, Sva, Ste, seed)
-    cfg = dict(tag='QS', model=model, dataset=ds, seed=seed, split='samba', norm='global', window=L)
-    n_cells = dict(train_labelled=len(sp['train']), val=len(sp['val']), test=len(te), all=len(cells))
     write_json(_result(cfg, n_cells, hp, v, t0, te, Ste.Y.ravel(), p, Ste, Sva, sp['val'], pva), path)
     return json.load(open(path))['test']['MAE_cell']

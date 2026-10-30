@@ -1,17 +1,27 @@
 """
-Định nghĩa các thí nghiệm của báo cáo đồ án (pipeline v2) dưới dạng danh sách lượt chạy (Job).
+Định nghĩa các thí nghiệm dưới dạng danh sách lượt chạy (Job); số lượt ở cột cuối.
 
     E13  kiểm định chéo 5 fold × 5 lần lặp theo cell: MLP, PINN-semi ở 4 mức nhãn; PINN-sup, 2 biến thể
-         cắt bỏ ở 30 % nhãn (đề cương ấn định trước: tai-lieu/de-cuong-E13.md)          1 100 lượt
-    E14  chuyển miền, 4 cặp cùng hoá học, MLP và PINN-semi cùng normaliser (tập con của E18)  80
-    E15  kiểm toán rò rỉ: 4 cách chia/chuẩn hoá sai, MLP 70 % nhãn, 2 lần lặp                 160
-    E16  Ridge, GPR, GBDT, cùng cách chia và cùng tập nhãn với E13                           1 200
-    E17  PINN-sup ở 10 và 50 %, PINN hộp đen ở 4 mức nhãn, cùng giao thức E13                600
-    E18  chuyển miền đủ 12 cặp nguồn–đích, MLP và PINN-semi, k ∈ {0, 3}, 5 hạt giống          240
-    E19  GBDT trên đúng 12 cặp của E18                                                       120
-    E20  PINN-lai: 3 PINN-semi + GBDT + bộ lọc quỹ đạo, 3 lần lặp (tai-lieu/de-cuong-E20.md)  1 440
-    E21  huấn luyện một bộ, kiểm tra bộ khác (2 giao thức) + thích nghi, tự huấn luyện       168
-    E22  dự báo SOH tương lai, dung lượng còn lại, RUL; cùng fold E20, dùng ước lượng E20      60
+         cắt bỏ ở 30 % nhãn (đề cương ấn định trước: docs/de-cuong-E13.md)                  1 100
+    E14  chuyển miền, 4 cặp cùng hoá học, MLP và PINN-semi cùng normaliser (tập con của E18)          80
+    E15  kiểm toán rò rỉ: 4 cách chia/chuẩn hoá sai, MLP 70 % nhãn, 2 lần lặp                        160
+    E16  Ridge, GPR, GBDT, cùng cách chia và cùng tập nhãn với E13                                1 200
+    E17  PINN-sup ở 10 và 50 %, PINN hộp đen ở 4 mức nhãn, cùng giao thức E13                        600
+    E18  chuyển miền đủ 12 cặp nguồn–đích, MLP và PINN-semi, k ∈ {0, 3}, 5 hạt giống                 240
+    E19  GBDT trên đúng 12 cặp của E18                                                              120
+    E20  PINN-lai: 3 PINN-semi + GBDT + bộ lọc quỹ đạo, 3 lần lặp (docs/de-cuong-E20.md);
+         E20dev là giai đoạn phát triển chỉ xem validation                                   1 440 + 400
+    E21  huấn luyện một bộ, kiểm tra bộ khác (2 giao thức) + thích nghi, tự huấn luyện              168
+    E22  dự báo SOH tương lai, dung lượng còn lại, RUL; cùng fold E20, dùng ước lượng E20             60
+    E23  dự báo có xét hồi phục dung lượng, cùng fold E22                                            60
+    E26  tham số vật lý (λ, Ea) có xác định được không, TJU 25/35/45 °C                               25
+    E27  so với PINN4SOH trên đúng cách chia của bài, hai cách tiền xử lý                          1 002
+    E28  ngân sách đo dung lượng: đo thưa trên mọi cell train                                      1 560
+    E29  đặc trưng lịch sử của cell (E29dev chọn dạng trên validation)                          840 + 400
+    E30  CNN, LSTM, Transformer (E30dev chọn cửa sổ trên validation)                            720 + 240
+    E32  mô hình học cập nhật từ lần đo dung lượng gần nhất                                         240
+E25 (bộ lọc Kalman cho độ lệch theo cell) không có lượt riêng: analysis/analyze_e25.py và analyze_e32.py tính trên dự
+đoán đã lưu của E20.
 
 Mỗi Job biết file kết quả của nó (`out`), nên chạy lại sẽ bỏ qua lượt đã xong; tên file giữ nguyên như các
 lần chạy trước để kết quả cũ dùng lại được. Cấu hình của E13 đã ấn định trước — KHÔNG sửa.
@@ -167,7 +177,7 @@ def E20dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E20dev') -> List[
     return jobs
 
 
-# Đánh giá cuối (chốt sau giai đoạn phát triển, xem tai-lieu/de-cuong-E20.md): 3 lần lặp × 5 fold × 4 mức nhãn.
+# Đánh giá cuối (chốt sau giai đoạn phát triển, xem docs/de-cuong-E20.md): 3 lần lặp × 5 fold × 4 mức nhãn.
 #   P  PINN-semi E13, thành viên 0–2, lưu dự đoán validation (thành viên 0 trùng từng bit với E13)
 #   M  MLP E13, thành viên 1–2 (thành viên 0 lấy từ E13) — nhánh đối chứng không vật lý của mô hình lai
 #   gbdt  GBDT E16, lưu dự đoán validation (dự đoán test trùng E16)
@@ -229,7 +239,7 @@ def E22(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E22') -> L
 
 
 # E23: dự báo có xét hồi phục dung lượng (pinnsoh/recovery.py) — cùng fold E22, học lại cả mô hình E22 để so ghép cặp
-E23_COST = {'XJTU': 150, 'TJU': 200, 'MIT': 250, 'HUST': 300, 'NASA': 60}
+E23_COST = {'XJTU': 150, 'TJU': 200, 'MIT': 250, 'HUST': 300}
 
 
 def E23(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E23') -> List[Job]:
@@ -239,69 +249,23 @@ def E23(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E23') -> L
             for r, ds, k in itertools.product(range(repeats), datasets, range(E13_FOLDS))]
 
 
-# E24: bộ NASA PCoE (18 cell, pinnsoh/nasa.py), có và không có thời gian nghỉ (NASAdt)
-#   cv     kiểm định chéo 5 fold × 3 lần lặp, mức nhãn 30 và 70 %: 3 PINN-semi, MLP, GBDT -> PINN-lai
-#   samba  cách chia NASA-L của SambaMixer (đánh giá trên #06, #07, #47), 3 hạt giống
-#   dự báo E22 và E23 trên NASA (cần lượt cv ở 70 % nhãn làm lịch sử ước lượng)
-E24_PHYS = dict(E13_PHYS, range_first=(0.40, 1.10))
-NASA_SETS = ('NASA', 'NASAdt')
-
-
-def E24(repeats=E20_REPEATS, datasets=NASA_SETS, seeds=None, out='runs/E24') -> List[Job]:
-    datasets = [d for d in datasets if d in NASA_SETS] or list(NASA_SETS)    # run.py truyền bốn bộ chính: bỏ qua
-    return _nasa_jobs(datasets, range(repeats), out)
-
-
-def _nasa_jobs(datasets, rr, out) -> List[Job]:
-    """Lượt của E24 cho các biến thể NASA trong `datasets`: kiểm định chéo (30 và 70 % nhãn) và cách chia NASA-L."""
-    from .baselines import cv_path, samba_path
-    from .train import Config, run_name
-    jobs = []
-    for ds, f, r, k in itertools.product(datasets, (0.3, 0.7), rr, range(E13_FOLDS)):
-        jobs += [_member_job('P', 'pinn_semi', f, E24_PHYS, r, ds, k, out, m) for m in E20_MEMBERS]
-        jobs.append(_member_job('M', 'mlp', f, dict(range_first=(0.40, 1.10)), r, ds, k, out, 0))
-        jobs.append(Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True),
-                        cv_path('gbdt', ds, f, r, k, out), 3, f'gbdt {ds} f{f} cv{r}-{k}', (ds,)))
-    for ds, s in itertools.product(datasets, rr):
-        for model, mem, extra in [('pinn_semi', m, E24_PHYS) for m in E20_MEMBERS] + [('mlp', 0, dict(range_first=(0.40, 1.10)))]:
-            kw = dict(dataset=ds, label_frac=0.7, model=model, seed=s, split='samba', tag='S', out_dir=out,
-                      member=mem, save_val_predictions=True, **E13_NET, **extra)
-            jobs.append(Job('train', kw, os.path.join(out, run_name(Config(**kw)) + '.json'), _train_cost(model),
-                            f'S {ds} {model} s{s} m{mem}', (ds,)))
-        jobs.append(Job('baseline_samba', dict(model='gbdt', ds=ds, seed=s, out_dir=out), samba_path('gbdt', ds, s, out),
-                        3, f'samba gbdt {ds} s{s}', (ds,)))
-    return jobs
-
-
-def E24f(repeats=E20_REPEATS, datasets=None, seeds=None, out=None) -> List[Job]:
-    """Dự báo E22 và E23 trên NASA; chạy sau E24."""
-    from .forecast import out_path as fo
-    from .recovery import out_path as ro
-    rr = range(repeats)
-    return ([Job('forecast', dict(ds='NASA', r=r, k=k, root='runs/E22'), fo('NASA', r, k, 'runs/E22'), 40,
-                 f'forecast NASA cv{r}-{k}', ('NASA',)) for r, k in itertools.product(rr, range(E13_FOLDS))]
-            + [Job('recovery', dict(ds='NASA', r=r, k=k, root='runs/E23'), ro('NASA', r, k, 'runs/E23'), 60,
-                   f'recovery NASA cv{r}-{k}', ('NASA',)) for r, k in itertools.product(rr, range(E13_FOLDS))])
-
-
-# E26: tham số vật lý có xác định được không — hai bộ nhiều mức nhiệt độ (NASA 4/24/43 °C, TJU 25/35/45 °C), PINN-semi
-#      ở 70 % nhãn, tăng trọng số phần dư động học alpha_ode, thêm phần dư Euler, và khởi tạo lam, Ea ở giá trị khác
-#      (nếu giá trị học được đi theo giá trị khởi tạo thì dữ liệu không xác định được tham số đó). Mức gốc (alpha_ode = 0,02,
-#      khởi tạo lam = 1, Ea = 30 kJ/mol) lấy lại từ E24 (NASA) và E13 nhánh G (TJU).
+# E26: tham số vật lý có xác định được không — bộ có nhiều mức nhiệt độ (TJU 25/35/45 °C), PINN-semi ở 70 % nhãn, tăng
+#      trọng số phần dư động học alpha_ode, thêm phần dư Euler, và khởi tạo lam, Ea ở giá trị khác (nếu giá trị học được đi
+#      theo giá trị khởi tạo thì dữ liệu không xác định được tham số đó). Mức gốc (alpha_ode = 0,02, khởi tạo lam = 1,
+#      Ea = 30 kJ/mol) lấy lại từ E13 nhánh G.
 E26_ARMS = [('A0i', dict(lam_init=3.0, ea_init_kj=60.0)),
             ('A1', dict(alpha_ode=0.2)),
             ('A2', dict(alpha_ode=1.0)),
             ('A2i', dict(alpha_ode=1.0, lam_init=3.0, ea_init_kj=60.0)),
             ('A3', dict(alpha_ode=1.0, alpha_euler=2.0))]
-E26_SETS = {'NASA': (0, 1, 2), 'TJU': (0,)}
+E26_SETS = {'TJU': (0,)}
 
 
 def E26(repeats=None, datasets=None, seeds=None, out='runs/E26') -> List[Job]:
     jobs = []
     for ds, reps in E26_SETS.items():
-        base = dict(E13_PHYS, range_first=(0.40, 1.10)) if ds == 'NASA' else dict(E13_PHYS)
         for (tag, extra), r, k in itertools.product(E26_ARMS, reps, range(E13_FOLDS)):
-            jobs.append(_train_job('E26' + tag, 'pinn_semi', 0.7, dict(base, **extra), r, ds, k, out))
+            jobs.append(_train_job('E26' + tag, 'pinn_semi', 0.7, dict(E13_PHYS, **extra), r, ds, k, out))
     return jobs
 
 
@@ -377,31 +341,17 @@ def E29dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E29dev') -> List[
     jobs += [_member_job('H', 'pinn_semi', f, dict(E13_PHYS, norm=spec), r, ds, k, out, 0)
              for spec, f, r, ds, k in itertools.product(E29_DEV_SPECS, (0.3, 0.7), range(repeats), datasets,
                                                        range(E13_FOLDS))]
-    # NASA (có / không giờ nghỉ): cùng bốn dạng, kiểm định chéo như E24 và cách chia NASA-L của SambaMixer (hạt giống 0)
-    from .train import Config, run_name
-    for ds, spec in itertools.product(NASA_SETS, ('ema',) + E29_DEV_SPECS):
-        jobs += [_member_job('H', 'pinn_semi', f, dict(E24_PHYS, norm=spec), r, ds, k, out, 0)
-                 for f, r, k in itertools.product((0.3, 0.7), range(repeats), range(E13_FOLDS))]
-        kw = dict(dataset=ds, label_frac=0.7, model='pinn_semi', seed=0, split='samba', tag='S', out_dir=out, member=0,
-                  save_val_predictions=True, norm=spec, **E13_NET, **E24_PHYS)
-        jobs.append(Job('train', kw, os.path.join(out, run_name(Config(**kw)) + '.json'), _train_cost('pinn_semi'),
-                        f'S {ds} pinn_semi {spec}', (ds,)))
-    # GBDT với cùng các dạng (thêm hai dạng chỉ thử cho GBDT ở bốn bộ chính); bản gốc lấy từ E20 / E24
-    from .baselines import cv_path, samba_path
-    for ds in list(datasets) + list(NASA_SETS):
-        specs = E29_DEV_GBDT if ds in DATASETS else ('ema',) + E29_DEV_SPECS
-        for spec, f, r, k in itertools.product(specs, (0.3, 0.7), range(repeats), range(E13_FOLDS)):
+    # GBDT với cùng các dạng, thêm hai dạng chỉ thử cho GBDT; bản gốc lấy từ E20
+    from .baselines import cv_path
+    for ds in datasets:
+        for spec, f, r, k in itertools.product(E29_DEV_GBDT, (0.3, 0.7), range(repeats), range(E13_FOLDS)):
             jobs.append(Job('baseline', dict(model='gbdt', ds=ds, frac=f, r=r, k=k, out_dir=out, save_val=True, norm=spec),
                             cv_path('gbdt', ds, f, r, k, out, spec), BASELINE_S.get(('gbdt', ds), 3),
                             f'gbdt-h {ds} f{f} cv{r}-{k} {spec}', (ds,)))
-        if ds in NASA_SETS:
-            for spec in specs:
-                jobs.append(Job('baseline_samba', dict(model='gbdt', ds=ds, seed=0, out_dir=out, norm=spec),
-                                samba_path('gbdt', ds, 0, out, spec), 3, f'samba gbdt {ds} {spec}', (ds,)))
     return jobs
 
 
-# E29: đánh giá cuối mô hình dùng lịch sử (xem tai-lieu/de-cuong-E29.md). Dạng lịch sử chọn trên validation ở E29dev:
+# E29: đánh giá cuối mô hình dùng lịch sử (xem docs/de-cuong-E29.md). Dạng lịch sử chọn trên validation ở E29dev:
 #      chỉ giữ khi giảm MAE validation trung bình ít nhất 2 %; bộ không có trong bảng giữ đặc trưng gốc (không có lượt mới).
 E29_SPEC_PINN = {'XJTU': 'h:x+e0.1', 'TJU': 'h:x+e0.1', 'HUST': 'h:x+e0.1+e0.03+s20'}
 E29_SPEC_GBDT = {'XJTU': 'h:x+e0.1', 'HUST': 'h:x+e0.1+e0.03+s20'}
@@ -423,8 +373,8 @@ def E29(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E29') -> L
     return jobs
 
 
-# E30: CNN, LSTM, Transformer theo đề cương đồ án (pinnsoh/seqmodels.py, tai-lieu/de-cuong-E30.md). E30dev chọn độ dài
-#      cửa sổ L trên validation (lần lặp 0, nhãn 30 và 70 %); E30 chạy đúng giao thức E20 với L đã chọn, thêm bộ NASA.
+# E30: CNN, LSTM, Transformer theo đề cương đồ án (pinnsoh/seqmodels.py, docs/de-cuong-E30.md). E30dev chọn độ dài
+#      cửa sổ L trên validation (lần lặp 0, nhãn 30 và 70 %); E30 chạy đúng giao thức E20 với L đã chọn.
 E30_MODELS = ('cnn', 'lstm', 'transformer')
 E30_DEV_L = (16, 48)
 # chốt theo E30dev (analysis/dev_e30.py, results/e30_dev.csv): tỉ số validation L48/L16 của CNN 1,000 (vùng nhìn 13 chu
@@ -443,55 +393,27 @@ def E30dev(repeats=1, datasets=DATASETS, seeds=None, out='runs/E30dev') -> List[
 
 def E30(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E30') -> List[Job]:
     from .seqmodels import cv_path
-    jobs = [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
+    return [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
                 cv_path(m, E30_L[m], ds, f, r, k, out), E30_COST[m] * E30_L[m] / 16, f'{m} {ds} f{f} cv{r}-{k}', (ds,))
             for m, f, r, ds, k in itertools.product(E30_MODELS, FRACS, range(repeats), datasets, range(E13_FOLDS))]
-    # NASA: kiểm định chéo như E24 (30 và 70 % nhãn, có / không giờ nghỉ) và cách chia NASA-L của SambaMixer (3 hạt giống)
-    return jobs + _nasa_seq_jobs(NASA_SETS, repeats, out)
 
 
-def _nasa_seq_jobs(datasets, repeats, out) -> List[Job]:
-    from .seqmodels import cv_path, samba_path
-    jobs = []
-    for m, ds in itertools.product(E30_MODELS, datasets):
-        jobs += [Job('seq', dict(model=m, L=E30_L[m], ds=ds, frac=f, r=r, k=k, out_dir=out),
-                     cv_path(m, E30_L[m], ds, f, r, k, out), 5, f'{m} {ds} f{f} cv{r}-{k}', (ds,))
-                 for f, r, k in itertools.product((0.3, 0.7), range(repeats), range(E13_FOLDS))]
-        jobs += [Job('seq_samba', dict(model=m, L=E30_L[m], ds=ds, seed=s, out_dir=out),
-                     samba_path(m, E30_L[m], ds, s, out), 5, f'samba {m} {ds} s{s}', (ds,)) for s in range(3)]
-    return jobs
-
-
-# E31: so với SambaMixer trên NASA theo lượng thông tin đo được (tai-lieu/de-cuong-E31.md). Mọi mô hình của E24 và E30
-#      trên NASAfc (16 đặc trưng + 7 đặc trưng của cả lần sạc + log(1 + giờ nghỉ)); mức đo thưa và đo mọi chu kỳ trước
-#      tính sau huấn luyện trên dự đoán đã lưu (analysis/analyze_e31.py), ở bốn bộ chính dùng lượt của E20.
-def E31(repeats=E20_REPEATS, datasets=None, seeds=None, out='runs/E31') -> List[Job]:
-    return _nasa_jobs(['NASAfc'], range(repeats), out) + _nasa_seq_jobs(['NASAfc'], repeats, out)
-
-
-# E32: mô hình học cập nhật từ lần đo dung lượng gần nhất (pinnsoh/update.py, tai-lieu/de-cuong-E32.md): cùng fold, cùng
-#      cell có nhãn với E20 (bốn bộ chính) và E24/E31 (NASA, NASAfc); cách chia NASA-L với 3 hạt giống
-E32_COST = {'XJTU': 20, 'TJU': 50, 'MIT': 60, 'HUST': 90, 'NASA': 3, 'NASAfc': 3}
+# E32: mô hình học cập nhật từ lần đo dung lượng gần nhất (pinnsoh/update.py, docs/de-cuong-E32.md): cùng fold, cùng
+#      cell có nhãn với E20
+E32_COST = {'XJTU': 20, 'TJU': 50, 'MIT': 60, 'HUST': 90}
 
 
 def E32(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E32') -> List[Job]:
-    from .update import cv_path, samba_path
-    rr = range(repeats)
-    jobs = [Job('update', dict(ds=ds, frac=f, r=r, k=k, out_dir=out), cv_path(ds, f, r, k, out), E32_COST[ds],
+    from .update import cv_path
+    return [Job('update', dict(ds=ds, frac=f, r=r, k=k, out_dir=out), cv_path(ds, f, r, k, out), E32_COST[ds],
                 f'update {ds} f{f} cv{r}-{k}', (ds,))
-            for ds, f, r, k in itertools.product(datasets, FRACS, rr, range(E13_FOLDS))]
-    jobs += [Job('update', dict(ds=ds, frac=f, r=r, k=k, out_dir=out), cv_path(ds, f, r, k, out), E32_COST[ds],
-                 f'update {ds} f{f} cv{r}-{k}', (ds,))
-             for ds, f, r, k in itertools.product(('NASA', 'NASAfc'), (0.3, 0.7), rr, range(E13_FOLDS))]
-    jobs += [Job('update_samba', dict(ds=ds, seed=s, out_dir=out), samba_path(ds, s, out), 3, f'samba update {ds} s{s}',
-                 (ds,)) for ds, s in itertools.product(('NASA', 'NASAfc'), range(3))]
-    return jobs
+            for ds, f, r, k in itertools.product(datasets, FRACS, range(repeats), range(E13_FOLDS))]
 
 
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
-                                                        E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E24=E24,
-                                                        E24f=E24f, E26=E26, E27=E27, E28=E28, E29dev=E29dev, E29=E29,
-                                                        E30dev=E30dev, E30=E30, E31=E31, E32=E32)
+                                                        E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E26=E26,
+                                                        E27=E27, E28=E28, E29dev=E29dev, E29=E29, E30dev=E30dev, E30=E30,
+                                                        E32=E32)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
-ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f', 'E26', 'E27',
-         'E28', 'E29dev', 'E29', 'E30dev', 'E30', 'E31', 'E32']
+ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E26', 'E27', 'E28', 'E29dev',
+         'E29', 'E30dev', 'E30', 'E32']

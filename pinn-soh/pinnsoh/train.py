@@ -98,8 +98,7 @@ class Config:
     save_val_predictions: bool = False
     lam_init: float = 1.0            # giá trị khởi tạo của hệ số đầu gối lam và năng lượng hoạt hoá Ea (kJ/mol) — E26 đổi
     ea_init_kj: float = 30.0         # để kiểm tra hai tham số có xác định được từ dữ liệu không
-    range_first: tuple = (0.85, 1.10)  # miền SOH hợp lý ở chu kỳ đầu của cell; NASA (cell 4 °C có SOH đầu 0,5–0,8 so
-                                     # với 2 Ah danh định) dùng (0,40; 1,10)
+    range_first: tuple = (0.85, 1.10)  # miền SOH hợp lý ở chu kỳ đầu của cell
     paper_key: str = ''              # split='paper': khoá cách chia của PINN4SOH trong pinn4soh_splits.json (E27)
     meas_every: float = 0.0          # > 0: cell có nhãn chỉ được đo dung lượng ở chu kỳ đầu và sau mỗi meas_every·L chu kỳ (E28)
     meas_interp: bool = False        #   True: nhãn giữa hai lần đo lấy theo nội suy tuyến tính (lan nhãn trước khi học)
@@ -180,9 +179,6 @@ class Trainer:
         by_id = {c.cid: c for c in cells}
         if cfg.split == 'cv':
             split = cv_split(cells, cfg.fold, cfg.repeat, cfg.n_folds, cfg.val_frac_cv)
-        elif cfg.split == 'samba':
-            from .data import SAMBA_SPLIT
-            split = {k: [f'NASA/{c}' for c in v] for k, v in SAMBA_SPLIT.items()}
         else:
             split = split_cells(cells, cfg.seed)
         lab_ids, unl_ids = choose_labelled(split['train'], cfg.label_frac, len(cells), cfg.seed, by_id)

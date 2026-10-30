@@ -1,15 +1,17 @@
 """
-Một lệnh cho mọi bước của đồ án. Chạy từ thư mục nào cũng được.
+Một lệnh cho mọi bước. Chạy từ thư mục nào cũng được.
 
     python run.py check                       kiểm tra Python, thư viện, dữ liệu, XeLaTeX
     python run.py data                        tải dữ liệu (nếu chưa có) và dựng bộ nhớ đệm
     python run.py bench                       đo tốc độ máy này để ước lượng thời gian chạy
-    python run.py E13 [tuỳ chọn]              một thí nghiệm: E13 E14 E15 E16 E17 E18 E19
-    python run.py experiments [tuỳ chọn]      mọi thí nghiệm của báo cáo, theo thứ tự
+    python run.py E13 [tuỳ chọn]              một thí nghiệm (danh sách: pinnsoh/experiments.py)
+    python run.py experiments [tuỳ chọn]      mọi thí nghiệm, theo thứ tự
     python run.py analyze                     bảng + hình từ runs/ -> results/ (lần đầu thêm ~40 phút CPU để
                                               huấn luyện lại 120 lượt cho phân tích phần vật lý)
-    python run.py thesis                      dựng do-an/bao-cao-do-an.pdf và tai-lieu/phan-tich-vat-ly-PINN.pdf
-    python run.py all [tuỳ chọn]              experiments -> analyze -> thesis
+    python run.py benchmark [--workers N]     chạy lại mã gốc PINN4SOH trên cách chia của bài (benchmark/) rồi lập bảng
+                                              so sánh với số công bố và với E27 -> results/benchmark_*
+    python run.py paper                       dựng bản thảo bài báo paper/main.pdf
+    python run.py all [tuỳ chọn]              experiments -> analyze -> benchmark -> paper
     python run.py reproduce                   chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
     python run.py demo train|predict ...      demo ước lượng SOH cho một cell (xem tools/demo.py)
 
@@ -22,6 +24,7 @@ Tuỳ chọn cho thí nghiệm:
     --device cuda   dùng GPU (nhanh hơn với 1 tiến trình; kết quả lệch ở mức làm tròn, không tái lập từng bit)
 
 Dừng bất cứ lúc nào bằng Ctrl+C; chạy lại đúng lệnh đó sẽ tiếp tục từ lượt đang dở.
+Báo cáo đồ án, slide và script giai đoạn đầu nằm ở archive/ (xem archive/README.md).
 """
 from __future__ import annotations
 import argparse, os, shutil, subprocess, sys, time
@@ -34,11 +37,11 @@ ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['
             ['analysis/analyze_thesis.py'], ['analysis/analyze_metrics.py'], ['analysis/analyze_physics.py'],
             ['analysis/error_decomp.py'], ['analysis/dev_e20.py'], ['analysis/analyze_e20.py'],
             ['analysis/analyze_tuning.py'], ['analysis/analyze_e21.py'], ['analysis/analyze_e22.py'],
-            ['analysis/analyze_e23.py'], ['analysis/analyze_e24.py'], ['analysis/analyze_e25.py'],
+            ['analysis/analyze_e23.py'], ['analysis/analyze_e25.py'],
             ['analysis/analyze_e26.py'], ['analysis/analyze_e27.py'], ['analysis/analyze_e28.py'],
             ['analysis/analyze_mono.py'], ['analysis/dev_e29.py'], ['analysis/analyze_e29.py'],
-            ['analysis/dev_e30.py'], ['analysis/analyze_e30.py'], ['analysis/analyze_e31.py'],
-            ['analysis/analyze_overview.py'], ['analysis/figures_report.py'], ['report/diagrams.py']]
+            ['analysis/dev_e30.py'], ['analysis/analyze_e30.py'], ['analysis/analyze_e32.py'],
+            ['analysis/analyze_overview.py'], ['analysis/figures_report.py'], ['analysis/diagrams.py']]
 
 
 def sh(args):
@@ -62,7 +65,7 @@ def cmd_check(_):
     from tools.tai_du_lieu import count_csv, EXPECT
     have = count_csv(resolve_root())
     print(f'dữ liệu {resolve_root()}: {have}', 'đủ' if have == EXPECT else '— THIẾU, chạy: python run.py data')
-    print('XeLaTeX:', shutil.which('xelatex') or 'không có (chỉ cần cho bước thesis)')
+    print('XeLaTeX:', shutil.which('xelatex') or 'không có (chỉ cần cho bước paper)')
     print(f'số lõi CPU: {os.cpu_count()}')
 
 
@@ -102,11 +105,33 @@ def cmd_analyze(_):
         sh(args)
 
 
-def cmd_thesis(_):
-    if not shutil.which('xelatex'):
-        print('Cảnh báo: không thấy xelatex — chỉ ghi được do-an/main.tex, chưa biên dịch ra PDF.')
-    sh(['report/make_thesis.py'])
-    sh(['report/make_physics_doc.py'])
+def benchmark_python():
+    """Trình thông dịch cho mã gốc PINN4SOH: cần pandas < 3 (benchmark/rerun_pinn4soh.py); nếu môi trường hiện tại có
+    pandas 3 thì dựng .cache/venv-pinn4soh (dùng chung các gói đã cài, chỉ thêm pandas 2.3.3)."""
+    import pandas
+    if int(pandas.__version__.split('.')[0]) < 3:
+        return sys.executable
+    venv = os.path.join(ROOT, '.cache', 'venv-pinn4soh')
+    py = os.path.join(venv, 'bin', 'python')
+    if not os.path.exists(py):
+        subprocess.run([sys.executable, '-m', 'venv', '--system-site-packages', venv], check=True)
+        subprocess.run([py, '-m', 'pip', 'install', '-q', 'pandas==2.3.3'], check=True)
+    return py
+
+
+def cmd_benchmark(a):
+    py = benchmark_python()
+    workers = ['--workers', str(a.workers)] if a.workers else []
+    for version in ('published', 'current'):
+        args = [py, 'benchmark/rerun_pinn4soh.py', '--version', version, *workers]
+        print(f'\n$ {" ".join(args[1:])}', flush=True)
+        if subprocess.run(args, cwd=ROOT).returncode:
+            sys.exit(1)
+    sh(['benchmark/compare.py'])
+
+
+def cmd_paper(_):
+    sh(['paper/build.py'])
 
 
 def cmd_all(a):
@@ -114,7 +139,8 @@ def cmd_all(a):
     if a.dry_run:
         return
     cmd_analyze(a)
-    cmd_thesis(a)
+    cmd_benchmark(a)
+    cmd_paper(a)
 
 
 def cmd_reproduce(a):
@@ -126,9 +152,9 @@ def main():
         sh(['tools/demo.py', *sys.argv[2:]])
         return
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'thesis', 'all', 'reproduce',
-                                        'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E24', 'E24f',
-                                        'E26', 'E27', 'E28', 'E29dev', 'E29', 'E30dev', 'E30', 'E31', 'E32'])
+    from pinnsoh.experiments import EXPERIMENTS
+    ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'benchmark', 'paper', 'all',
+                                        'reproduce', *EXPERIMENTS])
     ap.add_argument('--workers', type=int, default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--datasets', nargs='+', default=['XJTU', 'TJU', 'MIT', 'HUST'],
