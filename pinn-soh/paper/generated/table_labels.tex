@@ -1,0 +1,36 @@
+\begin{table}[t]\centering\small
+\caption{Per-cell MAE ($\times10^{-3}$) on test cells at four fractions of labelled cells; five repetitions $\times$ five folds, every cell tested five times. Bold: lowest per dataset and column.}\label{tab:labels}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrr}\toprule
+Dataset & Model & 10\,\% & 30\,\% & 50\,\% & 70\,\% \\\midrule
+XJTU & Ridge & 18.22 & 15.54 & 14.81 & 14.09 \\
+ & GPR & 14.85 & 12.11 & 14.86 & 19.18 \\
+ & GBDT & \textbf{14.49} & \textbf{10.85} & \textbf{10.19} & \textbf{9.51} \\
+ & MLP & 24.72 & 15.95 & 14.58 & 12.74 \\
+ & PINN-sup & 20.25 & 14.54 & 13.21 & 12.19 \\
+ & Black-box PINN & 15.68 & 14.15 & 12.82 & 12.34 \\
+ & PINN-semi & 14.93 & 13.44 & 13.52 & 12.19 \\
+\addlinespace
+TJU & Ridge & 23.01 & 21.60 & 20.50 & 20.74 \\
+ & GPR & 13.50 & 9.22 & 8.01 & 8.17 \\
+ & GBDT & \textbf{12.68} & \textbf{8.14} & \textbf{7.21} & \textbf{6.77} \\
+ & MLP & 15.50 & 11.33 & 9.99 & 9.64 \\
+ & PINN-sup & 14.73 & 10.67 & 10.20 & 10.52 \\
+ & Black-box PINN & 13.90 & 10.91 & 10.36 & 10.16 \\
+ & PINN-semi & 13.91 & 10.85 & 10.46 & 10.52 \\
+\addlinespace
+MIT & Ridge & 3.53 & 3.24 & 3.17 & 3.13 \\
+ & GPR & 3.21 & 2.14 & 1.84 & 1.79 \\
+ & GBDT & \textbf{3.09} & \textbf{1.99} & \textbf{1.73} & \textbf{1.58} \\
+ & MLP & 8.54 & 3.40 & 3.04 & 2.86 \\
+ & PINN-sup & 5.34 & 2.69 & 2.54 & 2.44 \\
+ & Black-box PINN & 4.19 & 2.80 & 2.61 & 2.54 \\
+ & PINN-semi & 3.34 & 2.58 & 2.48 & 2.44 \\
+\addlinespace
+HUST & Ridge & \textbf{22.88} & 18.85 & 18.32 & 18.10 \\
+ & GPR & 28.82 & 21.24 & 18.50 & 17.22 \\
+ & GBDT & 24.13 & 18.63 & \textbf{15.65} & \textbf{14.45} \\
+ & MLP & 37.95 & 19.80 & 17.73 & 16.94 \\
+ & PINN-sup & 31.67 & 17.82 & 16.11 & 15.99 \\
+ & Black-box PINN & 24.04 & 17.49 & 16.47 & 15.99 \\
+ & PINN-semi & 22.98 & \textbf{17.30} & 16.11 & 15.99 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

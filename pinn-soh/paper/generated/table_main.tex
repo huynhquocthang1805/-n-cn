@@ -1,0 +1,24 @@
+\begin{table}[t]\centering\small\setlength{\tabcolsep}{4.5pt}
+\caption{Per-cell MAE ($\times10^{-3}$) of the main models on the same folds and labelled cells (three repetitions $\times$ five folds). PINN-hybrid: weights and filter window tuned on validation. $^\dagger$Hybrid with or without causal feature history, selected on validation per dataset and label fraction (post hoc). Bold: lowest per row.}\label{tab:main}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrrrr}\toprule
+Dataset & Labels & MLP & CNN & LSTM & Transformer & GBDT & PINN-semi & PINN-hybrid & + history$^\dagger$ \\\midrule
+XJTU & 10\,\% & 23.27 & 16.01 & 16.62 & 17.63 & 14.01 & 14.65 & \textbf{12.71} & \textbf{12.71} \\
+ & 30\,\% & 15.61 & 12.68 & 13.98 & 13.71 & 10.87 & 13.35 & \textbf{10.78} & \textbf{10.78} \\
+ & 50\,\% & 14.10 & 11.69 & 11.98 & 12.05 & 10.18 & 13.20 & \textbf{10.02} & \textbf{10.02} \\
+ & 70\,\% & 12.48 & 10.98 & 10.50 & 10.99 & 9.64 & 12.53 & \textbf{9.50} & \textbf{9.50} \\
+\addlinespace
+TJU & 10\,\% & 15.81 & 14.22 & 13.08 & 14.14 & 12.60 & 14.01 & \textbf{11.70} & \textbf{11.70} \\
+ & 30\,\% & 11.71 & 8.89 & 8.69 & 9.89 & 8.06 & 11.39 & 8.00 & \textbf{7.78} \\
+ & 50\,\% & 9.96 & 7.31 & 7.24 & 9.31 & 7.17 & 10.74 & 7.23 & \textbf{6.92} \\
+ & 70\,\% & 9.71 & 7.36 & 7.09 & 8.96 & 6.96 & 10.80 & 7.11 & \textbf{6.82} \\
+\addlinespace
+MIT & 10\,\% & 9.02 & 3.30 & 3.26 & 3.87 & 3.15 & 3.29 & \textbf{2.52} & \textbf{2.52} \\
+ & 30\,\% & 3.39 & 2.18 & 2.18 & 2.77 & 1.97 & 2.50 & \textbf{1.75} & \textbf{1.75} \\
+ & 50\,\% & 3.06 & 1.99 & 2.04 & 2.71 & 1.74 & 2.45 & \textbf{1.59} & \textbf{1.59} \\
+ & 70\,\% & 2.85 & 1.93 & 1.99 & 2.59 & 1.59 & 2.38 & \textbf{1.48} & \textbf{1.48} \\
+\addlinespace
+HUST & 10\,\% & 41.62 & 22.77 & 24.51 & 21.95 & 23.84 & 22.76 & \textbf{20.36} & \textbf{20.36} \\
+ & 30\,\% & 20.00 & 17.42 & 17.14 & 17.45 & 18.73 & 17.10 & 15.99 & \textbf{15.34} \\
+ & 50\,\% & 18.13 & 15.04 & 15.52 & 16.00 & 15.82 & 16.42 & 14.26 & \textbf{13.17} \\
+ & 70\,\% & 17.19 & 14.19 & 14.76 & 14.93 & 14.60 & 16.38 & 13.76 & \textbf{12.24} \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

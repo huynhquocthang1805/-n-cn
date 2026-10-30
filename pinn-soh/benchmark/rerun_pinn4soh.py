@@ -12,8 +12,10 @@ theo từng cell, validation là 20 % hàng ngẫu nhiên (random_state 420), ch
 
     published  commit 5d57a9d (bản tải lên đầu tiên): loss3 = relu(y2 − y1).sum(), chỉ tính từ nhãn nên không có
                gradient — số hạng β không tác động lên mô hình. Nhật ký công bố (results/Ours/*.zip, 2023) ghi
-               "physics loss" là một hằng số qua mọi epoch (0.043214 ở XJTU 2C), đúng bằng giá trị của biểu thức này
-               trên dữ liệu train; siêu tham số lấy từ các dòng CRITICAL của nhật ký đó (HYPER['published']).
+               "physics loss" là một hằng số qua mọi epoch ở cả 39 nhóm × 10 lần chạy, đúng bằng giá trị của biểu
+               thức này trên các hàng train dựng từ dữ liệu ở đây (check_logs, ví dụ 0.043214 ở XJTU 2C); siêu tham
+               số lấy từ các dòng CRITICAL của nhật ký đó (HYPER['published']). Hai lần sửa sau đó: relu(u2 − u1).sum()
+               (07/2024) rồi bản hiện tại.
     current    commit cc3cc50 (2026-09): loss3 = relu((u2 − u1)(y1 − y2)).sum(); α, β lấy từ giá trị mặc định
                trong main_*.py ở commit này (fix.md: sau khi sửa lỗi, α và β khác Supplementary).
 
@@ -110,6 +112,50 @@ def check_logged_args(src):
     return sorted(seen)
 
 
+def log_member(key, e):
+    """(tệp zip, đường dẫn trong zip) của nhật ký công bố, lần chạy thứ e (1..10) của nhóm key."""
+    ds, mode, grp = key.split('|')
+    n = '' if mode == 'full' else f' (small sample {mode[1]})'
+    zipname = {'XJTU': 'XJTU.zip', 'TJU': 'TJU results.zip', 'MIT': 'MIT results.zip', 'HUST': 'HUST.zip'}[ds]
+    folder = {'XJTU': f'XJTU results{n}/{grp}', 'TJU': f'TJU results/{grp}', 'MIT': 'MIT results',
+              'HUST': f'HUST results{n}'}[ds]
+    return zipname, f'{folder}/Experiment{e}/logging.txt'
+
+
+def check_logs(src, out=os.path.join(OUT, 'logged_constant.json')):
+    """Nhật ký công bố ghi 'physics loss' trung bình mỗi epoch. Kiểm tra (i) đó là một hằng số qua mọi epoch của cả 10
+    lần chạy; (ii) hằng số đó bằng relu(y2 − y1).sum() lấy trung bình theo batch trên các hàng train mà dataloader gốc
+    dựng từ bản dữ liệu ở đây (với batch xáo trộn, trung bình theo batch là tổng chia số batch, không phụ thuộc thứ tự).
+    (i) nghĩa là loss đơn điệu của bản công bố không phụ thuộc mô hình; (ii) nghĩa là các hàng train (sau lọc 3σ và chia
+    80/20 với random_state 420) trùng với lần chạy công bố."""
+    import numpy as np
+    import torch
+    sys.path[:0] = [os.path.abspath(src)]
+    from dataloader.dataloader import XJTUdata, TJUdata, MITdata, HUSTdata
+    rows = []
+    for key, sp in json.load(open(SPLITS)).items():
+        ds = key.split('|')[0]
+        logged = set()
+        for e in range(1, 11):
+            zp, member = log_member(key, e)
+            with zipfile.ZipFile(os.path.join(src, 'results', 'Ours', zp)) as z:
+                text = z.read(member).decode('utf-8', 'replace')
+            logged |= {float(v) for v in re.findall(r'\[Train\] epoch:\d+.*?physics loss:([\d.]+)', text)}
+        args = SimpleNamespace(**hyper(key, 'published'), save_folder=None)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', FutureWarning)
+            data = dict(XJTU=XJTUdata, TJU=TJUdata, MIT=MITdata, HUST=HUSTdata)[ds](
+                root=os.path.join(DATA, f'{ds} data'), args=args)
+            loader = data.read_all(specific_path_list=[csv_path(c) for c in sp['train']])['train_2']
+        ours = sum(torch.relu(y2 - y1).sum().item() for _, _, y1, y2 in loader) / len(loader)
+        rows.append(dict(key=key, logged=sorted(logged), ours=ours,
+                         constant=len(logged) == 1,
+                         equal=len(logged) == 1 and bool(np.isclose(next(iter(logged)), ours, rtol=2e-6, atol=6e-7))))
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    json.dump(rows, open(out, 'w'), indent=1)
+    return sum(r['constant'] for r in rows), sum(r['equal'] for r in rows), len(rows)
+
+
 def csv_path(cid):
     ds, rest = cid.split('/', 1)
     if ds == 'MIT':
@@ -187,12 +233,19 @@ def main():
     ap.add_argument('--keys', nargs='*', help="mặc định: cả 39 nhóm, ví dụ 'XJTU|full|0-0'")
     ap.add_argument('--workers', type=int, default=os.cpu_count())
     ap.add_argument('--src', default=SRC, help='thư mục mã gốc (xem fetch_src)')
+    ap.add_argument('--check-logs-only', action='store_true', help='chỉ đối chiếu nhật ký công bố (check_logs)')
     a = ap.parse_args()
     import pandas
     if int(pandas.__version__.split('.')[0]) >= 3:
         sys.exit(f'pandas {pandas.__version__}: mã gốc cần pandas < 3 (xem đầu tệp này)')
     src = fetch_src(a.src)
     print('siêu tham số của bản published khớp nhật ký công bố:', check_logged_args(src))
+    if not os.path.exists(os.path.join(OUT, 'logged_constant.json')) or a.check_logs_only:
+        c, e, n = check_logs(src)
+        print(f'nhật ký công bố: physics loss là hằng số ở {c}/{n} nhóm, bằng relu(y2 − y1).sum() trên dữ liệu ở đây '
+              f'ở {e}/{n} nhóm', flush=True)
+    if a.check_logs_only:
+        return
     keys = a.keys or list(json.load(open(SPLITS)))
     todo = [(key, k) for key in keys for k in range(a.runs) if not os.path.exists(run_path(a.version, key, k))]
     todo.sort(key=lambda t: -COST[t[0].split('|')[0]] * (1 if '|full|' in t[0] else 0.3))

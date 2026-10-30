@@ -1,0 +1,9 @@
+\begin{table}[t]\centering\small
+\caption{Leakage audit: ratio of the per-cell MAE of the same MLP (70\,\% labels) under each faulty protocol to its MAE under the leakage-free protocol (below 1: the error looks smaller than it is).}\label{tab:leak}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lcccc}\toprule
+Dataset & row-wise split & per-cell min--max & whole-life $3\sigma$ filter & normaliser incl.\ test \\\midrule
+XJTU & \multirow{4}{*}{0.56--0.83} & 0.80 & \multirow{4}{*}{0.87--1.01} & \multirow{4}{*}{0.98--1.03} \\
+TJU &  & 1.51 &  &  \\
+MIT &  & 2.76 &  &  \\
+HUST &  & 0.46 &  &  \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

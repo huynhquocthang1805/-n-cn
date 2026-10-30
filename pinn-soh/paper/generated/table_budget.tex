@@ -1,0 +1,10 @@
+\begin{table}[t]\centering\small\setlength{\tabcolsep}{4pt}
+\caption{Measurement budget: per-cell MAE ($\times10^{-3}$) on test cells, three repetitions; in parentheses, the percentage of training cycles with a capacity measurement (70\,\% of the cells labelled is all of them). Sparse: every training cell measured at its first cycle, every $qL$ cycles and its last cycle. Last column: the cell in service is also measured every $0.1L$ cycles and the estimate is updated with the Kalman filter; error on unmeasured cycles.}\label{tab:budget}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule
+ & \multicolumn{3}{c}{labels per cell} & \multicolumn{2}{c}{sparse, all cells} & sparse + in service \\\cmidrule(lr){2-4}\cmidrule(lr){5-6}\cmidrule(lr){7-7}
+Dataset & Hybrid, 30\,\% & Hybrid, 70\,\% & GBDT, 70\,\% & Hybrid, $0.1L$ & Hybrid, $0.05L$ & Hybrid, $0.1L$ \\\midrule
+XJTU & 11.43 (44.1) & 10.00 & 9.64 & 10.51 (3.2) & 10.28 (6.0) & 7.46 \\
+TJU & 8.52 (42.6) & 7.76 & 6.96 & 8.28 (3.1) & 7.54 (5.9) & 4.13 \\
+MIT & 1.79 (42.7) & 1.59 & 1.59 & 1.91 (1.9) & 1.67 (3.6) & 1.18 \\
+HUST & 16.19 (43.1) & 13.78 & 14.60 & 13.87 (0.6) & 13.78 (1.2) & 5.00 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

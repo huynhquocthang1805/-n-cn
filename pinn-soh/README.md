@@ -173,9 +173,11 @@ của bài: lọc 3σ trên cả vòng đời kể cả cột dung lượng, min
 39 nhóm, 10 lần chạy mỗi nhóm như bài, để có dự đoán theo từng cell và so ghép cặp được. Hai bản mã:
 
 * `published` — bản tải lên đầu tiên (commit `5d57a9d`), siêu tham số lấy từ nhật ký công bố. Ở bản này loss đơn điệu
-  là `relu(y2 − y1).sum()`, chỉ tính từ nhãn nên không có gradient: nhật ký công bố ghi "physics loss" là một hằng số
-  qua mọi epoch (0,043214 ở XJTU 2C), và biểu thức này trên dữ liệu train cho đúng 0,043214. Số liệu công bố của bài
-  vì vậy đến từ mô hình không có ràng buộc đơn điệu.
+  là `relu(y2 − y1).sum()`, chỉ tính từ nhãn nên không có gradient. Ở cả 39 nhóm × 10 lần chạy, nhật ký công bố ghi
+  "physics loss" là một hằng số qua mọi epoch, và ở cả 39 nhóm hằng số đó bằng đúng biểu thức này tính trên các hàng
+  train mà dataloader gốc dựng từ dữ liệu ở đây (`runs/pinn4soh/logged_constant.json`; ví dụ 0,043214 ở XJTU 2C). Số
+  liệu công bố của bài vì vậy đến từ mô hình không có ràng buộc đơn điệu, và cách chia dựng lại cùng bản dữ liệu ở đây
+  cho đúng các hàng train của mọi nhóm công bố.
 * `current` — bản hiện tại của repo (commit `cc3cc50`), loss đơn điệu đã sửa thành `relu((u2 − u1)(y1 − y2)).sum()`,
   α và β theo giá trị mặc định mới trong `main_*.py` (`fix.md` của repo: sau khi sửa lỗi, α và β khác Supplementary).
 
