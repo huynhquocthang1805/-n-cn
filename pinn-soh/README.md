@@ -65,7 +65,7 @@ python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình so
 python run.py E16 --datasets XJTU      # chỉ một bộ dữ liệu
 python run.py experiments --quick      # chạy thử: 1 lần lặp thay vì 5, 1 hạt giống thay vì 5
 python run.py analyze                  # runs/ -> results/ (bảng CSV, hình PNG/PDF)
-python run.py benchmark                # mã gốc PINN4SOH trên cách chia của bài -> results/benchmark_*
+python run.py benchmark                # mã gốc PINN4SOH trên cách chia của bài -> benchmark/results/
 python run.py paper                    # results/ -> paper/main.pdf
 ```
 
@@ -182,8 +182,9 @@ của bài: lọc 3σ trên cả vòng đời kể cả cột dung lượng, min
   α và β theo giá trị mặc định mới trong `main_*.py` (`fix.md` của repo: sau khi sửa lỗi, α và β khác Supplementary).
 
 Mã gốc viết cho pandas 1.3.5 và lỗi kiểu dữ liệu với pandas 3; `python run.py benchmark` tự dựng một môi trường ảo
-có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả: `results/benchmark_summary.csv` (theo bộ × chế độ),
-`results/benchmark_cells.csv` (theo cell), `results/benchmark_tests.csv` (Wilcoxon ghép cặp theo cell).
+có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả, nhỏ nên được đưa lên git: `benchmark/results/summary.csv`
+(theo bộ × chế độ), `cells.csv` (theo cell và lần chạy), `tests.csv` (Wilcoxon ghép cặp theo cell), `table.md` (bảng
+đọc nhanh), `logged_constant.json` (đối chiếu nhật ký công bố).
 
 ## 5. Tối ưu và tái lập
 

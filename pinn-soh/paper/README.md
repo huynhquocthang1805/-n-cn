@@ -29,7 +29,7 @@ Không số nào gõ tay vào bảng:
 | Phần | Nguồn |
 |---|---|
 | Bảng dữ liệu, sai số theo mức nhãn, tách nguồn lợi ích, mô hình chính, ngân sách đo | bảng của báo cáo đồ án (`archive/thesis/do-an/main.tex`), đọc bằng `thesis_tables.py` |
-| So với PINN4SOH (bảng, hình, cả mục 5.4) | `results/benchmark_summary.csv`, `benchmark_tests.csv` từ `benchmark/compare.py`; đối chiếu nhật ký công bố ở `runs/pinn4soh/logged_constant.json` |
+| So với PINN4SOH (bảng, hình, cả mục 5.4) | `benchmark/results/summary.csv`, `tests.csv`, `logged_constant.json` từ `benchmark/compare.py` |
 | Kiểm toán rò rỉ | `results/thesis_leakage.csv` (chạy lại E15 và nhánh F của E13); khi chưa có thì dùng các tỉ số báo cáo đồ án nêu |
 
 Các con số trong lời văn của mục 5.1–5.3, 5.5 lấy từ lời văn và bảng của báo cáo đồ án (sinh từ `results/` của lần

@@ -9,7 +9,7 @@ các tệp sinh ra được đưa lên git, nên main.tex biên dịch được 
 Nguồn số liệu, không số nào gõ tay:
   * bảng của báo cáo đồ án (archive/thesis/do-an/main.tex, đọc bằng paper/thesis_tables.py): dữ liệu, sai số theo
     mức nhãn, tách nguồn lợi ích, mô hình chính, ngân sách đo — sinh từ results/ của lần chạy công bố (commit 2d66f75);
-  * results/benchmark_summary.csv, benchmark_tests.csv (benchmark/compare.py): so với PINN4SOH;
+  * benchmark/results/summary.csv, tests.csv, logged_constant.json (benchmark/compare.py): so với PINN4SOH;
   * results/thesis_leakage.csv (analysis/analyze_thesis.py; cần runs/E13 nhánh F và runs/E15): kiểm toán rò rỉ; khi
     chưa có, bảng dùng các tỉ số mà báo cáo đồ án nêu trong lời văn.
 """
@@ -27,6 +27,7 @@ from thesis_tables import table, ratio
 PAPER = 'paper'
 GEN = os.path.join(PAPER, 'generated')
 FIG = os.path.join(PAPER, 'figures')
+BENCH = 'benchmark/results'                 # benchmark/compare.py
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 FRACS = ['10', '30', '50', '70']
 
@@ -190,6 +191,9 @@ def leak_part():
                        + f' & {fmt(r.ti_so_noi_suy_hang)} \\\\')
         out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}', '']
         lo = lambda s: T[f'ti_so_{s}'].min(); hi = lambda s: T[f'ti_so_{s}'].max()
+        macros = dict(LeakRowAbstract=f'{1 / hi("row"):.1f}--{1 / lo("row"):.1f}',
+                      LeakMinmaxAbstract=f'{lo("minmax"):.2f}--{hi("minmax"):.2f}',
+                      LeakMaxFactor=f'{max(1 / lo("minmax"), hi("minmax")):.1f}')
         text = (f'A row-wise split lowers the error by a factor of {1 / hi("row"):.1f}--{1 / lo("row"):.1f}, and copying '
                 f'the label of the nearest training cycle, without using any feature, gives '
                 f'{lo("noi_suy_hang"):.2f}--{hi("noi_suy_hang"):.2f} times the error of the model evaluated correctly, '
@@ -213,6 +217,7 @@ def leak_part():
                 'training cycle, without using any feature, is better than every real model evaluated correctly, as '
                 r'the bound of Section~\ref{sec:data} predicts. ')
         T = pd.DataFrame({'ti_so_minmax': mm}).reindex(DS)
+        macros = dict(LeakRowAbstract='1.2--1.8', LeakMinmaxAbstract='0.46--2.76', LeakMaxFactor='2.8')
     d = T['ti_so_minmax']
     text += (f'Per-cell min--max normalisation over the whole life, as in the PINN4SOH code, lowers the error on XJTU '
              f'({fmt(d["XJTU"])}) and HUST ({fmt(d["HUST"])}), where all cells end at almost the same SOH and the '
@@ -223,7 +228,7 @@ def leak_part():
              'with test cells have smaller effects, but are leaks as well. All further results use the leakage-free '
              'protocol.')
     write('table_leak.tex', '\n'.join(out))
-    return text
+    return text, macros
 
 
 # --------------------------------------------------------------------------- so với PINN4SOH
@@ -234,10 +239,10 @@ BENCH_COLS = [('published_paper', 'Published'), ('rerun_published', 'Re-run, as 
 
 
 def bench_load():
-    if not os.path.exists('results/benchmark_summary.csv'):
+    if not os.path.exists(f'{BENCH}/summary.csv'):
         return None, None
-    S = pd.read_csv('results/benchmark_summary.csv').set_index(['dataset', 'mode'])
-    T = pd.read_csv('results/benchmark_tests.csv') if os.path.exists('results/benchmark_tests.csv') else pd.DataFrame()
+    S = pd.read_csv(f'{BENCH}/summary.csv').set_index(['dataset', 'mode'])
+    T = pd.read_csv(f'{BENCH}/tests.csv') if os.path.exists(f'{BENCH}/tests.csv') else pd.DataFrame()
     return S, T
 
 
@@ -292,7 +297,7 @@ def _rng(vals, n=2):
 
 
 def bench_text(S, T):
-    """Lời văn của mục so với PINN4SOH, mọi con số tính từ results/benchmark_*.csv."""
+    """Lời văn của mục so với PINN4SOH, mọi con số tính từ benchmark/results/."""
     full = [k for k in BENCH_ROWS if k[1] == 'full']
     few = [k for k in BENCH_ROWS if k[1] != 'full']
     have = lambda k, c: _complete(S, k, c)
@@ -321,22 +326,23 @@ def bench_text(S, T):
              r'fixed test cells, and few-shot runs with $K = 1, \dots, 4$ labelled cells for XJTU and HUST) from the '
              r'\texttt{data path} lines of the training logs released with the code, and evaluate everything as the '
              r'paper does: MAE per test cell, averaged over cells, runs and groups.')
-    L = json.load(open('runs/pinn4soh/logged_constant.json')) if os.path.exists('runs/pinn4soh/logged_constant.json') \
-        else []
+    L = json.load(open(f'{BENCH}/logged_constant.json')) if os.path.exists(f'{BENCH}/logged_constant.json') else []
     n_const, n_eq = sum(x['constant'] for x in L), sum(x['equal'] for x in L)
     ex = next((x for x in L if x['key'] == 'XJTU|full|0-0'), None)
     s.append(r'\paragraph{The released configuration.} The training logs record, for every epoch, the mean ``physics '
              r"loss'' of the monotonicity term. In the first released version of the model this term is "
-             r'\texttt{relu(y2 - y1).sum()}, computed from the labels of consecutive cycles only. ' +
-             (f'In all {n_const} of the {len(L)} groups the logged value is one constant across all epochs of all ten '
-              f'runs, and in {n_eq} of {len(L)} it equals this expression evaluated on the training rows that the '
-              f'original data loader builds from our copy of the data'
+             r'\path{relu(y2-y1).sum()}, computed from the labels of consecutive cycles only. ' +
+             ((f'In all {len(L)} groups' if n_const == len(L) else f'In {n_const} of the {len(L)} groups') +
+              ' the logged value is one constant across all epochs of all ten runs, and ' +
+              ('in all of them' if n_eq == len(L) else f'in {n_eq} of {len(L)}') +
+              ' it equals this expression evaluated on the training rows that the original data loader builds from '
+              'our copy of the data'
               + (f' (e.g.\ {ex["logged"][0]:.6f} for the XJTU 2C batch)' if ex else '') + '. '
               if L else '') +
              r'The term therefore adds a constant and no gradient: the published numbers come from a model trained '
              r'with the data and PDE terms only. The match also shows that our reconstructed splits and data reproduce '
              r'the training rows of every published group. Two later revisions replaced the term, first by '
-             r'\texttt{relu(u2 - u1).sum()} and then by \texttt{relu((u2 - u1)(y1 - y2)).sum()}, and the latest commit '
+             r'\path{relu(u2-u1).sum()} and then by \path{relu((u2-u1)*(y1-y2)).sum()}, and the latest commit '
              r'notes that the loss weights $\alpha$ and $\beta$ changed after a bug fix; the default weights in the '
              r'released scripts no longer match those in the logs.')
     if rep_full:
@@ -494,7 +500,7 @@ def main():
     ablation_table()
     main_table()
     budget_table()
-    leak = leak_part()
+    leak, leak_macros = leak_part()
     S, T = bench_load()
     if S is not None:
         bench_table(S, T)
@@ -505,7 +511,12 @@ def main():
         text, abstract, disc = ('(Benchmark results are not available yet: run \\texttt{python run.py benchmark}.)',
                                 'is compared with the re-run original code (results pending)', '')
     fig_labels(V)
+    _sys.path.insert(0, os.path.join(_ROOT, 'analysis'))
+    import diagrams
+    os.makedirs(FIG, exist_ok=True)
+    diagrams.arch('en', os.path.join(FIG, 'fig_arch'))
     write('numbers.tex', '\n'.join([r'\newcommand{\LeakText}{' + leak + '}',
+                                    *[f'\\newcommand{{\\{k}}}{{{v}}}' for k, v in leak_macros.items()],
                                     r'\newcommand{\BenchText}{' + text + '}',
                                     r'\newcommand{\BenchAbstract}{' + abstract + '}',
                                     r'\newcommand{\BenchDiscussion}{' + disc + '}', '']))

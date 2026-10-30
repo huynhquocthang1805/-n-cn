@@ -9,7 +9,7 @@ Một lệnh cho mọi bước. Chạy từ thư mục nào cũng được.
     python run.py analyze                     bảng + hình từ runs/ -> results/ (lần đầu thêm ~40 phút CPU để
                                               huấn luyện lại 120 lượt cho phân tích phần vật lý)
     python run.py benchmark [--workers N]     chạy lại mã gốc PINN4SOH trên cách chia của bài (benchmark/) rồi lập bảng
-                                              so sánh với số công bố và với E27 -> results/benchmark_*
+                                              so sánh với số công bố và với E27 -> benchmark/results/
     python run.py paper                       dựng bản thảo bài báo paper/main.pdf
     python run.py all [tuỳ chọn]              experiments -> analyze -> benchmark -> paper
     python run.py reproduce                   chạy lại 20 lượt mẫu, so từng bit với kết quả công bố

@@ -1,8 +1,10 @@
 """
 So với PINN4SOH: số công bố, chạy lại mã gốc (hai bản), mô hình của đồ án (E27, hai cách tiền xử lý).
 
-    python benchmark/compare.py     # -> results/benchmark_cells.csv, benchmark_summary.csv, benchmark_tests.csv,
-                                    #    benchmark_table.md
+    python benchmark/compare.py     # -> benchmark/results/: cells.csv, summary.csv, tests.csv, table.md,
+                                    #    logged_constant.json
+
+Kết quả nhỏ (dưới 1 MB) nên được đưa lên git ở benchmark/results/: bản thảo bài báo (paper/build.py) đọc từ đây.
 
 Sai số: MAE (và RMSE) theo cell test, trung bình qua các lần chạy (PINN4SOH chạy lại: hạt giống 0–9; đồ án: 3 hạt
 giống), rồi qua các cell của nhóm, rồi qua các nhóm của bộ (batch của XJTU, TJU; cả bộ với MIT, HUST) — đúng cách bài
@@ -22,7 +24,7 @@ import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))   # gốc dự án
 _os.chdir(_sys.path[0])
 _sys.path.insert(0, _os.path.join(_sys.path[0], 'analysis'))
-import glob, json, os
+import glob, json, os, shutil
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -30,7 +32,7 @@ from scipy import stats
 from pinnsoh.paper import PAPER_MAE
 from pinnsoh.postproc import by_cell, causal_trend
 
-OUT = 'results'
+OUT = 'benchmark/results'
 RUNS = 'runs/pinn4soh'
 REPORTED = 'pinnsoh/pinn4soh_reported.csv'
 SPLITS = 'pinnsoh/pinn4soh_splits.json'
@@ -160,11 +162,13 @@ def markdown(S, T):
 def main():
     C = pd.DataFrame(rerun_rows() + ours_rows() + published_rows())
     os.makedirs(OUT, exist_ok=True)
-    C.to_csv(f'{OUT}/benchmark_cells.csv', index=False)
-    S = summarize(C); S.to_csv(f'{OUT}/benchmark_summary.csv', index=False)
-    T = tests(C); T.to_csv(f'{OUT}/benchmark_tests.csv', index=False)
+    C.to_csv(f'{OUT}/cells.csv', index=False, float_format='%.6g')
+    S = summarize(C); S.to_csv(f'{OUT}/summary.csv', index=False)
+    T = tests(C); T.to_csv(f'{OUT}/tests.csv', index=False)
     md = markdown(S, T)
-    open(f'{OUT}/benchmark_table.md', 'w').write(md)
+    open(f'{OUT}/table.md', 'w').write(md)
+    if os.path.exists(f'{RUNS}/logged_constant.json'):
+        shutil.copy(f'{RUNS}/logged_constant.json', f'{OUT}/logged_constant.json')
     print(md)
     with pd.option_context('display.width', 220, 'display.max_rows', 200):
         if len(T):

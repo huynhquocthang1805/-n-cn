@@ -26,7 +26,8 @@
 % TODO (tác giả): thêm giảng viên hướng dẫn / đồng tác giả và email liên hệ trước khi nộp.
 \author{Quoc Thang Huynh\\[2pt]
   \small Faculty of Computer Science and Engineering,\\
-  \small Ho Chi Minh City University of Technology (HCMUT), Vietnam National University Ho Chi Minh City, Vietnam}
+  \small Ho Chi Minh City University of Technology (HCMUT),\\
+  \small Vietnam National University Ho Chi Minh City, Vietnam}
 \date{Draft, \today}
 
 \begin{document}
@@ -40,13 +41,13 @@ model is a semi-supervised PINN whose solution network predicts SOH from 16 char
 grey-box degradation rate that is non-negative by construction; its three physics losses do not use labels, so they
 also act on cells whose capacity was never measured. On four public datasets (387 cells, three chemistries), with
 cell-wise stratified cross-validation, causal outlier filtering and training-only normalisation, the semi-supervised
-PINN lowers the per-cell mean absolute error (MAE) of an identical network trained on labels alone by a factor of
-0.39--0.90 when 10\,\% of the cells are labelled, but the benefit shrinks to 0.85--1.09 at 70\,\%, and a well-tuned
-gradient-boosted tree (GBDT) remains the strongest single model. Averaging three PINNs with a GBDT and smoothing the
+PINN has 0.39--0.90 times the per-cell mean absolute error (MAE) of an identical network trained on labels alone when
+10\,\% of the cells are labelled, but 0.85--1.09 times at 70\,\%, and a well-tuned gradient-boosted tree (GBDT)
+remains the strongest single model. Averaging three PINNs with a GBDT and smoothing the
 result with a causal trend filter gives an estimator that is better than GBDT in 10 of 16 dataset--label settings,
 and better than CNN, LSTM and Transformer baselines in 47 of 48 comparisons. A leakage audit shows that row-wise
-splits lower the error of the same model by 1.2--1.8 times, and that per-cell min--max normalisation over the whole
-life changes it by a factor of 0.46--2.76 depending on the dataset. We re-run the original code of a widely cited PINN
+splits make the error of the same model look \LeakRowAbstract\ times smaller, and that per-cell min--max
+normalisation over the whole life changes it by a factor of \LeakMinmaxAbstract, depending on the dataset. We re-run the original code of a widely cited PINN
 benchmark on its own splits and find that its published runs used a monotonicity term computed from labels only, which
 contributes no gradient; under identical splits and preprocessing our hybrid estimator \BenchAbstract. Finally, counting
 labels as capacity measurements rather than cells, measuring every training cell at 1.2--6.0\,\% of its cycles gives
@@ -99,7 +100,8 @@ for engineered features; recurrent, convolutional and attention models~\citep{zh
 operate on sequences of cycles. Physics enters either through the model structure, e.g.\ equivalent circuits and
 electrochemical models~\citep{doyle1993,plett2015}, or through the loss. PINN4SOH~\citep{wang2024} couples a solution
 network with a learned dynamical model $u_t = G(\mathbf{x}, t, u, u_\mathbf{x}, u_t)$ and reports results on the four
-datasets used here; reviews compare physics-informed approaches for degradation diagnostics~\citep{navidi2024,wen2023,aykol2021}.
+datasets used here. \citet{wen2023} build PINNs around empirical degradation models, and physics-informed approaches
+to degradation diagnostics are compared by \citet{navidi2024} and discussed by \citet{aykol2021}.
 Semi-supervised SOH estimation without additional degradation experiments has been studied by~\citet{lu2023}. Leakage
 in machine-learning-based science is documented broadly~\citep{kapoor2023}; for batteries, \citet{roman2021} stress
 cell-level splits and careful pipelines. Our work combines these threads in one controlled comparison and adds an
@@ -128,8 +130,8 @@ unlabelled; validation and test cells never enter the normaliser.
 \subsection{Cell-wise stratified cross-validation}
 All cycles of a cell belong to the same part. With random row-wise splits, a test cycle is on average
 $\E[d] = 1/(1 - (1-q)^2)$ cycles from the nearest training cycle when a fraction $q$ of rows is used for training
-(1.10 cycles at $q = 0.7$); copying the nearest training label then bounds the error by $\E[d]$ times the mean change
-between consecutive cycles. We use $K = 5$ folds stratified by test protocol: cells are shuffled within protocols and
+(1.10 cycles at $q = 0.7$), so copying the label of the nearest training cycle has an error of at most $\E[d]$ times
+the mean absolute change between consecutive cycles. We use $K = 5$ folds stratified by test protocol: cells are shuffled within protocols and
 assigned to folds by a counter that runs across protocols, so every fold contains every protocol, every cell is
 tested exactly once per repetition, and fold sizes differ by at most one cell. Of the remaining cells,
 $\operatorname{round}(0.1N)$ are used for validation (early stopping and all selection) and the rest, 70\,\% of the
@@ -178,11 +180,19 @@ losses contains $y$, so they are evaluated on pairs drawn half from labelled and
 
 The physics here is phenomenological: capacity does not recover by itself, ageing accelerates as SOH falls, side
 reactions follow Arrhenius kinetics, and SOH stays in a plausible range. It shapes the learned function; at inference
-only $F_\varphi$ is evaluated.
+only $F_\varphi$ is evaluated (Figure~\ref{fig:arch}).
+
+\begin{figure}[t]\centering
+\includegraphics[width=\textwidth]{figures/fig_arch.pdf}
+\caption{Semi-supervised PINN. The solution network predicts SOH from charge features and time; the rate network and
+the knee and Arrhenius factors define a non-negative degradation rate. The data loss uses labelled cells only; the
+monotonicity, range and kinetics losses use pairs of cycles from all training cells, labelled or not.}
+\label{fig:arch}
+\end{figure}
 
 \subsection{Hybrid estimator}
 The residual error of single models is dominated by a level offset per cell and slow drift
-(Section~\ref{sec:labels}), which suggests averaging models whose per-cell offsets differ. The hybrid estimator, called
+(Section~\ref{sec:hybrid}), which suggests averaging models whose per-cell offsets differ. The hybrid estimator, called
 PINN-hybrid below, is
 \begin{equation}\label{eq:hybrid}
 \hat y_n = \omega\,\tfrac13\textstyle\sum_{m=1}^{3} F_{\varphi_m}(\tilde{\mathbf{x}}_n, t_n) + (1-\omega)\,g(\tilde{\mathbf{x}}_n, t_n),
@@ -214,17 +224,18 @@ cycle, every $qL$ cycles ($L$ is the median life of the training cells, $q \in \
 last cycle. PINN-semi then uses $\Lc_\text{data}$ on measured cycles only while the physics losses still act on all
 cycles; the GBDT learns linearly interpolated labels.
 
-\emph{Kalman update.} When the cell in service is also measured occasionally, the error $y_n - p_n$ of the estimate
-$p_n$ is modelled as a cell-specific offset that drifts back to its mean as an Ornstein--Uhlenbeck process plus fast
-noise, $b_{n'} - \mu_0 = e^{-(n'-n)/\ell}(b_n - \mu_0) + \eta$, $\operatorname{Var}\varepsilon = R$. A Kalman filter
-updates $b$ at each measurement; $\mu_0$, $R$ and the stationary variance are estimated on the validation cells of the
+\emph{Kalman update.} When the cell in service is also measured occasionally, the error of the estimate $p_n$ is
+modelled as $y_n - p_n = b_n + \varepsilon_n$: a cell-specific offset that drifts back to its mean as an
+Ornstein--Uhlenbeck process, $b_{n'} - \mu_0 = e^{-(n'-n)/\ell}(b_n - \mu_0) + \eta$, plus fast noise with
+$\operatorname{Var}\varepsilon = R$. A Kalman filter updates $b$ at each measurement and only uses measurements up to
+the current cycle; $\mu_0$, $R$ and the stationary variance are estimated on the validation cells of the
 fold and $\ell$ is chosen on a grid per measurement schedule.
 
 \emph{Learned update.} The filter only corrects the offset of a model trained without measurements of the cell. The
 learned update model instead predicts the change since the last measurement $m$, $\hat y_n = y_m + h(\mathbf{u}_n)$,
 where $h$ is a GBDT on the current features, the change of features since $m$, $y_m$, the number of cycles since $m$
-in units of $L$, and the slope between the last two measurements. It is trained on pairs drawn from the training cells
-with the same schedules as at test time.
+in units of $L$, and the slope between the last two measurements. It is trained on pairs drawn from the labelled
+training cells under the test-time measurement schedules, with random phases.
 
 \section{Results}\label{sec:results}
 
@@ -236,8 +247,8 @@ protocol (Table~\ref{tab:leak}). \LeakText
 
 \subsection{Label efficiency of the semi-supervised PINN}\label{sec:labels}
 Table~\ref{tab:labels} gives the per-cell MAE of all single models at four label fractions. With 10\,\% labelled
-cells (6--13 labelled cells per fold), PINN-semi lowers the error of the MLP by factors of 0.60 (XJTU), 0.90 (TJU), 0.39
-(MIT) and 0.61 (HUST), significant on all datasets; at 30\,\% the ratio is 0.76--0.96, still significant on all four
+cells (6--13 labelled cells per fold), PINN-semi has 0.60 (XJTU), 0.90 (TJU), 0.39 (MIT) and 0.61 (HUST) times the
+error of the MLP, significantly lower on all datasets; at 30\,\% the ratio is 0.76--0.96, still significant on all four
 but robust to the conservative fold-level test only on MIT. With 70\,\% labels, when no unlabelled cell is left and
 PINN-semi equals PINN-sup, the ratio is 0.85--1.09; on TJU the MLP is significantly better. The geometric mean of the
 ratio over datasets is 0.60, 0.86, 0.92 and 0.96 at 10, 30, 50 and 70\,\% labels (Figure~\ref{fig:labels}). Expressed
@@ -263,18 +274,19 @@ physics losses to the unlabelled cells accounts for 50--64\,\% of the log-scale 
 10\,\% labels; the rest comes from physics on labelled cells. At 30\,\% labels, the monotonicity loss alone provides
 62--95\,\% of the reduction. The black-box dynamics of PINN4SOH perform almost exactly like monotonicity alone (within
 2\,\%): when the dynamics network receives $u_t$ as input it can learn $G \approx u_t$ and satisfy the residual trivially,
-an escape that the non-negative grey-box rate does not have. Measured on trained models, MLP predictions increase between
-cycles at least ten apart in 13.6--31.1\,\% of pairs, PINN-semi in 3.0--12.0\,\%, close to the 0.1--7.7\,\% of the
-measured labels. Most of the predicted decline passes through the charge features rather than through $t$, and the
-learned $\lambda$ and $E_a$ stay at their initial values even when the ODE weight is raised fifty-fold or the
-initialisation is changed: with the rate written as $k(\mathbf{x})g(u)A(T)$, the feature-dependent factor $k$ absorbs
-any change of $\lambda$ or $E_a$, so these parameters are structural, not identified.
+an escape that the non-negative grey-box rate does not have. Measured on trained models at 30\,\% labels, MLP
+predictions increase between cycles at least ten apart in 13.6--31.1\,\% of pairs and PINN-semi predictions in
+3.0--12.0\,\%, close to the 0.1--7.7\,\% of the measured labels. Most of the predicted decline passes through the
+charge features rather than through $t$. The learned $\lambda$ and $E_a$ stay at their initial values; on TJU, the only
+dataset with several temperatures, raising the ODE weight fifty-fold or changing the initialisation moves them by
+exactly the change of the initial value. With the rate written as $k(\mathbf{x})g(u)A(T)$, the feature-dependent factor
+$k$ absorbs any change of $\lambda$ or $E_a$, so these parameters are structural, not identified.
 
 \input{generated/table_ablation}
 
 \subsection{Hybrid estimator and sequence models}\label{sec:hybrid}
-Single-model errors are dominated by per-cell level offsets (14--58\,\% of the MSE) and slow drift (32--57\,\%);
-fast cycle-to-cycle noise accounts for 1--17\,\% outside MIT. The per-cell offsets of the PINN ensemble and the GBDT are
+At 30\,\% labels, the errors of the MLP, PINN-semi and GBDT are dominated by per-cell level offsets (14--58\,\% of
+the MSE) and slow drift (32--57\,\%); fast cycle-to-cycle noise accounts for 1--17\,\% outside MIT. The per-cell offsets of the PINN ensemble and the GBDT are
 only moderately correlated (Pearson 0.50--0.80) and have opposite signs for 16--31\,\% of the cells, which is why
 averaging them helps. With the fixed configuration, PINN-hybrid has a lower MAE than PINN-semi in 16 of 16 settings (all
 significant; ratio 0.67--0.95) and than the GBDT in 10 of 16 (8 significant), including all four datasets at 10\,\%
@@ -367,7 +379,7 @@ temperature; field data with irregular measurements remain to be tested.
 Under a leakage-free protocol on 387 cells, a semi-supervised PINN with label-free physics losses substantially improves
 a neural network when few cells are labelled, but a tuned GBDT remains the strongest single model; averaging PINNs with
 the tree and filtering the result causally gives the best estimator in most settings. Common preprocessing choices
-change reported errors by factors of up to 2.8, in either direction, and a re-run of a published benchmark shows how
+change reported errors by factors of up to \LeakMaxFactor, in either direction, and a re-run of a published benchmark shows how
 much released code, logged configurations and evaluation details matter. For deployment, the useful question is not how
 many cells to label but where to place capacity measurements: sparse measurements on every cell, and a few
 measurements of the cell in service, are worth more than full labels on a subset.
