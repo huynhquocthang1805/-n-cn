@@ -369,8 +369,9 @@ def bench_text(S, T):
         s.append(r'\paragraph{Re-running the original code.} We ran the released model and data-loading classes '
                  r'unchanged on the reconstructed splits, for two versions of the model: the version that produced the '
                  f'published numbers, with the logged hyperparameters ({runs} seeded runs per group, as in the paper), '
-                 f'and the current version with its default weights ({runs_cur} runs per group) '
-                 r'(Table~\ref{tab:bench}, Figure~\ref{fig:bench}). The original code needs pandas~1.x semantics; we '
+                 f'and the current version with its default weights ({runs_cur} runs per group); '
+                 r'Table~\ref{tab:bench} and Figure~\ref{fig:bench} give the results. The original code needs '
+                 r'pandas~1.x semantics; we '
                  r'used pandas~2.3, '
                  r'PyTorch~2 and CPUs, whereas the original runs used GPUs and older libraries. '
                  f'The re-run of the published version gives {_rng(rep_full)} times the published error on the four '
@@ -393,15 +394,15 @@ def bench_text(S, T):
                  r'index), PINN-hybrid in its fixed configuration ($\omega = \tfrac12$, $w = 10$, three seeds, no tuning '
                  f'on these splits) has {_rng(hyb_full)} times the error of the re-run original code on the full '
                  f'datasets (significantly lower in {w_full} and higher in {l_full} of 4) and {_rng(hyb_few)} times in '
-                 f'the few-shot settings (lower in {w_few}, higher in {l_few} of 8). Against the published numbers the '
+                 f'the few-shot settings (significantly lower in {w_few} and higher in {l_few} of 8). Against the published numbers the '
                  f'ratios are {_rng(hyb_pub_full)} and {_rng(hyb_pub_few)}. In the few-shot settings the unlabelled '
                  'training cells enter the physics losses of our model, which is where the semi-supervised design '
-                 'pays off. The strongest model under these conditions, however, is not a PINN: a GBDT with the same '
-                 f'preprocessing has {_rng(gb_full)} times the re-run error on the full datasets and {_rng(gb_few)} '
-                 f'times in the few-shot settings, and is significantly lower than PINN-hybrid in {gw} of the 12 '
-                 f'settings (higher in {gl}; ratio {_rng(gb_vs_hyb)}). With per-cell min--max normalisation, the '
-                 'normalised cycle index is the fraction of life already elapsed, a feature that a tree exploits '
-                 'directly.')
+                 'pays off. A GBDT trained with the same preprocessing does about as well: it has '
+                 f'{_rng(gb_full)} times the re-run error on the full datasets and {_rng(gb_few)} times in the few-shot '
+                 f'settings, and compared with PINN-hybrid it is significantly lower in {gw} and higher in {gl} of the '
+                 f'12 settings (ratio {_rng(gb_vs_hyb)}). With per-cell min--max normalisation the normalised cycle '
+                 'index is the fraction of life already elapsed, which a tree exploits directly, so under these '
+                 'conditions the advantage over the original code cannot be credited to the physics.')
     if strict_full:
         better = [d for d, v in strict_full.items() if v < 0.95]
         worse = [d for d, v in strict_full.items() if v > 1.05]
@@ -419,7 +420,8 @@ def bench_text(S, T):
     if not hyb_full and not rep_full:
         s.append('(Benchmark results are not available yet: run \\texttt{python run.py benchmark}.)')
     abstract = ('has ' + _rng(hyb_full) + ' times the error of the re-run original code on the full datasets and '
-                + _rng(hyb_few) + ' times in its few-shot settings') if hyb_full and hyb_few else \
+                + _rng(hyb_few) + ' times in its few-shot settings, about as low as a GBDT with the same '
+                'preprocessing') if hyb_full and hyb_few else \
         'is compared with the re-run original code (results pending)'
     disc = (r'Three practical points follow. Reported numbers should come with per-cell errors and the exact splits, '
             r'which made the comparison possible here; the logs released with PINN4SOH allowed us to reconstruct both. '

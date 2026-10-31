@@ -190,9 +190,10 @@ có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả, nhỏ nê
 
 * Chạy lại bản công bố cho sai số hơi cao hơn số công bố, cùng cỡ với độ lệch giữa các lần chạy; dữ liệu train trùng
   từng hàng, phần chênh còn lại do phần cứng, phiên bản thư viện, hạt giống.
-* Cùng cách chia và cùng tiền xử lý của bài, PINN-lai của đồ án có sai số thấp hơn mã gốc chạy lại; GBDT cùng tiền xử lý
-  còn thấp hơn nữa, nên lợi thế ở điều kiện này chủ yếu đến từ mô hình cây khai thác chỉ số chu kỳ đã chuẩn hoá theo
-  cell (tức phần đời đã qua), không phải từ phần vật lý.
+* Cùng cách chia và cùng tiền xử lý của bài, PINN-lai của đồ án có sai số thấp hơn mã gốc chạy lại ở cả 12 chế độ (có ý
+  nghĩa ở 7). GBDT cùng tiền xử lý tốt ngang PINN-lai (thấp hơn có ý nghĩa ở 2 chế độ ít mẫu của HUST, không chế độ
+  nào cao hơn): với min–max theo cell, chỉ số chu kỳ đã chuẩn hoá là phần đời đã qua, mô hình cây khai thác thẳng điều
+  đó, nên lợi thế ở điều kiện này không quy được cho phần vật lý.
 * Với tiền xử lý không rò rỉ, so với số công bố: thấp hơn nhiều trên TJU và MIT, ngang trên XJTU, cao hơn trên HUST —
   đúng chiều mà kiểm toán rò rỉ dự đoán.
 
