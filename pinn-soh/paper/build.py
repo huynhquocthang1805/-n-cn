@@ -353,6 +353,12 @@ def bench_text(S, T):
              r'notes that the loss weights $\alpha$ and $\beta$ changed after a bug fix; the default weights in the '
              r'released scripts no longer match those in the logs.')
     rep_sig = wins('rerun_published', 'published', full)
+    xj = [k for k in few if k[0] == 'XJTU' and k[1] != 'n1']
+    cur_main = r('rerun_current', 'rerun_published', [k for k in full + few if k not in xj and k != ('XJTU', 'n1')])
+    cur_xjtu = r('rerun_current', 'rerun_published', xj)
+    cur_sig_main = sum(wins('rerun_current', 'rerun_published',
+                            [k for k in full + few if k not in xj and k != ('XJTU', 'n1')]))
+    cur_sig_xjtu = wins('rerun_current', 'rerun_published', xj)
     gb_full = r('paper_gbdt', 'rerun_published', full)
     gb_few = r('paper_gbdt', 'rerun_published', few)
     gb_vs_hyb = r('paper_gbdt', 'paper_pinn_lai', full + few)
@@ -376,8 +382,11 @@ def bench_text(S, T):
                  'not know which of them causes the systematic part. We therefore report both the '
                  'published numbers and the re-run, and use the re-run for paired tests because it gives per-cell '
                  'predictions under known conditions. ' +
-                 (f'The corrected current version gives {_rng(cur)} times the error of the published version across '
-                  'the 12 settings.' if cur else ''))
+                 (f'The corrected current version gives {_rng(cur_main)} times the error of the published version on '
+                  f'the full datasets and the HUST few-shot settings (significantly different in {cur_sig_main} of '
+                  f'{len(cur_main)}), but {_rng(cur_xjtu)} times on the XJTU few-shot settings with $K \\ge 2$ '
+                  f'(significantly higher in {cur_sig_xjtu[1]} of {len(cur_xjtu)}), where the released script keeps '
+                  r'$\beta = 10$ for the monotonicity term that is now active.' if cur_main and cur_xjtu else ''))
     if hyb_full:
         s.append(r'\paragraph{Same splits, same preprocessing.} With the original preprocessing (whole-life $3\sigma$ '
                  r'filter on all columns including capacity, per-cell min--max normalisation of features and cycle '

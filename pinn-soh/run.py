@@ -122,8 +122,8 @@ def benchmark_python():
 def cmd_benchmark(a):
     py = benchmark_python()
     workers = ['--workers', str(a.workers)] if a.workers else []
-    for version in ('published', 'current'):
-        args = [py, 'benchmark/rerun_pinn4soh.py', '--version', version, *workers]
+    for version, runs in (('published', 10), ('current', 3)):    # bản công bố: 10 lần như bài; bản đã sửa: 3 lần
+        args = [py, 'benchmark/rerun_pinn4soh.py', '--version', version, '--runs', str(runs), *workers]
         print(f'\n$ {" ".join(args[1:])}', flush=True)
         if subprocess.run(args, cwd=ROOT).returncode:
             sys.exit(1)

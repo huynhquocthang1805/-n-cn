@@ -105,8 +105,8 @@ python run.py paper                    # results/ -> paper/main.pdf
 | E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}) | 240 | 1,8 | 0,5 | 0,2 |
 | E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ) | 720 | 3,7 | 0,9 | 0,5 |
 | E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) | 240 | 6,7 | 1,7 | 0,8 |
-| benchmark | Mã gốc PINN4SOH, 39 nhóm × 10 lần chạy × 2 bản mã | 780 | ≈ 8 | ≈ 2 | ≈ 1 |
-| **Tổng** | | **11 195** | **≈ 90** | **≈ 23** | **≈ 11** |
+| benchmark | Mã gốc PINN4SOH, 39 nhóm: bản công bố 10 lần, bản đã sửa 3 lần mỗi nhóm | 507 | ≈ 6 | ≈ 1,5 | ≈ 0,8 |
+| **Tổng** | | **10 922** | **≈ 88** | **≈ 22** | **≈ 11** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và `runs/E20dev/gbdt_*` sang
 `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `docs/de-cuong-E20.md`.
@@ -185,6 +185,16 @@ Mã gốc viết cho pandas 1.3.5 và lỗi kiểu dữ liệu với pandas 3; `
 có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả, nhỏ nên được đưa lên git: `benchmark/results/summary.csv`
 (theo bộ × chế độ), `cells.csv` (theo cell và lần chạy), `tests.csv` (Wilcoxon ghép cặp theo cell), `table.md` (bảng
 đọc nhanh), `logged_constant.json` (đối chiếu nhật ký công bố).
+
+Đọc kết quả (số cụ thể ở `benchmark/results/table.md` và mục 5.4 của `paper/manuscript.pdf`, đều sinh từ dữ liệu):
+
+* Chạy lại bản công bố cho sai số hơi cao hơn số công bố, cùng cỡ với độ lệch giữa các lần chạy; dữ liệu train trùng
+  từng hàng, phần chênh còn lại do phần cứng, phiên bản thư viện, hạt giống.
+* Cùng cách chia và cùng tiền xử lý của bài, PINN-lai của đồ án có sai số thấp hơn mã gốc chạy lại; GBDT cùng tiền xử lý
+  còn thấp hơn nữa, nên lợi thế ở điều kiện này chủ yếu đến từ mô hình cây khai thác chỉ số chu kỳ đã chuẩn hoá theo
+  cell (tức phần đời đã qua), không phải từ phần vật lý.
+* Với tiền xử lý không rò rỉ, so với số công bố: thấp hơn nhiều trên TJU và MIT, ngang trên XJTU, cao hơn trên HUST —
+  đúng chiều mà kiểm toán rò rỉ dự đoán.
 
 ## 5. Tối ưu và tái lập
 
