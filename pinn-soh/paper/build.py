@@ -552,7 +552,7 @@ def main():
     _sys.path.insert(0, os.path.join(_ROOT, 'analysis'))
     import diagrams
     os.makedirs(FIG, exist_ok=True)
-    diagrams.arch('en', os.path.join(FIG, 'fig_arch'))
+    diagrams.arch('en', os.path.join(FIG, 'fig_arch'), font='DejaVu Sans')   # cùng phông với các hình khác của bản thảo
     write('numbers.tex', '\n'.join([r'\newcommand{\LeakText}{' + leak + '}',
                                     *[f'\\newcommand{{\\{k}}}{{{v}}}' for k, v in leak_macros.items()],
                                     r'\newcommand{\BenchText}{' + text + '}',

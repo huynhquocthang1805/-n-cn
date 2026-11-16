@@ -243,6 +243,8 @@ Code được tối ưu mà **không đổi một bit kết quả nào** — `py
 AVX-512 so với AVX2, Apple Silicon) hoặc khác phiên bản torch có thể lệch ở mức làm tròn số thực; khi đó `reproduce`
 báo độ lệch, các con số trong bảng có thể khác ở chữ số thứ ba–thứ tư nhưng kết luận không đổi.
 
+Đã kiểm trên toàn bộ E27: chạy lại cả 1 002 lượt cho `benchmark/results/summary.csv` và `tests.csv` trùng từng byte với bản sinh từ lần chạy đầu, và `cells.csv` (6 chữ số có nghĩa) trùng từng dòng.
+
 ## 6. Demo — ước lượng và dự báo SOH cho một cell
 
 ```bash

@@ -24,7 +24,7 @@ Không số nào gõ tay vào bảng.
 | Chương 2, 5: kiểm toán rò rỉ | `results/thesis_leakage.csv` (chạy lại E15 và nhánh F của E13; bản sao ở `generated/data/`) |
 | Chương 3: số lượt chạy | `pinnsoh/experiments.py`, `benchmark/results/summary.csv`, `results/features_prune.csv` |
 | Chương 4, 6: so với PINN4SOH | `benchmark/results/` từ `benchmark/compare.py` |
-| Chương 4: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27`; tóm tắt ở `generated/data/tai_lap.json` |
+| Chương 4: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27` so với `generated/data/e27_lan_dau.json` (kết quả của lần chạy E27 đầu tiên, lấy từ `benchmark/results` ở commit `e174340`); tóm tắt ở `generated/data/tai_lap.json` |
 | Chương 5: các bảng còn lại | bảng của báo cáo đã nộp (`archive/thesis/do-an/main.tex`), đọc bằng `paper/thesis_tables.py` |
 
 Các con số trong lời văn của Chương 5 chép từ lời văn của báo cáo đã nộp; báo cáo đó sinh từ `results/` của lần chạy

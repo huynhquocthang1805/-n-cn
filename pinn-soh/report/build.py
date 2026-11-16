@@ -820,8 +820,8 @@ def compare_chapter(S, T, B, L_leak):
 
 # --------------------------------------------------------------------------- chạy lại các thí nghiệm của đồ án
 def reproducibility(B):
-    """Kiểm tra tái lập: kiểm toán rò rỉ so với các lượt tham chiếu; 20 lượt mẫu; E27 chạy lại so với cells.csv đã lưu.
-    Kết quả được lưu ở report/generated/data/tai_lap.json để dựng được khi không có runs/."""
+    """Kiểm tra tái lập: kiểm toán rò rỉ so với các lượt tham chiếu; 20 lượt mẫu; E27 chạy lại so với lần chạy đầu
+    (generated/data/e27_lan_dau.json). Kết quả được lưu ở generated/data/tai_lap.json để dựng được khi không có runs/."""
     path = os.path.join(DATA, 'tai_lap.json')
     rec = json.load(open(path)) if os.path.exists(path) else {}
     import hashlib
@@ -842,16 +842,23 @@ def reproducibility(B):
                 if r.get('test_predictions') else None
             same += got == m and (h is None or hh == h)
         rec['leak_refs'] = dict(n=len(refs), same=int(same))
-    if os.path.exists('runs/E27') and len(os.listdir('runs/E27')) >= 1002:
+    ref27 = os.path.join(DATA, 'e27_lan_dau.json')
+    if os.path.exists('runs/E27') and len(os.listdir('runs/E27')) >= 1002 and os.path.exists(ref27):
+        # so với lần chạy E27 đầu tiên: trung bình theo (nguồn, bộ, chế độ) ở độ chính xác đầy đủ; bảng theo cell ở 6 chữ
+        # số có nghĩa (đúng như benchmark/compare.py ghi cells.csv), so bằng mã băm
         _sys.path.insert(0, 'benchmark')
         import compare
-        new = pd.DataFrame(compare.ours_rows())
-        old = pd.read_csv(f'{BENCH}/cells.csv', dtype={'group': str})
-        old = old[old.source.str.startswith(('paper_', 'strict_'))]
+        ref = json.load(open(ref27))
+        C = pd.DataFrame(compare.ours_rows())
+        S = compare.summarize(C).set_index(['dataset', 'mode'])
+        same = sum(float(S.loc[(r['dataset'], r['mode']), col]) == r[stat] for r in ref['tong_hop']
+                   for stat, col in (('mae', r['source']), ('rmse', r['source'] + '_rmse'), ('sd', r['source'] + '_sd')))
         k = ['source', 'dataset', 'mode', 'group', 'run', 'cell']
-        m = old.merge(new, on=k, suffixes=('_old', '_new'))
-        same = int((np.isclose(m.mae_old, m.mae_new, rtol=5e-6, atol=0)).sum())
-        rec['e27'] = dict(rows=len(old), matched=len(m), same=same, maxrel=float((abs(m.mae_old - m.mae_new) / m.mae_old).max()))
+        D = C[k + ['mae', 'rmse']].sort_values(k, kind='mergesort', ignore_index=True)
+        sha = hashlib.sha1(D.to_csv(index=False, float_format='%.6g').encode()).hexdigest()
+        rec['e27'] = dict(runs=len(os.listdir('runs/E27')), summary_n=3 * len(ref['tong_hop']), summary_same=int(same),
+                          cells=len(D), cells_same=bool(sha == ref['theo_cell']['sha1']
+                                                        and len(D) == ref['theo_cell']['dong']))
     log = os.path.join(DATA, 'kiem_tai_lap.txt')
     if os.path.exists(log):
         mm = re.search(r'(\d+)/(\d+) lượt giống từng bit', open(log).read())
@@ -875,8 +882,12 @@ def reproducibility(B):
                      'bit, và các tỉ số ở Bảng~\\ref{tab:leak} khớp với báo cáo đã nộp.')
     if 'e27' in rec:
         e = rec['e27']
-        items.append(f'Mô hình của đồ án trên 39 nhóm của PINN4SOH (1.002 lượt) được chạy lại toàn bộ: {thou(e["same"])} trên '
-                     f'{thou(e["rows"])} giá trị MAE theo cell trùng với lần chạy trước ở 6 chữ số có nghĩa.')
+        items.append(f'Mô hình của đồ án trên 39 nhóm của PINN4SOH ({thou(e["runs"])} lượt) được chạy lại toàn bộ và so với '
+                     f'kết quả của lần chạy trước: {e["summary_same"]} trên {e["summary_n"]} giá trị trung bình (MAE, RMSE và '
+                     'độ lệch chuẩn qua ba hạt giống của PINN-lai, GBDT và trung bình ba PINN-semi, với hai cách tiền xử lý, '
+                     'trên 12 chế độ) trùng từng bit; '
+                     + (f'MAE và RMSE theo cell của cả {thou(e["cells"])} dòng trùng ở 6 chữ số có nghĩa đã lưu.'
+                        if e['cells_same'] else 'bảng MAE và RMSE theo cell không trùng hoàn toàn ở 6 chữ số có nghĩa đã lưu.'))
     items.append('GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\\ref{sec:dt_pp}) cho MAE theo cell trùng từng bit '
                  'với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\\,\\% nhãn, lần lặp 0, fold 0).')
     items.append(f'Mã gốc PINN4SOH: giá trị loss đơn điệu tính lại trên các hàng train mà lớp đọc dữ liệu của bài tạo ra '

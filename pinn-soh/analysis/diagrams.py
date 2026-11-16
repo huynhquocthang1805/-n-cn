@@ -63,9 +63,9 @@ ARCH_TEXT = {
 }
 
 
-def arch(lang='vi', out='results/fig_thesis_arch'):
+def arch(lang='vi', out='results/fig_thesis_arch', font='TeX Gyre Heros'):
     T = ARCH_TEXT[lang]
-    apply_theme()
+    apply_theme(font=font)
     fig, ax = plt.subplots(figsize=(7.2, 3.75))
     ax.set_xlim(0, 10); ax.set_ylim(0, 5.2); ax.axis('off')
     region(ax, 0.05, 0.85, 2.25, 4.2, T['data'])
