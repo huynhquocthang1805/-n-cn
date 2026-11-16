@@ -8,7 +8,8 @@ venv/
 PINN4SOH/data
 *.pt
 runs/
-results/
+/results/
+# benchmark/results/ (vài trăm KB, kết quả so với PINN4SOH theo từng cell) được đưa lên git
 
 # Sản phẩm dựng ra
 report.html
