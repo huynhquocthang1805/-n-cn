@@ -1,6 +1,8 @@
 # Lưu trữ
 
 Sản phẩm đã nộp của đồ án và các script giai đoạn đầu. Không còn được `run.py` gọi tới; giữ nguyên như lúc nộp.
+Bản hoàn thiện của báo cáo (bỏ phần NASA, thêm phân tích đặc trưng và phần chạy lại PINN4SOH) ở `report/`, dựng
+bằng `python run.py report` với mã hiện tại.
 
 | Thư mục | Nội dung |
 |---|---|

@@ -43,3 +43,5 @@ paper/main.pdf
 
 # bộ dự báo của demo: tự huấn luyện lại khi chạy lần đầu, phụ thuộc phiên bản scikit-learn
 demo/*_dubao.pkl
+report/main.pdf
+*.xdv

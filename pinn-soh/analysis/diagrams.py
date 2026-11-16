@@ -165,26 +165,26 @@ def protocol():
     save(fig, 'results/fig_e21_protocol')
 
 
-def pipeline():
-    """Kiến trúc hiện thực: năm khối của hệ thống, từ dữ liệu thô tới báo cáo và công cụ minh hoạ."""
+def pipeline(out='results/fig_thesis_pipeline'):
+    """Kiến trúc hiện thực: năm khối của hệ thống, từ dữ liệu tới báo cáo và công cụ minh hoạ."""
     apply_theme()
     fig = plt.figure(figsize=(6.3, 2.5))
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(0, 4.0); ax.axis('off')
     w, h, y = 1.72, 1.55, 2.15
     xs = [0.12, 2.13, 4.14, 6.15, 8.16]
-    spec = [('Dữ liệu thô', '5 bộ công khai\nCSV, MATLAB', C_OUT, '#9aa5ad'),
+    spec = [('Dữ liệu', '4 bộ công khai\n387 cell, 16 đặc trưng\nsạc mỗi chu kỳ', C_OUT, '#9aa5ad'),
             ('Khối dữ liệu', '16 đặc trưng sạc\nlọc ngoại lai nhân quả\nchuẩn hoá, bộ đệm', C_IN, E_IN),
             ('Khối thí nghiệm', 'danh sách lượt chạy\nsong song, chạy tiếp được\nmột tệp kết quả mỗi lượt', C_NET, E_NET),
             ('Khối phân tích', 'MAE, RMSE, MAPE, $R^2$\nkiểm định ghép cặp\nhình, bảng', C_PHY, E_PHY),
-            ('Báo cáo, minh hoạ', 'báo cáo sinh tự động\ncông cụ dòng lệnh:\nSOH, dự báo, RUL', C_LOSS, E_LOSS)]
+            ('Báo cáo, minh hoạ', 'báo cáo, bản thảo bài báo\nsinh tự động; công cụ\ndòng lệnh: SOH, RUL', C_LOSS, E_LOSS)]
     B = [box(ax, x, y, w, h, t, sub, fc=fc, ec=ec, fs=7.4) for x, (t, sub, fc, ec) in zip(xs, spec)]
     for a, b in zip(B[:-1], B[1:]):
         arrow(ax, right(a), left(b))
     m = box(ax, 1.5, 0.2, 7.0, 1.35, 'Khối mô hình',
-            'MLP, CNN, LSTM, Transformer, PINN-semi, PINN-dự báo (PyTorch)\nRidge, GPR, GBDT (scikit-learn)\n'
+            'MLP, CNN, LSTM, Transformer, PINN-semi, PINN-dự báo (PyTorch); mã gốc PINN4SOH\nRidge, GPR, GBDT (scikit-learn)\n'
             'bộ lọc quỹ đạo, khoảng phù hợp, bộ lọc Kalman', fc=C_NET, ec=E_NET, fs=7.4)
     arrow(ax, (B[2][0] + B[2][2] / 2, m[1] + m[3]), bottom(B[2]))
-    save(fig, 'results/fig_thesis_pipeline')
+    save(fig, out)
 
 
 if __name__ == '__main__':

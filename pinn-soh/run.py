@@ -10,8 +10,10 @@ Một lệnh cho mọi bước. Chạy từ thư mục nào cũng được.
                                               huấn luyện lại 120 lượt cho phân tích phần vật lý)
     python run.py benchmark [--workers N]     chạy lại mã gốc PINN4SOH trên cách chia của bài (benchmark/) rồi lập bảng
                                               so sánh với số công bố và với E27 -> benchmark/results/
-    python run.py paper                       dựng bản thảo bài báo paper/main.pdf
-    python run.py all [tuỳ chọn]              experiments -> analyze -> benchmark -> paper
+    python run.py features [--workers N]      phân tích đặc trưng đầu vào (GBDT bỏ/thêm nhóm, hoán vị) -> results/features_*
+    python run.py paper                       dựng bản thảo bài báo paper/manuscript.pdf
+    python run.py report                      dựng báo cáo đồ án report/bao-cao-do-an.pdf
+    python run.py all [tuỳ chọn]              experiments -> analyze -> benchmark -> features -> paper -> report
     python run.py reproduce                   chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
     python run.py demo train|predict ...      demo ước lượng SOH cho một cell (xem tools/demo.py)
 
@@ -24,7 +26,7 @@ Tuỳ chọn cho thí nghiệm:
     --device cuda   dùng GPU (nhanh hơn với 1 tiến trình; kết quả lệch ở mức làm tròn, không tái lập từng bit)
 
 Dừng bất cứ lúc nào bằng Ctrl+C; chạy lại đúng lệnh đó sẽ tiếp tục từ lượt đang dở.
-Báo cáo đồ án, slide và script giai đoạn đầu nằm ở archive/ (xem archive/README.md).
+Báo cáo đồ án đã nộp, slide và script giai đoạn đầu nằm ở archive/ (xem archive/README.md).
 """
 from __future__ import annotations
 import argparse, os, shutil, subprocess, sys, time
@@ -65,7 +67,8 @@ def cmd_check(_):
     from tools.tai_du_lieu import count_csv, EXPECT
     have = count_csv(resolve_root())
     print(f'dữ liệu {resolve_root()}: {have}', 'đủ' if have == EXPECT else '— THIẾU, chạy: python run.py data')
-    print('XeLaTeX:', shutil.which('xelatex') or 'không có (chỉ cần cho bước paper)')
+    print('XeLaTeX:', shutil.which('xelatex') or 'không có (cần cho bước report)')
+    print('pdfLaTeX:', shutil.which('pdflatex') or 'không có (cần cho bước paper)')
     print(f'số lõi CPU: {os.cpu_count()}')
 
 
@@ -130,8 +133,16 @@ def cmd_benchmark(a):
     sh(['benchmark/compare.py'])
 
 
+def cmd_features(a):
+    sh(['analysis/features.py'] + (['--workers', str(a.workers)] if a.workers else []))
+
+
 def cmd_paper(_):
     sh(['paper/build.py'])
+
+
+def cmd_report(_):
+    sh(['report/build.py'])
 
 
 def cmd_all(a):
@@ -140,7 +151,9 @@ def cmd_all(a):
         return
     cmd_analyze(a)
     cmd_benchmark(a)
+    cmd_features(a)
     cmd_paper(a)
+    cmd_report(a)
 
 
 def cmd_reproduce(a):
@@ -153,8 +166,8 @@ def main():
         return
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     from pinnsoh.experiments import EXPERIMENTS
-    ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'benchmark', 'paper', 'all',
-                                        'reproduce', *EXPERIMENTS])
+    ap.add_argument('command', choices=['check', 'data', 'bench', 'experiments', 'analyze', 'benchmark', 'features',
+                                        'paper', 'report', 'all', 'reproduce', *EXPERIMENTS])
     ap.add_argument('--workers', type=int, default=None)
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--datasets', nargs='+', default=['XJTU', 'TJU', 'MIT', 'HUST'],

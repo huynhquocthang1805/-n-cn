@@ -27,16 +27,22 @@ TJU, MIT, HUST:
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
+| features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
 Tổng cộng 10 575 lượt huấn luyện (đếm theo tệp kết quả của `pinnsoh/experiments.py`), cộng các lần chạy lại mã gốc
-PINN4SOH ở `benchmark/`. Bản thảo bài báo: `paper/main.pdf` (dựng bằng `python run.py paper`). Báo cáo đồ án đã nộp
-(có thêm phần bộ NASA PCoE): `archive/thesis/do-an/bao-cao-do-an.pdf`.
+PINN4SOH ở `benchmark/` và phân tích đặc trưng. Ba sản phẩm viết:
+
+* `report/bao-cao-do-an.pdf`: báo cáo đồ án chuyên ngành bản hoàn thiện, tiếng Việt, không còn phần bộ NASA
+  (`python run.py report`; xem `report/README.md`);
+* `paper/manuscript.pdf`: bản thảo bài báo tiếng Anh (`python run.py paper`; xem `paper/README.md`);
+* `archive/thesis/do-an/bao-cao-do-an.pdf`: báo cáo đồ án đã nộp (có phần bộ NASA PCoE), giữ nguyên.
 
 ---
 
 ## 1. Cài đặt
 
-Cần Python ≥ 3.10 (đã dùng 3.11). XeLaTeX (TeX Live / MiKTeX) chỉ cần cho bước dựng bản thảo PDF.
+Cần Python ≥ 3.10 (đã dùng 3.11). TeX Live chỉ cần cho hai bước dựng PDF: pdfLaTeX cho bản thảo bài báo, XeLaTeX và
+phông TeX Gyre (`fonts-texgyre`, `tex-gyre` trên Ubuntu) cho báo cáo đồ án.
 
 ```bash
 python -m venv .venv
@@ -54,11 +60,11 @@ python run.py data           # tải 387 file CSV (~94 MB) từ repo gốc và d
 python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
 python run.py bench          # đo tốc độ máy để ước lượng thời gian chính xác hơn
 python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, không chạy gì
-python run.py all            # toàn bộ: thí nghiệm -> phân tích -> benchmark -> bản thảo PDF
+python run.py all            # toàn bộ: thí nghiệm -> phân tích -> benchmark -> đặc trưng -> bản thảo -> báo cáo
 ```
 
 `all` = `experiments` (E13, E15–E23, E26–E30, E32 theo thứ tự trong `pinnsoh/experiments.py`) → `analyze` →
-`benchmark` → `paper`. Có thể chạy từng bước:
+`benchmark` → `features` → `paper` → `report`. Có thể chạy từng bước:
 
 ```bash
 python run.py E13 --workers 8          # một thí nghiệm, 8 tiến trình song song
@@ -66,7 +72,9 @@ python run.py E16 --datasets XJTU      # chỉ một bộ dữ liệu
 python run.py experiments --quick      # chạy thử: 1 lần lặp thay vì 5, 1 hạt giống thay vì 5
 python run.py analyze                  # runs/ -> results/ (bảng CSV, hình PNG/PDF)
 python run.py benchmark                # mã gốc PINN4SOH trên cách chia của bài -> benchmark/results/
-python run.py paper                    # results/ -> paper/main.pdf
+python run.py features --workers 4     # phân tích đặc trưng (GBDT, 120 fold) -> results/features_*.csv
+python run.py paper                    # -> paper/manuscript.pdf
+python run.py report                   # -> report/bao-cao-do-an.pdf
 ```
 
 * **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/`, ghi nguyên tử; chạy lại
@@ -144,10 +152,13 @@ pinn-soh/
 │   └── plotstyle.py        khuôn vẽ hình
 ├── analysis/               runs/ -> results/: một script cho mỗi thí nghiệm (analyze_eXX.py, dev_eXX.py cho giai
 │                           đoạn chọn trên validation), cùng các phân tích chung (chỉ số, phần vật lý, phân rã sai số,
-│                           tính đơn điệu, hình tổng quan, figures_report.py vẽ lại hình cho bản in, diagrams.py sơ đồ)
+│                           tính đơn điệu, hình tổng quan, figures_report.py vẽ lại hình cho bản in, diagrams.py sơ đồ,
+│                           features.py phân tích đặc trưng đầu vào)
 ├── benchmark/
 │   ├── rerun_pinn4soh.py   chạy lại mã gốc PINN4SOH (nguyên trạng) trên 39 nhóm chia của bài, hai bản mã
-│   └── compare.py          bảng so sánh: số công bố, chạy lại, mô hình của đồ án (E27)
+│   ├── compare.py          bảng so sánh: số công bố, chạy lại, mô hình của đồ án (E27)
+│   └── results/            kết quả so sánh theo từng cell và kiểm định (nhỏ, đưa lên git)
+├── report/                 báo cáo đồ án chuyên ngành (LaTeX tiếng Việt), bảng và hình sinh tự động, script dựng
 ├── paper/                  bản thảo bài báo (LaTeX), hình và script dựng
 ├── docs/                   đề cương chốt trước (de-cuong-E13, E20, E27-E28, E29, E30, E32), phương pháp, chứng minh,
 │                           phân tích phần vật lý, kết quả E13, các phương trình (equations.tex)
@@ -157,7 +168,7 @@ pinn-soh/
 │   ├── make_physics_doc.py docs/phan-tich-vat-ly-PINN (vật lý nằm ở đâu, R², RMSE)
 │   └── demo.py             ước lượng và dự báo SOH cho một cell (python run.py demo ...)
 ├── demo/                   mô hình demo đã huấn luyện và ví dụ đầu ra
-├── archive/                báo cáo đồ án, slide, pipeline v1 — giữ nguyên như lúc nộp (archive/README.md)
+├── archive/                báo cáo đồ án đã nộp, slide, pipeline v1 — giữ nguyên như lúc nộp (archive/README.md)
 ├── PINN4SOH/data/          dữ liệu (tải bằng python run.py data, không đưa lên git)
 ├── runs/                   kết quả từng lượt (JSON, không đưa lên git)
 └── results/                bảng + hình tổng hợp (không đưa lên git)
