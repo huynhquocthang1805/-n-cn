@@ -93,6 +93,23 @@ def published_rows():
                  rmse=r.RMSE) for r in R.itertuples()]
 
 
+def keep_saved(C):
+    """Lượt chạy chưa có (hoặc không còn) file gốc ở runs/ thì giữ nguyên các dòng của nó trong cells.csv đã lưu, để
+    chạy lại script trên máy thiếu runs/E27 hay runs/pinn4soh không làm mất kết quả."""
+    path = f'{OUT}/cells.csv'
+    if not os.path.exists(path):
+        return C
+    old = pd.read_csv(path, dtype={'group': str})
+    key = ['source', 'dataset', 'mode', 'group', 'run']
+    have = C[key].drop_duplicates().assign(_have=True)
+    miss = old[old.merge(have, on=key, how='left')._have.isna().values]
+    if len(miss):
+        print(f'giữ {len(miss)} dòng của {path} (chưa có file chạy ở {RUNS}/ hoặc runs/E27):',
+              ', '.join(sorted(miss.source.unique())))
+    return (pd.concat([C, miss], ignore_index=True)
+            .sort_values(['source', 'dataset', 'mode', 'group', 'run', 'cell'], kind='mergesort', ignore_index=True))
+
+
 def summarize(C):
     """Bảng theo (bộ, chế độ): sai số của mỗi nguồn (cell -> nhóm -> bộ), độ lệch chuẩn qua lần chạy, số lần chạy ít
     nhất của một nhóm, số nhóm có kết quả (thiếu nhóm thì {nguồn}_complete = False và con số chưa so được với bài)."""
@@ -160,7 +177,7 @@ def markdown(S, T):
 
 
 def main():
-    C = pd.DataFrame(rerun_rows() + ours_rows() + published_rows())
+    C = keep_saved(pd.DataFrame(rerun_rows() + ours_rows() + published_rows()))
     os.makedirs(OUT, exist_ok=True)
     C.to_csv(f'{OUT}/cells.csv', index=False, float_format='%.6g')
     S = summarize(C); S.to_csv(f'{OUT}/summary.csv', index=False)
