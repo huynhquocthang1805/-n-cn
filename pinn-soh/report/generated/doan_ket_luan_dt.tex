@@ -1,1 +1,5 @@
-(Chưa có kết quả phân tích đặc trưng: chạy \texttt{python analysis/features.py}.)
+\begin{enumerate}
+\item Dùng đủ 16 đặc trưng đoạn sạc và $t = n/1000$: cả 17 tính được ở mọi chu kỳ từ dữ liệu sạc; 6 trên 6 tập rút gọn kém hơn có ý nghĩa ở ít nhất một trường hợp, không tập nào tốt hơn ở mọi bộ, và chọn bớt đặc trưng trên validation cho tỉ số 0{,}99--1{,}02.
+\item Không chuẩn hoá theo cả vòng đời cell, không lọc ngoại lai bằng tương lai của cell, không fit normaliser trên cell test: đây là rò rỉ, và tác động của chúng lên sai số lên tới 0{,}46--2{,}76 lần tuỳ bộ.
+\item Không dùng đặc trưng tương đối (tác động trái chiều giữa các bộ); đặc trưng có lịch sử chỉ dùng khi validation chọn; nhiệt độ chỉ đi vào thừa số Arrhenius (thêm vào đầu vào thay đổi sai số dưới 1\,\%); không dùng thông tin của lần xả khi ước lượng.
+\end{enumerate}

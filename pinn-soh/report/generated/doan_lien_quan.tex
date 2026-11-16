@@ -1,1 +1,30 @@
-(Chưa có kết quả phân tích đặc trưng: chạy \texttt{python analysis/features.py}.)
+Bảng~\ref{tab:relevance} cho mức liên quan đơn biến. Trong từng cell, chỉ số chu kỳ có tương quan âm gần như tuyệt đối với SOH ($\rho$ trung vị −1{,}00 đến −0{,}94), vì SOH giảm dần theo thời gian. Số đặc trưng sạc có $|\rho|$ trung vị trong cell từ 0,9 trở lên là 4 ở XJTU, 9 ở TJU, 5 ở MIT, 7 ở HUST. Ba đặc trưng liên quan mạnh nhất khác nhau giữa các bộ: XJTU: điện lượng pha CV (−0{,}94), thời gian pha CV (−0{,}94), entropy dòng điện (−0{,}93); TJU: thời gian pha CV (−1{,}00), điện lượng pha CV (−1{,}00), độ dốc dòng điện (−1{,}00); MIT: trung bình điện áp (−0{,}99), điện lượng pha CC (0{,}98), thời gian pha CC (0{,}98); HUST: thời gian pha CC (0{,}97), điện lượng pha CC (0{,}97), entropy điện áp (0{,}97). Chiều thay đổi của cùng một đặc trưng phụ thuộc hệ hoá học: 7 đặc trưng đổi dấu giữa hai bộ LFP (MIT, HUST) và hai bộ NCM/NCA (XJTU, TJU), ví dụ độ nhọn dòng điện có $\rho$ MIT 0{,}77, HUST 0{,}87 nhưng XJTU −0{,}70, TJU −0{,}98; độ bất đối xứng dòng điện có $\rho$ MIT 0{,}78, HUST 0{,}87 nhưng XJTU −0{,}63, TJU −0{,}98. Số đặc trưng sạc gần như không liên quan đơn biến với SOH ($|\rho| < 0{,}3$) là 4 ở XJTU, 3 ở TJU, 1 ở MIT, 1 ở HUST, nhưng không đặc trưng nào yếu ở cả bốn bộ.
+
+Nhiều cặp đặc trưng gần như trùng thông tin ($|\rho| \ge 0{,}95$ trên mọi chu kỳ của bộ): 13 cặp ở XJTU, 4 cặp ở TJU, 3 cặp ở MIT, 14 cặp ở HUST. Chỉ cặp độ nhọn dòng điện và độ bất đối xứng dòng điện trùng ở cả bốn bộ; 18 cặp còn lại chỉ trùng ở một đến ba bộ, ví dụ điện lượng pha CC và thời gian pha CC (MIT, HUST); điện lượng pha CC và entropy điện áp (HUST); thời gian pha CC và entropy điện áp (XJTU, HUST). Vì một cặp trùng ở bộ này lại mang hai thông tin khác nhau ở bộ khác, một tập đầu vào chung cho cả bốn bộ không bỏ được cột nào chỉ dựa trên trùng lặp; liệu bỏ có lợi không được kiểm tra trực tiếp bằng chọn đặc trưng trên validation ở mục sau. Trùng lặp cũng làm phép hoán vị từng cột đánh giá thấp tầm quan trọng của mỗi cột trong cặp, nên các phép thử dưới đây bỏ và hoán vị theo nhóm. Cuối cùng, tương quan đơn biến không cho biết một đặc trưng có giúp phân biệt các cell với nhau khi kết hợp với đặc trưng khác hay không, nên không đủ để quyết định bỏ đặc trưng.
+
+\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}
+\caption[Tương quan hạng giữa từng đầu vào và SOH]{Hệ số Spearman $\rho$ giữa từng đầu vào và SOH: trung vị qua các cell của $\rho$ tính trong từng cell (cột “trong cell”), và $\rho$ trên mọi chu kỳ của bộ (cột “gộp”). Dấu âm: đầu vào giảm khi SOH tăng.}\label{tab:relevance}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
+ & \multicolumn{2}{c}{XJTU} & \multicolumn{2}{c}{TJU} & \multicolumn{2}{c}{MIT} & \multicolumn{2}{c}{HUST} \\\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+Đầu vào & trong cell & gộp & trong cell & gộp & trong cell & gộp & trong cell & gộp \\\midrule
+trung bình điện áp & 0{,}56 & 0{,}32 & 0{,}05 & 0{,}19 & −0{,}99 & −0{,}75 & −0{,}94 & −0{,}58 \\
+độ lệch chuẩn điện áp & −0{,}51 & −0{,}54 & 0{,}24 & 0{,}27 & −0{,}25 & 0{,}11 & −0{,}91 & −0{,}58 \\
+độ nhọn điện áp & 0{,}42 & 0{,}45 & −0{,}56 & −0{,}30 & 0{,}97 & 0{,}55 & 0{,}95 & 0{,}63 \\
+độ bất đối xứng điện áp & −0{,}59 & −0{,}32 & 0{,}07 & 0{,}01 & 0{,}97 & 0{,}45 & 0{,}95 & 0{,}63 \\
+độ dốc điện áp & −0{,}19 & −0{,}06 & −0{,}95 & −0{,}61 & 0{,}88 & 0{,}28 & 0{,}45 & 0{,}13 \\
+entropy điện áp & −0{,}18 & −0{,}05 & 0{,}61 & 0{,}29 & 0{,}78 & 0{,}81 & 0{,}97 & 0{,}78 \\
+\addlinespace[2pt]
+trung bình dòng điện & 0{,}61 & 0{,}42 & 0{,}88 & 0{,}57 & −0{,}78 & −0{,}52 & −0{,}72 & −0{,}48 \\
+độ lệch chuẩn dòng điện & 0{,}64 & 0{,}48 & 0{,}54 & 0{,}41 & −0{,}62 & −0{,}41 & −0{,}39 & −0{,}37 \\
+độ nhọn dòng điện & −0{,}70 & −0{,}45 & −0{,}98 & −0{,}59 & 0{,}77 & 0{,}51 & 0{,}87 & 0{,}55 \\
+độ bất đối xứng dòng điện & −0{,}63 & −0{,}43 & −0{,}98 & −0{,}59 & 0{,}78 & 0{,}52 & 0{,}87 & 0{,}53 \\
+độ dốc dòng điện & −0{,}93 & −0{,}81 & −1{,}00 & −0{,}53 & −0{,}59 & −0{,}10 & 0{,}25 & 0{,}09 \\
+entropy dòng điện & −0{,}93 & −0{,}82 & −1{,}00 & −0{,}55 & 0{,}37 & 0{,}35 & 0{,}60 & 0{,}26 \\
+\addlinespace[2pt]
+điện lượng pha CC & −0{,}10 & −0{,}11 & 0{,}95 & 0{,}57 & 0{,}98 & 0{,}89 & 0{,}97 & 0{,}84 \\
+thời gian pha CC & −0{,}09 & −0{,}01 & 0{,}95 & 0{,}74 & 0{,}98 & 0{,}90 & 0{,}97 & 0{,}84 \\
+điện lượng pha CV & −0{,}94 & −0{,}82 & −1{,}00 & −0{,}69 & 0{,}34 & 0{,}30 & 0{,}55 & 0{,}24 \\
+thời gian pha CV & −0{,}94 & −0{,}82 & −1{,}00 & −0{,}65 & 0{,}59 & 0{,}41 & 0{,}64 & 0{,}30 \\
+\addlinespace[2pt]
+$t$ (chỉ số chu kỳ) & −0{,}94 & −0{,}74 & −1{,}00 & −0{,}93 & −1{,}00 & −0{,}72 & −1{,}00 & −0{,}92 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

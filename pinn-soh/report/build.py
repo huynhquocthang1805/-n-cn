@@ -173,12 +173,12 @@ def leakage():
            r'fold) theo giao thức không rò rỉ, và tỉ số giữa MAE dưới mỗi cách làm sai với MAE đó (nhỏ hơn 1: sai số trông '
            r'thấp hơn thực tế). Cột cuối: chia theo chu kỳ rồi chép nhãn của chu kỳ train gần nhất trong cùng cell, không '
            r'dùng đặc trưng nào.}\label{tab:leak}',
-           r'\begin{tabular}{lrrrrrr}\toprule',
+           r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule',
            r'Bộ & MAE ($\times10^{-3}$) & ' + ' & '.join(l for _, l in LEAK) + r' & chép nhãn \\\midrule']
     for ds, r in T.iterrows():
         out.append(f'{ds} & {v(1e3 * r.chuan)} & ' + ' & '.join(v(r[f"ti_so_{s}"]) for s, _ in LEAK)
                    + f' & {v(r.ti_so_noi_suy_hang)} \\\\')
-    out += [r'\bottomrule\end{tabular}\end{table}']
+    out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
     lo = lambda s: T[f'ti_so_{s}'].min(); hi = lambda s: T[f'ti_so_{s}'].max()
     m = T['ti_so_minmax']
     L = dict(row=f'{v(1 / hi("row"), 1)}--{v(1 / lo("row"), 1)}', copy=f'{v(lo("noi_suy_hang"))}--{v(hi("noi_suy_hang"))}',
@@ -394,11 +394,12 @@ def bench_section(S, T, L):
 
 
 # --------------------------------------------------------------------------- đặc trưng
-NAMES_VI = {'voltage mean': 'điện áp: trung bình', 'voltage std': 'điện áp: độ lệch chuẩn',
-            'voltage kurtosis': 'điện áp: độ nhọn', 'voltage skewness': 'điện áp: độ lệch', 'voltage slope': 'điện áp: độ dốc',
-            'voltage entropy': 'điện áp: entropy', 'current mean': 'dòng: trung bình', 'current std': 'dòng: độ lệch chuẩn',
-            'current kurtosis': 'dòng: độ nhọn', 'current skewness': 'dòng: độ lệch', 'current slope': 'dòng: độ dốc',
-            'current entropy': 'dòng: entropy', 'CC Q': 'điện lượng pha CC', 'CC charge time': 'thời gian pha CC',
+NAMES_VI = {'voltage mean': 'trung bình điện áp', 'voltage std': 'độ lệch chuẩn điện áp',
+            'voltage kurtosis': 'độ nhọn điện áp', 'voltage skewness': 'độ bất đối xứng điện áp',
+            'voltage slope': 'độ dốc điện áp', 'voltage entropy': 'entropy điện áp', 'current mean': 'trung bình dòng điện',
+            'current std': 'độ lệch chuẩn dòng điện', 'current kurtosis': 'độ nhọn dòng điện',
+            'current skewness': 'độ bất đối xứng dòng điện', 'current slope': 'độ dốc dòng điện',
+            'current entropy': 'entropy dòng điện', 'CC Q': 'điện lượng pha CC', 'CC charge time': 'thời gian pha CC',
             'CV Q': 'điện lượng pha CV', 'CV charge time': 'thời gian pha CV', 't': '$t$ (chỉ số chu kỳ)'}
 GROUP_OF = {**{n: 'V' for n in ['voltage mean', 'voltage std', 'voltage kurtosis', 'voltage skewness', 'voltage slope',
                                  'voltage entropy']},
@@ -535,7 +536,17 @@ def features_parts(F, L_leak):
     r_ = lambda var, f=None: [Ai.loc[(d, ff, var), 'ratio'] for d in DS for ff in (fracs if f is None else [f])]
     sig_ = lambda var, sign: [(d, ff) for d in DS for ff in fracs if pd.notna(Ai.loc[(d, ff, var), 'p_holm'])
                               and Ai.loc[(d, ff, var), 'p_holm'] < 0.05 and (Ai.loc[(d, ff, var), 'ratio'] - 1) * sign > 0]
-    lst = lambda ks: ', '.join(f'{d} {int(100 * f)}\\,\\%' for d, f in ks) if ks else 'không trường hợp nào'
+    def lst(ks):
+        """[(bộ, mức nhãn)] -> 'XJTU, TJU và HUST với cả hai mức nhãn và ở MIT 70 %'."""
+        if not ks:
+            return 'không trường hợp nào'
+        if len(ks) == len(DS) * len(fracs):
+            return 'cả bốn bộ với cả hai mức nhãn'
+        join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+        both = [d for d in DS if all((d, f) in ks for f in fracs)]
+        single = [f'{d} {int(100 * f)}\\,\\%' for d, f in ks if d not in both]
+        parts = ([join(both) + ' với cả hai mức nhãn'] if both else []) + ([join(single)] if single else [])
+        return '; '.join(parts)
     perm = lambda g: [Pt.loc[(d, f, g), 'mean'] for d in DS for f in fracs]
     n_cases = len(DS) * len(fracs)
 
@@ -543,7 +554,8 @@ def features_parts(F, L_leak):
         """'<what> cho tỉ số a–b; cao hơn có ý nghĩa ở ..., thấp hơn có ý nghĩa ở ...'"""
         up, dn = sig_(var, +1), sig_(var, -1)
         return (f'{what} cho tỉ số {rng(r_(var))}; '
-                + (f'cao hơn có ý nghĩa ở {len(up)} trên {n_cases} trường hợp ({lst(up)})' if up else
+                + (f'cao hơn có ý nghĩa ở {len(up)} trên {n_cases} trường hợp ({lst(up)})' if 0 < len(up) < n_cases else
+                   f'cao hơn có ý nghĩa ở cả {n_cases} trường hợp' if up else
                    'không trường hợp nào cao hơn có ý nghĩa')
                 + (f', thấp hơn có ý nghĩa ở {lst(dn)}' if dn else ', không trường hợp nào thấp hơn có ý nghĩa'))
     reduced = ['no_t', 't_only', 'no_V', 'no_I', 'no_QT', 'QT_t']
@@ -571,15 +583,16 @@ def features_parts(F, L_leak):
            f'{len(always_hurt)} trên {len(reduced)} tập đầu vào rút gọn kém bộ đầy đủ có ý nghĩa ở ít nhất một trường hợp. ')
         + ('Một số tập lại tốt hơn có ý nghĩa ở vài trường hợp: ' + '; '.join(
             f'{labv[x]} ở {lst(k)}' for x, k in helps) + '. Chọn đầu vào riêng cho từng bộ theo các kết quả test này là '
-           'chọn mô hình trên tập test; cách chọn riêng cho từng fold chỉ bằng validation (hàng cuối của bảng) thì '
+           'chọn mô hình trên tập test; cách chọn riêng cho từng fold chỉ bằng validation (hàng “chọn trên validation”) thì '
            f'không cải thiện ổn định (tỉ số {rng(r_("prune"))}). ' if helps else
            'Không tập rút gọn hay mở rộng nào tốt hơn có ý nghĩa ở trường hợp nào. ')
         + 'Vì vậy đồ án dùng chung bộ 17 đầu vào cho mọi bộ dữ liệu và mọi mô hình.')
     # ---------------- đã bỏ
     rel = r_('rel')
-    sigrel = sig_('rel', +1)
+    sigrel, relgood = sig_('rel', +1), sig_('rel', -1)
     has_T = ('TJU', fracs[0], 'with_T') in Ai.index
     tT = [Ai.loc[('TJU', f, 'with_T'), 'ratio'] for f in fracs] if has_T else []
+    tT_txt = ', '.join(f'{_ratio_cell(Ai.loc[("TJU", f, "with_T")])} ở {int(100 * f)}\\,\\%' for f in fracs) if has_T else ''
     out = [r'\begin{table}[!htbp]\centering\small',
            r'\caption[Các đặc trưng và cách biến đổi đã thử và bỏ]{Các đặc trưng và cách biến đổi đầu vào đã thử và bỏ, lý do '
            r'và số liệu. Tỉ số là MAE so với cấu hình được dùng (lớn hơn 1: kém hơn; nhỏ hơn 1 ở hai hàng đầu: sai số '
@@ -593,15 +606,16 @@ def features_parts(F, L_leak):
            r'Lọc ngoại lai $3\sigma$ theo cả vòng đời, trên cả cột dung lượng & dùng tương lai của cell và cả nhãn & tỉ số '
            + L_leak['life'] + r' \\',
            r'Chuẩn hoá đặc trưng gồm cả cell test & dùng thống kê của tập test & tỉ số ' + L_leak['normtest'] + r' \\',
-           r'16 đặc trưng tương đối so với 3 chu kỳ đầu của cell & tăng sai số & PINN-semi, validation: tỉ số 1{,}692 '
-           r'(HUST 10\,\% nhãn: gấp 3{,}4 lần); GBDT, test: ' + rng(rel) + (r', cao hơn có ý nghĩa ở ' + lst(sigrel)
-                                                                              if sigrel else '') + r' \\',
+           r'16 đặc trưng tương đối so với 3 chu kỳ đầu của cell & làm sai số validation của PINN-semi tăng; với GBDT tác '
+           r'động trái chiều giữa các bộ & PINN-semi, validation: tỉ số 1{,}692 (HUST 10\,\% nhãn: gấp 3{,}4 lần); GBDT, '
+           r'test: ' + rng(rel) + (', cao hơn có ý nghĩa ở ' + lst(sigrel) if sigrel else '')
+           + (', thấp hơn có ý nghĩa ở ' + lst(relgood) if relgood else '') + r' \\',
            r'Đặc trưng có lịch sử của cell (trung bình trượt mũ, độ dốc) & chỉ có lợi ở một số bộ khi đủ nhãn & '
            r'Bảng~\ref{tab:hist}: PINN-lai 0{,}89--0{,}97 trên TJU, HUST từ 30\,\% nhãn; kém hơn trên XJTU (1{,}02--1{,}25) '
            r'và ở 10\,\% nhãn \\']
     if has_T:
-        out.append(r'Nhiệt độ làm đầu vào của mô hình & hằng số trên XJTU, MIT, HUST; trên TJU không giảm sai số & GBDT, TJU: '
-                   r'tỉ số ' + ', '.join(f'{v(x)} ({int(100 * f)}\\,\\%)' for x, f in zip(tT, fracs)) + r' \\')
+        out.append(r'Nhiệt độ làm đầu vào của mô hình & hằng số trên XJTU, MIT, HUST; trên TJU chỉ thay đổi sai số dưới '
+                   r'1\,\% & GBDT, TJU, thêm $1/T$: tỉ số ' + tT_txt + r' \\')
     out += [r'Đặc trưng lấy từ lần xả, hoặc dung lượng đo của các chu kỳ trước & lần xả đầy chính là phép đo nhãn; khi ước '
             r'lượng, dùng chúng là rò rỉ nhãn & chép nhãn chu kỳ gần nhất có sai số ' + L_leak['copy'] + r' lần mô hình '
             r'thật (Bảng~\ref{tab:leak}); khi có đo thì dùng ở bước cập nhật (Mục~\ref{sec:budgetres}) \\',
@@ -612,13 +626,18 @@ def features_parts(F, L_leak):
     text_drop = (
         'Bảng~\\ref{tab:dropped} tóm tắt những gì đã thử và bỏ. Ba dạng đầu là rò rỉ: chúng làm sai số đo được khác sai '
         'số thật khi triển khai, theo cả hai chiều tuỳ bộ (Bảng~\\ref{tab:leak}), nên bị loại dù trên một số bộ chúng làm '
-        'con số đẹp hơn. Đặc trưng tương đối bị loại vì làm sai số tăng ở bước chọn trên validation; phép chia cho mức '
-        'ban đầu của cell khuếch đại các đặc trưng có giá trị ban đầu gần 0. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist}) '
+        'con số đẹp hơn. Đặc trưng tương đối bị loại ở bước chọn hướng cải tiến của PINN-lai vì làm sai số validation của '
+        'PINN-semi tăng (tỉ số 1,692); phép chia cho mức ban đầu của cell khuếch đại các đặc trưng có giá trị ban đầu gần '
+        '0. Với GBDT, tác động của chúng trái chiều giữa các bộ'
+        + (' (thấp hơn có ý nghĩa ở ' + lst(relgood) + ', cao hơn có ý nghĩa ở ' + lst(sigrel) + ')' if relgood and sigrel
+           else '') + ', nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist}) '
         'giúp trên TJU và HUST khi có từ 30\\,\\% nhãn nhưng làm kém đi trên XJTU và ở 10\\,\\% nhãn, khi số chiều đầu vào '
         'tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy mô hình chính không dùng chúng, và mô hình cuối chỉ '
         'dùng ở các trường hợp validation chọn (phân tích hậu kiểm). '
         + ('Nhiệt độ là hằng số trên ba bộ nên không mang thông tin; trên TJU, thêm $1/T$ vào GBDT cho tỉ số '
-           + rng(tT) + ', nên nhiệt độ chỉ được giữ trong thừa số Arrhenius của động học. ' if has_T else '')
+           + tT_txt.replace('$^{*}$', ' (có ý nghĩa)').replace('$^{\\dagger}$', ' (có ý nghĩa)')
+           + ', tức thay đổi dưới 1\\,\\%, nên nhiệt độ chỉ được giữ trong thừa số Arrhenius của động học. '
+           if has_T else '')
         + 'Đặc trưng từ lần xả và dung lượng các chu kỳ trước bị loại khỏi bài toán ước lượng vì đó chính là nhãn.')
     text_drop = text_drop + '\n\n' + tab_drop + '\n\n' + leak_table_cache[0] + '\n\n' + history_table()
     # ---------------- kết luận về đầu vào
@@ -629,8 +648,9 @@ def features_parts(F, L_leak):
         f'tốt hơn ở mọi bộ, và chọn bớt đặc trưng trên validation cho tỉ số {rng(r_("prune"))}.' '\n'
         r'\item Không chuẩn hoá theo cả vòng đời cell, không lọc ngoại lai bằng tương lai của cell, không fit normaliser trên '
         r'cell test: đây là rò rỉ, và tác động của chúng lên sai số lên tới ' + L_leak['minmax_rng'] + r' lần tuỳ bộ.' '\n'
-        r'\item Không dùng đặc trưng tương đối; đặc trưng có lịch sử chỉ dùng khi validation chọn; nhiệt độ chỉ đi vào thừa '
-        r'số Arrhenius; không dùng thông tin của lần xả khi ước lượng.' '\n'
+        r'\item Không dùng đặc trưng tương đối (tác động trái chiều giữa các bộ); đặc trưng có lịch sử chỉ dùng khi '
+        r'validation chọn; nhiệt độ chỉ đi vào thừa số Arrhenius (thêm vào đầu vào thay đổi sai số dưới 1\,\%); không '
+        r'dùng thông tin của lần xả khi ước lượng.' '\n'
         r'\end{enumerate}')
     return text_rel + '\n\n' + tab_rel, text_abl + '\n\n' + tab_abl + '\n\n' + tab_perm + '\n\n' + FIG_FEAT, text_drop, concl
 
@@ -661,7 +681,12 @@ def fig_features(A):
         ax.axvline(1, color='#4a5563', ls='--', lw=0.8)
         ax.set_xscale('log')
         lo, hi = ax.get_xlim()
-        ticks = [t for t in (0.8, 1, 1.25, 1.5, 2, 3, 5, 8) if lo <= t <= hi]
+        span = np.log10(hi) - np.log10(lo)
+        ticks = []
+        for t in (1, 2, 5, 10, 1.5, 3, 1.25, 0.8, 20):      # số tròn trước; vạch chỉ giữ khi đủ cách các vạch đã có
+            if lo <= t <= hi and all(abs(np.log10(t) - np.log10(u)) >= 0.18 * span for u in ticks):
+                ticks.append(t)
+        ticks.sort()
         ax.set_xticks(ticks); ax.set_xticklabels([f'{t:g}'.replace('.', ',') for t in ticks]); ax.minorticks_off()
         ax.grid(axis='x', color='#e7ebe9', lw=0.6)
         ax.set_title(ds, loc='left', fontweight='bold')
