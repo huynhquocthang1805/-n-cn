@@ -139,14 +139,22 @@ EXPS = [(['E13'], 'Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn
 
 def experiments_table(n_rerun, n_feat_jobs, n_feat_fits):
     from pinnsoh.experiments import EXPERIMENTS
-    out = [r'\begin{table}[!htbp]\centering\small',
+    out = [r'\begin{table}[!t]\centering\small',
            r'\caption[Các thí nghiệm có kết quả trong báo cáo]{Các thí nghiệm có kết quả trong báo cáo và số lượt huấn '
-           r'luyện (mỗi lượt là một mô hình trên một fold, hoặc một lần chạy trên một nhóm).}\label{tab:exps}',
+           r'luyện (mỗi lượt là một mô hình trên một fold, hoặc một lần chạy trên một nhóm; lượt trùng cấu hình chỉ tính '
+           r'một lần).}\label{tab:exps}',
            r'\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r}\toprule',
            r'Thí nghiệm & Lượt \\\midrule']
+    def sig(j):                                    # cấu hình của một lượt, không kể thư mục ghi kết quả
+        a = dict(j.args); a.pop('out_dir', None)
+        return j.kind, json.dumps(a, sort_keys=True, default=str)
     tot = 0
     for names, desc in EXPS:
-        n = sum(len(EXPERIMENTS[x]()) for x in names)
+        n, seen = 0, set()
+        for x in names:                             # lượt trùng cấu hình với thí nghiệm trước cùng hàng chỉ tính một lần
+            jobs = EXPERIMENTS[x]()
+            n += sum(sig(j) not in seen for j in jobs)
+            seen |= {sig(j) for j in jobs}
         tot += n
         out.append(f'{desc} & {thou(n)} \\\\')
     out.append(f'Chạy lại mã gốc PINN4SOH: 39 nhóm, bản công bố 10 lần và bản đã sửa 3 lần mỗi nhóm & {thou(n_rerun)} \\\\')
@@ -871,9 +879,9 @@ def reproducibility(B):
                      f'{thou(e["rows"])} giá trị MAE theo cell trùng với lần chạy trước ở 6 chữ số có nghĩa.')
     items.append('GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\\ref{sec:dt_pp}) cho MAE theo cell trùng từng bit '
                  'với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\\,\\% nhãn, lần lặp 0, fold 0).')
-    items.append(f'Mã gốc PINN4SOH: dữ liệu train do lớp đọc dữ liệu của bài tạo ra trùng với dữ liệu của bài ở cả '
-                 f'{B["n_eq"]} nhóm (Mục~\\ref{{sec:rerun}}); kết quả chạy lại không trùng số công bố vì khác phần cứng và '
-                 'thư viện.')
+    items.append(f'Mã gốc PINN4SOH: giá trị loss đơn điệu tính lại trên các hàng train mà lớp đọc dữ liệu của bài tạo ra '
+                 f'khớp với nhật ký công bố ở cả {B["n_eq"]} nhóm, tức dữ liệu train trùng với lần chạy của bài '
+                 '(Mục~\\ref{sec:rerun}); sai số chạy lại không trùng số công bố vì khác phần cứng và thư viện.')
     s.append('\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}')
     s.append('Khác CPU (ví dụ AVX-512 so với AVX2) hoặc khác phiên bản PyTorch có thể làm kết quả lệch ở mức làm tròn số '
              'thực; khi đó các kết luận không đổi nhưng chữ số cuối trong bảng có thể khác.')

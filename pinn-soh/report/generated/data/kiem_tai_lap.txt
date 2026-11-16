@@ -1,0 +1,47 @@
+20 lượt, đã có 0, cần chạy 20 — ước lượng 7 phút CPU, ~7 phút với 1 tiến trình
+  A: 1, B: 2, C: 1, D: 1, E: 1, F: 1, G: 1, H: 2, baseline: 3, baseline_transfer: 1, leak: 4, transfer: 2
+[    1/20] H XJTU pinn_bb   f0.1 cv0-0        MAE_cell 0.0167     38s  (đã 1 phút, còn ~12 phút)
+[    2/20] H XJTU pinn_bb   f0.3 cv0-0        MAE_cell 0.0151     31s  (đã 1 phút, còn ~10 phút)
+[    3/20] gbdt XJTU->TJU k3 s0               MAE_cell 0.0287     31s  (đã 2 phút, còn ~9 phút)
+[    4/20] C XJTU pinn_semi f0.3 cv0-0        MAE_cell 0.0171     20s  (đã 2 phút, còn ~8 phút)
+[    5/20] D XJTU pinn_semi f0.3 cv0-0        MAE_cell 0.0175     19s  (đã 2 phút, còn ~7 phút)
+[    6/20] E XJTU pinn_semi f0.3 cv0-0        MAE_cell 0.0138     18s  (đã 3 phút, còn ~6 phút)
+[    7/20] G XJTU pinn_semi f0.7 cv0-0        MAE_cell 0.0135     26s  (đã 3 phút, còn ~6 phút)
+[    8/20] B XJTU pinn_sup  f0.3 cv0-0        MAE_cell 0.0158     20s  (đã 3 phút, còn ~5 phút)
+[    9/20] B XJTU pinn_sup  f0.1 cv0-0        MAE_cell 0.0171     24s  (đã 4 phút, còn ~5 phút)
+[   10/20] XJTU->TJU pinn_semi k3 s0          MAE_cell 0.0273     10s  (đã 4 phút, còn ~4 phút)
+[   11/20] gpr XJTU f0.3 cv0-0                MAE_cell 0.0137     37s  (đã 5 phút, còn ~4 phút)
+[   12/20] A XJTU mlp       f0.3 cv0-0        MAE_cell 0.0167      9s  (đã 5 phút, còn ~3 phút)
+[   13/20] F XJTU mlp       f0.7 cv0-0        MAE_cell 0.0136      7s  (đã 5 phút, còn ~3 phút)
+[   14/20] row XJTU cv0-0                     MAE_cell 0.0072     10s  (đã 5 phút, còn ~2 phút)
+[   15/20] minmax XJTU cv0-0                  MAE_cell 0.0096      8s  (đã 5 phút, còn ~2 phút)
+[   16/20] life3s XJTU cv0-0                  MAE_cell 0.0113      6s  (đã 5 phút, còn ~1 phút)
+[   17/20] normtest XJTU cv0-0                MAE_cell 0.0129      9s  (đã 5 phút, còn ~1 phút)
+[   18/20] XJTU->TJU mlp k3 s0                MAE_cell 0.0896      4s  (đã 5 phút, còn ~1 phút)
+[   19/20] gbdt XJTU f0.3 cv0-0               MAE_cell 0.0100      7s  (đã 6 phút, còn ~0 phút)
+[   20/20] ridge XJTU f0.3 cv0-0              MAE_cell 0.0156      0s  (đã 6 phút, còn ~0 phút)
+xong sau 6 phút
+
+thí nghiệm lượt                                                 kết quả
+E13        A_XJTU_mlp_f0.3_s0_global_global_cv0-0of5.json       giống từng bit
+E13        C_XJTU_pinn_semi_f0.3_s0_global_global_cv0-0of5.json giống từng bit
+E13        F_XJTU_mlp_f0.7_s0_global_global_cv0-0of5.json       giống từng bit
+E13        B_XJTU_pinn_sup_f0.3_s0_global_global_cv0-0of5.json  giống từng bit
+E13        D_XJTU_pinn_semi_f0.3_s0_global_global_cv0-0of5.json giống từng bit
+E13        E_XJTU_pinn_semi_f0.3_s0_global_global_cv0-0of5.json giống từng bit
+E13        G_XJTU_pinn_semi_f0.7_s0_global_global_cv0-0of5.json giống từng bit
+E15        row_XJTU_cv0-0.json                                  giống từng bit
+E15        minmax_XJTU_cv0-0.json                               giống từng bit
+E15        life3s_XJTU_cv0-0.json                               giống từng bit
+E15        normtest_XJTU_cv0-0.json                             giống từng bit
+E16        ridge_XJTU_f0.3_cv0-0of5.json                        giống từng bit
+E16        gbdt_XJTU_f0.3_cv0-0of5.json                         giống từng bit
+E16        gpr_XJTU_f0.3_cv0-0of5.json                          giống từng bit
+E17        B_XJTU_pinn_sup_f0.1_s0_global_global_cv0-0of5.json  giống từng bit
+E17        H_XJTU_pinn_bb_f0.1_s0_global_global_cv0-0of5.json   giống từng bit
+E17        H_XJTU_pinn_bb_f0.3_s0_global_global_cv0-0of5.json   giống từng bit
+E18        samenorm_XJTU_to_TJU_mlp_k3_s0_global.json           giống từng bit
+E18        samenorm_XJTU_to_TJU_pinn_semi_k3_s0_global.json     giống từng bit
+E19        samenorm_XJTU_to_TJU_gbdt_k3_s0_global.json          giống từng bit
+
+20/20 lượt giống từng bit với kết quả công bố

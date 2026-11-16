@@ -1,14 +1,14 @@
-\begin{table}[!htbp]\centering\small
-\caption[Các thí nghiệm có kết quả trong báo cáo]{Các thí nghiệm có kết quả trong báo cáo và số lượt huấn luyện (mỗi lượt là một mô hình trên một fold, hoặc một lần chạy trên một nhóm).}\label{tab:exps}
+\begin{table}[!t]\centering\small
+\caption[Các thí nghiệm có kết quả trong báo cáo]{Các thí nghiệm có kết quả trong báo cáo và số lượt huấn luyện (mỗi lượt là một mô hình trên một fold, hoặc một lần chạy trên một nhóm; lượt trùng cấu hình chỉ tính một lần).}\label{tab:exps}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r}\toprule
 Thí nghiệm & Lượt \\\midrule
 Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn; PINN-sup và 2 biến thể cắt bỏ ở 30\,\% & 1.100 \\
 Kiểm toán rò rỉ: 4 cách chia và chuẩn hoá sai, MLP 70\,\% nhãn & 160 \\
 Ridge, GPR, GBDT ở 4 mức nhãn & 1.200 \\
 PINN-sup ở 10 và 50\,\%; PINN hộp đen ở 4 mức nhãn & 600 \\
-PINN-lai: 9 hướng cải tiến chọn trên validation; 3 PINN-semi, GBDT, 3 lần lặp, 4 mức nhãn & 1.840 \\
-CNN, LSTM, Transformer: chọn độ dài cửa sổ trên validation; 3 lần lặp, 4 mức nhãn & 960 \\
-Đầu vào có lịch sử của cell: chọn dạng trên validation; PINN-semi, MLP, GBDT & 1.240 \\
+PINN-lai: 9 hướng cải tiến chọn trên validation; 3 PINN-semi, GBDT, 3 lần lặp, 4 mức nhãn & 1.680 \\
+CNN, LSTM, Transformer: chọn độ dài cửa sổ trên validation; 3 lần lặp, 4 mức nhãn & 840 \\
+Đầu vào có lịch sử của cell: chọn dạng trên validation; PINN-semi, MLP, GBDT & 1.190 \\
 Ngân sách đo: đo thưa mọi cell train theo 4 lịch đo & 1.560 \\
 Mô hình cập nhật từ lần đo gần nhất (GBDT) & 240 \\
 Dự báo SOH, dung lượng, RUL; bản có xét hồi phục dung lượng & 120 \\
@@ -16,5 +16,5 @@ Mô hình của đồ án trên đúng 39 nhóm của PINN4SOH, 2 cách tiền x
 Chạy lại mã gốc PINN4SOH: 39 nhóm, bản công bố 10 lần và bản đã sửa 3 lần mỗi nhóm & 507 \\
 Phân tích đặc trưng: 120 fold $\times$ 9--10 lần huấn luyện GBDT với các tập đầu vào khác nhau & 1.110 \\
 \midrule
-Tổng & 11.639 \\
+Tổng & 11.309 \\
 \bottomrule\end{tabularx}\end{table}

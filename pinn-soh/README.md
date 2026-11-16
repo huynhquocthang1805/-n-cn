@@ -208,6 +208,22 @@ có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả, nhỏ nê
 * Với tiền xử lý không rò rỉ, so với số công bố: thấp hơn nhiều trên TJU và MIT, ngang trên XJTU, cao hơn trên HUST —
   đúng chiều mà kiểm toán rò rỉ dự đoán.
 
+### Đặc trưng đầu vào (thí nghiệm F)
+
+`analysis/features.py` kiểm tra vì sao mọi mô hình dùng 16 đặc trưng đoạn sạc cùng chỉ số chu kỳ `t = n/1000`: GBDT
+(cùng cấu hình E16, trùng từng bit với E16 khi dùng đủ đầu vào) được huấn luyện lại với từng tập đầu vào trên đúng các
+fold không rò rỉ (4 bộ × 2 mức nhãn 10 và 70 % × 3 lần lặp × 5 fold), cộng tương quan hạng Spearman, trùng lặp, độ quan
+trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`results/features_*.csv`, Chương 2 của báo cáo):
+
+* Bỏ `t`, bỏ một trong ba nhóm (điện áp pha CC, dòng pha CV, điện lượng và thời gian), hay chỉ giữ một phần: cả 6 tập
+  rút gọn đều kém bộ đầy đủ có ý nghĩa ở ít nhất một trường hợp; chỉ dùng `t` kém 1,2–12 lần.
+* Chọn đặc trưng tự động trên validation giữ 7–17 đầu vào nhưng sai số bằng 0,99–1,02 lần bộ đầy đủ (không khác có ý
+  nghĩa ở trường hợp nào), nên giữ đủ 17 đầu vào.
+* Có trường hợp ngược chiều và báo cáo nêu rõ: bỏ `t` có lợi trên MIT ở 10 % nhãn; 16 đặc trưng tương đối có lợi trên
+  TJU ở 70 % nhãn nhưng có hại trên MIT; thêm nhiệt độ trên TJU thay đổi sai số dưới 1 %.
+* Chuẩn hoá theo cả vòng đời cell, lọc ngoại lai dùng cả vòng đời và fit normaliser trên cell test bị loại vì là rò rỉ
+  (kiểm toán E15).
+
 ## 5. Tối ưu và tái lập
 
 Code được tối ưu mà **không đổi một bit kết quả nào** — `python run.py reproduce` kiểm đúng điều đó:
