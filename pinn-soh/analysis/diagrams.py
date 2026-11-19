@@ -187,7 +187,56 @@ def pipeline(out='results/fig_thesis_pipeline'):
     save(fig, out)
 
 
+def forecast_arch(out='results/fig_forecast_arch', font='TeX Gyre Heros'):
+    """Mô hình dự báo (E22, pinnsoh/forecast.py): tại gốc k, đặc trưng gốc z_k -> GBDT theo tầm và PINN-dự báo
+    (a, λ của nghiệm đóng) -> kết hợp -> SOH, dung lượng, RUL và khoảng 90 %."""
+    apply_theme(font=font)
+    fig = plt.figure(figsize=(7.2, 3.9))
+    ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(0, 5.4); ax.axis('off')
+    GREY = '#6b7680'
+    region(ax, 0.05, 1.2, 2.0, 4.1, 'ĐẦU VÀO TẠI GỐC k')
+    region(ax, 2.2, 1.2, 5.45, 4.1, 'MÔ HÌNH DỰ BÁO')
+    region(ax, 7.8, 1.2, 2.15, 4.1, 'ĐẦU RA')
+    hs = box(ax, 0.18, 3.55, 1.74, 1.05, 'Lịch sử SOH tới k', 'đo được, hoặc ước\nlượng PINN-lai khi\ncell không được đo',
+             fs=7.0)
+    ch = box(ax, 0.18, 1.75, 1.74, 1.05, 'Đặc trưng sạc tới k', '16 đặc trưng\nmỗi chu kỳ,\nđã chuẩn hoá', fs=7.0)
+    z = box(ax, 2.38, 2.1, 1.55, 2.15, 'Đặc trưng gốc $\\mathbf{z}_k$',
+            '23 giá trị: mức $\\ell_k$,\nđộ dốc 30 và 100\nhàng gần nhất,\n$\\ell_0$, $\\ell_0-\\ell_k$, $k$, $1/T$,\n'
+            'đặc trưng sạc\n10 hàng gần nhất', C_OUT, '#9aa5ad', fs=7.0)
+    gb = box(ax, 4.2, 4.05, 2.15, 0.95, 'GBDT theo tầm', '$(\\mathbf{z}_k, h) \\to \\ell_k - \\mathrm{SOH}(k+h)$\n'
+             'đơn điệu tăng theo $h$', C_NET, E_NET, fs=7.0)
+    pn = box(ax, 4.2, 2.75, 2.15, 0.95, 'PINN-dự báo (3 mạng)', '$\\mathbf{z}_k \\to 64 \\to 64 \\to (a \\geq 0,\\ \\lambda)$',
+             C_PHY, E_PHY, fs=7.0)
+    cf = box(ax, 4.2, 1.42, 2.15, 1.0, 'Nghiệm đóng động học xám',
+             '$\\hat y(k+h) = \\ell_k + \\ln(1-\\lambda a h)/\\lambda$\nkhông tăng theo $h$', C_PHY, E_PHY, fs=7.0)
+    kh = box(ax, 6.6, 2.6, 0.92, 1.25, 'Kết hợp', '½ GBDT +\n½ PINN-dự báo', C_LOSS, E_LOSS, fs=7.0)
+    o1 = box(ax, 7.95, 3.92, 1.85, 1.12, 'SOH và dung lượng', '$\\hat y(k+h)$ với mọi $h$\n$\\hat Q = \\hat y$ × dung lượng\ndanh định',
+             C_OUT, '#9aa5ad', fs=7.0)
+    o2 = box(ax, 7.95, 2.75, 1.85, 0.95, 'RUL', '$h$ đầu tiên có $\\hat y \\leq \\tau$', C_OUT, '#9aa5ad', fs=7.0)
+    o3 = box(ax, 7.95, 1.42, 1.85, 1.0, 'Khoảng 90 %', 'phân vị 5 % và 95 % của\nsai số trên cell validation,\ntheo $h/L$',
+             C_OUT, '#9aa5ad', fs=7.0)
+    # đầu vào -> z
+    poly(ax, [(1.92, 4.075), (2.15, 4.075), (2.15, 3.55), (2.38, 3.55)], GREY)
+    poly(ax, [(1.92, 2.275), (2.15, 2.275), (2.15, 2.8), (2.38, 2.8)], GREY)
+    # z -> hai nhánh
+    poly(ax, [(3.93, 3.75), (4.06, 3.75), (4.06, 4.52), (4.2, 4.52)], E_NET)
+    arrow(ax, (3.93, 3.22), (4.2, 3.22), color=E_PHY)
+    arrow(ax, bottom(pn), top(cf), color=E_PHY)
+    # hai nhánh -> kết hợp
+    poly(ax, [(6.35, 4.52), (6.47, 4.52), (6.47, 3.55), (6.6, 3.55)], E_NET)
+    poly(ax, [(6.35, 1.92), (6.47, 1.92), (6.47, 2.9), (6.6, 2.9)], E_PHY)
+    # kết hợp -> đầu ra
+    poly(ax, [(7.52, 3.45), (7.72, 3.45), (7.72, 4.47), (7.95, 4.47)], E_LOSS)
+    arrow(ax, (7.52, 3.22), (7.95, 3.22), color=E_LOSS)
+    poly(ax, [(7.52, 3.0), (7.72, 3.0), (7.72, 1.92), (7.95, 1.92)], E_LOSS)
+    box(ax, 0.05, 0.08, 9.9, 0.92, 'Huấn luyện trên cell train, lịch sử đo thật',
+        'mỗi cell 40 gốc × 40 tầm; GBDT chọn số cây, PINN-dự báo dừng sớm theo MAE trên cell validation;'
+        ' cell test không dùng khi học', '#ffffff', '#9aa5ad', fs=7.0)
+    save(fig, out)
+
+
 if __name__ == '__main__':
     arch()
     protocol()
     pipeline()
+    forecast_arch()

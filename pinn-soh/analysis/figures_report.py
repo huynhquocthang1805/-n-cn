@@ -292,56 +292,290 @@ def pred_traj():
     save(fig, f'{OUT}/fig_pred_traj')
 
 
-# ─────────────────────────────────────────────────────────── dự báo SOH cho một cell test mỗi bộ
-def e22_traj():
-    """Cùng cách chọn cell như analysis/analyze_e22.py (lần lặp 0, gốc giữa, sai số kết hợp ở trung vị)."""
-    plt = setup()
-    import analyze_e22 as A22
-    from pinnsoh.forecast import TAU, e20_estimates
+# ─────────────────────────────────────────────────────────── E22: dự báo SOH so với SOH đo được
+# Mọi hình E22 dùng kịch bản 'uoc': cell test không được đo dung lượng lần nào, lịch sử SOH tới gốc là ước lượng
+# PINN-lai; SOH đo được chỉ dùng để chấm. SOH đo vẽ bằng chấm, dự báo bằng đường.
+E22C = {'gbdt': '#2a78d6', 'pinn': '#1baf7a', 'ket_hop': '#d9480f', 'est': '#7b5cd6', 'tau': '#4a5563',
+        'org': '#9aa5ad', 'band': '#fd7e14', 'meas': '#1b2330'}      # dự báo kết hợp màu cam để tách khỏi chấm số đo
+E22_ORIGIN = {0: '20 %', 1: '40 %', 2: '60 %'}          # gốc dự báo: tỉ lệ số hàng dữ liệu đã qua của cell
+_E22 = {}
+
+
+def _e22():
+    """Kết quả E22 (analyze_e22.load) kèm sai số tuyệt đối của mọi mô hình; nạp một lần."""
+    if not _E22:
+        import analyze_e22 as A22
+        from pinnsoh.forecast import MODELS
+        T, R, P, info = A22.load()
+        for m in MODELS:
+            T[f'e_{m}'] = (T[m] - T.y).abs()
+        _E22.update(A=A22, T=T, R=R)
+    return _E22['A'], _E22['T'], _E22['R']
+
+
+def _e22_cells(ds):
     from pinnsoh.data import load_dataset
-    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID, MODEL_COLOR
-    T, _, _, _ = A22.load()
-    col = {'gbdt': '#2a78d6', 'pinn': '#1baf7a', 'ket_hop': '#0b4f3c'}
-    fig, axes = _grid(plt, 4.6)
+    key = ('cells', ds)
+    if key not in _E22:
+        _E22[key] = {c.cid: c for c in load_dataset('PINN4SOH/data', ds, clean='causal')}
+    return _E22[key]
+
+
+def _e22_rank(T, ds):
+    """Sai số kết hợp của mỗi cell test, trung bình trên phần đời còn lại (lần lặp 0, gốc 40 %), xếp tăng dần."""
+    t = T[(T.ds == ds) & (T.r == 0) & (T.scen == 'uoc') & (T.oq == 1)]
+    return t.groupby('cid').e_ket_hop.mean().sort_values()
+
+
+def _e22_pick(T, ds, q=50):
+    """Cell ở phân vị q của _e22_rank (q = 50: cùng cách chọn như analyze_e22.py)."""
+    e = _e22_rank(T, ds)
+    return e.index[(len(e) - 1) // 2] if q == 50 else e.index[int(round(q / 100 * (len(e) - 1)))]
+
+
+def _e22_measured(ax, cell, s=1.5):
+    ax.scatter(cell.cycle, cell.soh, s=s, color=E22C['meas'], lw=0, alpha=0.55, zorder=2, rasterized=True)
+
+
+def _e22_handles(plt, models=False):
+    hd = [plt.Line2D([], [], color=E22C['meas'], marker='o', ls='', ms=3, alpha=0.7, label='SOH đo được'),
+          plt.Line2D([], [], color=E22C['est'], lw=1.6, label='SOH ước lượng tới gốc'),
+          plt.Line2D([], [], color=E22C['ket_hop'], lw=2, label='dự báo kết hợp'),
+          plt.Rectangle((0, 0), 1, 1, color=E22C['band'], alpha=0.25, label='khoảng 90 %')]
+    if models:
+        hd += [plt.Line2D([], [], color=E22C['gbdt'], lw=1.2, ls=(0, (3, 1.5)), label='GBDT'),
+               plt.Line2D([], [], color=E22C['pinn'], lw=1.2, ls=(0, (3, 1.5)), label='PINN-dự báo')]
+    return hd + [plt.Line2D([], [], color=E22C['tau'], lw=1, ls=(0, (4, 2)), label='ngưỡng cuối đời'),
+                 plt.Line2D([], [], color=E22C['org'], lw=1, ls=(0, (2, 2)), label='gốc dự báo')]
+
+
+def _e22_panel(ax, T, ds, cid, models=False, lw=2.0):
+    """Một cell: SOH đo (chấm), SOH ước lượng tới gốc, dự báo từ gốc 40 % và khoảng 90 %; trả (k0, dung lượng danh định)."""
+    from pinnsoh.forecast import TAU, e20_estimates
+    g = T[(T.ds == ds) & (T.r == 0) & (T.scen == 'uoc') & (T.oq == 1) & (T.cid == cid)].sort_values('h')
+    fold, k0, nom = int(g.fold.iloc[0]), float(g.k.iloc[0]), float(g.nom.iloc[0])
+    if ('est', ds, fold) not in _E22:                    # lịch sử ước lượng PINN-lai của fold (E20), nạp một lần
+        _E22[('est', ds, fold)] = e20_estimates(ds, 0, fold, 'test')
+    cyc, est = _E22[('est', ds, fold)][cid]
+    _e22_measured(ax, _e22_cells(ds)[cid])
+    ax.plot(cyc[cyc <= k0], est[cyc <= k0], color=E22C['est'], lw=1.5, zorder=3)
+    x = k0 + g.h.values
+    ax.fill_between(x, g.lo, g.hi, color=E22C['band'], alpha=0.18, lw=0, zorder=1)
+    if models:
+        ax.plot(x, g.gbdt, color=E22C['gbdt'], lw=1.1, ls=(0, (3, 1.5)), zorder=3)
+        ax.plot(x, g.pinn, color=E22C['pinn'], lw=1.1, ls=(0, (3, 1.5)), zorder=3)
+    ax.plot(x, g.ket_hop, color=E22C['ket_hop'], lw=lw, zorder=4)
+    ax.axhline(TAU[ds], color=E22C['tau'], lw=0.9, ls=(0, (4, 2)), zorder=1)
+    ax.axvline(k0, color=E22C['org'], lw=0.9, ls=(0, (2, 2)), zorder=1)
+    cell = _e22_cells(ds)[cid]
+    meas0 = float(np.median(cell.soh[cell.cycle <= k0][-10:]))      # SOH đo quanh gốc (trung vị 10 hàng cuối)
+    return k0, nom, float(est[cyc <= k0][-1]) - meas0                # độ lệch của mức ước lượng tại gốc
+
+
+def e22_traj():
+    """Một cell test mỗi bộ (lần lặp 0, gốc 40 %, sai số kết hợp ở trung vị), đủ ba mô hình và trục dung lượng."""
+    plt = setup()
+    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
+    _, T, _ = _e22()
+    fig, axes = _grid(plt, 4.8)
     for i, (ax, ds) in enumerate(zip(axes, DS)):
-        t = T[(T.ds == ds) & (T.r == 0) & (T.scen == 'uoc') & (T.oq == 1)]
-        e = t.groupby('cid').e_ket_hop.mean().sort_values() if 'e_ket_hop' in t else \
-            t.assign(e=np.abs(t.ket_hop - t.y)).groupby('cid').e.mean().sort_values()
-        cid = e.index[(len(e) - 1) // 2]
-        g = t[t.cid == cid].sort_values('h')
-        fold = int(g.fold.iloc[0]); k0 = float(g.k.iloc[0]); nom = float(g.nom.iloc[0])
-        cell = [c for c in load_dataset('PINN4SOH/data', ds, clean='causal') if c.cid == cid][0]
-        est = e20_estimates(ds, 0, fold, 'test')[cid]
-        ax.plot(cell.cycle, cell.soh, color=MODEL_COLOR['truth'], lw=1.4, zorder=2)
-        ax.plot(est[0][est[0] <= k0], est[1][est[0] <= k0], color='#7b5cd6', lw=1.6, zorder=3)
-        x = k0 + g.h.values
-        ax.fill_between(x, g.lo, g.hi, color='#1baf7a', alpha=0.18, lw=0, zorder=1)
-        ax.plot(x, g.gbdt, color=col['gbdt'], lw=1.2, ls=(0, (3, 1.5)), zorder=3)
-        ax.plot(x, g.pinn, color=col['pinn'], lw=1.2, ls=(0, (3, 1.5)), zorder=3)
-        ax.plot(x, g.ket_hop, color=col['ket_hop'], lw=2.0, zorder=4)
-        ax.axhline(TAU[ds], color='#c0392b', lw=0.9, ls=(0, (4, 2)), zorder=1)
-        ax.axvline(k0, color='#9aa5ad', lw=0.9, ls=(0, (2, 2)), zorder=1)
+        _, nom, _ = _e22_panel(ax, T, ds, _e22_pick(T, ds), models=True)
         ax.locator_params(axis='x', nbins=4); ax.locator_params(axis='y', nbins=4)
         sec = ax.secondary_yaxis('right', functions=(lambda s_, n=nom: s_ * n, lambda q, n=nom: q / n))
         if i % 2 == 1:
             sec.set_ylabel('dung lượng (Ah)')
         panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
-    hd = [plt.Line2D([], [], color=MODEL_COLOR['truth'], lw=1.6, label='SOH đo được'),
-          plt.Line2D([], [], color='#7b5cd6', lw=1.6, label='SOH ước lượng tới gốc'),
-          plt.Line2D([], [], color=col['ket_hop'], lw=2, label='dự báo kết hợp'),
-          plt.Rectangle((0, 0), 1, 1, color='#1baf7a', alpha=0.25, label='khoảng 90 %'),
-          plt.Line2D([], [], color=col['gbdt'], lw=1.2, ls=(0, (3, 1.5)), label='GBDT'),
-          plt.Line2D([], [], color=col['pinn'], lw=1.2, ls=(0, (3, 1.5)), label='PINN-dự báo'),
-          plt.Line2D([], [], color='#c0392b', lw=1, ls=(0, (4, 2)), label='ngưỡng cuối đời')]
     for j, ax in enumerate(axes):
         ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
         if j % 2 == 0:
             ax.set_ylabel('SOH')
         if j >= 2:
             ax.set_xlabel('chu kỳ')
-    fig.legend(handles=hd, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.legend(handles=_e22_handles(plt, models=True), loc='lower center', ncol=4, frameon=False,
+               bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=[0, 0.1, 1, 1], h_pad=1.2, w_pad=1.2)
     save(fig, f'{OUT}/fig_e22_traj')
+
+
+def e22_cells():
+    """Ba cell test mỗi bộ, chọn theo sai số kết hợp ở phân vị 25, 50 và 75 % của bộ (lần lặp 0, gốc 40 %)."""
+    plt = setup()
+    from pinnsoh.plotstyle import panel_title, save, GRID
+    _, T, _ = _e22()
+    Q = (25, 50, 75)
+    fig, axes = plt.subplots(4, 3, figsize=(TW, 8.6))
+    bias = {}
+    for i, ds in enumerate(DS):
+        for j, q in enumerate(Q):
+            ax = axes[i, j]
+            _, _, bias[(ds, q)] = _e22_panel(ax, T, ds, _e22_pick(T, ds, q), lw=1.7)
+            ax.locator_params(axis='x', nbins=3); ax.locator_params(axis='y', nbins=4)
+            ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
+            panel_title(ax, ds, f'phân vị {q} %', pad=3)
+            if j == 0:
+                ax.set_ylabel('SOH')
+            if i == len(DS) - 1:
+                ax.set_xlabel('chu kỳ')
+    fig.legend(handles=_e22_handles(plt), loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.06, 1, 1], h_pad=1.0, w_pad=0.9)
+    save(fig, f'{OUT}/fig_e22_cells')
+    rows = []
+    for ds in DS:
+        e = _e22_rank(T, ds)
+        for q in Q:
+            cid = _e22_pick(T, ds, q)
+            g = T[(T.ds == ds) & (T.r == 0) & (T.scen == 'uoc') & (T.oq == 1) & (T.cid == cid)]
+            rows.append(dict(ds=ds, q=q, cid=cid, mae=float(e[cid]), n_cell=len(e), n_future=len(g),
+                             cov=float(((g.y >= g.lo) & (g.y <= g.hi)).mean()), bias0=bias[(ds, q)]))
+    pd.DataFrame(rows).to_csv(f'{OUT}/e22_cells_pick.csv', index=False)
+
+
+def e22_origins():
+    """Cùng cell của e22_traj, dự báo kết hợp từ ba gốc 20, 40 và 60 % so với SOH đo được."""
+    plt = setup()
+    from pinnsoh.forecast import TAU
+    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
+    _, T, _ = _e22()
+    shade = {0: '#ffa94d', 1: '#e8590c', 2: '#862e0b'}
+    fig, axes = _grid(plt, 4.8)
+    rows = []
+    for ax, ds in zip(axes, DS):
+        cid = _e22_pick(T, ds)
+        cell = _e22_cells(ds)[cid]
+        _e22_measured(ax, cell)
+        lo_, hi_ = min(float(cell.soh.min()), TAU[ds]), float(cell.soh.max())
+        ax.set_ylim(lo_ - 0.08 * (hi_ - lo_), hi_ + 0.06 * (hi_ - lo_))   # dự báo rơi quá khung thì đi ra mép dưới
+        ax.set_autoscaley_on(False)
+        for oq in (0, 1, 2):
+            g = T[(T.ds == ds) & (T.r == 0) & (T.scen == 'uoc') & (T.cid == cid) & (T.oq == oq)].sort_values('h')
+            if g.empty:
+                continue
+            k0 = float(g.k.iloc[0])
+            ax.plot(k0 + g.h.values, g.ket_hop.values, color=shade[oq], lw=1.8, zorder=4 + oq,
+                    label=f'dự báo từ gốc {E22_ORIGIN[oq]}')
+            rows.append(dict(ds=ds, cid=cid, oq=oq, k0=k0, mae=float(g.e_ket_hop.mean()),
+                             below=bool(g.ket_hop.min() < ax.get_ylim()[0]), floor=bool(g.pinn.min() <= 0.4001)))
+            ax.axvline(k0, color=shade[oq], lw=0.8, ls=(0, (2, 2)), zorder=1)
+        ax.axhline(TAU[ds], color=E22C['tau'], lw=0.9, ls=(0, (4, 2)), zorder=1, label='ngưỡng cuối đời')
+        ax.locator_params(axis='x', nbins=4); ax.locator_params(axis='y', nbins=4)
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    axes[0].scatter([], [], s=9, color=E22C['meas'], alpha=0.7, label='SOH đo được')
+    h, l = axes[0].get_legend_handles_labels()
+    order = [l.index('SOH đo được')] + [i for i, x in enumerate(l) if x != 'SOH đo được']
+    for i, ax in enumerate(axes):
+        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
+        if i % 2 == 0:
+            ax.set_ylabel('SOH')
+        if i >= 2:
+            ax.set_xlabel('chu kỳ')
+    fig.legend([h[i] for i in order], [l[i] for i in order], loc='lower center', ncol=3, frameon=False,
+               bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.1, 1, 1], h_pad=1.2, w_pad=1.2)
+    save(fig, f'{OUT}/fig_e22_origins')
+    pd.DataFrame(rows).to_csv(f'{OUT}/e22_origins_pick.csv', index=False)
+
+
+def e22_parity():
+    """SOH dự báo (kết hợp) so với SOH đo được ở ba tầm h = 0,1L; 0,25L; 0,5L (lần lặp 0, mọi cell và gốc)."""
+    plt = setup()
+    from pinnsoh.forecast import H_REL
+    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID, MUTED
+    A22, T, _ = _e22()
+    H = A22.at_horizons(T[(T.r == 0) & (T.scen == 'uoc')])
+    hcol = dict(zip(H_REL, ('#9cc3e6', '#2a78d6', '#0b3d73')))
+    fig, axes = _grid(plt, 6.0)
+    rows = []
+    for ax, ds in zip(axes, DS):
+        h = H[H.ds == ds]
+        lo, hi = float(h.y.min()), float(max(h.y.max(), h.ket_hop.max()))     # khung theo SOH đo được
+        pad = 0.04 * (hi - lo); lo, hi = lo - pad, hi + pad
+        ax.plot([lo, hi], [lo, hi], color=MUTED, lw=0.8, zorder=1)
+        for hr in H_REL:
+            v = h[h.h_rel == hr]; inside = (v.ket_hop >= lo).values
+            ax.scatter(v.y[inside], v.ket_hop[inside], s=9, color=hcol[hr], lw=0.25, ec='white', zorder=3,
+                       label=f'tầm {hr:g}'.replace('.', ',') + ' L')
+            ax.scatter(v.y[~inside], np.full(int((~inside).sum()), lo), s=22, marker='v', color=hcol[hr], lw=0.3,
+                       ec='white', zorder=4, clip_on=False)               # dự báo thấp hơn khung: vẽ ở mép dưới
+            rows.append(dict(ds=ds, h_rel=hr, n=len(v), below=int((~inside).sum())))
+        ax.set_xlim(lo, hi); ax.set_ylim(lo, hi); ax.set_aspect('equal')
+        ax.locator_params(nbins=4)
+        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5); ax.xaxis.grid(True, color=GRID, lw=.5)
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    for i, ax in enumerate(axes):
+        if i % 2 == 0:
+            ax.set_ylabel('SOH dự báo')
+        if i >= 2:
+            ax.set_xlabel('SOH đo được')
+    h_, l_ = axes[0].get_legend_handles_labels()
+    tri, one = plt.Line2D([], [], color=MUTED, marker='v', ls='', ms=3.2), plt.Line2D([], [], color=MUTED, lw=0.8)
+    h_ = [h_[0], tri, h_[1], one, h_[2]]                 # 3 cột, điền theo cột: hàng 1 là ba tầm, hàng 2 là hai ký hiệu
+    l_ = [l_[0], 'dự báo thấp hơn khung', l_[1], 'dự báo đúng bằng số đo', l_[2]]
+    fig.legend(h_, l_, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0), markerscale=1.6)
+    fig.tight_layout(rect=[0, 0.09, 1, 1], h_pad=1.0, w_pad=1.0)
+    save(fig, f'{OUT}/fig_e22_parity')
+    pd.DataFrame(rows).to_csv(f'{OUT}/e22_parity.csv', index=False)
+
+
+def e22_horizon():
+    """MAE theo cell của sáu mô hình theo tầm dự báo h/L (mọi lần lặp, mọi gốc; kịch bản lịch sử ước lượng)."""
+    plt = setup()
+    from pinnsoh.forecast import MODELS
+    from pinnsoh.plotstyle import panel_title, save, CHEM
+    A22, T, _ = _e22()
+    col = {'giu': '#b9c1c7', 'tuyen': '#8a96a0', 'vatly': '#eda100', 'gbdt': E22C['gbdt'], 'pinn': E22C['pinn'],
+           'ket_hop': E22C['ket_hop']}
+    edges = np.array([0, 0.05, 0.1, 0.2, 0.3, 0.45, 0.6, 0.8, 1.0])
+    fig, axes = _grid(plt, 5.0)
+    for ax, ds in zip(axes, DS):
+        t = T[(T.ds == ds) & (T.scen == 'uoc')].copy()
+        t['b'] = np.digitize(t.h / t.L, edges) - 1
+        t = t[(t.b >= 0) & (t.b < len(edges) - 1)]
+        g = t.groupby(['b', 'cid'])[[f'e_{m}' for m in MODELS]].mean().groupby('b').mean()
+        x = (edges[:-1] + edges[1:])[g.index.values] / 2
+        for m in MODELS:
+            ax.plot(x, 1e3 * g[f'e_{m}'].values, color=col[m], lw=2.0 if m == 'ket_hop' else 1.2,
+                    ls='-' if m in ('gbdt', 'pinn', 'ket_hop') else (0, (3, 1.5)), zorder=4 if m == 'ket_hop' else 3,
+                    label=A22.LABEL[m])
+        v = 1e3 * g[[f'e_{m}' for m in MODELS]].values
+        _log_ticks(ax, 0.85 * np.nanmin(v), 1.15 * np.nanmax(v), cands=(2, 3, 5, 10, 20, 30, 50, 100, 200, 300))
+        ax.set_xlim(0, 1); ax.set_xticks([0, 0.25, 0.5, 0.75, 1])
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v_, _: f'{v_:g}'.replace('.', ',')))
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    _finish(fig, axes, 'tầm dự báo h / L', 'MAE theo cell (×10$^{-3}$)', 2, 3)
+    save(fig, f'{OUT}/fig_e22_horizon')
+
+
+def e22_rul():
+    """RUL dự báo (kết hợp) so với RUL thực ở ba gốc 25, 50, 75 % của chu kỳ cuối đời thật; trung bình qua lần lặp."""
+    plt = setup()
+    from pinnsoh.forecast import TAU, RUL_ORIGINS
+    from pinnsoh.plotstyle import panel_title, save, MUTED
+    _, _, R = _e22()
+    qcol = {0.25: '#9cc3e6', 0.5: '#2a78d6', 0.75: '#0b3d73'}
+    fig, axes = _grid(plt, 6.0)
+    for ax, ds in zip(axes, DS):
+        u = R[(R.ds == ds) & (R.scen == 'uoc')].groupby(['cid', 'q'])[['true', 'ket_hop']].mean().reset_index()
+        mx = float(max(u.true.max(), u.ket_hop.max())) * 1.05
+        xx = np.array([0, mx])
+        ax.fill_between(xx, 0.8 * xx, 1.2 * xx, color='#e7ebe9', lw=0, zorder=0)
+        ax.plot(xx, xx, color=MUTED, lw=0.8, zorder=1)
+        for q in RUL_ORIGINS:
+            v = u[u.q == q]
+            ax.scatter(v.true, v.ket_hop, s=9, color=qcol[q], lw=0.25, ec='white', zorder=3,
+                       label=f'gốc ở {int(q * 100)} % đời')
+        ax.set_xlim(0, mx); ax.set_ylim(0, mx); ax.set_aspect('equal'); ax.locator_params(nbins=4)
+        panel_title(ax, ds, f'τ = {TAU[ds]:.2f}'.replace('.', ','), pad=4)
+    h_, l_ = axes[0].get_legend_handles_labels()
+    h_.append(plt.Rectangle((0, 0), 1, 1, color='#e7ebe9')); l_.append('sai lệch trong ±20 %')
+    for i, ax in enumerate(axes):
+        ax.grid(False)
+        if i % 2 == 0:
+            ax.set_ylabel('RUL dự báo (chu kỳ)')
+        if i >= 2:
+            ax.set_xlabel('RUL thực (chu kỳ)')
+    fig.legend(h_, l_, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0), markerscale=1.6)
+    fig.tight_layout(rect=[0, 0.06, 1, 1], h_pad=1.0, w_pad=1.0)
+    save(fig, f'{OUT}/fig_e22_rul')
 
 
 # ─────────────────────────────────────────────────────────── đầu vào có lịch sử (E29), đủ bốn bộ
@@ -427,10 +661,14 @@ def models_compare():
 
 
 FIGS = dict(curve_physics=curve_physics, leakage=leakage, e20_steps=e20_steps, e27_compare=e27_compare,
-            e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e29_pinn=e29_pinn,
+            e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e22_cells=e22_cells,
+            e22_origins=e22_origins, e22_parity=e22_parity, e22_horizon=e22_horizon, e22_rul=e22_rul,
+            e29_pinn=e29_pinn,
             e29_lai=e29_lai, e29_phys=e29_phys, models_compare=models_compare)
 NEEDS = dict(curve_physics='thesis_curve', leakage='thesis_leakage', e20_steps='e20_summary', e27_compare='e27_summary',
              e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon',
+             e22_cells='e22_horizon', e22_origins='e22_horizon', e22_parity='e22_horizon',
+             e22_horizon='e22_horizon', e22_rul='e22_horizon',
              e29_pinn='e29_summary', e29_lai='e29_summary', e29_phys='e29_summary', models_compare='e30_metrics')
 
 

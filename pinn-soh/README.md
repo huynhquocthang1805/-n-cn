@@ -224,6 +224,26 @@ trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`resu
 * Chuẩn hoá theo cả vòng đời cell, lọc ngoại lai dùng cả vòng đời và fit normaliser trên cell test bị loại vì là rò rỉ
   (kiểm toán E15).
 
+### Dự báo so với SOH đo được (E22)
+
+`pinnsoh/forecast.py`: tại gốc k, GBDT theo tầm và PINN-dự báo (mạng trả hai tham số của nghiệm đóng của động học xám)
+dự báo SOH ở mọi chu kỳ sau k; mô hình kết hợp lấy trung bình hai nhánh, rồi suy ra dung lượng, RUL và khoảng 90 %. Cell
+test không được đo dung lượng: lịch sử tới gốc là ước lượng PINN-lai (E20, 70 % nhãn), SOH đo được chỉ dùng để chấm.
+Báo cáo có sơ đồ mô hình (Chương 3) và sáu hình so dự báo với số đo (Chương 5): một và ba cell mỗi bộ, ba gốc dự báo cho
+cùng một cell, SOH dự báo so với đo ở ba tầm, sai số theo tầm, RUL dự báo so với RUL thực.
+
+```bash
+python run.py E20       # E22 chỉ cần các lượt PINN-semi và GBDT ở 70 % nhãn
+python run.py E22
+python run.py report    # runs/E22 đủ 60 lượt thì tính lại bảng và vẽ lại các hình dự báo
+```
+
+* Chạy lại toàn bộ (240 lượt E20 ở 70 % nhãn, 60 lượt E22): 188/188 ô của ba bảng dự báo trùng với báo cáo đã nộp.
+* Trên phần đời còn lại, sai số của mô hình kết hợp bằng 0,21–0,46 lần giữ nguyên, 0,39–0,60 lần ngoại suy tuyến tính
+  và 0,27–0,58 lần khớp vật lý theo cell; so với GBDT là 0,91–1,06. Ở tầm 0,5L, sai số quy ra dung lượng là 20–57 mAh.
+* Chưa tốt: RUL nằm trong ±20 % RUL thực ở 38–65 % số gốc; khoảng RUL 90 % chỉ phủ 65–84 %. Từ gốc ở 20 % đời,
+  nghiệm đóng có thể đi qua điểm kỳ dị và kéo dự báo xuống giới hạn dưới 0,40 (2–5 % số quỹ đạo).
+
 ## 5. Tối ưu và tái lập
 
 Code được tối ưu mà **không đổi một bit kết quả nào** — `python run.py reproduce` kiểm đúng điều đó:

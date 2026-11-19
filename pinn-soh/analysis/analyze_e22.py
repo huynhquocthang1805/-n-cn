@@ -89,7 +89,8 @@ def main():
     H['mah'] = H.e_ket_hop * H.nom * 1000
     H['cov'] = ((H.y >= H.lo) & (H.y <= H.hi)).astype(float)
     H['wid'] = H.hi - H.lo
-    ecols = [f'e_{m}' for m in MODELS] + ['mah', 'cov', 'wid']
+    H['d_ket_hop'] = H.ket_hop - H.y                   # sai số có dấu: âm là dự báo thấp hơn số đo
+    ecols = [f'e_{m}' for m in MODELS] + ['mah', 'cov', 'wid', 'd_ket_hop']
     hc = cell_mean(H, ['ds', 'scen', 'h_rel'], ecols)
     hs = hc.groupby(['ds', 'scen', 'h_rel'])[ecols].mean().reset_index()
     hs['n_cell'] = hc.groupby(['ds', 'scen', 'h_rel']).size().values
@@ -105,6 +106,15 @@ def main():
     ts = tc.groupby(['ds', 'scen'])[ecols2].mean().reset_index()
     ts['n_cell'] = tc.groupby(['ds', 'scen']).size().values
     ts.to_csv(f'{OUT}/e22_traj.csv', index=False)
+    # theo gốc dự báo (20, 40, 60 % số hàng của cell): gốc muộn hơn thì lịch sử dài hơn, phần đời còn lại ngắn hơn
+    oc = cell_mean(tg, ['ds', 'scen', 'oq'], ecols2)
+    og = oc.groupby(['ds', 'scen', 'oq'])[ecols2].mean().reset_index()
+    og['n_cell'] = oc.groupby(['ds', 'scen', 'oq']).size().values
+    # tỉ lệ quỹ đạo mà PINN-dự báo chạm giới hạn dưới của SOH (nghiệm đóng qua điểm kỳ dị h = 1/(lam·a) khi lam > 0)
+    from pinnsoh.forecast import CLIP
+    fl = (T.groupby(['ds', 'scen', 'oq', 'r', 'cid']).pinn.min() <= CLIP[0] + 1e-4).groupby(['ds', 'scen', 'oq']).mean()
+    og = og.merge(fl.rename('floor_pinn').reset_index(), on=['ds', 'scen', 'oq'])
+    og.to_csv(f'{OUT}/e22_origin.csv', index=False)
     # kiểm định: kết hợp so với từng mô hình, ghép cặp theo cell, Holm trong mỗi (bộ, kịch bản)
     rows = []
     for (ds, sc), g in tc.groupby(['ds', 'scen']):

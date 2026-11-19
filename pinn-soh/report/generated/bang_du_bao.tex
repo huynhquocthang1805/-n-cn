@@ -1,4 +1,4 @@
-\begin{table}[!htbp]\centering\small
+\begin{table}[!hbp]\centering\small
 \caption[MAE của SOH dự báo ở ba tầm]{MAE theo cell ($\times10^{-3}$) của SOH dự báo ở ba tầm, kịch bản lịch sử ước lượng (không đo dung lượng cell test); in đậm là thấp nhất. Hai cột cuối: mô hình kết hợp khi lịch sử là dung lượng đo, và sai số của mô hình kết hợp quy ra dung lượng (mAh) ở kịch bản ước lượng.}\label{tab:e22soh}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrrrr}\toprule
 Bộ & Tầm & Giữ nguyên & Tuyến tính & Vật lý theo cell & GBDT & PINN-dự báo & Kết hợp & Kết hợp, đo & Kết hợp (mAh) \\\midrule
@@ -16,7 +16,7 @@ HUST & 0{,}1$L$ & 22{,}2 & \textbf{13{,}0} & 35{,}9 & 14{,}3 & 14{,}2 & 13{,}7 &
  & 0{,}5$L$ & 136{,}6 & 69{,}1 & 111{,}1 & \textbf{32{,}0} & 37{,}1 & 33{,}1 & 20{,}5 & 36 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
-\begin{table}[!htbp]\centering\small
+\begin{table}[!hbp]\centering\small
 \caption[MAE của RUL dự báo]{MAE của RUL (chu kỳ), kịch bản lịch sử ước lượng, trung bình qua gốc ở 25, 50, 75\,\% đời; cột RUL thực là trung bình RUL thật tại các gốc. Ba cột cuối của mô hình kết hợp: MAE khi lịch sử là dung lượng đo, tỉ lệ dự báo nằm trong $\pm20\,\%$ RUL thật và độ phủ thực tế của khoảng RUL 90\,\%.}\label{tab:e22rul}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrrr}\toprule
 Bộ & RUL thực & Tuyến tính & Vật lý theo cell & GBDT & PINN-dự báo & Kết hợp & Kết hợp, đo & Trong $\pm20\,\%$ & Độ phủ khoảng \\\midrule

@@ -601,14 +601,45 @@ lượng được mô hình hoá bằng một độ lệch trôi chậm hồi qu
 được cập nhật bằng bộ lọc Kalman mỗi khi có một lần đo; bốn tham số lấy trên validation. Một cách khác là mô hình cập
 nhật: GBDT học thẳng SOH đã đổi bao nhiêu kể từ lần đo gần nhất.
 
-\paragraph{Dự báo SOH, dung lượng và RUL.} Tại chu kỳ gốc $k$, một mạng nhỏ nhận tóm tắt lịch sử tới $k$ và trả hai tham
-số $(a, \lambda)$ của nghiệm đóng của động học xám khi coi tốc độ cơ sở là hằng trong tầm dự báo:
+\paragraph{Dự báo SOH, dung lượng và RUL.} Đứng ở chu kỳ gốc $k$ của một cell, biết đặc trưng sạc của mọi chu kỳ tới $k$
+và một chuỗi SOH lịch sử tới $k$, cần dự báo SOH ở mọi chu kỳ $k+h$ sau đó; dung lượng là SOH nhân dung lượng danh định,
+RUL là số chu kỳ tới khi SOH xuống dưới ngưỡng cuối đời $\tau$ của bộ. Hình~\ref{fig:fcarch} tóm tắt mô hình. Từ lịch sử
+tới $k$ tính vectơ đặc trưng gốc $\mathbf{z}_k$ gồm 23 giá trị: mức SOH hiện tại $\ell_k$ (xu thế nhân quả trên 10 hàng),
+độ dốc bình phương tối thiểu trên 30 và 100 hàng gần nhất, mức ban đầu $\ell_0$ và độ giảm $\ell_0 - \ell_k$, $k$, $1/T$
+và trung bình 16 đặc trưng sạc đã chuẩn hoá trên 10 hàng gần nhất. PINN-dự báo là một mạng nhỏ (hai lớp ẩn 64 nút) nhận
+$\mathbf{z}_k$ và trả hai tham số $(a, \lambda)$ của nghiệm đóng của động học xám $dv/dN = a_0 e^{\lambda v}$, với
+$v = 1 - \text{SOH}$, khi coi tốc độ cơ sở là hằng trong tầm dự báo:
 \begin{equation}\label{eq:fcdrop}
 \hat y(k+h) = \ell_k + \frac{1}{\lambda}\ln\bigl(1 - \lambda a h\bigr),
 \end{equation}
-với $\ell_k$ là mức SOH hiện tại; đường dự báo luôn không tăng và cong lên khi $\lambda > 0$ (đầu gối). Mô hình kết hợp
-lấy trung bình với một GBDT học trực tiếp mức giảm theo tầm dự báo. RUL là tầm $h$ đầu tiên mà dự báo chạm ngưỡng
-$\tau$. Lịch sử SOH tới gốc là dung lượng đo (khi có đo) hoặc ước lượng của PINN-lai (khi cell không được đo lần nào).
+với $a \geq 0$ là tốc độ suy giảm tại $k$. Đường dự báo luôn không tăng; nó giảm nhanh dần khi $\lambda > 0$ (đầu gối) và
+chậm dần khi $\lambda < 0$. Ba mạng với hạt giống khác nhau được lấy trung bình. GBDT theo tầm học trực tiếp độ giảm
+$\ell_k - \text{SOH}(k+h)$ từ $(\mathbf{z}_k, h)$, có ràng buộc đơn điệu tăng theo $h$. Mô hình kết hợp lấy trung bình hai
+mô hình này với trọng số bằng nhau. Khoảng dự báo 90\,\% lấy từ phân vị 5 và 95\,\% của sai số có dấu của mô hình kết hợp
+trên cell validation, theo nhóm tầm $h/L$; lúc biên dưới và biên trên chạm $\tau$ cho khoảng RUL. Mọi mô hình học trên các
+mẫu (gốc, tầm) lấy từ lịch sử đo thật của cell train, 40 gốc và 40 tầm mỗi cell; số cây của GBDT và điểm dừng của
+PINN-dự báo chọn theo MAE trên cell validation.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{hinh/fig_forecast_arch.pdf}
+\caption[Mô hình dự báo SOH, dung lượng và RUL]{Mô hình dự báo SOH, dung lượng và RUL tại gốc $k$: đặc trưng gốc
+$\mathbf{z}_k$ đi vào GBDT theo tầm và PINN-dự báo (tham số của nghiệm đóng~\eqref{eq:fcdrop}); mô hình kết hợp lấy trung
+bình hai nhánh, rồi suy ra dung lượng, RUL và khoảng 90\,\%.}\label{fig:fcarch}
+\end{figure}
+
+\paragraph{Cách chấm dự báo so với số đo.} Dự báo dùng đúng các fold theo cell của PINN-lai (5 fold, 70/10/20\,\% số cell
+cho train, validation và test, ba lần lặp), nên mỗi cell được dự báo một lần ở mỗi lần lặp, bởi mô hình chưa thấy cell
+đó. Lịch sử SOH của cell test tới gốc có hai kịch bản: dung lượng đo thật (BMS đo định kỳ tới $k$), hoặc ước lượng
+PINN-lai ở 70\,\% nhãn, ngoài fold, khi cell test không được đo lần nào. Kịch bản thứ hai là kịch bản chính. Trong cả hai,
+SOH đo được sau gốc chỉ dùng để chấm. Gốc dự báo SOH đặt ở 20, 40 và 60\,\% số chu kỳ ghi được của cell; từ mỗi gốc, dự
+báo được so với SOH đo ở mọi chu kỳ sau đó, và báo cáo riêng ở ba tầm $0{,}1L$, $0{,}25L$, $0{,}5L$, với $L$ là trung vị số
+chu kỳ của bộ. Gốc dự báo RUL đặt ở 25, 50 và 75\,\% của chu kỳ cuối đời thật, là chu kỳ đầu tiên mà trung vị trượt 9 chu
+kỳ của SOH đo xuống dưới $\tau$ (Bảng~\ref{tab:fcset}). Ba mô hình đối chứng chỉ dùng lịch sử của chính cell: giữ nguyên
+mức hiện tại, ngoại suy tuyến tính theo độ dốc 100 hàng gần nhất, và khớp nghiệm đóng~\eqref{eq:fcdrop} lên nửa sau lịch sử
+của cell. Đơn vị thống kê là cell: sai số lấy trung bình qua lần lặp và gốc, so sánh ghép cặp bằng Wilcoxon, hiệu chỉnh
+Holm qua các mô hình được so trong mỗi bộ.
+
+\input{generated/bang_du_bao_tham_so}
 
 \section{Hiện thực và khối lượng tính toán}\label{sec:impl}
 
@@ -766,25 +797,14 @@ với 70\,\% số cell có nhãn đầy đủ nhưng không đo cell mới. Mô 
 thấp hơn bộ lọc Kalman ở 47/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (tỉ số 0{,}15--1{,}06) và thấp hơn việc giữ
 nguyên giá trị đo gần nhất ở 48/48 (tỉ số 0{,}07--0{,}53).
 
+\FloatBarrier
 \section{Dự báo SOH tương lai và RUL}\label{sec:forecastres}
+
+\input{generated/doan_du_bao}
 
 \input{generated/bang_du_bao}
 
-Khi cell test không được đo dung lượng lần nào và lịch sử SOH là ước lượng PINN-lai, mô hình kết hợp dự báo SOH trên toàn
-bộ phần đời còn lại với sai số chỉ bằng 0{,}21--0{,}46 lần dự báo giữ nguyên, 0{,}39--0{,}60 lần ngoại suy tuyến tính và
-0{,}27--0{,}58 lần khớp vật lý theo cell, khác biệt có ý nghĩa trên cả bốn bộ (Bảng~\ref{tab:e22soh}). Giữa các mô hình học
-từ nhiều cell khác biệt nhỏ hơn: so với GBDT tỉ số là 0{,}91--1{,}06. Quy ra dung lượng, sai số của mô hình kết hợp ở tầm
-$0{,}5L$ là 20--57\,mAh. Về RUL (Bảng~\ref{tab:e22rul}), GBDT không ngoại suy được ra ngoài miền tầm dự báo đã học nên cắt
-ngưỡng quá muộn; sai số RUL của nó gấp 1{,}1--1{,}5 lần mô hình kết hợp, và mô hình kết hợp tốt hơn GBDT có ý nghĩa trên cả
-bốn bộ. Dấu của $\lambda$ học được khớp hình dạng quỹ đạo: dương ở 83--100\,\% số gốc của XJTU, MIT, HUST (có đầu gối),
-còn ở TJU trung vị $\lambda$ âm (suy giảm chậm dần).
-
-\begin{figure}[!htbp]\centering
-\includegraphics[width=\textwidth]{hinh/fig_e22_traj.pdf}
-\caption[Dự báo cho một cell test mỗi bộ]{Dự báo cho một cell test mỗi bộ (lần lặp 0, gốc ở 40\,\% đời, cell có sai số ở
-trung vị): lịch sử SOH ước lượng tới gốc, dự báo của GBDT, PINN-dự báo và mô hình kết hợp kèm khoảng 90\,\%; trục phải là
-dung lượng (Ah).}\label{fig:e22traj}
-\end{figure}
+\input{generated/doan_du_bao_hinh}
 
 %% ============================================================================ CHƯƠNG 6
 \chapter{Đối chiếu với các bài báo đã công bố}\label{ch:sosanh}

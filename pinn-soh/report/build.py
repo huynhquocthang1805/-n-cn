@@ -12,8 +12,11 @@ Nguồn số liệu, không số nào gõ tay vào bảng:
   * benchmark/results/ (benchmark/compare.py): chạy lại PINN4SOH và so trên đúng cách chia của bài;
   * results/features_*.csv (analysis/features.py): phân tích đặc trưng; một bản sao ở report/generated/data/;
   * results/thesis_leakage.csv (analysis/analyze_thesis.py): kiểm toán rò rỉ chạy lại; bản sao ở report/generated/data/;
-  * số lượt chạy của từng thí nghiệm: pinnsoh/experiments.py.
-Các con số trong lời văn của Chương 5 (kết quả từ báo cáo đã nộp) chép từ lời văn của báo cáo đó.
+  * số lượt chạy của từng thí nghiệm: pinnsoh/experiments.py;
+  * dự báo (E22): runs/E22 và runs/E20 -> analysis/analyze_e22.py, analysis/figures_report.py; bản sao bảng ở
+    report/generated/data/e22_*.csv, hình ở report/hinh/fig_e22_*.pdf.
+Các con số trong lời văn của Chương 5 (kết quả từ báo cáo đã nộp) chép từ lời văn của báo cáo đó, trừ mục dự báo
+(sinh từ kết quả chạy lại E22).
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -709,7 +712,7 @@ def fig_features(A):
 
 
 # --------------------------------------------------------------------------- Chương 6: đối chiếu với bài báo đã công bố
-def compare_chapter(S, T, B, L_leak):
+def compare_chapter(S, T, B, L_leak, D22=None):
     pub = {k: PAPER_MAE[k] for k in ROWS}
     out = [r'\begin{table}[!htbp]\centering\small',
            r'\caption[Đối chiếu với số liệu công bố của bài PINN4SOH]{MAE theo cell ($\times10^{-3}$) trên đúng cách chia '
@@ -790,14 +793,22 @@ def compare_chapter(S, T, B, L_leak):
         rf'Đồ án không tái lập được chính xác số công bố của PINN4SOH: mã gốc chạy lại cho sai số bằng {rng(B["rep_full"])} '
         rf'lần ở chế độ đầy đủ, cao hơn có ý nghĩa theo cell ở {B["rep_sig"][1]} trên 4 bộ (Mục~\ref{{sec:rerun}}).',
     ]
+    if D22 is not None:                                     # dự báo: từ kết quả chạy lại E22
+        _, t22, r22 = _e22_get(D22)
+        fc_cov = pct_rng([t22(ds, sc, 'cov') for ds in DS for sc in ('do', 'uoc')])
+        fc_rcov = pct_rng([r22(ds, sc, 'cov') for ds in DS for sc in ('do', 'uoc')])
+        fc_in20 = ', '.join(f'{pct(r22(ds, "uoc", "in20_ket_hop"))} ({ds})' for ds in DS)
+    else:                                                   # số của báo cáo đã nộp
+        fc_cov, fc_rcov = r'78--84\,\%', r'62--84\,\%'
+        fc_in20 = r'38\,\% (XJTU), 65\,\% (TJU), 48\,\% (MIT), 52\,\% (HUST)'
     internal = [
         r'GBDT đơn lẻ có sai số thấp hơn PINN-semi ở 14/16 trường hợp bộ $\times$ mức nhãn (10 có ý nghĩa); PINN-semi chỉ '
         r'vượt GBDT có ý nghĩa ở HUST 30\,\% nhãn (Mục~\ref{sec:labels}). PINN-lai cố định vẫn kém GBDT có ý nghĩa ở TJU 70\,\%.',
         r'Ở 70\,\% nhãn, PINN-semi kém MLP có ý nghĩa trên TJU (tỉ số 1{,}09); với kiểm định bảo thủ ở mức fold, lợi ích ở '
         r'30\,\% nhãn chỉ đứng vững trên MIT.',
         r'Khoảng dự đoán 90\,\% có độ phủ thực tế 84{,}9--92{,}6\,\% (trung bình 88{,}8\,\%), 14--25\,\% số cell có độ phủ '
-        r'dưới 80\,\%; khoảng dự báo SOH 90\,\% chỉ phủ 78--84\,\% và khoảng RUL 62--84\,\%.',
-        r'Tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật chỉ là 38\,\% (XJTU), 65\,\% (TJU), 48\,\% (MIT), 52\,\% (HUST).',
+        r'dưới 80\,\%; khoảng dự báo SOH 90\,\% chỉ phủ ' + fc_cov + ' và khoảng RUL ' + fc_rcov + '.',
+        r'Tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật chỉ là ' + fc_in20 + '.',
         r'Tham số vật lý không được dữ liệu xác định: $\lambda$ ở mức 0{,}96--0{,}97 trên mọi bộ (khởi tạo 1), $E_a$ dịch '
         r'không quá 1{,}1\,kJ/mol; tốc độ $r$ học được trung bình 0{,}001--0{,}063 trong khi tốc độ suy giảm thực đo là '
         r'0{,}137--0{,}356 SOH trên 1\,000 chu kỳ.',
@@ -819,7 +830,7 @@ def compare_chapter(S, T, B, L_leak):
 
 
 # --------------------------------------------------------------------------- chạy lại các thí nghiệm của đồ án
-def reproducibility(B):
+def reproducibility(B, FC=None):
     """Kiểm tra tái lập: kiểm toán rò rỉ so với các lượt tham chiếu; 20 lượt mẫu; E27 chạy lại so với lần chạy đầu
     (generated/data/e27_lan_dau.json). Kết quả được lưu ở generated/data/tai_lap.json để dựng được khi không có runs/."""
     path = os.path.join(DATA, 'tai_lap.json')
@@ -859,6 +870,9 @@ def reproducibility(B):
         rec['e27'] = dict(runs=len(os.listdir('runs/E27')), summary_n=3 * len(ref['tong_hop']), summary_same=int(same),
                           cells=len(D), cells_same=bool(sha == ref['theo_cell']['sha1']
                                                         and len(D) == ref['theo_cell']['dong']))
+    if FC is not None and len(glob.glob('runs/E22/fc_*.npz')) >= E22_RUNS:
+        rec['e22'] = dict(FC, runs_e22=len(glob.glob('runs/E22/fc_*.npz')),
+                          runs_e20=len(glob.glob('runs/E20/*_f0.7_*.json')))
     log = os.path.join(DATA, 'kiem_tai_lap.txt')
     if os.path.exists(log):
         mm = re.search(r'(\d+)/(\d+) lượt giống từng bit', open(log).read())
@@ -888,6 +902,12 @@ def reproducibility(B):
                      'trên 12 chế độ) trùng từng bit; '
                      + (f'MAE và RMSE theo cell của cả {thou(e["cells"])} dòng trùng ở 6 chữ số có nghĩa đã lưu.'
                         if e['cells_same'] else 'bảng MAE và RMSE theo cell không trùng hoàn toàn ở 6 chữ số có nghĩa đã lưu.'))
+    if 'e22' in rec:
+        e = rec['e22']
+        items.append(f'Dự báo (Mục~\\ref{{sec:forecastres}}) được chạy lại toàn bộ: {thou(e["runs_e20"])} lượt ước lượng '
+                     f'PINN-lai ở 70\\,\\% nhãn làm lịch sử, rồi {e["runs_e22"]} lượt dự báo; {thou(e["same"])} trên '
+                     f'{thou(e["n"])} ô của ba bảng dự báo (Bảng~\\ref{{tab:fcset}}, \\ref{{tab:e22soh}} và '
+                     '\\ref{tab:e22rul}) trùng với báo cáo đã nộp.')
     items.append('GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\\ref{sec:dt_pp}) cho MAE theo cell trùng từng bit '
                  'với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\\,\\% nhãn, lần lặp 0, fold 0).')
     items.append(f'Mã gốc PINN4SOH: giá trị loss đơn điệu tính lại trên các hàng train mà lớp đọc dữ liệu của bài tạo ra '
@@ -945,13 +965,267 @@ def conclusion(B, L_leak, C6, F_ok, n_total):
 
 
 # --------------------------------------------------------------------------- hình
+# --------------------------------------------------------------------------- dự báo SOH, dung lượng còn lại, RUL (E22)
+E22_FIGS = ['e22_traj', 'e22_cells', 'e22_origins', 'e22_parity', 'e22_horizon', 'e22_rul']
+E22_CSV = ['horizon', 'traj', 'origin', 'tests', 'rul', 'rul_tests', 'lambda', 'setting', 'cells_pick',
+           'origins_pick', 'parity']
+E22_MODELS = [('giu', 'Giữ nguyên'), ('tuyen', 'Tuyến tính'), ('vatly', 'Vật lý theo cell'), ('gbdt', 'GBDT'),
+              ('pinn', 'PINN-dự báo'), ('ket_hop', 'Kết hợp')]
+E22_RUNS = 60                                    # 3 lần lặp × 4 bộ × 5 fold
+
+
+def forecast_load():
+    """Khi runs/E22 đủ 60 lượt (và có runs/E20 cho lịch sử ước lượng): tính lại bảng (analysis/analyze_e22.py), vẽ lại
+    hình (analysis/figures_report.py) vào results/, chép hình sang report/hinh/. Bảng giữ bản sao ở generated/data/,
+    nên không có runs/ vẫn dựng được báo cáo từ bản đã lưu."""
+    fresh = len(glob.glob('runs/E22/fc_*.npz')) >= E22_RUNS and os.path.isdir('runs/E20')
+    if fresh:
+        import analyze_e22, figures_report as FR
+        analyze_e22.main()
+        for name in E22_FIGS:
+            FR.FIGS[name]()
+            shutil.copy(f'results/fig_{name}.pdf', os.path.join(FIG, f'fig_{name}.pdf'))
+    D = {}
+    for name in E22_CSV:
+        p = keep_copy(f'results/e22_{name}.csv', f'e22_{name}.csv')
+        if p is None:
+            return None
+        D[name] = pd.read_csv(p)
+    return D
+
+
+def m3(x, n=1):
+    """SOH (hoặc sai số SOH) theo đơn vị 10⁻³."""
+    return v(1e3 * x, n)
+
+
+def _e22_get(D):
+    hz, tj, ru = D['horizon'], D['traj'], D['rul']
+    h = lambda ds, sc, hr, m: float(hz[(hz.ds == ds) & (hz.scen == sc) & np.isclose(hz.h_rel, hr)][m].iloc[0])
+    t = lambda ds, sc, m: float(tj[(tj.ds == ds) & (tj.scen == sc)][m].iloc[0])
+    r = lambda ds, sc, m: float(ru[(ru.ds == ds) & (ru.scen == sc)][m].iloc[0])
+    return h, t, r
+
+
+def _body(blk):
+    return blk[blk.index('\\midrule') + len('\\midrule'):blk.index('\\bottomrule')]
+
+
+def _rows(body):
+    from thesis_tables import _cell
+    return [[_cell(c) for c in raw.split('&')] for raw in body.split('\\\\') if raw.strip()]
+
+
+def forecast_tables(D):
+    """Ba bảng dự báo sinh lại từ kết quả chạy lại, đúng định dạng của báo cáo đã nộp (cùng tiêu đề, cùng cách làm tròn,
+    in đậm số thấp nhất); trả số ô trùng với bảng của báo cáo đã nộp."""
+    h, t, r = _e22_get(D)
+    soh = []
+    for ds in DS:
+        for k, hr in enumerate((0.1, 0.25, 0.5)):
+            vals = [h(ds, 'uoc', hr, f'e_{m}') for m, _ in E22_MODELS]
+            cells = [(r'\textbf{' + m3(x) + '}') if x == min(vals) else m3(x) for x in vals]
+            soh.append(' & '.join([ds if k == 0 else '', v(hr, 2 if hr == 0.25 else 1) + '$L$'] + cells
+                                  + [m3(h(ds, 'do', hr, 'e_ket_hop')), v(h(ds, 'uoc', hr, 'mah'), 0)]) + r' \\')
+    rul = []
+    for ds in DS:
+        vals = [r(ds, 'uoc', f'e_{m}') for m, _ in E22_MODELS[1:]]
+        cells = [(r'\textbf{' + v(x, 0) + '}') if x == min(vals) else v(x, 0) for x in vals]
+        rul.append(' & '.join([ds, v(r(ds, 'uoc', 'true'), 0)] + cells
+                              + [v(r(ds, 'do', 'e_ket_hop'), 0), pct(r(ds, 'uoc', 'in20_ket_hop')),
+                                 pct(r(ds, 'uoc', 'cov'))]) + r' \\')
+    st = []
+    for x in D['setting'].itertuples():
+        nom = v(x.nom_min, 1) if x.nom_min == x.nom_max else f'{v(x.nom_min, 1)}--{v(x.nom_max, 1)}'
+        st.append(' & '.join([x.ds, str(x.n_cell), str(int(x.L)), f'{x.h1}, {x.h2}, {x.h3}', v(x.tau, 2),
+                              pct(x.reach), nom]) + r' \\')
+    out, same, n = {}, 0, 0
+    for label, rows in (('tab:e22soh', soh), ('tab:e22rul', rul), ('tab:fcset', st)):
+        old = thesis_block(label)
+        body = '\n' + '\n'.join(rows) + '\n'
+        a, b = _rows(_body(old)), _rows(body)
+        n += sum(len(x) for x in a)
+        same += sum(x == y for ra, rb in zip(a, b) for x, y in zip(ra, rb)) if len(a) == len(b) else 0
+        i, j = old.index('\\midrule') + len('\\midrule'), old.index('\\bottomrule')
+        out[label] = old[:i] + body + old[j:]
+    nontop = lambda blk: blk.replace('\\begin{table}[!htbp]', '\\begin{table}[!hbp]', 1)   # không đẩy lên trên tiêu đề mục
+    write('bang_du_bao.tex', nontop(out['tab:e22soh']) + '\n' + nontop(out['tab:e22rul']))
+    write('bang_du_bao_tham_so.tex', out['tab:fcset'])
+    return dict(n=n, same=same)
+
+
+def forecast_text(D):
+    """Lời văn Mục dự báo (Chương 5): mọi số lấy từ bảng kết quả E22 chạy lại."""
+    h, t, r = _e22_get(D)
+    T, RT, lam = D['tests'], D['rul_tests'], D['lambda']
+    test = lambda tb, ds, vs: tb[(tb.ds == ds) & (tb.scen == 'uoc') & (tb.vs == vs)].iloc[0]
+    sig = lambda tb, ds, vs, better: (test(tb, ds, vs).p_holm < 0.05) and \
+        ((test(tb, ds, vs).better > test(tb, ds, vs).n / 2) == better)
+    ratio = {vs: [float(test(T, ds, vs).ratio) for ds in DS] for vs in ('giu', 'tuyen', 'vatly', 'gbdt', 'pinn')}
+    beats = all(sig(T, ds, vs, True) for ds in DS for vs in ('giu', 'tuyen', 'vatly'))
+    join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    where = lambda xs: 'cả bốn bộ' if len(xs) == 4 else (join(xs) if xs else 'không bộ nào')
+    gb_better = [ds for ds in DS if sig(T, ds, 'gbdt', True)]; gb_worse = [ds for ds in DS if sig(T, ds, 'gbdt', False)]
+    rul_gb = [r(ds, 'uoc', 'e_gbdt') / r(ds, 'uoc', 'e_ket_hop') for ds in DS]
+    rul_gb_sig = [ds for ds in DS if sig(RT, ds, 'gbdt', True)]
+    L = {x.ds: x for x in lam.itertuples()}
+    pos = [ds for ds in DS if L[ds].lam_median > 0]; neg = [ds for ds in DS if L[ds].lam_median <= 0]
+    s = [
+        r'Bảng~\ref{tab:e22soh} và~\ref{tab:e22rul} cho sai số ở kịch bản cell test không được đo dung lượng lần nào, '
+        r'lịch sử SOH tới gốc là ước lượng PINN-lai. Trên toàn bộ phần đời còn lại, sai số của mô hình kết hợp bằng '
+        f'{rng(ratio["giu"])} lần dự báo giữ nguyên, {rng(ratio["tuyen"])} lần ngoại suy tuyến tính và '
+        f'{rng(ratio["vatly"])} lần khớp vật lý theo cell'
+        + (', khác biệt có ý nghĩa trên cả bốn bộ' if beats else '') + '. '
+        f'Giữa các mô hình học từ nhiều cell khác biệt nhỏ hơn: so với GBDT, tỉ số là {rng(ratio["gbdt"])}'
+        + (f', thấp hơn có ý nghĩa trên {where(gb_better)}' if gb_better else '')
+        + (f', cao hơn có ý nghĩa trên {where(gb_worse)}' if gb_worse else '')
+        + f'; so với PINN-dự báo, tỉ số là {rng(ratio["pinn"])}. Quy ra dung lượng, sai số của mô hình kết hợp ở tầm '
+        f'$0{{,}}5L$ là {rng([h(ds, "uoc", 0.5, "mah") for ds in DS], 0)}\\,mAh. '
+        r'Về RUL, GBDT không ngoại suy được ra ngoài miền tầm dự báo đã học nên cắt ngưỡng quá muộn; sai số RUL của nó '
+        f'gấp {rng(rul_gb, 1)} lần mô hình kết hợp, và mô hình kết hợp tốt hơn GBDT có ý nghĩa trên {where(rul_gb_sig)}. '
+        r'Dấu của $\lambda$ học được khớp hình dạng quỹ đạo: '
+        + (f'trung vị dương ở {join(pos)} (tỉ lệ gốc có $\\lambda > 0$ là '
+           f'{"; ".join(pct(L[ds].frac_pos) for ds in pos)}, các bộ có đầu gối)' if pos else '')
+        + (f', còn ở {join(neg)} trung vị âm (suy giảm chậm dần)' if neg else '') + '.']
+    return '\n'.join(s)
+
+
+def forecast_figs_text(D):
+    """Đoạn văn và hình so dự báo với SOH đo được (Chương 5); mọi số và mọi nhận xét định tính đều tính từ bảng E22."""
+    h, t, r = _e22_get(D)
+    pick, og, op, par = D['cells_pick'], D['origin'], D['origins_pick'], D['parity']
+    HR = (0.1, 0.25, 0.5)
+    join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    where = lambda xs: 'cả bốn bộ' if len(xs) == 4 else join(xs)
+    pk = lambda ds: pick[pick.ds == ds].sort_values('q')
+    o = lambda ds, q, col='e_ket_hop': float(og[(og.ds == ds) & (og.scen == 'uoc') & (og.oq == q)][col].iloc[0])
+    lst3 = lambda f, fmt: '; '.join(f'{ds} ' + ', '.join(fmt(f(ds, x)) for x in HR) for ds in DS)
+    fig = lambda name, cap, short, label: (
+        '\\begin{figure}[!htbp]\\centering\n\\includegraphics[width=\\textwidth]{hinh/' + name + '.pdf}\n'
+        '\\caption[' + short + ']{' + cap + '}\\label{' + label + '}\n\\end{figure}')
+    s = []
+    # --- một cell và ba cell mỗi bộ
+    s.append(
+        r'\paragraph{Dự báo so với SOH đo được.} Các hình dưới đây dùng cùng kịch bản: cell test không được đo dung lượng, '
+        r'lịch sử tới gốc là ước lượng, còn SOH đo được (chấm đen) chỉ dùng để chấm. Hình~\ref{fig:e22traj} cho một cell '
+        r'mỗi bộ, cell có sai số ở trung vị, với dự báo của ba mô hình học từ nhiều cell. Hình~\ref{fig:e22cells} cho ba '
+        r'cell mỗi bộ, chọn theo sai số của mô hình kết hợp ở phân vị 25, 50 và 75\,\% trong số cell test của bộ, để thấy '
+        r'cả trường hợp dự báo tốt lẫn kém. Sai số trung bình trên phần đời còn lại của ba cell này là '
+        + '; '.join(f'{ds} ' + ', '.join(m3(x) for x in pk(ds).mae) for ds in DS)
+        + r' ($\times10^{-3}$), và tỉ lệ chu kỳ có SOH đo nằm trong khoảng 90\,\% là '
+        + '; '.join(f'{ds} ' + ', '.join(pct(x) for x in pk(ds)['cov']) for ds in DS) + '.'
+        + ''.join(f' Ở cell phân vị {int(x.q)}\\,\\% của {x.ds}, mức SOH ước lượng tại gốc đã '
+                  f'{"cao" if x.bias0 > 0 else "thấp"} hơn số đo {m3(abs(x.bias0))}$\\times10^{{-3}}$; dự báo bắt đầu '
+                  f'từ mức này nên lệch theo, và ' + ('không chu kỳ nào' if x.cov == 0 else f'chỉ {pct(x.cov)} số chu kỳ')
+                  + ' có SOH đo nằm trong khoảng.'
+                  for x in pick.itertuples() if x.cov < 0.5 and abs(x.bias0) >= 0.005))
+    s.append(fig('fig_e22_traj',
+                 r'Dự báo cho một cell test mỗi bộ (lần lặp 0, gốc ở 40\,\% đời, cell có sai số kết hợp ở trung vị): SOH '
+                 r'đo được (chấm), SOH ước lượng tới gốc, dự báo của GBDT, PINN-dự báo và mô hình kết hợp kèm khoảng '
+                 r'90\,\%; trục phải là dung lượng (Ah).', 'Dự báo cho một cell test mỗi bộ', 'fig:e22traj'))
+    s.append(fig('fig_e22_cells',
+                 r'Dự báo của mô hình kết hợp so với SOH đo được cho ba cell test mỗi bộ, cell có sai số ở phân vị 25, '
+                 r'50 và 75\,\% của bộ (lần lặp 0, gốc ở 40\,\% đời, cell test không được đo dung lượng).',
+                 'Dự báo so với SOH đo được, ba cell mỗi bộ', 'fig:e22cells'))
+    # --- nhiều gốc cho cùng một cell
+    dec = [ds for ds in DS if o(ds, 0) > o(ds, 1) > o(ds, 2)]; inc = [ds for ds in DS if o(ds, 0) < o(ds, 1) < o(ds, 2)]
+    flat = [ds for ds in DS if ds not in dec + inc and max(o(ds, q) for q in (0, 1, 2)) < 1.1 * min(o(ds, q) for q in (0, 1, 2))]
+    mixed = [ds for ds in DS if ds not in dec + inc + flat]
+    out_fig = [ds for ds in DS if op[(op.ds == ds) & (op.oq == 0)].below.any()]
+    floor_fig = [ds for ds in out_fig if op[(op.ds == ds) & (op.oq == 0)].floor.any()]
+    txt = (r'\paragraph{Dự báo từ nhiều gốc.} Hình~\ref{fig:e22origins} giữ nguyên cell của Hình~\ref{fig:e22traj} và '
+           r'dự báo lại từ gốc ở 20, 40 và 60\,\% đời. Gốc muộn hơn thì lịch sử dài hơn và phần cần ngoại suy ngắn hơn, '
+           r'nhưng sai số cũng được chấm trên một đoạn khác, chỉ gồm phần đời còn lại sau gốc. Sai số trên phần đời còn '
+           r'lại, trung bình qua mọi cell và lần lặp, ở gốc 20, 40 và 60\,\% là '
+           + '; '.join(f'{ds} {m3(o(ds, 0))}, {m3(o(ds, 1))}, {m3(o(ds, 2))}' for ds in DS) + r' ($\times10^{-3}$)'
+           + ': ' + ', '.join(f'{what} ở {where(xs)}' for what, xs in (('giảm dần theo gốc', dec), ('tăng dần', inc),
+                                                                         ('gần như không đổi', flat),
+                                                                         ('không theo một chiều', mixed)) if xs) + '. ')
+    sing = (r'khi $\lambda > 0$, nghiệm đóng~\eqref{eq:fcdrop} có điểm kỳ dị tại $h = 1/(\lambda a)$, nên ở tầm đủ dài '
+            r'PINN-dự báo rơi tới giới hạn dưới 0{,}40 của SOH và kéo mô hình kết hợp xuống theo')
+    txt += (f'Từ gốc 20\\,\\%, đường dự báo của {join(floor_fig)} trong hình đi ra mép dưới: {sing}. ' if floor_fig
+            else 'K' + sing[1:] + '. ')
+    txt += (r'Trên mọi cell và lần lặp, điều này xảy ra ở '
+            + ', '.join(pct_rng([o(ds, q, 'floor_pinn') for ds in DS]) + f' số quỹ đạo từ gốc {lab}'
+                        for q, lab in ((0, r'20\,\%'), (1, r'40\,\%'), (2, r'60\,\%')))
+            + ' (thấp nhất và cao nhất trong bốn bộ).')
+    s.append(txt)
+    s.append(fig('fig_e22_origins',
+                 r'Dự báo của mô hình kết hợp cho cùng cell của Hình~\ref{fig:e22traj} từ ba gốc ở 20, 40 và 60\,\% đời '
+                 r'(đường chấm dọc), so với SOH đo được; trục SOH giữ theo khoảng của số đo, đường đi ra mép dưới là dự '
+                 r'báo thấp hơn khung.', 'Dự báo từ ba gốc cho cùng một cell', 'fig:e22origins'))
+    # --- SOH dự báo so với đo ở ba tầm
+    grow = [ds for ds in DS if h(ds, 'uoc', 0.1, 'e_ket_hop') < h(ds, 'uoc', 0.25, 'e_ket_hop') < h(ds, 'uoc', 0.5, 'e_ket_hop')]
+    low = [ds for ds in DS if all(h(ds, 'uoc', x, 'd_ket_hop') < 0 for x in HR)]
+    nb = par.groupby('ds')[['n', 'below']].sum()
+    s.append(
+        r'\paragraph{SOH dự báo so với SOH đo ở ba tầm.} Hình~\ref{fig:e22parity} đặt SOH dự báo cạnh SOH đo được ở tầm '
+        r'$0{,}1L$, $0{,}25L$ và $0{,}5L$ cho mọi cell test và mọi gốc của lần lặp 0. '
+        + (f'Sai số tăng theo tầm ở {where(grow)} (Bảng~\\ref{{tab:e22soh}}), nên các điểm toả rộng dần khỏi đường chéo. '
+           if grow else '')
+        + r'Sai số có dấu trung bình (dự báo trừ số đo) ở ba tầm là '
+        + lst3(lambda ds, x: h(ds, 'uoc', x, 'd_ket_hop'), m3) + r' ($\times10^{-3}$)'
+        + (f', tức trung bình dự báo thấp hơn số đo ở cả ba tầm trên {where(low)}' if low else '')
+        + r'. Tỉ lệ số đo nằm trong khoảng 90\,\% ở ba tầm là ' + lst3(lambda ds, x: h(ds, 'uoc', x, 'cov'), pct) + '. '
+        + 'Số điểm có dự báo thấp hơn khung hình (vẽ bằng tam giác ở mép dưới) là '
+        + '; '.join(f'{ds} {int(nb.loc[ds, "below"])} trên {int(nb.loc[ds, "n"])}' for ds in DS) + '.')
+    s.append(fig('fig_e22_parity',
+                 r'SOH dự báo của mô hình kết hợp so với SOH đo được ở ba tầm dự báo (lần lặp 0, mọi cell test, gốc ở 20, '
+                 r'40 và 60\,\% đời); đường chéo là dự báo đúng bằng số đo, tam giác ở mép dưới là dự báo thấp hơn khung.',
+                 'SOH dự báo so với SOH đo ở ba tầm', 'fig:e22parity'))
+    # --- sai số theo tầm và RUL
+    own = ('giu', 'tuyen', 'vatly')
+    short = [ds for ds in DS if min(h(ds, 'uoc', 0.1, f'e_{m}') for m in own) < h(ds, 'uoc', 0.1, 'e_ket_hop')]
+    far = [ds for ds in DS if min(h(ds, 'uoc', 0.5, f'e_{m}') for m in own) > h(ds, 'uoc', 0.5, 'e_ket_hop')]
+    s.append(
+        r'\paragraph{Sai số theo tầm và RUL.} Hình~\ref{fig:e22horizon} cho sai số của sáu mô hình theo tầm dự báo. '
+        + (f'Ở tầm $0{{,}}5L$, ba mô hình chỉ dựa vào lịch sử của chính cell đều kém mô hình kết hợp trên {where(far)}'
+           if far else 'Ở tầm $0{,}5L$, khác biệt giữa các mô hình nhỏ')
+        + (f'; ở tầm ngắn $0{{,}}1L$, ít nhất một trong ba mô hình đó tốt hơn mô hình kết hợp trên {where(short)} '
+           r'(Bảng~\ref{tab:e22soh})' if short else '') + '. '
+        r'Hình~\ref{fig:e22rul} so RUL dự báo với RUL thực tại gốc ở 25, 50 và 75\,\% của chu kỳ cuối đời thật; tỉ lệ '
+        r'dự báo nằm trong $\pm20\,\%$ RUL thực là ' + '; '.join(f'{ds} {pct(r(ds, "uoc", "in20_ket_hop"))}' for ds in DS)
+        + r', và độ phủ của khoảng RUL 90\,\% là ' + '; '.join(f'{ds} {pct(r(ds, "uoc", "cov"))}' for ds in DS)
+        + r', thấp hơn mức đặt ra. Khoảng RUL được hiệu chỉnh trên ít cell validation (10\,\% số cell), trong khi sai '
+          r'số của một cell tương quan mạnh giữa các tầm, nên phân vị lấy từ vài cell hẹp hơn phân bố sai số của cell mới.')
+    s.append(fig('fig_e22_horizon',
+                 r'MAE theo cell của sáu mô hình theo tầm dự báo $h/L$ ($L$: trung vị số chu kỳ của bộ), kịch bản lịch sử '
+                 r'ước lượng, mọi lần lặp và mọi gốc.', 'Sai số dự báo theo tầm', 'fig:e22horizon'))
+    s.append(fig('fig_e22_rul',
+                 r'RUL dự báo của mô hình kết hợp so với RUL thực, trung bình qua ba lần lặp, tại gốc ở 25, 50 và 75\,\% '
+                 r'của chu kỳ cuối đời thật; dải xám là sai lệch trong $\pm20\,\%$, $\tau$ là ngưỡng cuối đời của bộ. Dự báo '
+                 r'không chạm ngưỡng trong $3L$ chu kỳ được ghi là $3L$.', 'RUL dự báo so với RUL thực', 'fig:e22rul'))
+    return '\n\n'.join(s)
+
+
+def pct_rng(vals, n=0):
+    """Khoảng phần trăm: [0.02, 0.09] -> '2--9\\,\\%'."""
+    lo, hi = v(100 * min(vals), n), v(100 * max(vals), n)
+    return (lo if lo == hi else f'{lo}--{hi}') + r'\,\%'
+
+
+def forecast_section():
+    D = forecast_load()
+    if D is None:
+        write('bang_du_bao_tham_so.tex', thesis_block('tab:fcset'))
+        write('doan_du_bao.tex', r'(Chưa có kết quả E22: chạy \texttt{python run.py E20}, \texttt{python run.py E22} rồi '
+                                 r'dựng lại báo cáo.)')
+        write('doan_du_bao_hinh.tex', '')
+        return None
+    rep = forecast_tables(D)
+    write('doan_du_bao.tex', forecast_text(D))
+    write('doan_du_bao_hinh.tex', forecast_figs_text(D))
+    return dict(rep, D=D)
+
+
 def figures():
     import diagrams
     os.makedirs(FIG, exist_ok=True)
     diagrams.arch('vi', os.path.join(FIG, 'fig_arch'))
     diagrams.pipeline(os.path.join(FIG, 'fig_pipeline'))
+    diagrams.forecast_arch(os.path.join(FIG, 'fig_forecast_arch'))
     for src, dst in [('fig_thesis_leakage', 'fig_leakage'), ('fig_thesis_curve_physics', 'fig_curve_physics'),
-                     ('fig_e28_budget', 'fig_e28_budget'), ('fig_e22_traj', 'fig_e22_traj')]:
+                     ('fig_e28_budget', 'fig_e28_budget')]:
         shutil.copy(os.path.join(OLD_FIG, src + '.pdf'), os.path.join(FIG, dst + '.pdf'))
 
 
@@ -994,8 +1268,9 @@ def main():
     write('doan_ket_luan_dt.tex', concl)
     n_rerun = int(B['runs'] * B['n_groups'] + B['runs_cur'] * B['n_groups'])
     n_total = experiments_table(n_rerun, n_feat_jobs, n_feat_fits)
-    C6 = compare_chapter(S, T, B, L_leak)
-    reproducibility(B)
+    FC = forecast_section()
+    C6 = compare_chapter(S, T, B, L_leak, FC['D'] if FC else None)
+    reproducibility(B, {k: x for k, x in FC.items() if k != 'D'} if FC else None)
     tomtat = conclusion(B, L_leak, C6, F is not None, n_total)
     write('so_lieu.tex', r'\newcommand{\TomTat}{' + tomtat + '}')
     figures()
