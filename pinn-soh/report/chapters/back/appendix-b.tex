@@ -8,8 +8,10 @@ báo cáo này:
   \url{https://github.com/huynhquocthang1805/-n-cn}
 \end{center}
 Kho thứ hai là nơi phát triển các mô hình có đặc trưng lịch sử (HiGBDT cho dự báo, HiGBDT-$\Delta$, HiGBDT-R và
-HiGBDT-V cho bài toán cập nhật, thư mục \texttt{improvements}); bản HiGBDT dùng trong E33 (\Cref{sec:e33pp}) được đưa về
-kho chính, tệp \texttt{pinnsoh/forecast\_hist.py}:
+HiGBDT-V cho bài toán cập nhật, thư mục \texttt{improvements}). Cả hai phần đã được gộp về kho chính: HiGBDT ở tệp
+\texttt{pinnsoh/forecast\_hist.py} (E33, \Cref{sec:e33pp}), bài toán cập nhật ở tệp \texttt{pinnsoh/update\_hist.py}
+(E34, \Cref{sec:anchor}), kèm các kiểm thử của kho thứ hai; vì vậy mọi kết quả trong báo cáo chạy lại được từ kho chính.
+Kho thứ hai giữ lịch sử phát triển và kết quả của lần chạy trước, dùng để đối chiếu:
 \begin{center}
   \url{https://github.com/huynhquocthang1805/G-doan}
 \end{center}
@@ -24,12 +26,13 @@ Cần Python 3.11 và các thư viện trong \texttt{requirements.txt}; bước 
 Lệnh & Việc làm \\
 \midrule
 \texttt{python run.py data} & tải dữ liệu, dựng bộ nhớ đệm \\
-\texttt{python run.py E13} (\ldots\ \texttt{E33}) & chạy một thí nghiệm, bỏ qua lượt đã có kết quả \\
+\texttt{python run.py E13} (\ldots\ \texttt{E34}) & chạy một thí nghiệm, bỏ qua lượt đã có kết quả \\
 \texttt{python run.py analyze} & bảng và hình từ kết quả \\
 \texttt{python run.py benchmark} & chạy lại mã gốc PINN4SOH, lập bảng so sánh \\
 \texttt{python run.py features} & phân tích đặc trưng đầu vào \\
 \texttt{python run.py report} & dựng báo cáo này \\
 \texttt{python run.py reproduce} & chạy lại 20 lượt mẫu, so từng bit \\
+\texttt{python -m unittest discover -s tests} & kiểm thử: đặc trưng chỉ dùng quá khứ, lịch đo, HiPINN \\
 \bottomrule
 \end{tabular}
 \end{center}
