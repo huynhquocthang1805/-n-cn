@@ -86,6 +86,9 @@ def keep_copy(src, name):
 
 
 # --------------------------------------------------------------------------- bảng lấy nguyên từ báo cáo đã nộp
+E22_NAMES = [('mô hình kết hợp', 'PINN-GBDT'), ('Kết hợp', 'PINN-GBDT')]      # tên mô hình của E22 trong bảng đã nộp
+
+
 def thesis_block(label, edits=()):
     s = open(THESIS, encoding='utf-8').read()
     i = s.index(f'\\label{{{label}}}')
@@ -109,7 +112,7 @@ def thesis_tables():
         r'là phân tích hậu kiểm.')]))
     write('bang_rmse.tex', thesis_block('tab:allrm'))
     write('bang_ngan_sach.tex', thesis_block('tab:e28'))
-    write('bang_du_bao.tex', thesis_block('tab:e22soh') + '\n' + thesis_block('tab:e22rul'))
+    write('bang_du_bao.tex', thesis_block('tab:e22soh', E22_NAMES) + '\n' + thesis_block('tab:e22rul', E22_NAMES))
 
 
 def history_table():
@@ -1162,7 +1165,7 @@ def forecast_tables(D):
                               pct(x.reach), nom]) + r' \\')
     out, same, n = {}, 0, 0
     for label, rows in (('tab:e22soh', soh), ('tab:e22rul', rul), ('tab:fcset', st)):
-        old = thesis_block(label)
+        old = thesis_block(label, E22_NAMES if label != 'tab:fcset' else ())
         body = '\n' + '\n'.join(rows) + '\n'
         a, b = _rows(_body(old)), _rows(body)
         n += sum(len(x) for x in a)
@@ -1473,8 +1476,8 @@ def e33_val_table(E):
             r'\caption[MAE trên hai nửa validation, E33]{MAE theo cell ($\times10^{-3}$) trên hai nửa cell validation, '
             r'lịch sử đo; mỗi cell lấy trung bình qua các lượt mà nó thuộc nửa đó. Nửa chọn là nơi chọn trọng số của '
             r'HiPINN-w; nửa hiệu chỉnh không dùng để chọn gì cho các mô hình trong bảng. In đậm là thấp nhất '
-            r'trong mỗi nửa. $^{*}$/$^{\dagger}$: trên nửa hiệu chỉnh, HiPINN tốt hơn/kém hơn có ý nghĩa so với GBDT lịch '
-            r'sử (Wilcoxon ghép cặp theo cell, Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33val}' '\n'
+            r'trong mỗi nửa. $^{*}$/$^{\dagger}$: trên nửa hiệu chỉnh, HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT '
+            r'(Wilcoxon ghép cặp theo cell, Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33val}' '\n'
             r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(cols) + r'}\toprule' '\n'
             r' & \multicolumn{' + str(n1) + r'}{c}{nửa chọn} & \multicolumn{' + str(n2) + r'}{c}{nửa hiệu chỉnh} \\'
             r'\cmidrule(lr){2-' + str(1 + n1) + r'}\cmidrule(lr){' + str(2 + n1) + '-' + str(1 + n1 + n2) + '}\n'
@@ -1738,17 +1741,32 @@ def e33_section(D):
           + sig_txt(uk_u, dk_u) + ' so với mô hình này)'
           + (', vì khi đó sai số của mức SOH ước lượng tại gốc chiếm phần lớn sai số dự báo (\\Cref{sec:forecastres}).'
              if smaller else '.'))
+    lab_b = {'all': 'khi học trên mọi cell train', 'lab30': r'với 30\,\% nhãn'}
+    cl_b = {bb: [E.half(bb, ds, 'hieu_chinh', 'hipinn') < E.half(bb, ds, 'hieu_chinh', 'gbdt_ls') for ds in DS]
+            for bb in ('all', 'lab30')}
+    sg_b = {bb: [E.half_test(bb, ds, 'hieu_chinh', 'gbdt_ls') for ds in DS] for bb in ('all', 'lab30')}
+    part_b = []
+    for bb in ('all', 'lab30'):
+        up_b = sum(p < 0.05 and w for p, w, _, _ in sg_b[bb]); dn_b = sum(p < 0.05 and not w for p, w, _, _ in sg_b[bb])
+        part_b.append(f'{sum(cl_b[bb])}/4 bộ {lab_b[bb]}'
+                      + (f' (tốt hơn có ý nghĩa ở {up_b}' + (f', kém hơn có ý nghĩa ở {dn_b}' if dn_b else '') + ')'
+                         if up_b or dn_b else ''))
+    weak = [bb for bb in ('all', 'lab30') if sum(cl_b[bb]) <= 2]
     p3b = (r'\paragraph{Kiểm tra trên nửa hiệu chỉnh.} Dạng trung vị được chọn sau khi đã thấy kết quả test của '
            'HiPINN-w, nên cần một kiểm tra không dùng cell test. Nửa hiệu chỉnh không dùng để chọn gì cho các '
            'mô hình trong \\Cref{tab:e33val}, và sai số của trung vị trên nửa này chưa được xem khi quyết định. Trên '
-           f'nửa này, HiPINN có MAE thấp hơn HiPINN-w ở {c_w}/{len(halves)} trường hợp và thấp hơn GBDT lịch '
-           f'sử ở {c_l}/{len(halves)}'
-           + (f' (tốt hơn có ý nghĩa ở {su_l}' + (f', kém hơn có ý nghĩa ở {sd_l}' if sd_l else '') + ')'
-              if su_l or sd_l else ' (không khác có ý nghĩa ở trường hợp nào)') + '. '
-           + ('Kết quả trên hai phần dữ liệu cùng chiều, nên ưu thế của trung vị không chỉ do cách chọn trên test.'
-              if c_l > len(halves) / 2 and c_w > len(halves) / 2 else
-              'Ưu thế của trung vị trên nửa này yếu hơn trên test, nên một phần ưu thế trên test có thể do chính việc '
-              'chọn dạng trung vị sau khi xem kết quả.'))
+           f'nửa này, HiPINN có MAE thấp hơn HiPINN-w ở {c_w}/{len(halves)} trường hợp; so với HiGBDT, HiPINN thấp hơn ở '
+           + ' và '.join(part_b) + '. ')
+    if not weak:
+        p3b += 'Kết quả trên hai phần dữ liệu cùng chiều, nên ưu thế của trung vị không chỉ do cách chọn trên test.'
+    elif len(weak) < 2:
+        p3b += ('Kết quả cùng chiều với test ' + ' và '.join(lab_b[bb] for bb in ('all', 'lab30') if bb not in weak)
+                + '; ' + ' và '.join(lab_b[bb] for bb in weak) + ', ưu thế của HiPINN so với HiGBDT trên test chưa được '
+                'nửa hiệu chỉnh xác nhận, nên một phần ưu thế đó có thể do chính việc chọn dạng trung vị sau khi xem '
+                'kết quả.')
+    else:
+        p3b += ('Ở cả hai ngân sách, ưu thế của HiPINN so với HiGBDT trên test chưa được nửa hiệu chỉnh xác nhận, nên '
+                'một phần ưu thế đó có thể do chính việc chọn dạng trung vị sau khi xem kết quả.')
     # ---------------- phần cuối đời
     tb = '0.9-1'
     pbs = ['<0.5', '0.5-0.7', '0.7-0.8', '0.8-0.9', '0.9-1']
@@ -1816,8 +1834,8 @@ def e33_section(D):
     cov_u = [E.val('all', 'uoc', ds, 'cov_h') for ds in DS]
     p7 = (r'\paragraph{RUL và khoảng dự báo.} \Cref{tab:e33rul} ở \Cref{app:additional} cho MAE của RUL. Với mọi cell '
           f'train, RUL của HiPINN có MAE bằng {rng(rr["do"])} lần PINN-GBDT khi lịch sử đo '
-          f'({sig_txt(*rk["do"])}) và {rng(rr["uoc"])} lần khi lịch sử ước lượng ({sig_txt(*rk["uoc"])}); so với GBDT '
-          f'lịch sử, tỉ số là {rng(rl["do"])} khi lịch sử đo ({sig_txt(*rlk["do"])}). ')
+          f'({sig_txt(*rk["do"])}) và {rng(rr["uoc"])} lần khi lịch sử ước lượng ({sig_txt(*rk["uoc"])}); so với '
+          f'HiGBDT, tỉ số là {rng(rl["do"])} khi lịch sử đo ({sig_txt(*rlk["do"])}). ')
     if over:
         p7 += (f'HiGBDT dự báo RUL dài hơn thực tế trên {jv(over)} (sai số có dấu trung bình '
                + jv([f'{ds} +{v(E.rv("all", "do", ds, "s_gbdt_ls"), 0)}' for ds in over])
@@ -1848,8 +1866,11 @@ def e33_section(D):
     else:
         p8 += ('Với SOH, quy tắc chọn ' + '; '.join(chosen) + '. ' if chosen else '')
         p8 += (('Ở ' + jv(none) + ' không mô hình nào thoả. ') if none else '')
-    p8 += ('Với RUL, ' + '; '.join(f'{"lịch sử đo" if sc == "do" else "lịch sử ước lượng"}: '
-                                   + (name(m) if m else 'không mô hình nào thoả') for sc, m in rul.items()) + '.')
+    if len(set(rul.values())) == 1 and None not in rul.values():
+        p8 += f'Với RUL, quy tắc chọn {name(next(iter(rul.values())))} cho cả hai kịch bản lịch sử.'
+    else:
+        p8 += ('Với RUL, ' + '; '.join(f'{"lịch sử đo" if sc == "do" else "lịch sử ước lượng"}: '
+                                       + (name(m) if m else 'không mô hình nào thoả') for sc, m in rul.items()) + '.')
     figs = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e33_mae.pdf}' '\n'
             r'\caption[MAE của SOH dự báo trong E33]{MAE theo cell (trung bình qua 3 lần lặp, thang log) của các mô hình '
             r'ở ba thiết lập: ngân sách 30\,\% nhãn hoặc mọi cell train, lịch sử SOH đo hoặc ước lượng.}\label{fig:e33mae}'
@@ -1866,7 +1887,7 @@ def e33_section(D):
                 r'các cell còn ít nhất $' + v(float(TP.min_h.iloc[0]), 2) + r'L$ chu kỳ đo sau gốc, chọn cell có sai số '
                 r'của HiPINN ở trung vị. Khoảng 90\,\% theo dự đoán phù hợp. PINN-dự báo, nhánh thứ ba của HiPINN, không '
                 r'vẽ để hình dễ đọc.}\label{fig:e33traj}' '\n' r'\end{figure}')
-    body = ('\\FloatBarrier\n\\subsection{Dự báo có đặc trưng lịch sử: HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
+    body = ('\\FloatBarrier\n\\subsection{Dự báo có đặc trưng lịch sử: HiGBDT và HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
             + e33_table(E) + '\n\n' + p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + p3b + '\n\n' + figs + '\n\n'
             + p4 + '\n\n'
             + fig_tail + '\n\n' + p5 + '\n\n' + fig_traj + '\n\n' + (p6 + '\n\n' if p6 else '') + p7 + '\n\n' + p8

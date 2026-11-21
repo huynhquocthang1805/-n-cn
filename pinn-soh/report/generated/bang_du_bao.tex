@@ -1,7 +1,7 @@
 \begin{table}[!hbp]\centering\small
-\caption[MAE của SOH dự báo ở ba tầm]{MAE theo cell ($\times10^{-3}$) của SOH dự báo ở ba tầm, kịch bản lịch sử ước lượng (không đo dung lượng cell test); in đậm là thấp nhất. Hai cột cuối: mô hình kết hợp khi lịch sử là dung lượng đo, và sai số của mô hình kết hợp quy ra dung lượng (mAh) ở kịch bản ước lượng.}\label{tab:e22soh}
+\caption[MAE của SOH dự báo ở ba tầm]{MAE theo cell ($\times10^{-3}$) của SOH dự báo ở ba tầm, kịch bản lịch sử ước lượng (không đo dung lượng cell test); in đậm là thấp nhất. Hai cột cuối: PINN-GBDT khi lịch sử là dung lượng đo, và sai số của PINN-GBDT quy ra dung lượng (mAh) ở kịch bản ước lượng.}\label{tab:e22soh}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrrrr}\toprule
-Bộ & Tầm & Giữ nguyên & Tuyến tính & Vật lý theo cell & GBDT & PINN-dự báo & Kết hợp & Kết hợp, đo & Kết hợp (mAh) \\\midrule
+Bộ & Tầm & Giữ nguyên & Tuyến tính & Vật lý theo cell & GBDT & PINN-dự báo & PINN-GBDT & PINN-GBDT, đo & PINN-GBDT (mAh) \\\midrule
 XJTU & 0{,}1$L$ & 14{,}2 & 12{,}2 & 23{,}4 & \textbf{10{,}8} & 12{,}4 & 10{,}8 & 5{,}4 & 22 \\
  & 0{,}25$L$ & 36{,}2 & 28{,}8 & 39{,}6 & \textbf{16{,}2} & 23{,}5 & 18{,}8 & 13{,}8 & 38 \\
  & 0{,}5$L$ & 70{,}2 & 58{,}8 & 62{,}3 & \textbf{26{,}5} & 32{,}3 & 28{,}4 & 22{,}5 & 57 \\
@@ -17,9 +17,9 @@ HUST & 0{,}1$L$ & 22{,}2 & \textbf{13{,}0} & 35{,}9 & 14{,}3 & 14{,}2 & 13{,}7 &
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \begin{table}[!hbp]\centering\small
-\caption[MAE của RUL dự báo]{MAE của RUL (chu kỳ), kịch bản lịch sử ước lượng, trung bình qua gốc ở 25, 50, 75\,\% đời; cột RUL thực là trung bình RUL thật tại các gốc. Ba cột cuối của mô hình kết hợp: MAE khi lịch sử là dung lượng đo, tỉ lệ dự báo nằm trong $\pm20\,\%$ RUL thật và độ phủ thực tế của khoảng RUL 90\,\%.}\label{tab:e22rul}
+\caption[MAE của RUL dự báo]{MAE của RUL (chu kỳ), kịch bản lịch sử ước lượng, trung bình qua gốc ở 25, 50, 75\,\% đời; cột RUL thực là trung bình RUL thật tại các gốc. Ba cột cuối của PINN-GBDT: MAE khi lịch sử là dung lượng đo, tỉ lệ dự báo nằm trong $\pm20\,\%$ RUL thật và độ phủ thực tế của khoảng RUL 90\,\%.}\label{tab:e22rul}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrrr}\toprule
-Bộ & RUL thực & Tuyến tính & Vật lý theo cell & GBDT & PINN-dự báo & Kết hợp & Kết hợp, đo & Trong $\pm20\,\%$ & Độ phủ khoảng \\\midrule
+Bộ & RUL thực & Tuyến tính & Vật lý theo cell & GBDT & PINN-dự báo & PINN-GBDT & PINN-GBDT, đo & Trong $\pm20\,\%$ & Độ phủ khoảng \\\midrule
 XJTU & 231 & 529 & 499 & 145 & 99 & \textbf{96} & 85 & 38\,\% & 70\,\% \\
 TJU & 131 & 50 & 45 & 23 & 23 & \textbf{20} & 14 & 65\,\% & 84\,\% \\
 MIT & 344 & 836 & 877 & 131 & 118 & \textbf{113} & 112 & 48\,\% & 67\,\% \\

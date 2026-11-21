@@ -291,22 +291,23 @@ giữ các bảng đã tổng hợp, đủ để dựng báo cáo mà không c�
 
 Kết quả (Mục 5.2.10 và Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
 
-* Chạy lại GBDT lịch sử ở 30 % nhãn với lịch sử đo cho XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; số đã lưu của
-  G-doan là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy).
-  Mọi so sánh dùng số chạy lại, mọi mô hình trong cùng một môi trường.
-* Có lịch sử đo: GBDT lịch sử có MAE trung bình thấp nhất trên cả bốn bộ ở cả hai ngân sách, bằng 0,85–0,94 lần GBDT
-  theo tầm của E22 (tốt hơn có ý nghĩa trên cả bốn bộ). Kết hợp mới bằng 0,79–0,99 lần kết hợp E22 nhưng 1,01–1,48 lần
-  GBDT lịch sử: thêm PINN-dự báo không giảm MAE trung bình.
-* Ngoại lệ TJU: phần lớn cell có sai số thấp hơn với hai mô hình kết hợp (kiểm định ghép cặp có ý nghĩa); trung bình
-  nghiêng về GBDT lịch sử vì cell CY25-025_1-#1, nơi PINN-dự báo có MAE 219–241 còn GBDT lịch sử 36–42. Bỏ 1–2 cell thì
-  hiệu của hai trung bình đổi chiều. Vì vậy quy tắc chọn sau thí nghiệm (thấp hơn trên ≥ 3 bộ, không kém có ý nghĩa ở
-  bộ nào) không chọn được mô hình SOH nào.
-* Lịch sử ước lượng: chênh lệch nhỏ, kết hợp mới bằng 0,90–1,01 lần kết hợp E22.
-* RUL: quy tắc chọn giữ kết hợp E22. GBDT lịch sử dự báo RUL dài hơn thực tế trên MIT và HUST (sai số có dấu +201 và
-  +477 chu kỳ, MAE 229 và 512).
-* Khoảng SOH 90 % của kết hợp mới phủ 85–93 % khi lịch sử đo, 65–90 % khi lịch sử ước lượng.
-* Bài toán cập nhật (số đã lưu của G-doan, không chạy lại): mô hình chọn trên validation có MAE trung bình thấp hơn mô
-  hình kiểu E32 trên 0/4 bộ ở lịch đo mỗi 0,2L và 0,1L, nên giữ mô hình cập nhật kiểu E32.
+* HiGBDT chạy lại ở 30 % nhãn với lịch sử đo: XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; lần chạy trước ở kho G-doan
+  là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy). Đặc trưng
+  lịch sử giúp GBDT ở mọi trường hợp: HiGBDT bằng 0,85–0,94 lần GBDT theo tầm khi lịch sử đo.
+* HiPINN có MAE thấp nhất trong tám mô hình của bảng ở 11/12 trường hợp (bộ × thiết lập). So với HiGBDT, mô hình
+  đứng riêng tốt nhất: 0,86–1,01 lần, tốt hơn có ý nghĩa ở 10/12 trường hợp, 62–82 % số cell có sai số thấp hơn. So với
+  PINN-GBDT của E22 khi lịch sử đo: 0,62–0,91 lần, tốt hơn có ý nghĩa ở 8/8.
+* HiPINN-w (trọng số chọn trên 3–7 cell validation) có MAE cao hơn HiGBDT ở 7/8 trường hợp lịch sử đo; HiPINN thấp hơn
+  HiPINN-w và HiPINN-tb (trung bình ba nhánh) ở 12/12. Dạng trung vị được chọn sau khi xem kết quả test của HiPINN-w.
+* Kiểm tra trên nửa hiệu chỉnh (không thuộc test, chưa xem khi chọn trung vị): HiPINN thấp hơn HiPINN-w ở 7/8 trường hợp;
+  thấp hơn HiGBDT ở 4/4 bộ khi học trên mọi cell train (3 có ý nghĩa) nhưng chỉ 2/4 bộ với 30 % nhãn.
+* Phần cuối đời (10 % đời cuối, MIT, mọi cell train, lịch sử đo): PINN-GBDT 26,2, HiPINN 20,6, HiGBDT 20,8, GBDT theo
+  tầm 19,2 (thấp nhất); dự báo vẫn cao hơn thực tế ở đoạn này (độ lệch +12,7 với HiPINN, +15,3 với HiGBDT).
+* PINN-dự báo có lịch sử bằng 0,87–1,11 lần bản không lịch sử, chỉ tốt hơn có ý nghĩa trên HUST, nên HiPINN giữ
+  PINN-dự báo của E22.
+* RUL (mọi cell train): HiPINN bằng 0,90–1,70 lần PINN-GBDT khi lịch sử đo (thấp hơn có ý nghĩa trên TJU và MIT; trên
+  HUST cao hơn, không có ý nghĩa) và 0,34–0,80 lần HiGBDT, vốn dự báo RUL dài hơn thực tế trên MIT và HUST.
+* Khoảng SOH 90 % của HiPINN phủ 89–93 % khi lịch sử đo, 69–90 % khi lịch sử ước lượng.
 
 ### HiGBDT cho bài toán cập nhật (E34)
 

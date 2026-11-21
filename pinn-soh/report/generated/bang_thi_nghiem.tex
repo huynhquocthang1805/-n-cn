@@ -10,12 +10,13 @@ PINN-lai: 9 hướng cải tiến chọn trên validation; 3 PINN-semi, GBDT, 3 
 CNN, LSTM, Transformer: chọn độ dài cửa sổ trên validation; 3 lần lặp, 4 mức nhãn & 840 \\
 Đầu vào có lịch sử của cell: chọn dạng trên validation; PINN-semi, MLP, GBDT & 1.190 \\
 Ngân sách đo: đo thưa mọi cell train theo 4 lịch đo & 1.560 \\
-Mô hình cập nhật từ lần đo gần nhất (GBDT) & 240 \\
+GBDT-cập nhật: cập nhật SOH từ lần đo gần nhất & 240 \\
 Dự báo SOH, dung lượng, RUL; bản có xét hồi phục dung lượng & 120 \\
-Dự báo kết hợp GBDT lịch sử (mã của repo G-doan) với PINN-dự báo, 2 ngân sách nhãn, 3 lần lặp & 120 \\
-Mô hình của đồ án trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống & 1.002 \\
+Dự báo có đặc trưng lịch sử: HiGBDT, HiPINN và các nhánh, 2 ngân sách nhãn, 3 lần lặp & 120 \\
+HiGBDT cho bài toán cập nhật: GBDT-cập nhật, HiGBDT-$\Delta$, -R, -V trên 4 lịch đo & 60 \\
+PINN-lai, GBDT và PINN-semi trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống & 1.002 \\
 Chạy lại mã gốc PINN4SOH: 39 nhóm, bản công bố 10 lần và bản đã sửa 3 lần mỗi nhóm & 507 \\
 Phân tích đặc trưng: 120 fold $\times$ 9--10 lần huấn luyện GBDT với các tập đầu vào khác nhau & 1.110 \\
 \midrule
-Tổng & 11.429 \\
+Tổng & 11.489 \\
 \bottomrule\end{tabularx}\end{table}
