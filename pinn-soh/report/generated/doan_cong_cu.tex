@@ -1,0 +1,3 @@
+\section{Công cụ dự báo cho một cell}\label{sec:congcu}
+
+Công cụ dòng lệnh của đồ án gói các mô hình để dùng cho một cell bất kỳ, chỉ cần tệp đặc trưng sạc của cell đó. Lệnh thứ nhất học PINN-semi ở 30\,\% nhãn cho một bộ dữ liệu, lệnh thứ hai ước lượng SOH ở từng chu kỳ, lệnh thứ ba dự báo SOH, dung lượng và RUL từ một chu kỳ bất kỳ bằng HiPINN (\Cref{sec:e33pp}). Lần đầu dự báo cho một bộ, HiPINN được học trên các cell có nhãn của cùng fold với mô hình ước lượng, chọn trọng số trên cell validation rồi lưu lại; cell được dự báo không tham gia khi học. Nếu cell không được đo dung lượng, lịch sử SOH lấy từ mô hình ước lượng và khoảng 90\,\% dùng phân vị hiệu chỉnh riêng cho trường hợp này.
