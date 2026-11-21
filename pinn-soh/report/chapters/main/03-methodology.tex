@@ -334,35 +334,64 @@ Holm qua các mô hình được so trong mỗi bộ.
 \input{generated/bang_du_bao_tham_so}
 
 
-\subsection{Dự báo kết hợp với GBDT lịch sử}\label{sec:e33pp}
+\subsection{Dự báo có đặc trưng lịch sử: mô hình HiPINN}\label{sec:e33pp}
 
-Thí nghiệm này (E33) ghép mô hình dự báo của \Cref{sec:mo_rong} với GBDT có đặc trưng lịch sử SOH (gọi tắt là GBDT lịch
-sử), lấy nguyên mã và cấu hình từ phần cải tiến trong repo G-doan của đồ án, và đánh giá mọi mô hình trong cùng một giao
-thức.
+Mô hình dự báo ở trên nhìn cell tại gốc qua 23 đặc trưng, trong đó phần lịch sử chỉ có mức SOH và hai độ dốc. Thí
+nghiệm E33 đưa thêm quá khứ của cell vào bài toán dự báo và xây dựng mô hình HiPINN (History-informed PINN) gồm ba
+nhánh, mỗi nhánh nhìn lịch sử theo một cách (\Cref{fig:hipinn}).
 
 \paragraph{GBDT lịch sử.} Ngoài 23 đặc trưng gốc $\mathbf{z}_k$, mô hình nhận SOH tại $k$ và độ lệch của nó so với mức
 $\ell_k$; với các cửa sổ 5, 10, 30, 100 và 200 hàng gần nhất: trung bình trừ SOH hiện tại, độ lệch chuẩn và độ dốc; với độ
-trễ 1, 3, 7, 15, 31 và 63 hàng: thay đổi SOH và khoảng chu kỳ. GBDT học độ giảm $\ell_k - \text{SOH}(k+h)$ từ
-(đặc trưng, $h$). Có 6 cấu hình (hàm mất mát $L_2$ hoặc $L_1$, 15 hoặc 31 lá, có hoặc không ràng buộc đơn điệu theo $h$,
-học phần dư so với ngoại suy tuyến tính; một cấu hình chỉ dùng 23 đặc trưng gốc làm mốc), mỗi cấu hình 100, 250 hoặc 450
-cây; cấu hình, số cây và trọng số
-$a \in \{0;\ 0{,}25;\ 0{,}5;\ 0{,}75;\ 1\}$ trộn với GBDT theo tầm của E22 được chọn theo MAE trên validation. Mỗi cell
-(và mỗi gốc) có tổng trọng số như nhau khi học và khi chọn.
+trễ 1, 3, 7, 15, 31 và 63 hàng: thay đổi SOH và khoảng chu kỳ tương ứng. Tất cả chỉ dùng các hàng tới gốc. GBDT học độ
+giảm $\ell_k - \text{SOH}(k+h)$ theo (đặc trưng, $h$). Sáu cấu hình được thử: hàm mất mát $L_2$ hoặc $L_1$, 15 hoặc 31 lá,
+có hoặc không ràng buộc đơn điệu theo $h$, học phần dư so với ngoại suy tuyến tính, và một cấu hình chỉ dùng 23 đặc trưng
+gốc để làm mốc; mỗi cấu hình 100, 250 hoặc 450 cây. Cấu hình, số cây và trọng số
+$a \in \{0;\ 0{,}25;\ 0{,}5;\ 0{,}75;\ 1\}$ trộn với GBDT theo tầm của E22 được chọn theo MAE trên validation. Khi học và
+khi chọn, mỗi cell và mỗi gốc có tổng trọng số như nhau, để cell dài không lấn át cell ngắn.
 
-\paragraph{Mô hình kết hợp mới.}
-\begin{equation}\label{eq:e33}
-\hat y(k+h) = w\,\hat y_\text{GBDT lịch sử}(k+h) + (1 - w)\,\hat y_\text{PINN-dự báo}(k+h),
+\paragraph{PINN-dự báo có lịch sử.} Giữ nguyên mạng và nghiệm đóng~\eqref{eq:fcdrop} của PINN-dự báo, chỉ đổi đầu vào
+thành 23 đặc trưng gốc cộng các đặc trưng lịch sử ở trên. Hai nhánh vì vậy nhận cùng một lượng thông tin và chỉ khác dạng
+mô hình: cây quyết định học tự do theo $h$, còn mạng chỉ chọn tham số cho một đường suy giảm có dạng vật lý.
+
+\paragraph{Nhánh theo đời.} Hai nhánh trên dự báo trực tiếp SOH tại $k+h$. Với các cell suy giảm chậm rồi gãy gần cuối
+đời, thời điểm gãy mỗi cell một khác, nên dự báo trực tiếp có xu hướng thành một đường trung bình gần thẳng: thấp hơn thực
+tế ở giữa đời và cao hơn thực tế ở phần cuối. Nhánh theo đời tách việc dự báo thành hai bước. Bước một, một GBDT học đời
+còn lại $\log(N_j - c)$ từ cùng bộ đặc trưng có lịch sử, với $N_j$ là chu kỳ mà SOH của cell train $j$ chạm ngưỡng $\tau$
+(cell chưa chạm ngưỡng không dùng). Bước hai, mỗi cell train cho một khuôn $f_j(u) = \text{SOH}_j(u N_j)$ theo thời gian
+chuẩn hoá $u$, làm trơn bằng trung vị trượt 9 hàng. Với đời dự đoán $\hat N = c_k + \widehat{N - c_k}$ của cell cần dự
+báo,
+\begin{equation}\label{eq:life}
+\hat y(c_k + h) = \ell_k + \frac{1}{K}\sum_{j \in \mathcal{K}}
+  \Bigl[f_j\Bigl(\frac{c_k + h}{\hat N}\Bigr) - f_j\Bigl(\frac{c_k}{\hat N}\Bigr)\Bigr],
 \end{equation}
-với $w \in \{0;\ 0{,}25;\ 0{,}5;\ 0{,}75;\ 1\}$ chọn trên validation: $w = 1$ là GBDT lịch sử, $w = 0$ là PINN-dự báo.
-Khoảng 90\,\% theo dự đoán phù hợp: $q$ là phân vị 90\,\% của $|y - \hat y| / \sqrt{1 + h/L}$ trên các cell hiệu chỉnh,
-khoảng là $\hat y \pm q\sqrt{1 + h/L}$.
+trong đó $\mathcal{K}$ là $K$ khuôn có đặc trưng gốc gần nhất ở cùng thời điểm chuẩn hoá (hoặc mọi khuôn). Sau điểm cuối
+của khuôn, giá trị cuối được giữ nguyên: trên validation, kéo dài khuôn theo độ dốc cuối đời làm dự báo sụp xuống mỗi khi
+đời bị đoán ngắn đi nhiều. Số cây và $K \in \{5, 10, 20, \text{mọi khuôn}\}$ chọn trên validation. Nhánh này được thêm sau
+khi thấy sai số ở phần cuối đời trong lần chạy đầu của E33 (\Cref{sec:e33res}), nên kết quả của nó là kết quả sau thí
+nghiệm.
+
+\paragraph{HiPINN.} Mô hình ghép ba nhánh với trọng số chọn trên validation:
+\begin{equation}\label{eq:e33}
+\hat y = w_1\,\hat y_\text{GBDT lịch sử} + w_2\,\hat y_\text{PINN} + w_3\,\hat y_\text{theo đời},
+\qquad w_i \in \{0;\ 0{,}25;\ \ldots;\ 1\},\ \textstyle\sum_i w_i = 1,
+\end{equation}
+trong đó nhánh PINN là PINN-dự báo có hoặc không có lịch sử, bản nào có MAE validation thấp hơn. Khoảng 90\,\% theo dự
+đoán phù hợp: $q$ là phân vị 90\,\% của $|y - \hat y| / \sqrt{1 + h/L}$ trên các cell hiệu chỉnh, khoảng là
+$\hat y \pm q\sqrt{1 + h/L}$. Để thấy phần đóng góp của nhánh theo đời, báo cáo kèm bản HiPINN không có nhánh này
+($w_3 = 0$, $w_1$ chọn trên lưới 0; 0,25; \ldots; 1).
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_hipinn_arch.pdf}
+\caption[Mô hình HiPINN]{Mô hình HiPINN tại gốc $k$: đặc trưng gốc và đặc trưng lịch sử SOH đi vào ba nhánh (GBDT lịch
+sử, PINN-dự báo, nhánh theo đời); tổng có trọng số của ba nhánh cho SOH và dung lượng dự báo, RUL và khoảng
+90\,\%.}\label{fig:hipinn}
+\end{figure}
 
 \paragraph{Giao thức.} Cùng fold theo cell và lần lặp với E22. Cell validation được chia đôi theo thứ tự tên: nửa dùng để
 chọn (cấu hình, số cây, trọng số, dừng sớm), nửa dùng để hiệu chỉnh khoảng. Thang đời $L$ và bộ chuẩn hoá chỉ tính trên
-cell train; E22 tính $L$ trên mọi cell của bộ, kể cả cell test, nên khoảng dự báo và lưới tìm RUL của E22 có dùng độ dài
-của cell test. Gốc dự báo SOH đặt ở các chu kỳ $0{,}2L$, $0{,}4L$ và $0{,}6L$, không phụ thuộc đời thật của cell test; sai
-số của một cell là trung bình qua các gốc của MAE trên mọi chu kỳ đo được sau gốc. Có hai ngân sách nhãn cho dữ liệu học
-của bộ dự báo: chỉ các cell train có nhãn, bằng 30\,\% tổng số cell (như G-doan), và mọi cell train (như E22). Lịch sử
-SOH của cell test tới gốc là dung lượng đo; với ngân sách mọi cell train, có thêm kịch bản lịch sử là ước lượng PINN-lai
-ở 70\,\% nhãn như E22. RUL được tính như E22. Các mô hình được so là giữ nguyên, ngoại suy tuyến tính, GBDT theo tầm của
-E22, GBDT lịch sử, PINN-dự báo, mô hình kết hợp của E22 và mô hình kết hợp mới~\eqref{eq:e33}.
+cell train, khác E22 vốn tính $L$ trên mọi cell của bộ. Gốc dự báo SOH đặt ở các chu kỳ $0{,}2L$, $0{,}4L$ và $0{,}6L$,
+không phụ thuộc đời thật của cell test; sai số của một cell là trung bình qua các gốc của MAE trên mọi chu kỳ đo được sau
+gốc. Có hai ngân sách nhãn cho dữ liệu học của bộ dự báo: chỉ các cell train có nhãn, bằng 30\,\% tổng số cell, và mọi cell
+train như E22. Lịch sử SOH của cell test tới gốc là dung lượng đo; với ngân sách mọi cell train có thêm kịch bản lịch sử là
+ước lượng PINN-lai ở 70\,\% nhãn như E22. RUL được tính như E22. Ngoài các nhánh và HiPINN, các mô hình được so gồm giữ
+nguyên, ngoại suy tuyến tính, GBDT theo tầm, PINN-dự báo và mô hình kết hợp của E22, tất cả học lại theo giao thức này.

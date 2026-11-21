@@ -16,11 +16,11 @@ Nguồn số liệu, không số nào gõ tay vào bảng:
   * số lượt chạy của từng thí nghiệm: pinnsoh/experiments.py;
   * dự báo (E22): runs/E22 và runs/E20 -> analysis/analyze_e22.py, analysis/figures_report.py; bản sao bảng ở
     report/generated/data/e22_*.csv, hình ở report/graphics/fig_e22_*.pdf;
-  * dự báo kết hợp (E33): runs/E33 -> analysis/analyze_e33.py, analysis/figures_report.py; bản sao bảng ở
-    report/generated/data/e33_*.csv, hình ở report/graphics/fig_e33_*.pdf; bảng bài toán cập nhật lấy từ các tệp kết
-    quả đã lưu trong repo G-doan (improvements/anchors).
+  * dự báo có đặc trưng lịch sử, HiPINN (E33): runs/E33 -> analysis/analyze_e33.py, analysis/figures_report.py; bản sao
+    bảng ở report/generated/data/e33_*.csv, hình ở report/graphics/fig_e33_*.pdf; bảng mô hình cập nhật có đặc trưng
+    lịch sử và số của lần chạy trước lấy từ các tệp kết quả trong kho phát triển G-doan (biến môi trường GDOAN).
 Các con số trong lời văn của Chương 5 (kết quả từ báo cáo đã nộp) chép từ lời văn của báo cáo đó, trừ mục dự báo
-(sinh từ kết quả chạy lại E22) và mục dự báo kết hợp (sinh từ E33).
+(sinh từ kết quả chạy lại E22) và mục HiPINN (sinh từ E33).
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -155,7 +155,7 @@ EXPS = [(['E13'], 'Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn
         (['E28'], 'Ngân sách đo: đo thưa mọi cell train theo 4 lịch đo'),
         (['E32'], 'Mô hình cập nhật từ lần đo gần nhất (GBDT)'),
         (['E22', 'E23'], 'Dự báo SOH, dung lượng, RUL; bản có xét hồi phục dung lượng'),
-        (['E33'], 'Dự báo kết hợp GBDT lịch sử (mã của repo G-doan) với PINN-dự báo, 2 ngân sách nhãn, 3 lần lặp'),
+        (['E33'], 'Dự báo có đặc trưng lịch sử: ba nhánh và HiPINN, 2 ngân sách nhãn, 3 lần lặp'),
         (['E27'], 'Mô hình của đồ án trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống')]
 
 
@@ -494,34 +494,39 @@ def features_parts(F, L_leak):
     every = [r for r in cnt.itertuples() if len(r.dataset) == len(DS)]
     some = [r for r in cnt.itertuples() if len(r.dataset) < len(DS)]
     per_ds = D.groupby('dataset').size().reindex(DS).fillna(0).astype(int)
-    fmt_q = lambda f, ds: ', '.join(f'{d} {v(q[f][d])}' for d in ds)
+    jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    top1 = {d: top(d)[0] for d in DS}
+    tq = list(q['t'].values())
+    assert max(tq) < -0.9                                     # "gần như tỉ lệ nghịch"
+    weak_all = [f for f in ORDER[:16] if all(f in weak[d] for d in DS)]
+    ex = sorted(flip, key=lambda f: -min(abs(q[f][d]) for d in DS))[:1]
+    flip_txt = ''
+    if ex:
+        f = ex[0]; up_lfp = q[f]['MIT'] > 0
+        flip_txt = (f'Có đặc trưng còn đổi chiều theo hệ hoá học: {NAMES_VI[f]} '
+                    + ('tăng' if up_lfp else 'giảm') + f' theo SOH ở hai bộ LFP ($\\rho$ {v(q[f]["MIT"])} và '
+                    f'{v(q[f]["HUST"])}) nhưng ' + ('giảm' if up_lfp else 'tăng')
+                    + f' ở XJTU và TJU ({v(q[f]["XJTU"])} và {v(q[f]["TJU"])}). ')
     text_rel = (
-        'Bảng~\\ref{tab:relevance} cho mức liên quan đơn biến. Trong từng cell, chỉ số chu kỳ có tương quan âm gần như '
-        f'tuyệt đối với SOH ($\\rho$ trung vị {rng(list(q["t"].values()))}), vì SOH giảm dần theo thời gian. Số đặc trưng '
-        'sạc có $|\\rho|$ trung vị trong cell từ 0,9 trở lên là ' + ', '.join(f'{n90[d]} ở {d}' for d in DS) + '. Ba đặc '
-        'trưng liên quan mạnh nhất khác nhau giữa các bộ: ' + '; '.join(
-            f'{d}: ' + ', '.join(f'{NAMES_VI[f]} ({v(q[f][d])})' for f in top(d)) for d in DS) + '. '
-        + ((f'Chiều thay đổi của cùng một đặc trưng phụ thuộc hệ hoá học: {len(flip)} đặc trưng đổi dấu giữa hai bộ LFP '
-            '(MIT, HUST) và hai bộ NCM/NCA (XJTU, TJU), ví dụ ' + '; '.join(
-                f'{NAMES_VI[f]} có $\\rho$ {fmt_q(f, lfp)} nhưng {fmt_q(f, ni)}'
-                for f in sorted(flip, key=lambda f: -min(abs(q[f][d]) for d in DS))[:2]) + '. ') if flip else '')
-        + 'Số đặc trưng sạc gần như không liên quan đơn biến với SOH ($|\\rho| < 0{,}3$) là '
-        + ', '.join(f'{len(weak[d])} ở {d}' for d in DS)
-        + (', nhưng không đặc trưng nào yếu ở cả bốn bộ' if not set.intersection(*[set(weak[d]) for d in DS]) else
-           '; yếu ở cả bốn bộ: ' + ', '.join(NAMES_VI[f] for f in ORDER if all(f in weak[d] for d in DS))) + '.\n\n'
-        'Nhiều cặp đặc trưng gần như trùng thông tin ($|\\rho| \\ge 0{,}95$ trên mọi chu kỳ của bộ): '
-        + ', '.join(f'{per_ds[d]} cặp ở {d}' for d in DS) + '. '
-        + (('Chỉ ' + ('cặp ' if len(every) == 1 else f'{len(every)} cặp ') + ', '.join(
-            f'{NAMES_VI[r.f1]} và {NAMES_VI[r.f2]}' for r in every) + ' trùng ở cả bốn bộ; ') if every else
-           'Không cặp nào trùng ở cả bốn bộ; ')
-        + f'{len(some)} cặp còn lại chỉ trùng ở một đến ba bộ, ví dụ ' + '; '.join(
-            f'{NAMES_VI[r.f1]} và {NAMES_VI[r.f2]} ({", ".join(r.dataset)})' for r in some[:3]) + '. '
-        'Vì một cặp trùng ở bộ này lại mang hai thông tin khác nhau ở bộ khác, một tập đầu vào chung cho cả bốn bộ không '
-        'bỏ được cột nào chỉ dựa trên trùng lặp; liệu bỏ có lợi không được kiểm tra trực tiếp bằng chọn đặc trưng trên '
-        'validation ở mục sau. Trùng lặp cũng làm phép hoán vị từng cột đánh giá thấp tầm quan trọng của mỗi cột trong '
-        'cặp, nên các phép thử dưới đây bỏ và hoán vị theo nhóm. Cuối cùng, tương quan đơn biến không cho biết một đặc '
-        'trưng có giúp phân biệt các cell với nhau khi kết hợp với đặc trưng khác hay không, nên không đủ để quyết định bỏ '
-        'đặc trưng.')
+        'Bảng~\\ref{tab:relevance} cho thấy trong từng cell, chỉ số chu kỳ gần như tỉ lệ nghịch với SOH ($\\rho$ trung vị '
+        f'từ {v(min(tq))} đến {v(max(tq))}), điều dễ hiểu vì SOH giảm dần theo thời gian. Nhiều đặc trưng sạc cũng biến '
+        'thiên chặt theo SOH; số đặc trưng có $|\\rho|$ trung vị từ 0,9 trở lên là '
+        + jv([f'{n90[d]} ở {d}' for d in DS]) + '. Nhưng đặc trưng mạnh nhất không giống nhau giữa các bộ: '
+        + jv([f'{NAMES_VI[top1[d]]} ở {d}' for d in DS]) + '. ' + flip_txt
+        + ('Không đặc trưng nào yếu ($|\\rho| < 0{,}3$) ở cả bốn bộ, nên không có lý do bỏ một đặc trưng chỉ vì tương '
+           'quan thấp.' if not weak_all else
+           'Yếu ($|\\rho| < 0{,}3$) ở cả bốn bộ chỉ có ' + jv([NAMES_VI[f] for f in weak_all]) + '.')
+        + '\n\n'
+        'Một số cặp đặc trưng gần như trùng nhau ($|\\rho| \\ge 0{,}95$ trên mọi chu kỳ của bộ): '
+        + jv([f'{per_ds[d]} cặp ở {d}' for d in DS]) + ', nhưng '
+        + (('chỉ có cặp ' if len(every) == 1 else f'chỉ có {len(every)} cặp ')
+           + jv([f'{NAMES_VI[r.f1]} và {NAMES_VI[r.f2]}' for r in every]) + ' trùng ở cả bốn bộ. ' if every else
+           'không cặp nào trùng ở cả bốn bộ. ')
+        + 'Một cặp trùng ở bộ này lại mang hai thông tin khác nhau ở bộ khác, nên với một tập đầu vào chung không thể bỏ '
+        'cột nào chỉ vì trùng lặp. Trùng lặp cũng làm phép hoán vị từng cột đánh giá thấp tầm quan trọng của mỗi cột trong '
+        'cặp, vì vậy các phép thử dưới đây bỏ và hoán vị theo nhóm. Ngoài ra, tương quan đơn biến không cho biết một đặc '
+        'trưng có giúp phân biệt các cell khi đi cùng các đặc trưng khác hay không, nên việc giữ hay bỏ phải được thử trực '
+        'tiếp bằng mô hình.')
     # ---------------- bỏ / thêm nhóm
     Ai = A.set_index(['dataset', 'frac', 'variant'])
     out = [r'\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}',
@@ -592,30 +597,57 @@ def features_parts(F, L_leak):
     always_hurt = [x for x in reduced if sig_(x, +1)]
     helps = [(x, sig_(x, -1)) for x in reduced + ['rel', 'prune'] if sig_(x, -1)]
     labv = dict(VARIANTS)
+    rat = lambda var, d, f: Ai.loc[(d, f, var), 'ratio']
+    up_t, dn_t = sig_('no_t', +1), sig_('no_t', -1)
+    t_txt = (f'Bỏ $t$ làm sai số tăng có ý nghĩa ở {len(up_t)} trên {n_cases} trường hợp, nhiều nhất '
+             f'{v(max(r_("no_t")))} lần; ' + (
+                 ('trường hợp duy nhất có lợi là ' if len(dn_t) == 1 else 'các trường hợp có lợi là ')
+                 + lst(dn_t) + ' (tỉ số ' + ', '.join(v(rat('no_t', d, f)) for d, f in dn_t) + '). ' if dn_t else
+                 'không trường hợp nào có lợi. '))
+    assert all(min(r_(x)) > 1 for x in ['t_only'])
+    groups = ['no_V', 'no_I', 'no_QT', 'QT_t']
+    assert not any(sig_(x, -1) for x in groups)               # bỏ nhóm không có lợi ở trường hợp nào
+    nV, nI, nQT, nQt = (len(sig_(x, +1)) for x in groups)
+    assert nV > nI and nQT > nI                               # nhóm V, QT quan trọng hơn nhóm I
+    mQT = max(r_('no_QT'))
+    pV, pI, pQT = (max(perm(g)) for g in ('[V]', '[I]', '[QT]'))
+    same_order = pI < min(pV, pQT)
+    pr_up, pr_dn = sig_('prune', +1), sig_('prune', -1)
     text_abl = (
         'Bảng~\\ref{tab:ablation} và Hình~\\ref{fig:features} cho kết quả bỏ hoặc thêm nhóm ở 8 trường hợp (4 bộ $\\times$ 2 '
-        'mức nhãn); Bảng~\\ref{tab:perm} cho độ quan trọng hoán vị của mô hình đủ 17 đầu vào.\n\n'
-        '\\paragraph{Biến thời gian $t$.} ' + say('no_t', 'Bỏ $t$') + '. ' + say('t_only', 'Chỉ dùng $t$, không dùng đặc '
-        'trưng sạc nào,') + ': tuổi của cell một mình không đủ để biết SOH, vì các cell già với tốc độ rất khác nhau (tuổi '
-        'thọ trong mỗi bộ chênh nhau nhiều lần, Bảng~\\ref{tab:datastats}). Hoán vị $t$ giữa các hàng test làm sai số tăng '
-        f'{rng(perm("[t]"))} lần.\n\n'
-        '\\paragraph{Ba nhóm đặc trưng sạc.} ' + say('no_V', 'Bỏ nhóm V (điện áp pha CC)') + '. '
-        + say('no_I', 'Bỏ nhóm I (dòng điện pha CV)') + '. ' + say('no_QT', 'Bỏ nhóm QT (điện lượng và thời gian)') + '. '
-        + say('QT_t', 'Chỉ giữ nhóm QT và $t$ (5 đầu vào)') + '. Hoán vị cả nhóm làm sai số tăng '
-        f'{rng(perm("[V]"))} lần với nhóm V, {rng(perm("[I]"))} lần với nhóm I và {rng(perm("[QT]"))} lần với nhóm QT.\n\n'
-        '\\paragraph{Chọn đặc trưng tự động trên validation.} Bỏ các đặc trưng mà hoán vị trên validation làm sai số tăng '
-        f'dưới 1\\,\\% giữ lại trung vị {rng(kept.values, 0)} trên 17 đầu vào tuỳ bộ và mức nhãn; các đầu vào bị bỏ nhiều '
-        'nhất là ' + ', '.join(f'{NAMES_VI[f]} ({c} trên {len(K)} fold)' for f, c in often) + '. Trên test, '
-        + say('prune', 'cách chọn này') + '.\n\n'
+        'mức nhãn), Bảng~\\ref{tab:perm} cho độ quan trọng hoán vị của mô hình đủ 17 đầu vào.\n\n'
+        '\\paragraph{Biến thời gian $t$.} ' + t_txt
+        + f'Ngược lại, chỉ dùng $t$ mà bỏ hết đặc trưng sạc cho sai số gấp {rng(r_("t_only"))} lần: tuổi của cell một mình '
+        'không đủ để biết SOH, vì các cell già đi với tốc độ rất khác nhau (tuổi thọ trong mỗi bộ chênh nhau nhiều lần, '
+        f'Bảng~\\ref{{tab:datastats}}). Hoán vị $t$ giữa các hàng test làm sai số tăng {rng(perm("[t]"))} lần, nên mô hình '
+        'thật sự dùng biến này.\n\n'
+        '\\paragraph{Ba nhóm đặc trưng sạc.} Không có trường hợp nào bỏ một nhóm mà sai số giảm có ý nghĩa. Nhóm V (điện '
+        'áp pha CC) và nhóm QT (điện lượng, thời gian) mang nhiều thông tin nhất: bỏ nhóm V làm sai số tăng có ý nghĩa ở '
+        f'{nV} trên {n_cases} trường hợp, bỏ nhóm QT ở {nQT} trên {n_cases}, '
+        + (f'có trường hợp gần gấp đôi ({v(mQT)}). ' if mQT >= 1.8 else f'nhiều nhất {v(mQT)} lần. ')
+        + f'Bỏ nhóm I (dòng điện pha CV) chỉ làm sai số tăng có ý nghĩa ở {nI} trường hợp. Chỉ giữ nhóm QT và $t$, tức 5 '
+        f'đầu vào, kém bộ đầy đủ có ý nghĩa ở {nQt} trên {n_cases} trường hợp. '
+        + (f'Phép hoán vị cho cùng nhận xét: hoán vị nhóm QT làm sai số tăng tới {v(pQT)} lần, nhóm V tới {v(pV)} lần, '
+           f'nhóm I chỉ tới {v(pI)} lần.' if same_order else
+           f'Hoán vị nhóm QT làm sai số tăng tới {v(pQT)} lần, nhóm V tới {v(pV)} lần, nhóm I tới {v(pI)} lần.')
+        + '\n\n'
+        '\\paragraph{Chọn đặc trưng tự động.} Khi bỏ các đầu vào mà hoán vị trên validation làm sai số tăng dưới 1\\,\\%, '
+        f'mỗi fold giữ lại trung vị {rng(kept.values, 0)} trên 17 đầu vào tuỳ bộ và mức nhãn; hay bị bỏ nhất là '
+        + jv([NAMES_VI[f] for f, c in often]) + '. Trên test, cách chọn này cho sai số bằng '
+        + f'{rng(r_("prune"))} lần bộ đầy đủ'
+        + (', không khác có ý nghĩa ở trường hợp nào, tức bớt đầu vào không làm mô hình tốt lên.' if not (pr_up or pr_dn)
+           else (', kém hơn có ý nghĩa ở ' + lst(pr_up) if pr_up else '')
+           + (', tốt hơn có ý nghĩa ở ' + lst(pr_dn) if pr_dn else '') + '.')
+        + '\n\n'
         '\\paragraph{Đọc kết quả.} '
-        + (f'Cả {len(reduced)} tập đầu vào rút gọn đều kém bộ đầy đủ có ý nghĩa ở ít nhất một trường hợp. '
-           if len(always_hurt) == len(reduced) else
-           f'{len(always_hurt)} trên {len(reduced)} tập đầu vào rút gọn kém bộ đầy đủ có ý nghĩa ở ít nhất một trường hợp. ')
-        + ('Một số tập lại tốt hơn có ý nghĩa ở vài trường hợp: ' + '; '.join(
-            f'{labv[x]} ở {lst(k)}' for x, k in helps) + '. Chọn đầu vào riêng cho từng bộ theo các kết quả test này là '
-           'chọn mô hình trên tập test; cách chọn riêng cho từng fold chỉ bằng validation (hàng “chọn trên validation”) thì '
-           f'không cải thiện ổn định (tỉ số {rng(r_("prune"))}). ' if helps else
-           'Không tập rút gọn hay mở rộng nào tốt hơn có ý nghĩa ở trường hợp nào. ')
+        + ('Mọi tập rút gọn đều kém bộ đầy đủ ở ít nhất một trường hợp' if len(always_hurt) == len(reduced) else
+           f'{len(always_hurt)} trên {len(reduced)} tập rút gọn kém bộ đầy đủ ở ít nhất một trường hợp')
+        + ((', và các trường hợp có lợi (' + '; '.join(f'{labv[x]} ở {lst(k)}' for x, k in helps)
+            + ') không lặp lại ở bộ khác. Chọn đầu vào riêng cho từng bộ dựa trên những kết quả này là chọn mô hình trên '
+            'tập test, còn chọn riêng cho từng fold bằng validation thì không cải thiện. ')
+           if helps and all(len({d for d, _ in k}) == 1 for _, k in helps) else
+           ('. Các trường hợp có lợi: ' + '; '.join(f'{labv[x]} ở {lst(k)}' for x, k in helps) + '. ' if helps else
+            ', và không tập rút gọn hay mở rộng nào tốt hơn có ý nghĩa ở trường hợp nào. '))
         + 'Vì vậy đồ án dùng chung bộ 17 đầu vào cho mọi bộ dữ liệu và mọi mô hình.')
     # ---------------- đã bỏ
     rel = r_('rel')
@@ -845,11 +877,11 @@ def compare_chapter(S, T, B, L_leak, D22=None, E33=None):
     s.append(r'\subsection{Các chỉ số chưa tốt}' '\n' r'\paragraph{So với các bài báo đã công bố.}' '\n' + item(bad) + '\n'
              r'\paragraph{Các chỉ số của chính đồ án chưa đạt.}' '\n' + item(internal))
     s.append(r'\subsection{Nhận xét}' '\n'
-             r'Phát biểu đúng mức từ các số trên là: trên đúng cách chia của PINN4SOH và cùng cách tính sai số, mô hình của '
-             r'đồ án có sai số thấp hơn số công bố ở phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ; nhưng '
-             r'trong điều kiện có rò rỉ của bài, một GBDT đạt kết quả tương tự, còn khi bỏ rò rỉ thì kết quả tuỳ bộ dữ liệu. '
-             r'Đóng góp chắc chắn hơn là giao thức đánh giá không rò rỉ, việc phát hiện số hạng không có gradient trong bản '
-             r'mã đã sinh số công bố, và các so sánh ghép cặp có kiểm định trong cùng một giao thức.')
+             r'Trên đúng cách chia của PINN4SOH và cùng cách tính sai số, mô hình của đồ án có sai số thấp hơn số công bố ở '
+             r'phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ. Tuy vậy, trong điều kiện có rò rỉ của bài, một '
+             r'GBDT cũng đạt kết quả tương tự, còn khi bỏ rò rỉ thì hơn hay kém tuỳ bộ dữ liệu. Vì thế, phần đóng góp mà đồ án '
+             r'tin chắc hơn cả là giao thức đánh giá không rò rỉ, việc phát hiện số hạng không có gradient trong bản mã đã sinh '
+             r'số công bố, và các so sánh ghép cặp có kiểm định trong cùng một giao thức.')
     write('doan_so_sanh.tex', '\n\n'.join(s))
     return dict(beat=beat, st_better=st_better, st_worse=st_worse, good=good, bad=bad)
 
@@ -1620,6 +1652,7 @@ def figures():
     diagrams.arch('vi', os.path.join(FIG, 'fig_arch'))
     diagrams.pipeline(os.path.join(FIG, 'fig_pipeline'))
     diagrams.forecast_arch(os.path.join(FIG, 'fig_forecast_arch'))
+    diagrams.hipinn_arch(os.path.join(FIG, 'fig_hipinn_arch'))
     for src, dst in [('fig_thesis_leakage', 'fig_leakage'), ('fig_thesis_curve_physics', 'fig_curve_physics'),
                      ('fig_e28_budget', 'fig_e28_budget'), ('fig_e29_pinn', 'fig_e29_pinn'), ('fig_e29_lai', 'fig_e29_lai')]:
         shutil.copy(os.path.join(OLD_FIG, src + '.pdf'), os.path.join(FIG, dst + '.pdf'))

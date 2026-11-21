@@ -61,8 +61,9 @@ thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU
         không có gradient (\Cref{sec:rerun}).
   \item Phân tích đặc trưng đầu vào bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên validation
         (\Cref{ch:dactrung}).
-  \item Dự báo SOH, dung lượng và RUL; kết hợp GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) với PINN-dự báo trong
-        cùng một giao thức đã sửa các điểm rò rỉ còn lại (\Cref{sec:mo_rong,sec:e33pp}).
+  \item Dự báo SOH, dung lượng và RUL; mô hình HiPINN đưa lịch sử của cell vào dự báo qua ba nhánh (GBDT lịch sử,
+        PINN-dự báo có lịch sử, nhánh theo đời), đánh giá trong một giao thức đã sửa các điểm rò rỉ còn lại
+        (\Cref{sec:mo_rong,sec:e33pp}).
   \item Mã nguồn chạy được từ dữ liệu tới báo cáo bằng một lệnh, kiểm tra tái lập từng bit (\Cref{app:source-code}).
 \end{itemize}
 

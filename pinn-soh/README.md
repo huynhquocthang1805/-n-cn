@@ -26,7 +26,7 @@ TJU, MIT, HUST:
 | E28 | ngân sách đo: đo thưa mọi cell train thay vì đo đầy đủ một phần cell |
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
-| E33 | dự báo kết hợp GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) với PINN-dự báo, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
+| E33 | đưa lịch sử của cell vào dự báo: GBDT lịch sử, PINN-dự báo có lịch sử, nhánh theo đời và mô hình HiPINN ghép ba nhánh, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
 | features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
@@ -116,7 +116,7 @@ python run.py report                   # -> report/bao-cao-do-an.pdf
 | E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}) | 240 | 1,8 | 0,5 | 0,2 |
 | E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ) | 720 | 3,7 | 0,9 | 0,5 |
 | E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) | 240 | 6,7 | 1,7 | 0,8 |
-| E33 | Dự báo kết hợp GBDT lịch sử (repo G-doan) với PINN-dự báo, cùng fold với E22, 2 ngân sách nhãn (cần E20) | 120 | 6,8 | 1,7 | 0,8 |
+| E33 | Dự báo có đặc trưng lịch sử (HiPINN và ba nhánh), cùng fold với E22, 2 ngân sách nhãn (cần E20) | 120 | 6,8 | 1,7 | 0,8 |
 | benchmark | Mã gốc PINN4SOH, 39 nhóm: bản công bố 10 lần, bản đã sửa 3 lần mỗi nhóm | 507 | ≈ 6 | ≈ 1,5 | ≈ 0,8 |
 | **Tổng** | | **11 042** | **≈ 95** | **≈ 24** | **≈ 12** |
 
@@ -149,8 +149,9 @@ pinn-soh/
 │   ├── paper.py            cách chia của PINN4SOH, GBDT trên cách chia đó (E27)
 │   ├── budget.py           ngân sách đo dung lượng (E28)
 │   ├── update.py           mô hình học cập nhật từ lần đo dung lượng gần nhất (E32)
-│   ├── forecast_hist.py    GBDT có đặc trưng lịch sử SOH, lấy từ phần cải tiến của repo G-doan (E33)
-│   ├── forecast_combo.py   dự báo kết hợp GBDT lịch sử với PINN-dự báo, giao thức E33
+│   ├── forecast_hist.py    GBDT có đặc trưng lịch sử SOH (E33; bản phát triển ở kho G-doan của đồ án)
+│   ├── forecast_life.py    nhánh dự báo theo đời: đời còn lại dự đoán + khuôn quỹ đạo của cell train (E33)
+│   ├── forecast_combo.py   mô hình HiPINN và các nhánh, giao thức E33
 │   ├── pinn4soh_splits.json, pinn4soh_reported.csv   cách chia và số công bố của PINN4SOH
 │   ├── experiments.py      định nghĩa E13–E33 thành danh sách lượt chạy
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian

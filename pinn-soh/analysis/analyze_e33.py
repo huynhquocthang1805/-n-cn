@@ -24,7 +24,12 @@ OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 GDOAN = os.environ.get('GDOAN', '/home/user/huynhquocthang1805/g-doan')
 LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT (E22)', 'gbdt_ls': 'GBDT lịch sử',
-         'pinn': 'PINN-dự báo', 'ket_hop': 'Kết hợp E22', 'ket_hop_ls': 'Kết hợp mới'}
+         'pinn': 'PINN-dự báo', 'pinn_ls': 'PINN-dự báo có lịch sử', 'ket_hop': 'Kết hợp E22',
+         'ket_hop_ls': 'HiPINN không có nhánh theo đời', 'doi': 'Nhánh theo đời', 'hipinn': 'HiPINN'}
+FOCUS = 'hipinn'                      # mô hình của đồ án
+PBINS = [0, .5, .7, .8, .9, 1.0001]   # phần đời của chính cell (chỉ để nhóm khi chấm, không dùng khi dự báo)
+PLAB = ['<0.5', '0.5-0.7', '0.7-0.8', '0.8-0.9', '0.9-1']
+BANDS = ('ls', 'kls', 'h')
 HBINS = [0, .1, .25, .5, 1, np.inf]
 HLAB = ['0-0.1', '0.1-0.25', '0.25-0.5', '0.5-1', '>1']
 
@@ -56,21 +61,31 @@ def flip_k(d):
 
 
 def load():
-    cells, ruls, choices, horiz = [], [], [], []
+    cells, ruls, choices, horiz, tail = [], [], [], [], []
     for f in sorted(glob.glob(f'{ROOT}/fc_*.npz')):
         q = np.load(f); i = json.loads(str(q['info']))
         meta = dict(budget=i['budget'], ds=i['ds'], r=i['repeat'], fold=i['fold'])
         T = pd.DataFrame(q['traj'], columns=TCOL); te = i['split']['test']
+        wh = i.get('w_hipinn', [np.nan] * 3); life = i.get('life', {})
         choices.append(dict(**meta, w=i['w_combo'], hist=i['history']['config']['name'],
                             n_trees=i['history']['config']['n_trees'], a=i['history']['weight_new'], L=i['L'],
-                            q_ls=i['q_ls'], q_kls=i['q_kls'], time_s=i['time_s'],
-                            **{f'val_{m}': v for m, v in i['val_MAE'].items()}))
+                            q_ls=i['q_ls'], q_kls=i['q_kls'], q_h=i.get('q_h', np.nan), time_s=i['time_s'],
+                            w_ls=wh[0], w_pinn=wh[1], w_doi=wh[2], pinn_branch=i.get('pinn_branch', 'pinn'),
+                            life_K=life.get('K', np.nan),
+                            life_trees=life.get('n_trees', np.nan), n_templates=life.get('n_templates', np.nan),
+                            **{f'val_{m}': v for m, v in i['val_MAE'].items()},
+                            **{f'cal_{m}': v for m, v in i.get('cal_MAE', {}).items()}))
         T['hb'] = pd.cut(T.h / i['L'], HBINS, labels=HLAB)
         for (sc, ci), g in T.groupby(['scen', 'cell']):
             row = dict(**meta, scen=SCEN[int(sc)], cid=te[int(ci)])
             for m in MODELS:
                 row[m] = (g[m] - g.y).abs().groupby(g.origin).mean().mean()
-            for b in ('ls', 'kls'):
+            pb = pd.cut((g.origin + g.h) / float((g.origin + g.h).max()), PBINS, labels=PLAB)
+            for b_, x in g.groupby(pb, observed=True):
+                tail.append(dict(**meta, scen=SCEN[int(sc)], cid=te[int(ci)], pb=b_,
+                                 **{m: float(np.abs(x[m] - x.y).mean()) for m in MODELS},
+                                 **{f'b_{m}': float((x[m] - x.y).mean()) for m in MODELS}))
+            for b in BANDS:
                 cov = ((g.y >= g[f'lo_{b}']) & (g.y <= g[f'hi_{b}'])).astype(float)
                 row[f'cov_{b}'] = cov.groupby(g.origin).mean().mean()
                 row[f'wid_{b}'] = (g[f'hi_{b}'] - g[f'lo_{b}']).groupby(g.origin).mean().mean()
@@ -84,7 +99,8 @@ def load():
             for k, v in meta.items():
                 R[k] = v
             ruls.append(R)
-    return (pd.DataFrame(cells), pd.concat(ruls, ignore_index=True), pd.DataFrame(choices), pd.DataFrame(horiz))
+    return (pd.DataFrame(cells), pd.concat(ruls, ignore_index=True), pd.DataFrame(choices), pd.DataFrame(horiz),
+            pd.DataFrame(tail))
 
 
 def gdoan_cells():
@@ -136,12 +152,12 @@ def main():
     if not glob.glob(f'{ROOT}/fc_*.npz'):
         print(f'chưa có lượt nào trong {ROOT}: chạy python run.py E33 trước')
         return
-    C, R, CH, H = load()
+    C, R, CH, H, TL = load()
     print(f'{len(CH)} lượt; {len(C)} dòng (cell × kịch bản × lần lặp)')
     C.to_csv(f'{OUT}/e33_cells.csv', index=False); CH.to_csv(f'{OUT}/e33_choices.csv', index=False)
     keys = ['budget', 'scen', 'ds']
     # ---- tổng hợp: trung bình qua cell mỗi lần lặp, rồi trung bình ± SD qua lần lặp
-    cols = MODELS + ['cov_ls', 'cov_kls', 'wid_ls', 'wid_kls']
+    cols = MODELS + [f'{k}_{b}' for b in BANDS for k in ('cov', 'wid')]
     rep = C.groupby(keys + ['r'])[cols].mean().reset_index()
     S = rep.groupby(keys)[cols].agg(['mean', 'std'])
     S.columns = [f'{a}' if b == 'mean' else f'{a}_sd' for a, b in S.columns]
@@ -151,8 +167,9 @@ def main():
     S.to_csv(f'{OUT}/e33_summary.csv', index=False)
     # ---- kiểm định ghép cặp theo cell (trung bình qua lần lặp)
     pc = C.groupby(keys + ['cid'])[MODELS].mean().reset_index()
-    pairs = [('ket_hop_ls', m) for m in MODELS if m != 'ket_hop_ls'] + [('gbdt_ls', 'gbdt'), ('gbdt_ls', 'ket_hop'),
-                                                                        ('gbdt_ls', 'pinn')]
+    pairs = [(FOCUS, m) for m in MODELS if m != FOCUS] + [
+        ('gbdt_ls', 'gbdt'), ('gbdt_ls', 'ket_hop'), ('gbdt_ls', 'pinn'), ('ket_hop_ls', 'gbdt_ls'),
+        ('ket_hop_ls', 'ket_hop'), ('doi', 'gbdt_ls'), ('doi', 'gbdt'), ('pinn_ls', 'pinn')]
     rows = []
     for (b, sc), g in pc.groupby(['budget', 'scen']):
         for a, c in pairs:
@@ -176,25 +193,40 @@ def main():
         R[f's_{m}'] = R[m] - R.true                  # sai số có dấu: dương là dự báo RUL dài hơn thực tế
         R[f'e_{m}'] = (R[m] - R.true).abs()
         R[f'in20_{m}'] = (R[f'e_{m}'] / R.true.clip(lower=1) <= 0.2).astype(float)
-    R['cov'] = ((R.true >= R.lo_kls) & (R.true <= R.hi_kls)).astype(float)
+    R['cov_kls'] = ((R.true >= R.lo_kls) & (R.true <= R.hi_kls)).astype(float)
+    R['cov_h'] = ((R.true >= R.lo_h) & (R.true <= R.hi_h)).astype(float)
     rc = R.groupby(keys + ['cid'])[[f'e_{m}' for m in MODELS] + [f's_{m}' for m in MODELS] + [f'in20_{m}' for m in MODELS]
-                                   + ['cov', 'true']].mean()
+                                   + ['cov_kls', 'cov_h', 'true']].mean()
     RS = rc.groupby(keys).mean().reset_index()
     RS['n_cell'] = rc.groupby(keys).size().values
     RS.to_csv(f'{OUT}/e33_rul.csv', index=False)
     rows = []
+    rpairs = [(FOCUS, c) for c in ('gbdt', 'gbdt_ls', 'pinn', 'pinn_ls', 'ket_hop', 'ket_hop_ls', 'doi')] + [
+        ('pinn_ls', 'pinn')]
     for (b, sc), g in rc.reset_index().groupby(['budget', 'scen']):
-        for c in ('gbdt', 'gbdt_ls', 'pinn', 'ket_hop'):
+        for a, c in rpairs:
             tmp = []
             for ds in DS:
-                x = g[g.ds == ds]; d = x['e_ket_hop_ls'].values - x[f'e_{c}'].values
-                tmp.append(dict(budget=b, scen=sc, ds=ds, a='ket_hop_ls', b=c, n=len(d),
-                                ratio=x['e_ket_hop_ls'].mean() / x[f'e_{c}'].mean(), a_better=int((d < 0).sum()),
+                x = g[g.ds == ds]; d = x[f'e_{a}'].values - x[f'e_{c}'].values
+                tmp.append(dict(budget=b, scen=sc, ds=ds, a=a, b=c, n=len(d),
+                                ratio=x[f'e_{a}'].mean() / x[f'e_{c}'].mean(), a_better=int((d < 0).sum()),
                                 a_wins=a_wins(d), p=stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0,
                                 flip_k=flip_k(d)[0]))
             for t, ph in zip(tmp, holm([t['p'] for t in tmp])):
                 t['p_holm'] = ph; rows.append(t)
     pd.DataFrame(rows).to_csv(f'{OUT}/e33_rul_tests.csv', index=False)
+    # ---- theo phần đời của chính cell: sai số và độ lệch (dự báo − đo) ở từng đoạn đời, trung bình theo cell
+    bc = [f'b_{m}' for m in MODELS]
+    TS = (TL.groupby(keys + ['pb', 'cid'], observed=True)[MODELS + bc].mean()
+          .groupby(keys + ['pb'], observed=True).mean().reset_index())
+    TS.to_csv(f'{OUT}/e33_tail.csv', index=False)
+    # ---- trên nửa validation không dùng để chọn ('hiệu chỉnh'): trung bình qua lượt
+    cc = [c for c in CH.columns if c.startswith('cal_')]
+    if cc:
+        CA = CH.groupby(['budget', 'ds'])[cc].mean().reset_index()
+        CA['hipinn_lt_two'] = CH.groupby(['budget', 'ds']).apply(
+            lambda x: float((x.cal_hipinn < x.cal_ket_hop_ls).mean()), include_groups=False).values
+        CA.to_csv(f'{OUT}/e33_cal.csv', index=False)
     # ---- theo tầm
     hc = H.groupby(keys + ['hb', 'cid'])[MODELS].mean().groupby(keys + ['hb']).mean().reset_index()
     hc.to_csv(f'{OUT}/e33_horizon.csv', index=False)
@@ -219,7 +251,7 @@ def main():
     for m in MODELS:
         show[m] = (1e3 * show[m]).round(2)
     print(show.to_string(index=False))
-    print(pd.read_csv(f'{OUT}/e33_tests.csv').query("a == 'ket_hop_ls'").round(4).to_string(index=False))
+    print(pd.read_csv(f'{OUT}/e33_tests.csv').query("a == @FOCUS").round(4).to_string(index=False))
     if len(G):
         print(pd.read_csv(f'{OUT}/e33_gdoan.csv').round(5).to_string(index=False))
         print(pd.read_csv(f'{OUT}/e33_gdoan_match.csv').round(4).to_string(index=False))
