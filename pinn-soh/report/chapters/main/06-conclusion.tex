@@ -22,9 +22,11 @@
       E22 và E32 tính thang đời $L$ trên mọi cell, kể cả cell test (E22 dùng $L$ cho khoảng dự báo và lưới tìm RUL, E32
       dùng cho lịch đo), và E22 đặt gốc dự báo theo số hàng của chính cell test; chuẩn hoá tương đối (biến thể có đặc
       trưng tương đối của E20 và của phân tích đặc trưng) lấy trung bình 3 chu kỳ đầu làm mốc, nên ở 2 chu kỳ đầu của
-      mỗi cell nhìn trước tối đa 2 chu kỳ. E33 sửa hai điểm đầu cho bài toán dự báo (\Cref{sec:e33pp}); thí nghiệm cập nhật
-      có đặc trưng lịch sử (\Cref{sec:anchor}) tính $L$ trên cell train và dùng trung bình luỹ tiến cho chuẩn hoá tương
-      đối.
+      mỗi cell nhìn trước tối đa 2 chu kỳ; PINN-lai tinh chỉnh chọn trọng số ghép và cửa sổ lọc trên cell validation gộp
+      qua mọi fold, nên cell test của một fold có thể nằm trong tập dùng để chọn hai tham số này. E33 sửa hai điểm đầu
+      cho bài toán dự báo (\Cref{sec:e33pp}); E34 (\Cref{sec:anchor}) tính $L$ trên cell train. Cách chọn tham số riêng
+      cho từng fold, phát triển trong kho G-doan, đã được gộp vào kho chính, nhưng các bảng lấy từ báo cáo đã nộp vẫn
+      giữ cách gộp fold.
 \item Chưa xử lý dữ liệu thô của từng bộ, nên chưa thử được các đặc trưng cần đường cong đầy đủ; chưa có dữ liệu vận
       hành ngoài phòng thí nghiệm và dữ liệu nhiều cell ghép song song (giai đoạn 2 của đề cương).
 \end{enumerate}
