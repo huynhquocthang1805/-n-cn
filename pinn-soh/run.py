@@ -15,13 +15,15 @@ Một lệnh cho mọi bước. Chạy từ thư mục nào cũng được.
     python run.py report                      dựng báo cáo đồ án report/bao-cao-do-an.pdf
     python run.py all [tuỳ chọn]              experiments -> analyze -> benchmark -> features -> paper -> report
     python run.py reproduce                   chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
-    python run.py demo train|predict ...      demo ước lượng SOH cho một cell (xem tools/demo.py)
+    python run.py demo train|predict|forecast|tat-ca ...
+                                              ước lượng và dự báo SOH (HiPINN) cho một cell (xem tools/demo.py)
 
 Tuỳ chọn cho thí nghiệm:
     --workers N     số tiến trình song song (mặc định: số lõi CPU), mỗi tiến trình 1 luồng
     --quick         chạy thử nhanh: 1 lần lặp kiểm định chéo thay vì 5, 1 hạt giống thay vì 5 (~1/5 thời gian);
                     kết quả là TẬP CON của bản đầy đủ, chạy tiếp bản đầy đủ sau sẽ không phải chạy lại
     --datasets ...  chỉ chạy một số bộ, ví dụ --datasets XJTU HUST
+    --nhan 0.7      chỉ chạy các lượt ở mức nhãn 70 % (E22, E23, E33 chỉ cần E20 ở mức này)
     --dry-run       chỉ liệt kê số lượt còn thiếu và thời gian ước lượng, không chạy
     --device cuda   dùng GPU (nhanh hơn với 1 tiến trình; kết quả lệch ở mức làm tròn, không tái lập từng bit)
 
@@ -91,7 +93,11 @@ def experiment_jobs(names, a):
     kw = dict(datasets=a.datasets)
     if a.quick:
         kw.update(repeats=1, seeds=(0,))
-    return [j for n in names for j in E.EXPERIMENTS[n](**kw)]
+    jobs = [j for n in names for j in E.EXPERIMENTS[n](**kw)]
+    if a.nhan:                     # chỉ giữ các lượt có mức nhãn cho trước (lượt không có mức nhãn được giữ nguyên)
+        frac = lambda j: j.args.get('label_frac', j.args.get('frac'))
+        jobs = [j for j in jobs if frac(j) is None or any(abs(frac(j) - f) < 1e-9 for f in a.nhan)]
+    return jobs
 
 
 def cmd_experiments(a, names=None):
@@ -177,6 +183,8 @@ def main():
     ap.add_argument('--quick', action='store_true')
     ap.add_argument('--datasets', nargs='+', default=['XJTU', 'TJU', 'MIT', 'HUST'],
                     choices=['XJTU', 'TJU', 'MIT', 'HUST'])
+    ap.add_argument('--nhan', type=float, nargs='+', default=None,
+                    help='chỉ chạy các lượt ở mức nhãn này, ví dụ --nhan 0.7 (E33 chỉ cần E20 ở 70 %% nhãn)')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--device', default=None)
     a = ap.parse_args()

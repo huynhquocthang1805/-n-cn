@@ -260,10 +260,15 @@ validation, nửa còn lại hiệu chỉnh khoảng 90 %. Thang đời L và ch
 G-doan, và mọi cell train như E22; lịch sử SOH tới gốc là dung lượng đo, hoặc ước lượng PINN-lai như E22.
 
 ```bash
-python run.py E20       # E33 cần các lượt PINN-semi và GBDT ở 70 % nhãn của E20
-python run.py E33
-GDOAN=<thư mục repo G-doan> python run.py report    # runs/E33 đủ 120 lượt thì tính lại bảng và hình
+python run.py data                      # tải dữ liệu nếu chưa có
+python run.py E20 --nhan 0.7            # E33 chỉ cần E20 ở 70 % nhãn (360 lượt, khoảng 2 giờ CPU)
+python run.py E33                       # 120 lượt, khoảng 8 giờ CPU (2 giờ với 4 lõi)
+python run.py demo tat-ca               # HiPINN cho một cell test của mỗi bộ -> demo/hipinn_bon_bo.*
+GDOAN=<thư mục kho G-doan> python run.py report   # runs/E33 đủ 120 lượt thì tính lại bảng và hình
 ```
+
+Kết quả của mỗi lượt E33 nặng 4–7 MB (cả thí nghiệm khoảng 600 MB) nên không đưa lên git; `report/generated/data/`
+giữ các bảng đã tổng hợp, đủ để dựng báo cáo mà không cần `runs/`.
 
 Kết quả (Mục 5.2.10 và Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
 
