@@ -155,7 +155,8 @@ EXPS = [(['E13'], 'Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn
         (['E28'], 'Ngân sách đo: đo thưa mọi cell train theo 4 lịch đo'),
         (['E32'], 'GBDT-cập nhật: cập nhật SOH từ lần đo gần nhất'),
         (['E22', 'E23'], 'Dự báo SOH, dung lượng, RUL; bản có xét hồi phục dung lượng'),
-        (['E33'], 'Dự báo có đặc trưng lịch sử: ba nhánh và HiPINN, 2 ngân sách nhãn, 3 lần lặp'),
+        (['E33'], 'Dự báo có đặc trưng lịch sử: HiGBDT, HiPINN và các nhánh, 2 ngân sách nhãn, 3 lần lặp'),
+        (['E34'], 'HiGBDT cho bài toán cập nhật: GBDT-cập nhật, HiGBDT-$\\Delta$, -R, -V trên 4 lịch đo'),
         (['E27'], 'PINN-lai, GBDT và PINN-semi trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống')]
 
 
@@ -1502,58 +1503,110 @@ def e33_rul_table(E):
             + '\n'.join(rr[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
 
 
-def e33_anchor(GA):
-    """Phụ lục: HiGBDT cho bài toán cập nhật (kết quả lần chạy trước trong kho G-doan, không chạy lại)."""
+E34_CSV = ['anchor', 'cost', 'repro']
+E34_RUNS = 60
+
+
+def e34_load():
+    """HiGBDT cho bài toán cập nhật. Khi runs/E34 đủ 60 lượt: tính lại bảng và hình (analysis/analyze_e34.py); nếu chưa,
+    analyze_e34 dùng kết quả đã lưu của kho G-doan. Bảng giữ bản sao ở generated/data/."""
+    from pinnsoh.update_hist import ROOT as R34
+    if len(glob.glob(f'{R34}/up_*.npz')) >= E34_RUNS or not os.path.exists('results/e34_anchor.csv'):
+        import analyze_e34
+        analyze_e34.main()
+    if os.path.exists('results/fig_e34_cost.pdf'):
+        shutil.copy('results/fig_e34_cost.pdf', os.path.join(FIG, 'fig_e34_cost.pdf'))
+    D = {}
+    for name in E34_CSV:
+        p = keep_copy(f'results/e34_{name}.csv', f'e34_{name}.csv')
+        D[name] = pd.read_csv(p) if p else None
+    return D if D['anchor'] is not None else None
+
+
+def e34_anchor(D34):
+    """Phụ lục: HiGBDT cho bài toán cập nhật (E34, chạy trong kho chính; hoặc kết quả đã lưu của kho G-doan)."""
+    GA, C, R = D34['anchor'], D34['cost'], D34['repro']
+    own = 'source' in GA.columns and GA.source.iloc[0] == 'E34'
     jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
     tiers = [('q20', r'mỗi $0{,}2L$'), ('q10', r'mỗi $0{,}1L$'), ('q05', r'mỗi $0{,}05L$'), ('M2', 'mọi lần trước')]
     am = ['hold', 'linear', 'e32_style', 'history_delta', 'history_residual', 'selected']
     alab = [('Giữ', 'lần đo'), ('Tuyến', 'tính'), ('GBDT-', 'cập nhật'), ('', r'HiGBDT-$\Delta$'), ('', 'HiGBDT-R'),
             ('', 'HiGBDT-V')]
     ga = lambda ds, t, m: float(GA[(GA.ds == ds) & (GA.tier == t)][m].iloc[0])
+    row = lambda ds, t: GA[(GA.ds == ds) & (GA.tier == t)].iloc[0]
     ar = []
     for t, tl in tiers:
         ar.append(group_row('lịch đo ' + tl if t != 'M2' else 'biết mọi lần đo trước', 1 + len(am)))
         for ds in DS:
             vals = [ga(ds, t, m) for m in am]
             cells = [(r'\textbf{' + m3(x, 2) + '}') if x == min(vals) else m3(x, 2) for x in vals]
-            r_ = GA[(GA.ds == ds) & (GA.tier == t)].iloc[0]
+            r_ = row(ds, t)
             cells[-1] += ((r'$^{*}$' if r_.wins_selected == 1 else r'$^{\dagger}$') if r_.p_selected < 0.05
                           else r'\phantom{$^{*}$}')
             ar.append(' & '.join([ds] + cells) + r' \\')
         ar.append(r'\addlinespace[3pt]')
+    src_cap = ('E34, chạy trong kho chính' if own else 'kết quả lần chạy trước ở kho G-doan (không chạy lại)')
     tab = (r'\begin{table}[!htbp]\centering\small' '\n'
            r'\caption[HiGBDT cho bài toán cập nhật]{Cập nhật SOH ở các chu kỳ không đo từ lần đo dung lượng gần nhất, '
-           r'theo lịch đo: MAE theo cell ($\times10^{-3}$), 30\,\% nhãn, 3 lần lặp $\times$ 5 fold, kết quả lần chạy '
-           r'trước (không chạy lại). $^{*}$/$^{\dagger}$: HiGBDT-V tốt hơn/kém hơn có ý nghĩa so với GBDT-cập nhật '
+           r'theo lịch đo: MAE theo cell ($\times10^{-3}$), 30\,\% nhãn, 3 lần lặp $\times$ 5 fold, ' + src_cap
+           + r'. $^{*}$/$^{\dagger}$: HiGBDT-V tốt hơn/kém hơn có ý nghĩa so với GBDT-cập nhật '
            r'(Wilcoxon ghép cặp theo cell, $p<0{,}05$, không hiệu chỉnh).}\label{tab:anchor}' '\n'
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(am) + r'}\toprule' '\n'
            r'Bộ & ' + ' & '.join(head2(*x) for x in alab) + r' \\\midrule' '\n' + '\n'.join(ar[:-1]) + '\n'
            r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
     low = {t: [ds for ds in DS if ga(ds, t, 'selected') < ga(ds, t, 'e32_style')] for t, _ in tiers}
+    worse = {t: [ds for ds in DS if row(ds, t).p_selected < 0.05 and row(ds, t).wins_selected == 0] for t, _ in tiers}
+    worse3 = [ds for ds in DS if all(ds in worse[t] for t in ('q20', 'q10', 'q05'))]
+    sparse_no = len(low['q20']) <= 1 and len(low['q10']) <= 1
     keep = len(low['q10']) < 3 and len(low['q20']) < 3
-    assert len(low['q20']) <= 1 and len(low['q10']) <= 1, 'câu "khi đo thưa, lịch sử không giúp" không còn đúng'
     odd = [r_ for r_ in GA.itertuples() if r_.tier != 'M2' and r_.p_selected < 0.05 and r_.flip_selected > 0]
     tl = dict(tiers)
     text = (r'Đồ án cũng thử đặc trưng lịch sử của HiGBDT cho bài toán cập nhật của \Cref{sec:mo_rong}: ước lượng SOH ở '
-            r'các chu kỳ không đo từ lần đo dung lượng gần nhất, với $L$ tính trên cell train. Ngoài GBDT-cập nhật của E32 '
-            r'(tính lại với $L$ trên cell train), có hai mô hình dùng lịch sử: HiGBDT-$\Delta$ học độ giảm SOH kể từ lần '
-            r'đo, HiGBDT-R học phần dư so với ngoại suy tuyến tính. HiGBDT-V chọn trên validation, theo từng lịch đo, một '
-            r'trong ba mô hình đó và trọng số trộn nó với giữ lần đo hoặc ngoại suy tuyến tính. \Cref{tab:anchor} cho kết '
-            r'quả của lần chạy đó. Khi đo thưa, lịch sử không giúp: HiGBDT-V '
-            f'chỉ có MAE trung bình thấp hơn GBDT-cập nhật ở {len(low["q20"])}/4 bộ với lịch đo mỗi $0{{,}}2L$ và '
-            f'{len(low["q10"])}/4 bộ với lịch mỗi $0{{,}}1L$, và kém hơn có ý nghĩa trên TJU ở cả ba lịch đo thưa. Lịch sử '
-            f'chỉ có lợi khi đo dày: {len(low["q05"])}/4 bộ'
-            + (f' ({jv(low["q05"])})' if 0 < len(low['q05']) < 4 else '') + r' ở lịch mỗi $0{,}05L$ và '
-            f'{len(low["M2"])}/4 bộ khi biết mọi lần đo trước, nhưng mức sau không phải là đo thưa.'
-            + ''.join(f' Ở {r_.ds} với lịch {tl[r_.tier]}, HiGBDT-V tốt hơn ở '
-                      f'{int(r_.better_selected)}/{int(r_.n_cell)} cell nên kiểm định nghiêng về nó, dù MAE trung bình '
-                      f'cao hơn vì {"một cell" if r_.flip_selected == 1 else "vài cell"} sai lớn.'
-                      for r_ in odd if r_.wins_selected == 1)
-            + (' Vì vậy đồ án giữ GBDT-cập nhật.' if keep else ''))
-    tju_bad = all(GA[(GA.ds == 'TJU') & (GA.tier == t)].iloc[0].p_selected < 0.05
-                  and GA[(GA.ds == 'TJU') & (GA.tier == t)].iloc[0].wins_selected == 0 for t in ('q20', 'q10', 'q05'))
-    assert tju_bad, 'câu "kém hơn có ý nghĩa trên TJU ở cả ba lịch đo thưa" không còn đúng'
-    return text, tab
+            r'các chu kỳ không đo từ lần đo dung lượng gần nhất. Mã phát triển trong kho G-doan được gộp về kho chính '
+            r'thành thí nghiệm E34, cùng fold với các thí nghiệm khác, 30\,\% nhãn, $L$ và chuẩn hoá tính trên cell '
+            r'train' + ('' if own else r'; bảng dưới là kết quả lần chạy trong kho G-doan, E34 chạy lại đúng mã này') + r'. '
+            r'GBDT-cập nhật dùng các đặc trưng của E32: đặc trưng sạc hiện tại và độ đổi của chúng kể từ lần đo, '
+            r'SOH ở lần đo, khoảng chu kỳ tới lần đo và độ dốc giữa hai lần đo gần nhất. Hai mô hình dùng lịch sử thêm hai '
+            r'trung bình trượt mũ nhân quả của đặc trưng sạc ($\rho = 0{,}1$ và $0{,}03$), log khoảng chu kỳ và chỉ số chu '
+            r'kỳ: HiGBDT-$\Delta$ học độ giảm SOH kể từ lần đo, HiGBDT-R học phần dư so với ngoại suy tuyến tính từ hai lần '
+            r'đo gần nhất. HiGBDT-V chọn trên validation, theo từng lịch đo, một trong ba mô hình đó và trọng số trộn nó '
+            r'với giữ lần đo hoặc ngoại suy tuyến tính. Mỗi mô hình học trên tối đa khoảng 60 nghìn cặp (chu kỳ, lần đo), '
+            r'cân theo cell và lịch đo, có thêm hai pha đo ngẫu nhiên cho mỗi lịch thưa; số cây chọn trên validation. '
+            r'\Cref{tab:anchor} cho kết quả. ')
+    if sparse_no:
+        text += (r'Khi đo thưa, lịch sử không giúp: HiGBDT-V chỉ có MAE trung bình thấp hơn GBDT-cập nhật ở '
+                 f'{len(low["q20"])}/4 bộ với lịch đo mỗi $0{{,}}2L$ và {len(low["q10"])}/4 bộ với lịch mỗi $0{{,}}1L$')
+    else:
+        text += (r'Khi đo thưa, HiGBDT-V có MAE trung bình thấp hơn GBDT-cập nhật ở '
+                 f'{len(low["q20"])}/4 bộ với lịch đo mỗi $0{{,}}2L$ và {len(low["q10"])}/4 bộ với lịch mỗi $0{{,}}1L$')
+    text += ((f', và kém hơn có ý nghĩa trên {jv(worse3)} ở cả ba lịch đo thưa. ') if worse3 else '. ')
+    text += (f'Lịch sử có lợi hơn khi đo dày: {len(low["q05"])}/4 bộ'
+             + (f' ({jv(low["q05"])})' if 0 < len(low['q05']) < 4 else '') + r' ở lịch mỗi $0{,}05L$ và '
+             f'{len(low["M2"])}/4 bộ khi biết mọi lần đo trước, nhưng mức sau không phải là đo thưa.'
+             + ''.join(f' Ở {r_.ds} với lịch {tl[r_.tier]}, HiGBDT-V tốt hơn ở '
+                       f'{int(r_.better_selected)}/{int(r_.n_cell)} cell nên kiểm định nghiêng về nó, dù MAE trung bình '
+                       f'cao hơn vì {"một cell" if r_.flip_selected == 1 else "vài cell"} sai lớn.'
+                       for r_ in odd if r_.wins_selected == 1)
+             + (' Vì vậy đồ án giữ GBDT-cập nhật cho lịch đo thưa.' if keep else ''))
+    fig = ''
+    if C is not None and os.path.exists(os.path.join(FIG, 'fig_e34_cost.pdf')):
+        cc = lambda ds, t, col: float(C[(C.ds == ds) & (C.tier == t)][col].iloc[0])
+        beat = [ds for ds in DS if cc(ds, 'q20', 'e32_style') < cc(ds, 'q05', 'hold')]
+        fewer = [cc(ds, 'q05', 'n_measured') / cc(ds, 'q20', 'n_measured') for ds in DS]
+        text += (r' \Cref{fig:e34cost} đặt sai số cạnh số lần đo dung lượng trung bình mỗi cell. Với lịch mỗi $0{,}2L$, '
+                 r'GBDT-cập nhật có MAE ' + (f'thấp hơn việc giữ lần đo với lịch mỗi $0{{,}}05L$ trên {"cả bốn bộ" if len(beat) == 4 else jv(beat)}, '
+                                            f'tức với số lần đo ít hơn {rng(fewer, 1)} lần.' if beat else
+                                            r'chưa thấp hơn việc giữ lần đo với lịch mỗi $0{,}05L$ ở bộ nào.'))
+        fig = ('\n\n' r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e34_cost.pdf}'
+               '\n' r'\caption[Sai số cập nhật theo số lần đo]{MAE ($\times10^{-3}$, thang log) của SOH cập nhật theo số '
+               r'lần đo dung lượng trung bình mỗi cell, bốn lịch đo (mỗi $0{,}2L$, $0{,}1L$, $0{,}05L$ và biết mọi lần đo '
+               r'trước), 30\,\% nhãn, trung bình qua 3 lần lặp. Đường nối chỉ để dễ so, không phải quan hệ liên tục đã '
+               r'ước lượng.}\label{fig:e34cost}' '\n' r'\end{figure}')
+    if own and R is not None and len(R):
+        text += (r' So với lần chạy trước ở kho G-doan trên cùng cell và lịch đo, sai số theo cell có tương quan '
+                 + rng(list(R.corr_e32_style), 3) + ' với GBDT-cập nhật và ' + rng(list(R.corr_selected), 3)
+                 + r' với HiGBDT-V; phần chênh đến từ phiên bản thư viện, như với HiGBDT (\Cref{sec:e33repro}).')
+    return text, tab + fig
 
 
 def e33_repro(E):
@@ -1815,7 +1868,8 @@ def e33_section(D):
             + '\n')
     write('doan_e33.tex', body)
     # ---------------- Phụ lục A
-    a_text, a_tab = e33_anchor(D['gdoan_anchor'])
+    D34 = e34_load() or dict(anchor=D['gdoan_anchor'], cost=None, repro=None)
+    a_text, a_tab = e34_anchor(D34)
     pa = (r'\section{Dự báo có đặc trưng lịch sử: RUL và hai nửa validation}' '\n\n' + e33_rul_table(E) + '\n\n'
           + e33_val_table(E) + '\n\n'
           r'\section{HiGBDT cho bài toán cập nhật}\label{sec:anchor}' '\n\n' + a_text + '\n\n' + a_tab + '\n\n'

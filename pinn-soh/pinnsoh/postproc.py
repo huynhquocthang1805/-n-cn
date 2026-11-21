@@ -38,6 +38,8 @@ def causal_trend(p: np.ndarray, t: np.ndarray, w: int) -> np.ndarray:
 
 
 def causal_mono(p: np.ndarray, t: np.ndarray, w: int, a: float = 1.0) -> np.ndarray:
+    if not 0 <= a <= 1:                              # kiểm tra từ kho G-doan; mọi lượt của đồ án dùng a trong [0, 1]
+        raise ValueError('a must be in [0,1]')
     z = causal_trend(p, t, w)
     out = np.empty_like(z)
     m = z[0] if len(z) else 0.0

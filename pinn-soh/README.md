@@ -27,6 +27,7 @@ TJU, MIT, HUST:
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
 | E33 | đưa lịch sử của cell vào dự báo: HiGBDT (GBDT có đặc trưng lịch sử), PINN-dự báo có lịch sử, nhánh theo đời và HiPINN lấy trung vị của ba nhánh, so với PINN-GBDT của E22, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
+| E34 | HiGBDT cho bài toán cập nhật từ lần đo dung lượng gần nhất (mã gộp từ kho G-doan): GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R, HiGBDT-V trên bốn lịch đo |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
 | features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
@@ -60,7 +61,7 @@ Mọi bước đều qua một lệnh `python run.py <lệnh>`, chạy từ thư
 python run.py check          # kiểm tra Python, thư viện, dữ liệu, pdfLaTeX, số lõi CPU
 python run.py data           # tải 387 file CSV (~94 MB) từ repo gốc và dựng bộ nhớ đệm
 python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
-python -m unittest discover -s tests   # vài giây: đặc trưng dự báo chỉ dùng quá khứ của cell
+python -m unittest discover -s tests   # vài giây: đặc trưng chỉ dùng quá khứ của cell, lịch đo, HiPINN
 python run.py bench          # đo tốc độ máy để ước lượng thời gian chính xác hơn
 python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, không chạy gì
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> benchmark -> đặc trưng -> bản thảo -> báo cáo
@@ -115,10 +116,11 @@ python run.py report                   # -> report/bao-cao-do-an.pdf
 | E29 | Đầu vào có lịch sử, cùng fold với E20: 3 PINN-semi, MLP, GBDT trên XJTU, TJU, HUST | 840 | 5,4 | 1,4 | 0,7 |
 | E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}) | 240 | 1,8 | 0,5 | 0,2 |
 | E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ) | 720 | 3,7 | 0,9 | 0,5 |
-| E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) | 240 | 6,7 | 1,7 | 0,8 |
-| E33 | Dự báo có đặc trưng lịch sử (HiPINN và ba nhánh), cùng fold với E22, 2 ngân sách nhãn (cần E20) | 120 | 6,8 | 1,7 | 0,8 |
+| E32 | GBDT-cập nhật: học cập nhật từ lần đo gần nhất, cùng fold với E20 (4 bộ × 4 mức nhãn) | 240 | 6,7 | 1,7 | 0,8 |
+| E33 | Dự báo có đặc trưng lịch sử (HiGBDT, HiPINN và các nhánh), cùng fold với E22, 2 ngân sách nhãn (cần E20) | 120 | 6,8 | 1,7 | 0,8 |
+| E34 | HiGBDT cho bài toán cập nhật: GBDT-cập nhật, HiGBDT-Δ, -R, -V trên 4 lịch đo, 30 % nhãn (3 lần lặp × 5 fold) | 60 | 1,1 | 0,3 | 0,2 |
 | benchmark | Mã gốc PINN4SOH, 39 nhóm: bản công bố 10 lần, bản đã sửa 3 lần mỗi nhóm | 507 | ≈ 6 | ≈ 1,5 | ≈ 0,8 |
-| **Tổng** | | **11 042** | **≈ 95** | **≈ 24** | **≈ 12** |
+| **Tổng** | | **11 102** | **≈ 96** | **≈ 24** | **≈ 12** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và `runs/E20dev/gbdt_*` sang
 `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `docs/de-cuong-E20.md`.
@@ -153,6 +155,7 @@ pinn-soh/
 │   ├── forecast_life.py    nhánh dự báo theo đời: đời còn lại dự đoán + khuôn quỹ đạo của cell train (E33)
 │   ├── forecast_combo.py   mô hình HiPINN và các nhánh, giao thức E33
 │   ├── hipinn.py           HiPINN học một lần rồi dự báo cho một cell bất kỳ (dùng trong tools/demo.py)
+│   ├── update_hist.py      HiGBDT cho bài toán cập nhật từ lần đo gần nhất (E34, gộp từ kho G-doan)
 │   ├── pinn4soh_splits.json, pinn4soh_reported.csv   cách chia và số công bố của PINN4SOH
 │   ├── experiments.py      định nghĩa E13–E33 thành danh sách lượt chạy
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
