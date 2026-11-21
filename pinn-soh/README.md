@@ -308,6 +308,30 @@ Kết quả (Mục 5.2.10 và Phụ lục A của báo cáo; MAE theo cell, ×10
 * Bài toán cập nhật (số đã lưu của G-doan, không chạy lại): mô hình chọn trên validation có MAE trung bình thấp hơn mô
   hình kiểu E32 trên 0/4 bộ ở lịch đo mỗi 0,2L và 0,1L, nên giữ mô hình cập nhật kiểu E32.
 
+### HiGBDT cho bài toán cập nhật (E34)
+
+`pinnsoh/update_hist.py` (gộp từ kho G-doan): ở chu kỳ không đo, ước lượng SOH từ lần đo dung lượng gần nhất trước nó.
+GBDT-cập nhật dùng đặc trưng của E32; HiGBDT-Δ và HiGBDT-R thêm hai trung bình trượt mũ nhân quả của đặc trưng sạc,
+học độ giảm SOH hoặc phần dư so với ngoại suy tuyến tính; HiGBDT-V chọn trên validation, theo từng lịch đo, một trong ba
+mô hình và trọng số trộn với giữ lần đo hoặc ngoại suy. Lịch đo: chu kỳ đầu rồi mỗi 0,2L / 0,1L / 0,05L (q20, q10,
+q05), hoặc biết mọi lần đo trước (M2). Cùng fold, 30 % nhãn, L và chuẩn hoá từ cell train.
+
+```bash
+python run.py E34                       # 60 lượt, khoảng 17 phút với 4 lõi
+python analysis/analyze_e34.py          # results/e34_*.csv, results/fig_e34_cost.pdf
+```
+
+Kết quả (Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
+
+* Lịch q10, XJTU / TJU / MIT / HUST: giữ lần đo 11,79 / 12,66 / 6,46 / 13,35; GBDT-cập nhật 3,82 / 1,87 / 0,91 / 1,09;
+  HiGBDT-V 3,91 / 2,21 / 0,92 / 1,09.
+* Khi đo thưa, lịch sử không giúp: HiGBDT-V thấp hơn GBDT-cập nhật ở 1/4 bộ với q20 và q10, kém hơn có ý nghĩa trên
+  TJU ở cả ba lịch đo thưa; chỉ thấp hơn trên cả bốn bộ khi biết mọi lần đo trước (M2). Vì vậy giữ GBDT-cập nhật.
+* GBDT-cập nhật ở lịch q20 (5,6–6,6 lần đo mỗi cell) có MAE thấp hơn giữ lần đo ở lịch q05 (21–25 lần đo) trên cả bốn
+  bộ, tức đo ít hơn 3,7–3,8 lần.
+* So với lần chạy trước ở kho G-doan trên cùng cell và lịch đo: tương quan sai số theo cell 0,992–0,999
+  (GBDT-cập nhật) và 0,945–0,993 (HiGBDT-V); phần chênh do phiên bản thư viện.
+
 ## 5. Tối ưu và tái lập
 
 Code được tối ưu mà **không đổi một bit kết quả nào** — `python run.py reproduce` kiểm đúng điều đó:
