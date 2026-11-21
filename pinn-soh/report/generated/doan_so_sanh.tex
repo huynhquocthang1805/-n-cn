@@ -1,4 +1,4 @@
-\section{Mốc so sánh}
+\subsection{Mốc so sánh}
 Trên bốn bộ dữ liệu này, công trình cùng bài toán, cùng đầu vào và có công bố sai số theo từng nhóm cell test là PINN4SOH~\cite{wang2024}; bài đó còn báo cáo hai mô hình đối chứng MLP và CNN trên cùng các nhóm. Các bài công bố bộ dữ liệu gốc giải bài toán khác hoặc dùng đầu vào khác: Severson và cộng sự~\cite{severson2019} dự đoán tuổi thọ của cả cell từ các chu kỳ đầu, Zhu và cộng sự~\cite{zhu2022} dùng điện áp hồi phục sau sạc, Ma và cộng sự~\cite{ma2022} dùng học chuyển giao với cách chia riêng. Vì cách chia và đầu vào khác nhau, sai số của các bài đó không so trực tiếp được với đồ án, và báo cáo không trích chúng. Mọi so sánh dưới đây dùng đúng các nhóm cell test của PINN4SOH (Mục~\ref{sec:rerun_m}) và cách tính sai số của bài; Bảng~\ref{tab:pub} tập hợp các con số.
 
 \begin{table}[!htbp]\centering\small
@@ -22,7 +22,7 @@ HUST & $K = 1$ & 39{,}42 & 50{,}37 & 112{,}78 & \textbf{14{,}71} & 46{,}72 \\
  & $K = 4$ & 13{,}62 & 24{,}04 & 36{,}74 & \textbf{9{,}91} & 22{,}64 \\
 \bottomrule\end{tabular}\end{table}
 
-\section{Các chỉ số tốt hơn các bài báo đã công bố}
+\subsection{Các chỉ số tốt hơn các bài báo đã công bố}
 \begin{enumerate}
 \item Cùng cách chia và cùng tiền xử lý với bài, PINN-lai có sai số thấp hơn mã gốc PINN4SOH chạy lại ở 12 trên 12 chế độ, thấp hơn có ý nghĩa ở 7 (tỉ số 0{,}76--0{,}92 ở chế độ đầy đủ, 0{,}31--0{,}79 ở chế độ ít mẫu) và không chế độ nào cao hơn có ý nghĩa (Bảng~\ref{tab:bench}).
 \item So với số công bố của PINN4SOH, PINN-lai thấp hơn ở 11 trên 12 chế độ (tỉ số 0{,}84--1{,}10 ở chế độ đầy đủ, 0{,}33--0{,}94 ở chế độ ít mẫu). Lợi thế lớn nhất ở chế độ ít mẫu, nơi cell train không nhãn đi vào loss vật lý.
@@ -30,7 +30,7 @@ HUST & $K = 1$ & 39{,}42 & 50{,}37 & 112{,}78 & \textbf{14{,}71} & 46{,}72 \\
 \item Với tiền xử lý không rò rỉ, PINN-lai vẫn thấp hơn số công bố của PINN4SOH trên TJU (tỉ số 0{,}63), MIT (tỉ số 0{,}23), thấp hơn có ý nghĩa theo cell ở 2 trên 4 bộ đầy đủ, và ở XJTU $K = 1$ (tỉ số 0{,}42).
 \end{enumerate}
 
-\section{Các chỉ số chưa tốt}
+\subsection{Các chỉ số chưa tốt}
 \paragraph{So với các bài báo đã công bố.}
 \begin{enumerate}
 \item Cùng điều kiện với bài, PINN-lai chưa thấp hơn số công bố của PINN4SOH ở MIT đầy đủ (6{,}80 so với 6{,}18), và chưa thấp hơn CNN của bài ở MIT đầy đủ (6{,}15).
@@ -48,5 +48,5 @@ HUST & $K = 1$ & 39{,}42 & 50{,}37 & 112{,}78 & \textbf{14{,}71} & 46{,}72 \\
 \item Bộ lọc xu thế không bảo đảm SOH dự đoán không tăng (đầu ra tăng ở 28--44\,\% số bước); ép không tăng làm sai số trên XJTU tăng 1{,}76--1{,}94 lần vì dung lượng đo được của XJTU tăng ở đầu đời.
 \end{enumerate}
 
-\section{Nhận xét}
+\subsection{Nhận xét}
 Phát biểu đúng mức từ các số trên là: trên đúng cách chia của PINN4SOH và cùng cách tính sai số, mô hình của đồ án có sai số thấp hơn số công bố ở phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ; nhưng trong điều kiện có rò rỉ của bài, một GBDT đạt kết quả tương tự, còn khi bỏ rò rỉ thì kết quả tuỳ bộ dữ liệu. Đóng góp chắc chắn hơn là giao thức đánh giá không rò rỉ, việc phát hiện số hạng không có gradient trong bản mã đã sinh số công bố, và các so sánh ghép cặp có kiểm định trong cùng một giao thức.

@@ -120,7 +120,7 @@ def _run(cells, tr_ids, va_ids, te_ids, norm_ids, seed, cfg, path):
     from .train import write_json
     t0 = time.time()
     by = {c.cid: c for c in cells}
-    L = life_scale(cells)
+    L = life_scale(cells)                        # mọi cell, kể cả test (giữ để tái lập); G-doan tính trên cell train
     norm = Normalizer('global').fit([by[i] for i in norm_ids])
     rng = np.random.default_rng(seed)
     F, t = train_set([by[i] for i in tr_ids], norm, L, rng)

@@ -1,0 +1,77 @@
+\chapter{Giới thiệu}
+\label{chap:introduction}
+
+\noindent
+\textit{Chương này nêu lý do chọn đề tài, bài toán, mục tiêu, phạm vi và các đóng góp của đồ án, rồi tóm tắt cấu trúc
+của báo cáo.}
+
+\section{Lý do chọn đề tài}
+
+Dung lượng của cell lithium-ion giảm dần trong quá trình sử dụng. Hệ thống quản lý pin (BMS) cần biết trạng thái sức
+khoẻ (SOH) để ước tính quãng đường còn lại, điều chỉnh chiến lược sạc và cảnh báo thời điểm thay pin. Muốn biết chính
+xác dung lượng phải xả đầy cell theo một quy trình chuẩn, mất nhiều giờ và phải dừng vận hành; ngược lại, điện áp và dòng
+điện lúc sạc được ghi ở mọi chu kỳ của mọi cell. Vì vậy dữ liệu đầu vào thì nhiều, còn nhãn SOH thì ít.
+
+Mạng nơ-ron có thông tin vật lý (PINN) là một cách tận dụng dữ liệu không nhãn: ràng buộc vật lý tính được chỉ từ dữ
+liệu sạc. PINN4SOH~\cite{wang2024} áp dụng hướng này trên bốn bộ dữ liệu công khai và công bố mã nguồn. Tuy nhiên, khi
+lọc ngoại lai và chuẩn hoá, bài dùng thống kê của cả vòng đời từng cell, kể cả cell test: đây là một dạng rò rỉ dữ liệu
+đã biết~\cite{kapoor2023}, làm sai số đo được không phản ánh sai số khi triển khai; mức độ tái lập của số công bố cũng
+chưa được kiểm tra. Đồ án
+chọn đề tài này để xây dựng một mô hình ước lượng SOH khi ít nhãn và đánh giá nó, cùng các mô hình khác, trong một giao
+thức không rò rỉ.
+
+\section{Phát biểu bài toán}
+
+Bài toán thứ nhất là ước lượng: cho 16 đặc trưng đoạn sạc và chỉ số chu kỳ của mọi chu kỳ, trong đó chỉ một phần các
+cell huấn luyện có nhãn SOH, học một mô hình cho sai số nhỏ nhất trên các cell chưa từng xuất hiện khi huấn luyện; mô
+hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, biết lịch sử SOH (đo
+được hoặc ước lượng) tới $k$, dự báo SOH ở các chu kỳ sau đó, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối
+đời (RUL). Phát biểu hình thức ở \Cref{sec:bai_toan}.
+
+\section{Mục tiêu}
+
+\begin{itemize}
+  \item Xây dựng giao thức đánh giá không rò rỉ (chia theo cell, lặp lại, so ghép cặp có kiểm định) và đo tác động của
+        các dạng rò rỉ thường gặp.
+  \item Đề xuất mô hình PINN bán giám sát tận dụng cell không có nhãn, và mô hình kết hợp PINN-lai.
+  \item So sánh có kiểm định với các mô hình đối chứng, gồm bốn mô hình học sâu của đề cương (MLP, CNN, LSTM,
+        Transformer) và GBDT.
+  \item Chạy lại mã gốc PINN4SOH trên đúng cách chia của bài để so sánh trong cùng điều kiện.
+  \item Kiểm tra bằng số liệu vì sao dùng các đặc trưng đầu vào hiện có và vì sao bỏ các cách biến đổi khác.
+  \item Mở rộng sang ngân sách đo dung lượng, cập nhật ước lượng khi dùng, dự báo SOH và RUL.
+  \item Tổ chức mã nguồn sao cho mọi bảng, hình trong báo cáo sinh tự động từ kết quả và chạy lại cho kết quả trùng
+        từng bit.
+\end{itemize}
+
+\section{Phạm vi}
+
+Đồ án dùng bốn bộ dữ liệu công khai XJTU, TJU, MIT và HUST (387 cell, cell hình trụ 18650 sạc--xả trong phòng thí
+nghiệm), ở bản đã trích 16 đặc trưng công bố kèm PINN4SOH. Đồ án không trích lại đặc trưng từ tín hiệu điện áp, dòng
+điện gốc, không dùng dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều cell ghép song song; các nội dung đó
+thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU.
+
+\section{Đóng góp}
+
+\begin{itemize}
+  \item Giao thức đánh giá không rò rỉ cùng kiểm toán định lượng tác động của bốn dạng rò rỉ (\Cref{sec:protocol},
+        \Cref{sec:leakres}).
+  \item PINN bán giám sát với động học suy giảm dạng xám luôn không âm, và mô hình kết hợp PINN-lai
+        (\Cref{sec:pinn,sec:pinnlai}), đánh giá ở bốn mức nhãn với chín mô hình đối chứng.
+  \item Chạy lại mã gốc PINN4SOH trên đúng 39 nhóm của bài; phát hiện số hạng đơn điệu của bản mã đã sinh số công bố
+        không có gradient (\Cref{sec:rerun}).
+  \item Phân tích đặc trưng đầu vào bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên validation
+        (\Cref{ch:dactrung}).
+  \item Dự báo SOH, dung lượng và RUL; kết hợp GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) với PINN-dự báo trong
+        cùng một giao thức đã sửa các điểm rò rỉ còn lại (\Cref{sec:mo_rong,sec:e33pp}).
+  \item Mã nguồn chạy được từ dữ liệu tới báo cáo bằng một lệnh, kiểm tra tái lập từng bit (\Cref{app:source-code}).
+\end{itemize}
+
+\section{Cấu trúc báo cáo}
+
+Phần còn lại của báo cáo được tổ chức như sau. \Cref{chap:background} trình bày cơ sở lý thuyết và các nghiên cứu liên
+quan. \Cref{chap:methodology} mô tả dữ liệu, đặc trưng đầu vào cùng số liệu chứng minh lựa chọn, giao thức đánh giá và
+các mô hình. \Cref{chap:implementation} mô tả thiết kế và hiện thực hệ thống. \Cref{chap:evaluation} trình bày thiết
+lập thực nghiệm, kết quả chạy lại PINN4SOH, kết quả của đồ án và đối chiếu với các bài báo đã công bố, gồm cả các chỉ
+số tốt hơn và các chỉ số chưa tốt. \Cref{chap:conclusion} kết luận. \Cref{app:additional} cho kết quả bổ sung;
+\Cref{app:source-code} cho mã nguồn và các kiểm tra tái lập. Mọi con số trong bảng được sinh tự động từ tệp kết quả
+của các lượt chạy.

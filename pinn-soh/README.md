@@ -41,8 +41,9 @@ PINN4SOH ở `benchmark/` và phân tích đặc trưng. Ba sản phẩm viết:
 
 ## 1. Cài đặt
 
-Cần Python ≥ 3.10 (đã dùng 3.11). TeX Live chỉ cần cho hai bước dựng PDF: pdfLaTeX cho bản thảo bài báo, XeLaTeX và
-phông TeX Gyre (`fonts-texgyre`, `tex-gyre` trên Ubuntu) cho báo cáo đồ án.
+Cần Python ≥ 3.10 (đã dùng 3.11). TeX Live chỉ cần cho hai bước dựng PDF (bản thảo bài báo và báo cáo đồ án), cả hai
+dùng pdfLaTeX; báo cáo đồ án theo mẫu hcmut-thesis cần thêm `latexmk` và gói tiếng Việt vntex (Ubuntu:
+`apt-get install latexmk texlive-latex-extra texlive-lang-other`).
 
 ```bash
 python -m venv .venv
@@ -55,15 +56,16 @@ pip install -r requirements.txt
 Mọi bước đều qua một lệnh `python run.py <lệnh>`, chạy từ thư mục nào cũng được.
 
 ```bash
-python run.py check          # kiểm tra Python, thư viện, dữ liệu, XeLaTeX, số lõi CPU
+python run.py check          # kiểm tra Python, thư viện, dữ liệu, pdfLaTeX, số lõi CPU
 python run.py data           # tải 387 file CSV (~94 MB) từ repo gốc và dựng bộ nhớ đệm
 python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
+python -m unittest discover -s tests   # vài giây: đặc trưng dự báo chỉ dùng quá khứ của cell
 python run.py bench          # đo tốc độ máy để ước lượng thời gian chính xác hơn
 python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, không chạy gì
 python run.py all            # toàn bộ: thí nghiệm -> phân tích -> benchmark -> đặc trưng -> bản thảo -> báo cáo
 ```
 
-`all` = `experiments` (E13, E15–E23, E26–E30, E32 theo thứ tự trong `pinnsoh/experiments.py`) → `analyze` →
+`all` = `experiments` (E13, E15–E23, E26–E30, E32, E33 theo thứ tự trong `pinnsoh/experiments.py`) → `analyze` →
 `benchmark` → `features` → `paper` → `report`. Có thể chạy từng bước:
 
 ```bash

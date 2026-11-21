@@ -9,8 +9,11 @@ Design choices that differ from PINN4SOH (all deliberate, see docs):
     min-max / z-score over a cell's *whole* life leaks its lifetime into the
     input, and is impossible online).  We offer:
       - 'global'      : z-score fitted on TRAINING cells only
-      - 'first_cycle' : causal relative features (x - x_ref)/(|x_ref|+eps),
-                        x_ref = mean of the first 3 cycles of the same cell,
+      - 'first_cycle' : relative features (x - x_ref)/(|x_ref|+eps),
+                        x_ref = mean of the first 3 cycles of the same cell (so the first 2 rows of
+                        each cell look up to 2 rows ahead; kept for reproducibility of E20 'REL' and
+                        the 'rel' input set of analysis/features.py, neither of which is selected;
+                        repo G-doan uses a cumulative mean instead),
                         followed by a global z-score fitted on training cells.
                         Deployable (needs only the cell's own first cycles),
                         chemistry-agnostic -> used for cross-dataset transfer.

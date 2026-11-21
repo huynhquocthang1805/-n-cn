@@ -336,7 +336,7 @@ def run_fold(ds: str, r: int, k: int, root: str = ROOT, members=(0, 1, 2)) -> fl
     tr, va, te = ([by[i] for i in sp[p]] for p in ('train', 'val', 'test'))
     norm = Normalizer('global').fit(tr)
     Xn = {c.cid: norm.transform(c) for c in cells}
-    L, tau = life_scale(cells), TAU[ds]
+    L, tau = life_scale(cells), TAU[ds]          # mọi cell, kể cả test, như E22 (giữ để tái lập)
     old = Forecaster.fit(tr, va, Xn, seed=100 * r + k, members=members)        # đúng mô hình E22
     new = ForecasterR.fit(tr, va, Xn, seed=100 * r + k, members=members)
     est = {p: e20_estimates(ds, r, k, p) for p in ('test', 'val')}

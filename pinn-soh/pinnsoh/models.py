@@ -19,9 +19,9 @@ Kiến trúc (`arch`):
               biểu diễn biến thiên theo chu kỳ mà không cần sâu
     mono    : ĐẦU RA ĐƠN ĐIỆU THEO CẤU TRÚC (đóng góp thiết kế):
                   u(x,t) = u0(x) - sum_k s_k(x) * softplus(w_k * t + phi_k(x)),  s_k, w_k >= 0
-              => du/dt = -sum_k s_k w_k sigmoid(.) <= 0 với MỌI tham số.
-              Tính đơn điệu không còn là một số hạng phạt cần cân trọng số mà là
-              tính chất của không gian hàm; L_mono trở nên thừa (đặt beta = 0).
+              => du/dt = -sum_k s_k w_k sigmoid(.) <= 0 với MỌI tham số, khi giữ x cố định.
+              Bảo đảm này chỉ theo t với x cố định: trên quỹ đạo thật của một cell, x(t)
+              đổi theo chu kỳ nên u(x(t), t) không nhất thiết đơn điệu.
 """
 from __future__ import annotations
 import math
@@ -120,8 +120,9 @@ class FourierT(nn.Module):
 class MonotoneHead(nn.Module):
     """u(x,t) = u0(x) - sum_k s_k(x)*softplus(w_k*t + phi_k(x)),  s_k >= 0, w_k >= 0.
 
-    du/dt = -sum_k s_k * w_k * sigmoid(w_k t + phi_k) <= 0  --> đơn điệu không tăng theo
-    cấu trúc, với mọi giá trị tham số. u0 bị chặn về [lo, hi] bằng sigmoid có tỉ lệ."""
+    du/dt = -sum_k s_k * w_k * sigmoid(w_k t + phi_k) <= 0  --> không tăng theo t khi giữ x cố định, với mọi giá
+    trị tham số; quỹ đạo u(x(t), t) của một cell không nhất thiết đơn điệu vì x đổi theo chu kỳ. u0 bị chặn về [lo, hi]
+    bằng sigmoid có tỉ lệ, nhưng u0 - drop có thể nhỏ hơn lo."""
     def __init__(self, feat_dim, n_basis=8, lo=0.40, hi=1.15):
         super().__init__()
         self.n = n_basis; self.lo, self.hi = lo, hi

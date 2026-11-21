@@ -1,0 +1,37 @@
+\chapter{Mã nguồn và khả năng tái lập}
+\label{app:source-code}
+
+\noindent
+Mã nguồn của đồ án được công bố tại (thư mục \texttt{pinn-soh}):
+\begin{center}
+  \url{https://github.com/huynhquocthang1805/-n-cn}
+\end{center}
+Mã của GBDT lịch sử dùng trong E33 (\Cref{sec:e33pp}) lấy từ phần cải tiến (thư mục \texttt{improvements}) của repo
+\begin{center}
+  \url{https://github.com/huynhquocthang1805/G-doan}
+\end{center}
+và đặt trong \texttt{pinnsoh/forecast\_hist.py}. Dữ liệu là bản đặc trưng công bố kèm PINN4SOH tại
+\url{https://github.com/wang-fujin/PINN4SOH}.
+
+\section{Chạy lại}
+
+Cần Python 3.11 và các thư viện trong \texttt{requirements.txt}; bước dựng báo cáo cần pdf\LaTeX{} và Bib\TeX.
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Lệnh & Việc làm \\
+\midrule
+\texttt{python run.py data} & tải dữ liệu, dựng bộ nhớ đệm \\
+\texttt{python run.py E13} (\ldots\ \texttt{E33}) & chạy một thí nghiệm, bỏ qua lượt đã có kết quả \\
+\texttt{python run.py analyze} & bảng và hình từ kết quả \\
+\texttt{python run.py benchmark} & chạy lại mã gốc PINN4SOH, lập bảng so sánh \\
+\texttt{python run.py features} & phân tích đặc trưng đầu vào \\
+\texttt{python run.py report} & dựng báo cáo này \\
+\texttt{python run.py reproduce} & chạy lại 20 lượt mẫu, so từng bit \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Các kiểm tra tái lập}\label{sec:tailap}
+
+\input{generated/doan_tai_lap}

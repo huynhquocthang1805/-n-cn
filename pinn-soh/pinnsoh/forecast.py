@@ -129,10 +129,15 @@ def origin_features(s, cyc, Xn, temp_k):
     lev = causal_trend(s, cyc, W_LEVEL)
     s30 = causal_slope(s, cyc, 30) * 1000.0
     s100 = causal_slope(s, cyc, 100) * 1000.0
-    l0 = float(np.mean(s[:5]))
-    n = len(s); i = np.arange(n); a = np.maximum(0, i - W_FEAT + 1)
+    # mức ban đầu l0: trung bình 5 hàng đầu; ở hàng i < 5 là trung bình luỹ tiến của các hàng <= i, để hàng i không dùng
+    # SOH của hàng sau nó (bản sửa của repo G-doan). Mọi gốc dự báo và gốc học đều từ hàng 5 trở đi, nên các hàng được
+    # dùng giữ đúng giá trị cũ từng bit và kết quả của E22, E23, E32, E33 không đổi.
+    n = len(s); k5 = min(5, n)
+    l0 = np.full(n, float(np.mean(s[:5])) if n else 0.0)
+    l0[:k5] = np.cumsum(s[:k5]) / np.arange(1, k5 + 1)
+    i = np.arange(n); a = np.maximum(0, i - W_FEAT + 1)
     fm = _seg(Xn.astype(float), i, a) / (i - a + 1)[:, None]
-    Z = np.column_stack([lev, s30, s100, np.full(n, l0), l0 - lev, cyc / 1000.0, np.full(n, 1000.0 / temp_k), fm])
+    Z = np.column_stack([lev, s30, s100, l0, l0 - lev, cyc / 1000.0, np.full(n, 1000.0 / temp_k), fm])
     return Z.astype(np.float32), lev
 
 
@@ -375,7 +380,7 @@ def run_fold(ds: str, r: int, k: int, root: str = ROOT, members=(0, 1, 2)) -> fl
     tr, va, te = ([by[i] for i in sp[p]] for p in ('train', 'val', 'test'))
     norm = Normalizer('global').fit(tr)
     Xn = {c.cid: norm.transform(c) for c in cells}
-    L, tau = life_scale(cells), TAU[ds]
+    L, tau = life_scale(cells), TAU[ds]          # mọi cell, kể cả test: giữ để tái lập; E33 tính trên cell train
     fc = Forecaster.fit(tr, va, Xn, seed=100 * r + k, members=members)
     est = {'test': e20_estimates(ds, r, k, 'test'), 'val': e20_estimates(ds, r, k, 'val')}
     step = max(1, int(round(L / 200)))

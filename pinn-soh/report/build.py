@@ -1,7 +1,8 @@
 """
-Dựng báo cáo đồ án chuyên ngành (tiếng Việt): bảng và đoạn văn có số (report/generated/*.tex), hình (report/hinh/),
-rồi biên dịch report/main.tex bằng XeLaTeX -> report/bao-cao-do-an.pdf. Thư mục report/ tự đủ: các tệp sinh ra được
-đưa lên git, nên main.tex biên dịch được ngay mà không cần chạy lại gì.
+Dựng báo cáo đồ án chuyên ngành (tiếng Việt, theo mẫu hcmut-thesis của Khoa KH&KT Máy tính): bảng và đoạn văn có số
+(report/generated/*.tex), hình (report/graphics/), rồi biên dịch report/main.tex bằng pdfLaTeX và BibTeX (latexmk -pdf)
+-> report/bao-cao-do-an.pdf. Thư mục report/ tự đủ: các tệp sinh ra được đưa lên git, nên main.tex biên dịch được ngay
+mà không cần chạy lại gì.
 
     python report/build.py            # hoặc: python run.py report
     python report/build.py --no-pdf   # chỉ bảng, đoạn văn và hình
@@ -14,9 +15,12 @@ Nguồn số liệu, không số nào gõ tay vào bảng:
   * results/thesis_leakage.csv (analysis/analyze_thesis.py): kiểm toán rò rỉ chạy lại; bản sao ở report/generated/data/;
   * số lượt chạy của từng thí nghiệm: pinnsoh/experiments.py;
   * dự báo (E22): runs/E22 và runs/E20 -> analysis/analyze_e22.py, analysis/figures_report.py; bản sao bảng ở
-    report/generated/data/e22_*.csv, hình ở report/hinh/fig_e22_*.pdf.
+    report/generated/data/e22_*.csv, hình ở report/graphics/fig_e22_*.pdf;
+  * dự báo kết hợp (E33): runs/E33 -> analysis/analyze_e33.py, analysis/figures_report.py; bản sao bảng ở
+    report/generated/data/e33_*.csv, hình ở report/graphics/fig_e33_*.pdf; bảng bài toán cập nhật lấy từ các tệp kết
+    quả đã lưu trong repo G-doan (improvements/anchors).
 Các con số trong lời văn của Chương 5 (kết quả từ báo cáo đã nộp) chép từ lời văn của báo cáo đó, trừ mục dự báo
-(sinh từ kết quả chạy lại E22).
+(sinh từ kết quả chạy lại E22) và mục dự báo kết hợp (sinh từ E33).
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -33,7 +37,7 @@ from pinnsoh.paper import PAPER_MAE
 REP = 'report'
 GEN = os.path.join(REP, 'generated')
 DATA = os.path.join(GEN, 'data')                 # bản sao các bảng kết quả nhỏ (results/ không lên git)
-FIG = os.path.join(REP, 'hinh')
+FIG = os.path.join(REP, 'graphics')
 BENCH = 'benchmark/results'
 OLD_FIG = 'archive/thesis/do-an/hinh'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
@@ -123,6 +127,15 @@ def history_table():
                    f'{cell(r[6])} \\\\')
         last = r[0]
     out += [r'\bottomrule\end{tabular}\end{table}']
+    # hai hình của báo cáo đã nộp (E29, chỉ ba bộ có dạng lịch sử được chọn, không có NASA)
+    out += ['', r'\begin{figure}[!htbp]\centering', r'\includegraphics[width=\textwidth]{graphics/fig_e29_pinn.pdf}',
+            r'\caption[PINN-semi khi có và không có lịch sử của cell]{MAE theo cell trên test của PINN-semi không có (nét '
+            r'đứt) và có lịch sử của cell (nét liền), trên ba bộ có dạng lịch sử được chọn; trên MIT không dạng nào được '
+            r'chọn.}\label{fig:e29pinn}', r'\end{figure}', '',
+            r'\begin{figure}[!htbp]\centering', r'\includegraphics[width=\textwidth]{graphics/fig_e29_lai.pdf}',
+            r'\caption[PINN-lai khi có và không có lịch sử của cell]{MAE theo cell trên test của PINN-lai tinh chỉnh không '
+            r'có (nét đứt) và có lịch sử của cell (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation.}'
+            r'\label{fig:e29lai}', r'\end{figure}']
     return '\n'.join(out)
 
 
@@ -137,6 +150,7 @@ EXPS = [(['E13'], 'Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn
         (['E28'], 'Ngân sách đo: đo thưa mọi cell train theo 4 lịch đo'),
         (['E32'], 'Mô hình cập nhật từ lần đo gần nhất (GBDT)'),
         (['E22', 'E23'], 'Dự báo SOH, dung lượng, RUL; bản có xét hồi phục dung lượng'),
+        (['E33'], 'Dự báo kết hợp GBDT lịch sử (mã của repo G-doan) với PINN-dự báo, 2 ngân sách nhãn, 3 lần lặp'),
         (['E27'], 'Mô hình của đồ án trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống')]
 
 
@@ -395,7 +409,7 @@ def fig_benchmark(S):
 
 def bench_section(S, T, L):
     text, B = bench_parts(S, T, L)
-    fig = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{hinh/fig_benchmark.pdf}' '\n'
+    fig = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_benchmark.pdf}' '\n'
            r'\caption[So với PINN4SOH trên đúng cách chia của bài]{So với PINN4SOH trên đúng cách chia của bài. Trên: chế '
            r'độ đầy đủ, mỗi bộ năm cột (số công bố, hai bản mã gốc chạy lại với độ lệch chuẩn qua lần chạy, PINN-lai với '
            r'tiền xử lý của bài và với tiền xử lý không rò rỉ). Dưới: chế độ ít mẫu, MAE theo số cell có nhãn (thang '
@@ -641,7 +655,8 @@ def features_parts(F, L_leak):
         'PINN-semi tăng (tỉ số 1,692); phép chia cho mức ban đầu của cell khuếch đại các đặc trưng có giá trị ban đầu gần '
         '0. Với GBDT, tác động của chúng trái chiều giữa các bộ'
         + (' (thấp hơn có ý nghĩa ở ' + lst(relgood) + ', cao hơn có ý nghĩa ở ' + lst(sigrel) + ')' if relgood and sigrel
-           else '') + ', nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist}) '
+           else '') + ', nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist}, '
+        'Hình~\\ref{fig:e29pinn} và~\\ref{fig:e29lai}) '
         'giúp trên TJU và HUST khi có từ 30\\,\\% nhãn nhưng làm kém đi trên XJTU và ở 10\\,\\% nhãn, khi số chiều đầu vào '
         'tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy mô hình chính không dùng chúng, và mô hình cuối chỉ '
         'dùng ở các trường hợp validation chọn (phân tích hậu kiểm). '
@@ -667,7 +682,7 @@ def features_parts(F, L_leak):
 
 
 leak_table_cache = ['']
-FIG_FEAT = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{hinh/fig_features.pdf}' '\n'
+FIG_FEAT = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_features.pdf}' '\n'
             r'\caption[Bỏ hoặc thêm nhóm đầu vào: tỉ số MAE so với đủ 17 đầu vào]{Tỉ số MAE theo cell so với GBDT đủ 17 đầu '
             r'vào, theo tập đầu vào và mức nhãn (thang log). Điểm đặc: khác có ý nghĩa (Wilcoxon theo cell, Holm qua bốn '
             r'bộ); điểm rỗng: không có ý nghĩa. Vạch đứt: bằng bộ đầy đủ.}\label{fig:features}' '\n' r'\end{figure}')
@@ -712,7 +727,7 @@ def fig_features(A):
 
 
 # --------------------------------------------------------------------------- Chương 6: đối chiếu với bài báo đã công bố
-def compare_chapter(S, T, B, L_leak, D22=None):
+def compare_chapter(S, T, B, L_leak, D22=None, E33=None):
     pub = {k: PAPER_MAE[k] for k in ROWS}
     out = [r'\begin{table}[!htbp]\centering\small',
            r'\caption[Đối chiếu với số liệu công bố của bài PINN4SOH]{MAE theo cell ($\times10^{-3}$) trên đúng cách chia '
@@ -749,7 +764,7 @@ def compare_chapter(S, T, B, L_leak, D22=None):
     st_few_worse = [k for k in few if st[k] >= 1]
     hyb_rerun = [S.loc[k, 'paper_pinn_lai'] / S.loc[k, 'rerun_published'] for k in ROWS]
     s = []
-    s.append(r'\section{Mốc so sánh}' '\n'
+    s.append(r'\subsection{Mốc so sánh}' '\n'
              r'Trên bốn bộ dữ liệu này, công trình cùng bài toán, cùng đầu vào và có công bố sai số theo từng nhóm cell test '
              r'là PINN4SOH~\cite{wang2024}; bài đó còn báo cáo hai mô hình đối chứng MLP và CNN trên cùng các nhóm. Các bài '
              r'công bố bộ dữ liệu gốc giải bài toán khác hoặc dùng đầu vào khác: Severson và cộng sự~\cite{severson2019} dự '
@@ -815,11 +830,16 @@ def compare_chapter(S, T, B, L_leak, D22=None):
         r'Bộ lọc xu thế không bảo đảm SOH dự đoán không tăng (đầu ra tăng ở 28--44\,\% số bước); ép không tăng làm sai số '
         r'trên XJTU tăng 1{,}76--1{,}94 lần vì dung lượng đo được của XJTU tăng ở đầu đời.',
     ]
+    if E33 is not None and (min(E33['cov_kls']) < 0.9 or min(E33['cov_rul']) < 0.9):
+        internal.append(r'Với mô hình kết hợp mới của E33 (\Cref{sec:e33res}), khoảng SOH 90\,\% theo dự đoán phù hợp phủ '
+                        + pct_rng(E33['cov_kls']) + r' tuỳ bộ và thiết lập, khoảng RUL 90\,\% phủ '
+                        + pct_rng(E33['cov_rul']) + r'; tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật khi lịch sử là ước '
+                        r'lượng là ' + pct_rng(E33['in20']) + '.')
     item = lambda xs: '\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in xs) + '\n\\end{enumerate}'
-    s.append(r'\section{Các chỉ số tốt hơn các bài báo đã công bố}' '\n' + item(good))
-    s.append(r'\section{Các chỉ số chưa tốt}' '\n' r'\paragraph{So với các bài báo đã công bố.}' '\n' + item(bad) + '\n'
+    s.append(r'\subsection{Các chỉ số tốt hơn các bài báo đã công bố}' '\n' + item(good))
+    s.append(r'\subsection{Các chỉ số chưa tốt}' '\n' r'\paragraph{So với các bài báo đã công bố.}' '\n' + item(bad) + '\n'
              r'\paragraph{Các chỉ số của chính đồ án chưa đạt.}' '\n' + item(internal))
-    s.append(r'\section{Nhận xét}' '\n'
+    s.append(r'\subsection{Nhận xét}' '\n'
              r'Phát biểu đúng mức từ các số trên là: trên đúng cách chia của PINN4SOH và cùng cách tính sai số, mô hình của '
              r'đồ án có sai số thấp hơn số công bố ở phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ; nhưng '
              r'trong điều kiện có rò rỉ của bài, một GBDT đạt kết quả tương tự, còn khi bỏ rò rỉ thì kết quả tuỳ bộ dữ liệu. '
@@ -921,11 +941,11 @@ def reproducibility(B, FC=None):
 
 
 # --------------------------------------------------------------------------- kết luận và tóm tắt
-def conclusion(B, L_leak, C6, F_ok, n_total):
+def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
     items = [
         r'Xây dựng đường ống dữ liệu cho bốn bộ dữ liệu công khai (387 cell, 305.802 chu kỳ sau lọc) với bộ lọc ngoại lai '
         r'nhân quả, và kiểm tra bằng số liệu vì sao dùng 16 đặc trưng sạc cùng chỉ số chu kỳ, vì sao bỏ các cách biến đổi '
-        r'khác (Chương~\ref{ch:dactrung}).',
+        r'khác (Mục~\ref{ch:dactrung}).',
         rf'Thiết kế giao thức đánh giá không rò rỉ và đo tác động của các dạng rò rỉ: chia theo chu kỳ làm sai số thấp đi '
         rf'{L_leak["row"]} lần, chuẩn hoá theo cả vòng đời cell làm sai số đổi {L_leak["minmax_rng"]} lần tuỳ bộ.',
         r'Đề xuất PINN bán giám sát với động học xám luôn không âm: ở 10\,\% nhãn sai số bằng 0{,}39--0{,}90 lần MLP, tiết '
@@ -939,9 +959,10 @@ def conclusion(B, L_leak, C6, F_ok, n_total):
         rf'{B["beat_rerun"]}/12 chế độ, thấp hơn số công bố ở {len(B["beat_pub"])}/12.',
         r'Đặt lại bài toán ít nhãn theo số lần đo dung lượng: đo thưa mọi cell với 1{,}2--6{,}0\,\% số chu kỳ cho sai số bằng '
         r'0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell; mở rộng sang dự báo SOH, dung lượng còn lại và RUL.',
+        *([e33_item(E33)] if E33 else []),
         rf'Tổ chức lại mã nguồn thành các khối dữ liệu, mô hình, thí nghiệm, phân tích, so sánh với PINN4SOH, bản thảo bài '
         rf'báo và báo cáo; {thou(n_total)} lượt huấn luyện có kết quả trong báo cáo, mọi bảng sinh tự động từ kết quả, chạy '
-        r'lại cho kết quả trùng từng bit (Chương~\ref{ch:chaylai}).',
+        r'lại cho kết quả trùng từng bit (Mục~\ref{sec:tailap}).',
     ]
     write('doan_ket_luan.tex', '\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}')
     tomtat = (
@@ -960,8 +981,27 @@ def conclusion(B, L_leak, C6, F_ok, n_total):
         r'kết quả tương tự; với tiền xử lý không rò rỉ, PINN-lai thấp hơn số công bố trên '
         + ' và '.join(k[0] for k in C6['st_better']) + ', cao hơn trên ' + ' và '.join(k[0] for k in C6['st_worse'])
         + r'. Đo thưa mọi cell với 1{,}2--6{,}0\,\% số chu kỳ cho sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% '
-        r'số cell.')
+        r'số cell.' + (e33_abstract(E33) if E33 else ''))
     return tomtat
+
+
+def e33_item(E):
+    """Một ý của phần kết luận về E33, lấy số từ e33_section."""
+    lab = {(b, sc): l for b, sc, l in E33_SET}
+    return (r'Kết hợp GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) với PINN-dự báo, đánh giá trong một giao thức đã '
+            r'sửa các điểm còn rò rỉ của E22 (E33, \Cref{sec:e33res}): khi có lịch sử đo dung lượng, GBDT lịch sử có MAE '
+            rf'bằng {rng(E["r_ls_gbdt"])} lần GBDT theo tầm, mô hình kết hợp mới bằng {rng(E["r_kls_kh"])} lần kết hợp '
+            rf'E22 và {rng(E["r_kls_ls"])} lần GBDT lịch sử; với lịch sử ước lượng, kết hợp mới bằng '
+            rf'{rng(E["r_kls_kh_uoc"])} lần kết hợp E22. Theo quy tắc chọn sau thí nghiệm, mô hình dự báo SOH nên dùng là '
+            + '; '.join(f'{lab[k]}: {E["name"](m)}' for k, m in E['soh'].items())
+            + '; với RUL: ' + '; '.join(f'{"lịch sử đo" if sc == "do" else "lịch sử ước lượng"}: {E["name"](m)}'
+                                        for sc, m in E['rul'].items()) + '.')
+
+
+def e33_abstract(E):
+    return (r' Ghép GBDT có đặc trưng lịch sử SOH với PINN-dự báo cho sai số dự báo SOH bằng '
+            rf'{rng(E["r_kls_kh"])} lần mô hình kết hợp trước đó khi có lịch sử đo dung lượng và '
+            rf'{rng(E["r_kls_kh_uoc"])} lần khi lịch sử là ước lượng.')
 
 
 # --------------------------------------------------------------------------- hình
@@ -976,7 +1016,7 @@ E22_RUNS = 60                                    # 3 lần lặp × 4 bộ × 5 
 
 def forecast_load():
     """Khi runs/E22 đủ 60 lượt (và có runs/E20 cho lịch sử ước lượng): tính lại bảng (analysis/analyze_e22.py), vẽ lại
-    hình (analysis/figures_report.py) vào results/, chép hình sang report/hinh/. Bảng giữ bản sao ở generated/data/,
+    hình (analysis/figures_report.py) vào results/, chép hình sang report/graphics/. Bảng giữ bản sao ở generated/data/,
     nên không có runs/ vẫn dựng được báo cáo từ bản đã lưu."""
     fresh = len(glob.glob('runs/E22/fc_*.npz')) >= E22_RUNS and os.path.isdir('runs/E20')
     if fresh:
@@ -1101,7 +1141,7 @@ def forecast_figs_text(D):
     o = lambda ds, q, col='e_ket_hop': float(og[(og.ds == ds) & (og.scen == 'uoc') & (og.oq == q)][col].iloc[0])
     lst3 = lambda f, fmt: '; '.join(f'{ds} ' + ', '.join(fmt(f(ds, x)) for x in HR) for ds in DS)
     fig = lambda name, cap, short, label: (
-        '\\begin{figure}[!htbp]\\centering\n\\includegraphics[width=\\textwidth]{hinh/' + name + '.pdf}\n'
+        '\\begin{figure}[!htbp]\\centering\n\\includegraphics[width=\\textwidth]{graphics/' + name + '.pdf}\n'
         '\\caption[' + short + ']{' + cap + '}\\label{' + label + '}\n\\end{figure}')
     s = []
     # --- một cell và ba cell mỗi bộ
@@ -1204,6 +1244,261 @@ def pct_rng(vals, n=0):
     return (lo if lo == hi else f'{lo}--{hi}') + r'\,\%'
 
 
+# --------------------------------------------------------------------------- E33: dự báo kết hợp GBDT lịch sử + PINN
+E33_CSV = ['summary', 'tests', 'rul', 'rul_tests', 'choices', 'gdoan', 'gdoan_match', 'gdoan_anchor', 'traj_pick']
+E33_MODELS = ['giu', 'tuyen', 'gbdt', 'gbdt_ls', 'pinn', 'ket_hop', 'ket_hop_ls']
+E33_LAB = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT (E22)', 'gbdt_ls': 'GBDT lịch sử',
+           'pinn': 'PINN-dự báo', 'ket_hop': 'Kết hợp E22', 'ket_hop_ls': 'Kết hợp mới'}
+E33_SET = [('lab30', 'do', r'30\,\% nhãn, lịch sử đo'), ('all', 'do', 'mọi cell train, lịch sử đo'),
+           ('all', 'uoc', 'mọi cell train, lịch sử ước lượng')]
+E33_RUNS = 120
+
+
+def e33_load():
+    """Khi runs/E33 đủ 120 lượt: tính lại bảng (analysis/analyze_e33.py) và vẽ lại hình; bảng giữ bản sao ở
+    generated/data/, nên không có runs/ vẫn dựng được."""
+    fresh = len(glob.glob('runs/E33/fc_*.npz')) >= E33_RUNS
+    if fresh:
+        import analyze_e33, figures_report as FR
+        analyze_e33.main()
+        for name in ('e33_mae', 'e33_traj'):
+            FR.FIGS[name]()
+            shutil.copy(f'results/fig_{name}.pdf', os.path.join(FIG, f'fig_{name}.pdf'))
+    D = {}
+    for name in E33_CSV:
+        p = keep_copy(f'results/e33_{name}.csv', f'e33_{name}.csv')
+        if p is None:
+            return None
+        D[name] = pd.read_csv(p)
+    return D
+
+
+E33_HEAD = {'giu': ('Giữ', 'nguyên'), 'tuyen': ('Tuyến', 'tính'), 'gbdt': ('GBDT', '(E22)'),
+            'gbdt_ls': ('GBDT', 'lịch sử'), 'pinn': ('PINN-', 'dự báo'), 'ket_hop': ('Kết hợp', 'E22'),
+            'ket_hop_ls': ('Kết hợp', 'mới')}
+
+
+def head2(a, b):
+    """Ô tiêu đề hai dòng, căn phải như cột số."""
+    return r'\begin{tabular}[b]{@{}r@{}}' + a + r'\\' + b + r'\end{tabular}'
+
+
+def group_row(text, ncol):
+    return r'\multicolumn{' + str(ncol) + r'}{@{}l}{\textit{' + text + r'}} \\'
+
+
+E33_TXT = {'giu': 'giữ nguyên', 'tuyen': 'ngoại suy tuyến tính', 'gbdt': 'GBDT theo tầm của E22',
+           'gbdt_ls': 'GBDT lịch sử', 'pinn': 'PINN-dự báo', 'ket_hop': 'kết hợp E22', 'ket_hop_ls': 'kết hợp mới'}
+
+
+def e33_section(D):
+    """Mục kết quả E33 (Chương 5) và các bảng chi tiết ở Phụ lục A; mọi số và mọi nhận định lấy từ bảng kết quả."""
+    S, T, R, RT, CH = D['summary'], D['tests'], D['rul'], D['rul_tests'], D['choices']
+    G, GM, GA = D['gdoan'], D['gdoan_match'], D['gdoan_anchor']
+    join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    where = lambda xs: 'cả bốn bộ' if len(xs) == 4 else (join(xs) if xs else 'không bộ nào')
+    val = lambda b, sc, ds, m: float(S[(S.budget == b) & (S.scen == sc) & (S.ds == ds)][m].iloc[0])
+    rv = lambda b, sc, ds, col: float(R[(R.budget == b) & (R.scen == sc) & (R.ds == ds)][col].iloc[0])
+    lab_of = {(b, sc): lab for b, sc, lab in E33_SET}
+
+    def pair(b, sc, ds, x, y, tab):
+        """(p sau Holm, x tốt hơn y theo hướng của Wilcoxon, tỉ số MAE x/y), dù bảng lưu cặp theo thứ tự nào."""
+        r = tab[(tab.budget == b) & (tab.scen == sc) & (tab.ds == ds)
+                & (((tab.a == x) & (tab.b == y)) | ((tab.a == y) & (tab.b == x)))].iloc[0]
+        return float(r.p_holm), (r.a_wins == 1) == (r.a == x), float(r.ratio if r.a == x else 1 / r.ratio)
+
+    odd = []                                   # kiểm định ghép cặp và tỉ số trung bình ngược chiều
+
+    def cmp(b, sc, x, y, tab=T):
+        res = {ds: pair(b, sc, ds, x, y, tab) for ds in DS}
+        up = [ds for ds in DS if res[ds][0] < 0.05 and res[ds][1]]
+        dn = [ds for ds in DS if res[ds][0] < 0.05 and not res[ds][1]]
+        odd.extend((lab_of[(b, sc)], x, y, ds, 'tốt hơn') for ds in up if res[ds][2] > 1)
+        odd.extend((lab_of[(b, sc)], x, y, ds, 'kém hơn') for ds in dn if res[ds][2] < 1)
+        s = 'tỉ số ' + rng([res[ds][2] for ds in DS])
+        s += f', tốt hơn có ý nghĩa trên {where(up)}' if up else ''
+        s += f', kém hơn có ý nghĩa trên {where(dn)}' if dn else ''
+        return s + ('' if up or dn else ', không khác có ý nghĩa trên bộ nào')
+
+    def worse_sig(b, sc, x, y, tab=T):
+        return [ds for ds in DS if (lambda p: p[0] < 0.05 and not p[1])(pair(b, sc, ds, x, y, tab))]
+
+    # ---- bảng MAE của SOH
+    rows = []
+    for b, sc, lab in E33_SET:
+        rows.append(group_row(lab, 1 + len(E33_MODELS)))
+        for ds in DS:
+            vals = [val(b, sc, ds, m) for m in E33_MODELS]
+            cells = [(r'\textbf{' + m3(x, 2) + '}') if x == min(vals) else m3(x, 2) for x in vals]
+            p, xw, _ = pair(b, sc, ds, 'ket_hop_ls', 'gbdt_ls', T)
+            cells[-1] += (r'$^{*}$' if xw else r'$^{\dagger}$') if p < 0.05 else r'\phantom{$^{*}$}'
+            rows.append(' & '.join([ds] + cells) + r' \\')
+        rows.append(r'\addlinespace[3pt]')
+    tab = (r'\begin{table}[!htbp]\centering\small' '\n'
+           r'\caption[MAE của SOH dự báo, E33]{MAE theo cell ($\times10^{-3}$) của SOH dự báo trên mọi chu kỳ đo được sau'
+           r' gốc ($0{,}2L$, $0{,}4L$, $0{,}6L$), trung bình qua 3 lần lặp; in đậm là thấp nhất mỗi hàng. $^{*}$/$^{\dagger}$:'
+           r' kết hợp mới tốt hơn/kém hơn có ý nghĩa so với GBDT lịch sử (Wilcoxon ghép cặp theo cell, Holm qua bốn bộ, '
+           r'$p<0{,}05$; hướng theo tổng hạng của kiểm định, có thể ngược với hiệu của hai trung bình).}\label{tab:e33}' '\n'
+           r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(E33_MODELS) + r'}\toprule' '\n'
+           'Bộ & ' + ' & '.join(head2(*E33_HEAD[m]) for m in E33_MODELS) + r' \\\midrule' '\n'
+           + '\n'.join(rows[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
+    # ---- đối chiếu với số đã lưu của G-doan (30 % nhãn, lịch sử đo)
+    gd = lambda ds, m: float(G[G.ds == ds][m].iloc[0])
+    gm = {r.ds: r for r in GM.itertuples()}
+    ok_base = all(gm[ds].giu_equal == 1 and gm[ds].tuyen_equal == 1 for ds in DS)
+    both = lambda m, g: '; '.join(f'{ds} {m3(val("lab30", "do", ds, m), 2)} (G-doan {m3(gd(ds, g), 2)})' for ds in DS)
+    p1 = (r'\paragraph{Đối chiếu với kết quả của G-doan.} Ở ngân sách 30\,\% nhãn với lịch sử đo, E33 lặp lại giao thức '
+          r'của G-doan: cùng cell có nhãn, cùng cell test, cùng gốc dự báo, cùng cách chọn trên validation'
+          + (r'; hai mô hình giữ nguyên và ngoại suy tuyến tính cho sai số theo cell trùng với số đã lưu của G-doan'
+             if ok_base else '')
+          + r'. MAE ($\times10^{-3}$) chạy lại, trong ngoặc là số đã lưu của G-doan: GBDT lịch sử ' + both('gbdt_ls', 'selected')
+          + '; GBDT theo tầm ' + both('gbdt', 'gbdt') + '. Hệ số tương quan giữa sai số theo cell của hai lần chạy là '
+          + rng([gm[ds].corr_ls for ds in DS], 3) + ' với GBDT lịch sử và ' + rng([gm[ds].corr_gbdt for ds in DS], 3)
+          + r' với GBDT theo tầm. Phần chênh đến từ phiên bản thư viện (scikit-learn 1.9 và NumPy 2.4 ở đây; 1.8 và 2.3 '
+            r'ở G-doan), nên mọi so sánh dưới đây dùng số chạy lại, tất cả mô hình trong cùng một môi trường. GBDT theo tầm '
+            r'và kết hợp E22 ở đây là công thức của E22 học lại theo giao thức của E33, nên sai số khác với '
+            r'\Cref{sec:forecastres}: E22 tính $L$ trên mọi cell và đặt gốc theo số hàng của chính cell test.')
+    # ---- kết quả chính
+    best_of = lambda b, sc, ds: min(E33_MODELS, key=lambda m: val(b, sc, ds, m))
+    items = [('gbdt_ls', 'gbdt'), ('gbdt_ls', 'ket_hop'), ('ket_hop_ls', 'gbdt_ls'), ('ket_hop_ls', 'ket_hop')]
+    li = []
+    for x, y in items:
+        li.append(r'\item ' + E33_TXT[x][0].upper() + E33_TXT[x][1:] + f' so với {E33_TXT[y]}: '
+                  + '; '.join(f'{lab}: {cmp(b, sc, x, y)}' for b, sc, lab in E33_SET) + '.')
+    p2 = (r'\paragraph{Kết quả.} \Cref{tab:e33} và \Cref{fig:e33mae} cho sai số của bảy mô hình. Dưới đây, tỉ số là MAE '
+          r'của mô hình thứ nhất chia cho MAE của mô hình thứ hai (khoảng qua bốn bộ); có ý nghĩa là theo kiểm định '
+          r'Wilcoxon ghép cặp theo cell, hiệu chỉnh Holm qua bốn bộ, $p<0{,}05$.' '\n'
+          r'\begin{itemize}' '\n' + '\n'.join(li) + '\n' r'\end{itemize}')
+    if odd:
+        p2 += ('\n' + ('Một phép so' if len(odd) == 1 else f'{len(odd)} phép so')
+               + ' có kiểm định ghép cặp và tỉ số trung bình ngược chiều: '
+               + '; '.join(f'{ds}, {lab}, {E33_TXT[x]} so với {E33_TXT[y]}' for lab, x, y, ds, _ in odd)
+               + '. Ở đó phần lớn cell đi theo hướng của kiểm định, còn vài cell có sai số lớn quyết định trung bình.')
+    w_share = lambda b, wv: pct((CH[CH.budget == b].w == wv).mean())
+    def best_txt(b, sc):
+        by_m = {}
+        for ds in DS:
+            by_m.setdefault(best_of(b, sc, ds), []).append(ds)
+        return ', '.join(f'{E33_TXT[m]} trên {join(x)}' for m, x in by_m.items())
+    p3 = (r'Trọng số $w$ chọn trên validation bằng 1 (chỉ dùng GBDT lịch sử) ở ' + w_share('lab30', 1.0)
+          + r' số lượt với ngân sách 30\,\% nhãn và ' + w_share('all', 1.0) + r' số lượt với mọi cell train; bằng 0 (chỉ '
+          r'dùng PINN-dự báo) ở ' + w_share('lab30', 0.0) + ' và ' + w_share('all', 0.0)
+          + '; các lượt còn lại trộn hai nhánh. Trên test, mô hình có MAE trung bình thấp nhất là: '
+          + '; '.join(f'{lab}: {best_txt(b, sc)}' for b, sc, lab in E33_SET) + '.')
+    figs = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e33_mae.pdf}' '\n'
+            r'\caption[MAE của SOH dự báo trong E33]{MAE theo cell (trung bình qua 3 lần lặp, thang log) của bảy mô hình dự '
+            r'báo ở ba thiết lập: ngân sách 30\,\% nhãn hoặc mọi cell train, lịch sử SOH đo hoặc ước lượng.}\label{fig:e33mae}'
+            '\n' r'\end{figure}' '\n\n'
+            r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e33_traj.pdf}' '\n'
+            r'\caption[Dự báo của mô hình kết hợp mới so với SOH đo được]{Dự báo của mô hình kết hợp mới (GBDT lịch sử và '
+            r'PINN-dự báo, trọng số chọn trên validation) so với SOH đo được cho một cell test mỗi bộ: mọi cell train, '
+            r'lịch sử đo, lần lặp 0, gốc ở $0{,}4L$, cell có sai số ở trung vị; khoảng 90\,\% theo dự đoán phù hợp.}'
+            r'\label{fig:e33traj}' '\n' r'\end{figure}')
+    # ---- RUL và độ phủ
+    hist = lambda sc: 'lịch sử đo' if sc == 'do' else 'lịch sử ước lượng'
+    p4 = (r'\paragraph{RUL và khoảng dự báo.} \Cref{tab:e33rul} ở \Cref{app:additional} cho MAE của RUL (chu kỳ). Với mọi '
+          r'cell train, MAE của RUL của kết hợp mới so với kết hợp E22: '
+          + '; '.join(f'khi {hist(sc)}, {cmp("all", sc, "ket_hop_ls", "ket_hop", RT)}' for sc in ('do', 'uoc'))
+          + '. So với GBDT lịch sử: '
+          + '; '.join(f'khi {hist(sc)}, {cmp("all", sc, "ket_hop_ls", "gbdt_ls", RT)}' for sc in ('do', 'uoc'))
+          + r'. Với lịch sử ước lượng, tỉ lệ dự báo RUL của kết hợp mới nằm trong $\pm20\,\%$ RUL thực là '
+          + '; '.join(f'{ds} {pct(rv("all", "uoc", ds, "in20_ket_hop_ls"))}' for ds in DS)
+          + r', độ phủ của khoảng RUL 90\,\% là ' + '; '.join(f'{ds} {pct(rv("all", "uoc", ds, "cov"))}' for ds in DS)
+          + r'. Độ phủ của khoảng SOH 90\,\% của kết hợp mới là '
+          + '; '.join(f'{lab}: ' + ', '.join(f'{ds} {pct(val(b, sc, ds, "cov_kls"))}' for ds in DS)
+                      for b, sc, lab in E33_SET) + '.')
+    # ---- lựa chọn mô hình: so trên test sau khi có kết quả, nói rõ điều đó
+    def verdict(b, sc, cand, tab, get):
+        """Mô hình trong `cand` có MAE thấp hơn từng mô hình còn lại trên ít nhất ba bộ và không kém có ý nghĩa trên bộ
+        nào; không có thì None."""
+        for a in cand:
+            if all(sum(get(b, sc, ds, a) < get(b, sc, ds, c) for ds in DS) >= 3 and not worse_sig(b, sc, a, c, tab)
+                   for c in cand if c != a):
+                return a
+        return None
+    soh = {(b, sc): verdict(b, sc, ['ket_hop_ls', 'gbdt_ls', 'ket_hop'], T, val) for b, sc, _ in E33_SET}
+    rul = {sc: verdict('all', sc, ['ket_hop_ls', 'ket_hop'], RT, lambda b, s, ds, m: rv(b, s, ds, f'e_{m}'))
+           for sc in ('do', 'uoc')}
+    name = lambda m: E33_TXT[m] if m else 'không mô hình nào thoả'
+    p5 = (r'\paragraph{Lựa chọn mô hình.} Bảy mô hình được định trước; cấu hình, số cây và các trọng số $a$, $w$ của mỗi '
+          r'lượt chỉ chọn trên validation. Các phép so ở trên là trên test, sau khi đã có kết quả, nên lựa chọn dưới đây là '
+          r'lựa chọn sau thí nghiệm. Quy tắc: mô hình được chọn phải có MAE thấp hơn từng mô hình còn lại trên ít nhất ba '
+          r'bộ và không kém có ý nghĩa trên bộ nào. Với SOH, trong ba mô hình kết hợp mới, GBDT lịch sử và kết hợp E22, '
+          r'quy tắc chọn: ' + '; '.join(f'{lab}: {name(soh[(b, sc)])}' for b, sc, lab in E33_SET)
+          + '. Với RUL, giữa kết hợp mới và kết hợp E22: '
+          + '; '.join(f'{hist(sc)}: {name(rul[sc])}' for sc in ('do', 'uoc')) + '.')
+    body = ('\\FloatBarrier\n\\subsection{Dự báo kết hợp với GBDT lịch sử}\\label{sec:e33res}\n\n' + p1 + '\n\n' + tab
+            + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + figs + '\n\n' + p4 + '\n\n' + p5 + '\n')
+    write('doan_e33.tex', body)
+    # ---- Phụ lục A: RUL chi tiết; bài toán cập nhật của G-doan
+    rr = []
+    for b, sc, lab in E33_SET:
+        rr.append(group_row(lab, 4 + len(E33_MODELS)))
+        for ds in DS:
+            vals = [rv(b, sc, ds, f'e_{m}') for m in E33_MODELS]
+            cells = [(r'\textbf{' + v(x, 0) + '}') if x == min(vals) else v(x, 0) for x in vals]
+            rr.append(' & '.join([ds, v(rv(b, sc, ds, 'true'), 0)] + cells
+                                 + [pct(rv(b, sc, ds, 'in20_ket_hop_ls')), pct(rv(b, sc, ds, 'cov'))]) + r' \\')
+        rr.append(r'\addlinespace[3pt]')
+    tab_rul = (r'\begin{table}[!htbp]\centering\small' '\n'
+               r'\caption[MAE của RUL dự báo, E33]{MAE của RUL (chu kỳ) trong E33, trung bình qua các gốc ở 25, 50 và '
+               r'75\,\% chu kỳ cuối đời thật và qua 3 lần lặp; in đậm là thấp nhất. Hai cột cuối là của kết hợp mới: tỉ lệ dự '
+               r'báo trong $\pm20\,\%$ RUL thực và độ phủ của khoảng RUL 90\,\%.}\label{tab:e33rul}' '\n'
+               r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * (3 + len(E33_MODELS)) + r'}\toprule'
+               '\n' r'Bộ & ' + head2('RUL', 'thực') + ' & ' + ' & '.join(head2(*E33_HEAD[m]) for m in E33_MODELS)
+               + ' & ' + head2('Trong', r'$\pm20\,\%$') + ' & ' + head2('Độ', 'phủ') + r' \\\midrule' '\n'
+               + '\n'.join(rr[:-1]) + '\n'
+               r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
+    tiers = [('q20', r'mỗi $0{,}2L$'), ('q10', r'mỗi $0{,}1L$'), ('q05', r'mỗi $0{,}05L$'), ('M2', 'mọi lần trước')]
+    am = ['hold', 'linear', 'e32_style', 'history_delta', 'history_residual', 'selected']
+    alab = [('Giữ', 'lần đo'), ('Tuyến', 'tính'), ('Kiểu', 'E32'), ('Lịch sử,', 'độ giảm'), ('Lịch sử,', 'phần dư'),
+            ('Chọn', 'validation')]
+    ga = lambda ds, t, m: float(GA[(GA.ds == ds) & (GA.tier == t)][m].iloc[0])
+    ar = []
+    for t, tl in tiers:
+        ar.append(group_row('lịch đo ' + tl if t != 'M2' else 'biết mọi lần đo trước', 1 + len(am)))
+        for ds in DS:
+            vals = [ga(ds, t, m) for m in am]
+            cells = [(r'\textbf{' + m3(x, 2) + '}') if x == min(vals) else m3(x, 2) for x in vals]
+            r_ = GA[(GA.ds == ds) & (GA.tier == t)].iloc[0]
+            if r_.p_selected < 0.05:
+                cells[-1] += r'$^{*}$' if r_.wins_selected == 1 else r'$^{\dagger}$'
+            else:
+                cells[-1] += r'\phantom{$^{*}$}'
+            ar.append(' & '.join([ds] + cells) + r' \\')
+        ar.append(r'\addlinespace[3pt]')
+    tab_anchor = (r'\begin{table}[!htbp]\centering\small' '\n'
+                  r'\caption[Bài toán cập nhật của G-doan]{Bài toán cập nhật trong repo G-doan: MAE theo cell '
+                  r'($\times10^{-3}$) của SOH ở các chu kỳ không đo, ước lượng từ lần đo dung lượng gần nhất, theo lịch '
+                  r'đo; 30\,\% nhãn, 3 lần lặp $\times$ 5 fold; số đã lưu của G-doan, không chạy lại. $^{*}$/$^{\dagger}$: '
+                  r'cột cuối tốt hơn/kém hơn có ý nghĩa so với mô hình kiểu E32 (Wilcoxon ghép cặp theo cell, $p<0{,}05$, '
+                  r'không hiệu chỉnh; hướng theo tổng hạng của kiểm định, có thể ngược với hiệu của hai trung bình).}'
+                  r'\label{tab:anchor}' '\n'
+                  r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(am) + r'}\toprule' '\n'
+                  r'Bộ & ' + ' & '.join(head2(*x) for x in alab) + r' \\\midrule' '\n' + '\n'.join(ar[:-1]) + '\n'
+                  r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
+    low = {t: [ds for ds in DS if ga(ds, t, 'selected') < ga(ds, t, 'e32_style')] for t, _ in tiers}
+    nlow = lambda t: f'{len(low[t])}/4 bộ' + (f' ({join(low[t])})' if 0 < len(low[t]) < 4 else '')
+    keep = len(low['q10']) < 3 and len(low['q20']) < 3
+    pa = (r'\section{Dự báo kết hợp: RUL}' '\n\n' + tab_rul + '\n\n'
+          r'\section{Bài toán cập nhật của repo G-doan}\label{sec:anchor}' '\n\n'
+          r'Repo G-doan cũng thử đặc trưng lịch sử cho bài toán cập nhật: ước lượng SOH ở các chu kỳ không đo từ lần đo '
+          r'dung lượng gần nhất (như E32, \Cref{sec:mo_rong}), với $L$ tính trên cell train. \Cref{tab:anchor} tính từ các '
+          r'tệp kết quả đã lưu trong repo đó. Mô hình chọn trên validation có MAE trung bình thấp hơn mô hình kiểu E32 '
+          f'trên {nlow("q20")} ở lịch đo mỗi $0{{,}}2L$, {nlow("q10")} ở mỗi $0{{,}}1L$, {nlow("q05")} ở mỗi '
+          f'$0{{,}}05L$ và {nlow("M2")} khi biết mọi lần đo trước; mức cuối không đại diện cho đo thưa.'
+          + (' Vì vậy đồ án giữ mô hình cập nhật kiểu E32.' if keep else '') + '\n\n' + tab_anchor)
+    write('phu_luc_a.tex', pa)
+    ratio = lambda sets, a, c: [val(b, sc, ds, a) / val(b, sc, ds, c) for b, sc in sets for ds in DS]
+    do = [('lab30', 'do'), ('all', 'do')]
+    return dict(soh=soh, rul=rul, name=name, r_ls_gbdt=ratio(do, 'gbdt_ls', 'gbdt'),
+                cov_kls=[val(b, sc, ds, 'cov_kls') for b, sc, _ in E33_SET for ds in DS],
+                cov_rul=[rv('all', sc, ds, 'cov') for sc in ('do', 'uoc') for ds in DS],
+                in20=[rv('all', 'uoc', ds, 'in20_ket_hop_ls') for ds in DS],
+                r_kls_kh=ratio(do, 'ket_hop_ls', 'ket_hop'), r_kls_kh_uoc=ratio([('all', 'uoc')], 'ket_hop_ls', 'ket_hop'),
+                r_kls_ls=ratio(do, 'ket_hop_ls', 'gbdt_ls'))
+
+
 def forecast_section():
     D = forecast_load()
     if D is None:
@@ -1225,15 +1520,16 @@ def figures():
     diagrams.pipeline(os.path.join(FIG, 'fig_pipeline'))
     diagrams.forecast_arch(os.path.join(FIG, 'fig_forecast_arch'))
     for src, dst in [('fig_thesis_leakage', 'fig_leakage'), ('fig_thesis_curve_physics', 'fig_curve_physics'),
-                     ('fig_e28_budget', 'fig_e28_budget')]:
+                     ('fig_e28_budget', 'fig_e28_budget'), ('fig_e29_pinn', 'fig_e29_pinn'), ('fig_e29_lai', 'fig_e29_lai')]:
         shutil.copy(os.path.join(OLD_FIG, src + '.pdf'), os.path.join(FIG, dst + '.pdf'))
 
 
 def compile_pdf():
-    if not shutil.which('latexmk') or not shutil.which('xelatex'):
-        print('không có latexmk/xelatex: bỏ qua bước biên dịch')
+    """pdfLaTeX + BibTeX như mẫu hcmut-thesis (latexmk -pdf), rồi chép main.pdf thành bao-cao-do-an.pdf."""
+    if not shutil.which('latexmk') or not shutil.which('pdflatex'):
+        print('không có latexmk/pdflatex: bỏ qua bước biên dịch')
         return
-    r = subprocess.run(['latexmk', '-xelatex', '-interaction=nonstopmode', '-halt-on-error', 'main.tex'], cwd=REP,
+    r = subprocess.run(['latexmk', '-pdf', '-interaction=nonstopmode', '-halt-on-error', 'main.tex'], cwd=REP,
                        capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout[-3000:])
@@ -1269,9 +1565,16 @@ def main():
     n_rerun = int(B['runs'] * B['n_groups'] + B['runs_cur'] * B['n_groups'])
     n_total = experiments_table(n_rerun, n_feat_jobs, n_feat_fits)
     FC = forecast_section()
-    C6 = compare_chapter(S, T, B, L_leak, FC['D'] if FC else None)
+    D33 = e33_load()
+    E33 = None
+    if D33 is not None:
+        E33 = e33_section(D33)
+    else:
+        write('doan_e33.tex', r'(Chưa có kết quả E33: chạy \texttt{python run.py E33} rồi dựng lại báo cáo.)')
+        write('phu_luc_a.tex', '')
+    C6 = compare_chapter(S, T, B, L_leak, FC['D'] if FC else None, E33)
     reproducibility(B, {k: x for k, x in FC.items() if k != 'D'} if FC else None)
-    tomtat = conclusion(B, L_leak, C6, F is not None, n_total)
+    tomtat = conclusion(B, L_leak, C6, F is not None, n_total, E33)
     write('so_lieu.tex', r'\newcommand{\TomTat}{' + tomtat + '}')
     figures()
     if not a.no_pdf:

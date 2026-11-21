@@ -1,7 +1,7 @@
 """
 Một lệnh cho mọi bước. Chạy từ thư mục nào cũng được.
 
-    python run.py check                       kiểm tra Python, thư viện, dữ liệu, XeLaTeX
+    python run.py check                       kiểm tra Python, thư viện, dữ liệu, pdfLaTeX
     python run.py data                        tải dữ liệu (nếu chưa có) và dựng bộ nhớ đệm
     python run.py bench                       đo tốc độ máy này để ước lượng thời gian chạy
     python run.py E13 [tuỳ chọn]              một thí nghiệm (danh sách: pinnsoh/experiments.py)
@@ -43,6 +43,7 @@ ANALYSIS = [['analysis/analyze_e13.py'], ['analysis/analyze_predictions.py'], ['
             ['analysis/analyze_e26.py'], ['analysis/analyze_e27.py'], ['analysis/analyze_e28.py'],
             ['analysis/analyze_mono.py'], ['analysis/dev_e29.py'], ['analysis/analyze_e29.py'],
             ['analysis/dev_e30.py'], ['analysis/analyze_e30.py'], ['analysis/analyze_e32.py'],
+            ['analysis/analyze_e33.py'],
             ['analysis/analyze_overview.py'], ['analysis/figures_report.py'], ['analysis/diagrams.py']]
 
 
@@ -67,8 +68,12 @@ def cmd_check(_):
     from tools.tai_du_lieu import count_csv, EXPECT
     have = count_csv(resolve_root())
     print(f'dữ liệu {resolve_root()}: {have}', 'đủ' if have == EXPECT else '— THIẾU, chạy: python run.py data')
-    print('XeLaTeX:', shutil.which('xelatex') or 'không có (cần cho bước report)')
-    print('pdfLaTeX:', shutil.which('pdflatex') or 'không có (cần cho bước paper)')
+    print('pdfLaTeX:', shutil.which('pdflatex') or 'không có (cần cho bước paper và report)')
+    print('latexmk:', shutil.which('latexmk') or 'không có (cần cho bước report)')
+    kp = shutil.which('kpsewhich')
+    vn = kp and subprocess.run([kp, 't5enc.def'], capture_output=True, text=True).stdout.strip()
+    print('vntex (tiếng Việt cho pdfLaTeX):',
+          vn or 'không có (cần cho bước report; Ubuntu: apt-get install texlive-lang-other)')
     print(f'số lõi CPU: {os.cpu_count()}')
 
 

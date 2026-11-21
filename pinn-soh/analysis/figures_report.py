@@ -578,6 +578,103 @@ def e22_rul():
     save(fig, f'{OUT}/fig_e22_rul')
 
 
+
+# ─────────────────────────────────────────────────────────── E33: dự báo kết hợp GBDT lịch sử + PINN-dự báo
+E33_SET = [('lab30', 'do', '30 % nhãn, lịch sử đo', '#9cc3e6', 'o'), ('all', 'do', 'mọi cell train, lịch sử đo', '#2a78d6', 's'),
+           ('all', 'uoc', 'mọi cell train, lịch sử ước lượng', '#0b3d73', 'D')]
+
+
+def e33_mae():
+    """MAE theo cell (trung bình qua 3 lần lặp) của bảy mô hình, ba thiết lập, mỗi bộ một panel."""
+    plt = setup()
+    from pinnsoh.forecast_combo import MODELS
+    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
+    import analyze_e33 as A
+    S = pd.read_csv(f'{OUT}/e33_summary.csv')
+    fig, axes = _grid(plt, 5.6)
+    order = list(reversed(MODELS))
+    for ax, ds in zip(axes, DS):
+        for j, (b, sc, lab, col, mk) in enumerate(E33_SET):
+            r = S[(S.budget == b) & (S.scen == sc) & (S.ds == ds)]
+            if r.empty:
+                continue
+            y = np.arange(len(order)) + (j - 1) * 0.22
+            ax.scatter([1e3 * float(r[m].iloc[0]) for m in order], y, s=22, color=col, marker=mk, zorder=3,
+                       lw=0.3, ec='white', label=lab)
+        ax.set_xscale('log')
+        ax.set_yticks(range(len(order))); ax.set_yticklabels([A.LABEL[m] for m in order])
+        ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5, which='both')
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'))
+        ax.xaxis.set_minor_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}' if str(int(v))[0] in '25' else ''))
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    for i, ax in enumerate(axes):
+        if i >= 2:
+            ax.set_xlabel('MAE theo cell (×10$^{-3}$)')
+        if i % 2 == 1:
+            ax.set_yticklabels([])
+    h, l = axes[0].get_legend_handles_labels()
+    fig.legend(h, l, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.06, 1, 1], h_pad=1.2, w_pad=1.0)
+    save(fig, f'{OUT}/fig_e33_mae')
+
+
+def e33_traj():
+    """Một cell test mỗi bộ (mọi cell train, lịch sử đo, lần lặp 0, gốc 0,4L; cell có sai số kết hợp mới ở trung vị):
+    SOH đo, GBDT lịch sử, PINN-dự báo, kết hợp mới và khoảng 90 %."""
+    plt = setup()
+    import json as _json, glob as _glob
+    from pinnsoh.forecast_combo import TCOL, ROOT as R33
+    from pinnsoh.forecast import TAU
+    from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
+    fig, axes = _grid(plt, 4.8)
+    rows = []
+    for ax, ds in zip(axes, DS):
+        parts = []
+        for f in sorted(_glob.glob(f'{R33}/fc_{ds}_all_cv0-*of5.npz')):
+            q = np.load(f); info = _json.loads(str(q['info']))
+            T = pd.DataFrame(q['traj'], columns=TCOL); T = T[(T.scen == 0) & (T.origin == T.origin)]
+            T['cid'] = np.asarray(info['split']['test'])[T.cell.astype(int)]; T['L'] = info['L']
+            T['o_idx'] = T.groupby('cid').origin.rank(method='dense').astype(int)
+            parts.append(T)
+        if not parts:
+            continue
+        T = pd.concat(parts, ignore_index=True)
+        t = T[T.o_idx == 2]
+        e = t.assign(e=(t.ket_hop_ls - t.y).abs()).groupby('cid').e.mean().sort_values()
+        cid = e.index[(len(e) - 1) // 2]
+        g = t[t.cid == cid].sort_values('h'); k0 = float(g.origin.iloc[0])
+        cell = _e22_cells(ds)[cid]
+        _e22_measured(ax, cell)
+        x = k0 + g.h.values
+        ax.fill_between(x, g.lo_kls, g.hi_kls, color=E22C['band'], alpha=0.18, lw=0, zorder=1)
+        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.1, ls=(0, (3, 1.5)), zorder=3)
+        ax.plot(x, g.pinn, color=E22C['pinn'], lw=1.1, ls=(0, (3, 1.5)), zorder=3)
+        ax.plot(x, g.ket_hop_ls, color=E22C['ket_hop'], lw=1.9, zorder=4)
+        ax.axhline(TAU[ds], color=E22C['tau'], lw=0.9, ls=(0, (4, 2)), zorder=1)
+        ax.axvline(k0, color=E22C['org'], lw=0.9, ls=(0, (2, 2)), zorder=1)
+        lo_, hi_ = min(float(cell.soh.min()), TAU[ds]), float(cell.soh.max())
+        ax.set_ylim(lo_ - 0.08 * (hi_ - lo_), hi_ + 0.06 * (hi_ - lo_))
+        ax.locator_params(axis='x', nbins=4); ax.locator_params(axis='y', nbins=4)
+        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+        rows.append(dict(ds=ds, cid=cid, k0=k0, mae=float(e[cid]), cov=float(((g.y >= g.lo_kls) & (g.y <= g.hi_kls)).mean())))
+    for i, ax in enumerate(axes):
+        if i % 2 == 0:
+            ax.set_ylabel('SOH')
+        if i >= 2:
+            ax.set_xlabel('chu kỳ')
+    hd = [plt.Line2D([], [], color=E22C['meas'], marker='o', ls='', ms=3, alpha=0.7, label='SOH đo được'),
+          plt.Line2D([], [], color=E22C['ket_hop'], lw=2, label='kết hợp mới'),
+          plt.Rectangle((0, 0), 1, 1, color=E22C['band'], alpha=0.25, label='khoảng 90 %'),
+          plt.Line2D([], [], color='#2a78d6', lw=1.2, ls=(0, (3, 1.5)), label='GBDT lịch sử'),
+          plt.Line2D([], [], color=E22C['pinn'], lw=1.2, ls=(0, (3, 1.5)), label='PINN-dự báo'),
+          plt.Line2D([], [], color=E22C['tau'], lw=1, ls=(0, (4, 2)), label='ngưỡng cuối đời'),
+          plt.Line2D([], [], color=E22C['org'], lw=1, ls=(0, (2, 2)), label='gốc dự báo')]
+    fig.legend(handles=hd, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.1, 1, 1], h_pad=1.2, w_pad=1.2)
+    save(fig, f'{OUT}/fig_e33_traj')
+    pd.DataFrame(rows).to_csv(f'{OUT}/e33_traj_pick.csv', index=False)
+
 # ─────────────────────────────────────────────────────────── đầu vào có lịch sử (E29), đủ bốn bộ
 # ─────────────────────────────────────────────────────────── E29: mỗi phép so sánh một hình riêng
 E29_DS = ['XJTU', 'TJU', 'HUST']               # MIT không có dạng lịch sử nào được chọn nên không có lượt có lịch sử
@@ -663,12 +760,13 @@ def models_compare():
 FIGS = dict(curve_physics=curve_physics, leakage=leakage, e20_steps=e20_steps, e27_compare=e27_compare,
             e28_budget=e28_budget, overview=overview, pred_traj=pred_traj, e22_traj=e22_traj, e22_cells=e22_cells,
             e22_origins=e22_origins, e22_parity=e22_parity, e22_horizon=e22_horizon, e22_rul=e22_rul,
+            e33_mae=e33_mae, e33_traj=e33_traj,
             e29_pinn=e29_pinn,
             e29_lai=e29_lai, e29_phys=e29_phys, models_compare=models_compare)
 NEEDS = dict(curve_physics='thesis_curve', leakage='thesis_leakage', e20_steps='e20_summary', e27_compare='e27_summary',
              e28_budget='e28_summary', overview='overview', pred_traj='pred_metrics', e22_traj='e22_horizon',
              e22_cells='e22_horizon', e22_origins='e22_horizon', e22_parity='e22_horizon',
-             e22_horizon='e22_horizon', e22_rul='e22_horizon',
+             e22_horizon='e22_horizon', e22_rul='e22_horizon', e33_mae='e33_summary', e33_traj='e33_summary',
              e29_pinn='e29_summary', e29_lai='e29_summary', e29_phys='e29_summary', models_compare='e30_metrics')
 
 

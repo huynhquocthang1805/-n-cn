@@ -20,6 +20,7 @@
     E29  đặc trưng lịch sử của cell (E29dev chọn dạng trên validation)                          840 + 400
     E30  CNN, LSTM, Transformer (E30dev chọn cửa sổ trên validation)                            720 + 240
     E32  mô hình học cập nhật từ lần đo dung lượng gần nhất                                         240
+    E33  dự báo kết hợp GBDT lịch sử (repo G-doan) với PINN-dự báo, 2 ngân sách nhãn                 120
 E25 (bộ lọc Kalman cho độ lệch theo cell) không có lượt riêng: analysis/analyze_e25.py và analyze_e32.py tính trên dự
 đoán đã lưu của E20.
 
@@ -238,6 +239,19 @@ def E22(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E22') -> L
             for r, ds, k in itertools.product(range(repeats), datasets, range(E13_FOLDS))]
 
 
+# E33: dự báo kết hợp GBDT lịch sử (mã của repo G-doan) với PINN-dự báo, L và chuẩn hoá chỉ từ cell train
+#      (pinnsoh/forecast_combo.py); hai ngân sách nhãn của bộ dự báo: 30 % tổng số cell (như G-doan) và mọi cell train
+#      (như E22, thêm kịch bản lịch sử ước lượng nên cần E20 ở 70 % nhãn)
+E33_COST = {'XJTU': 90, 'TJU': 200, 'MIT': 200, 'HUST': 150}
+
+
+def E33(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E33') -> List[Job]:
+    from .forecast_combo import out_path, BUDGETS
+    return [Job('forecast_combo', dict(ds=ds, budget=b, r=r, k=k, root=out), out_path(ds, b, r, k, out),
+                E33_COST[ds] * (2 if b == 'all' else 1), f'combo {ds} {b} cv{r}-{k}', (ds,))
+            for b, r, ds, k in itertools.product(BUDGETS, range(repeats), datasets, range(E13_FOLDS))]
+
+
 # E23: dự báo có xét hồi phục dung lượng (pinnsoh/recovery.py) — cùng fold E22, học lại cả mô hình E22 để so ghép cặp
 E23_COST = {'XJTU': 150, 'TJU': 200, 'MIT': 250, 'HUST': 300}
 
@@ -413,7 +427,7 @@ def E32(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E32') -> L
 EXPERIMENTS: Dict[str, Callable[..., List[Job]]] = dict(E13=E13, E14=E14, E15=E15, E16=E16, E17=E17, E18=E18, E19=E19,
                                                         E20dev=E20dev, E20=E20, E21=E21, E22=E22, E23=E23, E26=E26,
                                                         E27=E27, E28=E28, E29dev=E29dev, E29=E29, E30dev=E30dev, E30=E30,
-                                                        E32=E32)
+                                                        E32=E32, E33=E33)
 # thứ tự chạy cho `run.py experiments`: E14 nằm trong E18 nên không lặp lại
 ORDER = ['E13', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20dev', 'E20', 'E21', 'E22', 'E23', 'E26', 'E27', 'E28', 'E29dev',
-         'E29', 'E30dev', 'E30', 'E32']
+         'E29', 'E30dev', 'E30', 'E32', 'E33']

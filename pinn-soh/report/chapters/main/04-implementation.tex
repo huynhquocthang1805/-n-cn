@@ -1,0 +1,55 @@
+\chapter{Thiết kế và hiện thực hệ thống}
+\label{chap:implementation}\label{sec:impl}
+
+\section{Yêu cầu hệ thống}\label{sec:yeucau}
+
+\paragraph{Yêu cầu chức năng.}
+\begin{enumerate}
+\item Đọc bốn bộ dữ liệu, lọc ngoại lai nhân quả, chuẩn hoá, chia theo cell; có bộ nhớ đệm để không đọc lại dữ liệu.
+\item Định nghĩa mỗi thí nghiệm thành một danh sách lượt chạy; chạy song song, chạy tiếp được sau khi dừng.
+\item Phân tích kết quả: chỉ số theo cell, kiểm định ghép cặp, bảng và hình.
+\item Sinh báo cáo này và bản thảo bài báo trực tiếp từ kết quả phân tích.
+\item Công cụ dòng lệnh ước lượng và dự báo SOH cho một cell từ tệp dữ liệu sạc.
+\end{enumerate}
+
+\paragraph{Yêu cầu phi chức năng.}
+\begin{enumerate}
+\item Không rò rỉ: bốn quy tắc ở \Cref{sec:protocol} được áp dụng trong mã, không phụ thuộc người chạy.
+\item Tái lập: cùng phiên bản thư viện và cùng loại CPU thì chạy lại cho kết quả trùng từng bit.
+\item Chạy được trên máy tính cá nhân, không cần GPU.
+\item Truy vết được: mỗi lượt chạy ghi đủ cấu hình, chỉ số và dự đoán vào một tệp riêng.
+\end{enumerate}
+
+\section{Kiến trúc hệ thống}\label{sec:kientruc}
+
+Hệ thống được hiện thực bằng Python thành một đường ống năm khối (Hình~\ref{fig:pipeline}), chạy được từ dữ liệu tới báo
+cáo bằng một lệnh. Mỗi lượt huấn luyện là một tệp kết quả độc lập ghi đủ cấu hình, chỉ số, dự đoán validation và test;
+bộ lập lịch chạy song song nhiều tiến trình một luồng, bỏ qua lượt đã có kết quả nên chạy tiếp được sau khi dừng. Khối
+phân tích chỉ đọc các tệp kết quả, không huấn luyện lại. Báo cáo này và bản thảo bài báo được sinh từ kết quả phân tích,
+nên mọi bảng đều khớp với dữ liệu. Mọi lượt chạy trên CPU với một luồng và hạt giống cố định, nên chạy lại cho kết quả
+trùng từng bit (Mục~\ref{sec:tailap}). Bảng~\ref{tab:exps} liệt kê các thí nghiệm.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_pipeline.pdf}
+\caption{Kiến trúc hiện thực: năm khối của hệ thống, từ dữ liệu tới báo cáo và công cụ minh hoạ.}\label{fig:pipeline}
+\end{figure}
+
+\input{generated/bang_thi_nghiem}
+
+\section{Hiện thực}\label{sec:hienthuc}
+
+Hệ thống viết bằng Python 3.11 với PyTorch 2.14 (mạng nơ-ron), scikit-learn 1.9 (Ridge, GPR, GBDT), NumPy, pandas, SciPy
+(kiểm định) và Matplotlib (hình); báo cáo dựng bằng \LaTeX. Mã nguồn chia thành các khối:
+\begin{itemize}
+\item \texttt{pinnsoh/}: thư viện: đọc dữ liệu và chia theo cell, mô hình và hàm mất mát, huấn luyện, mô hình đối chứng,
+      mô hình chuỗi, dự báo, cập nhật, định nghĩa thí nghiệm và bộ chạy song song.
+\item \texttt{analysis/}: một script phân tích cho mỗi thí nghiệm, đọc tệp kết quả và ghi bảng, hình.
+\item \texttt{benchmark/}: chạy lại mã gốc PINN4SOH và lập bảng so sánh.
+\item \texttt{report/}, \texttt{paper/}: dựng báo cáo và bản thảo bài báo từ kết quả.
+\item \texttt{tools/}: tải dữ liệu, kiểm tra tái lập, công cụ minh hoạ.
+\end{itemize}
+Lệnh \texttt{python run.py} gọi mọi bước: tải dữ liệu, chạy một hoặc mọi thí nghiệm, phân tích, dựng báo cáo, kiểm tra tái
+lập. Để chạy hơn mười nghìn lượt huấn luyện trên CPU mà không đổi kết quả, hệ thống dùng: bộ nhớ đệm dữ liệu đã lọc
+(nạp bốn bộ dữ liệu từ 10,8\,s còn 0,02\,s), tensor dựng một lần cho cả lượt, dừng sớm chỉ tính MAE validation, các lượt
+dài chạy trước và mỗi tiến trình một luồng, ghi kết quả nguyên tử để dừng giữa chừng không để lại tệp dở. Hình và PDF
+không ghi thời điểm tạo, nên dựng lại từ cùng dữ liệu cho tệp giống từng byte.

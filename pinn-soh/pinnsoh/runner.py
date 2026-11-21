@@ -58,6 +58,9 @@ def _execute(kind: str, args: dict):
     if kind == 'recovery':
         from .recovery import run_fold
         return run_fold(**args)
+    if kind == 'forecast_combo':
+        from .forecast_combo import run_fold
+        return run_fold(**args)
     if kind == 'seq':
         from .seqmodels import run_cv
         return run_cv(**args)

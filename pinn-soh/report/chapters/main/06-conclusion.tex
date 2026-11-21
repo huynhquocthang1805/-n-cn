@@ -1,0 +1,40 @@
+\chapter{Kết luận và hướng phát triển}
+\label{chap:conclusion}\label{ch:ketluan}
+
+\section{Kết luận}
+
+\input{generated/doan_ket_luan}
+
+\section{Hạn chế}
+
+\begin{enumerate}
+\item Một mô hình cây đơn giản (GBDT) vẫn là đối thủ khó nhất: PINN-semi đơn lẻ chưa vượt được nó khi có từ 30\,\% nhãn,
+      và chỉ khi ghép với GBDT (PINN-lai) mới thấp hơn ở phần lớn trường hợp. Ràng buộc vật lý chưa được đưa vào chính mô
+      hình cây.
+\item Không tái lập được chính xác số công bố của PINN4SOH vì không dựng lại được môi trường gốc (GPU, phiên bản thư viện);
+      đồ án báo cáo cả số công bố lẫn số chạy lại.
+\item Khoảng dự đoán 90\,\% chưa đạt độ phủ danh nghĩa; tham số vật lý $\lambda, E_a$ không được dữ liệu xác định; tốc độ
+      $r$ của dạng đạo hàm riêng không phải tốc độ suy giảm thật của cell.
+\item Các phân tích hậu kiểm (tinh chỉnh trọng số ghép, chọn có hay không lịch sử) chưa được kiểm chứng trên dữ liệu mới;
+      PINN-lai và các thí nghiệm về sau dùng 3 thay vì 5 lần lặp.
+\item Một số thí nghiệm trước E33 còn dùng thông tin của cell test ở mức nhỏ và được giữ nguyên để tái lập số đã nộp:
+      E22 và E32 tính thang đời $L$ trên mọi cell, kể cả cell test (E22 dùng $L$ cho khoảng dự báo và lưới tìm RUL, E32
+      dùng cho lịch đo), và E22 đặt gốc dự báo theo số hàng của chính cell test; chuẩn hoá tương đối (biến thể có đặc
+      trưng tương đối của E20 và của phân tích đặc trưng) lấy trung bình 3 chu kỳ đầu làm mốc, nên ở 2 chu kỳ đầu của
+      mỗi cell nhìn trước tối đa 2 chu kỳ. E33 sửa hai điểm đầu cho bài toán dự báo (\Cref{sec:e33pp}); bản bài toán cập
+      nhật trong repo G-doan (\Cref{sec:anchor}) tính $L$ trên cell train, và repo đó sửa chuẩn hoá tương đối bằng trung
+      bình luỹ tiến.
+\item Chưa xử lý dữ liệu thô của từng bộ, nên chưa thử được các đặc trưng cần đường cong đầy đủ; chưa có dữ liệu vận
+      hành ngoài phòng thí nghiệm và dữ liệu nhiều cell ghép song song (giai đoạn 2 của đề cương).
+\end{enumerate}
+
+\section{Hướng phát triển}
+
+\begin{enumerate}
+\item Giai đoạn 2 của đề cương: dữ liệu vận hành ngoài phòng thí nghiệm và dữ liệu nhiều cell ghép song song.
+\item Trích lại đặc trưng từ tín hiệu điện áp, dòng điện gốc của từng bộ, để thử các đặc trưng cần đường cong đầy đủ
+      (dung lượng gia tăng, điện áp hồi phục).
+\item Đưa ràng buộc vật lý vào chính mô hình cây, vì GBDT là đối thủ mạnh nhất của mạng có vật lý.
+\item Khoảng dự đoán và khoảng RUL đạt độ phủ đặt ra, ví dụ hiệu chỉnh trên nhiều cell hơn hoặc theo từng cell.
+\item Kiểm chứng các phân tích hậu kiểm và các lựa chọn mô hình trên một bộ dữ liệu chưa dùng khi phát triển.
+\end{enumerate}
