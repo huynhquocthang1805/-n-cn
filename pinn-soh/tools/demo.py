@@ -281,10 +281,9 @@ def _forecast_hipinn(a, model, norm, c, split):
     seen = (cell.cycle[-1] - k0) if truth is not None else 0
     show = hh <= max(min(rul, hh[-1]), seen) * 1.15 + L * 0.05
     ax.fill_between(k0 + hh[show], plo[show], phi[show], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
-    for key, col, lab in (('gbdt_ls', '#2a78d6', 'GBDT lịch sử'), ('pinn', '#1baf7a', 'PINN-dự báo'),
-                          ('doi', '#7b5cd6', 'nhánh theo đời')):
-        ax.plot(k0 + hh[show], R[key][show], color=col, lw=0.8, ls=(0, (3, 1.5)), label=lab)
-    ax.plot(k0 + hh[show], p[show], color='#d9480f', lw=1.7, label='HiPINN')
+    for key, col, lab in (('gbdt_ls', '#2a78d6', 'GBDT lịch sử'), ('doi', '#7b5cd6', 'nhánh theo đời')):
+        ax.plot(k0 + hh[show], R[key][show], color=col, lw=0.8, ls=(0, (3, 1.5)), label=lab, zorder=4)
+    ax.plot(k0 + hh[show], p[show], color='#d9480f', lw=1.7, label='HiPINN', zorder=3)   # PINN-dự báo chỉ có trong CSV
     ax.axhline(tau, color='#c0392b', lw=0.7, ls=(0, (4, 2)))
     ax.axvline(k0, color='#9aa5ad', lw=0.7, ls=(0, (2, 2)))
     top = max(float(np.max(hist[:i + 1])), float(np.nanmax(truth)) if truth is not None else 0.0) + 0.03
