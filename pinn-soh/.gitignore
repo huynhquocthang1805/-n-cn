@@ -45,3 +45,6 @@ paper/main.pdf
 demo/*_dubao.pkl
 report/main.pdf
 *.xdv
+
+# bộ dự báo của demo (HiPINN, E23): học lại lần đầu gọi forecast, không đẩy lên git
+demo/*.pkl

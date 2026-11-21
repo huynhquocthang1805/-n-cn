@@ -10,9 +10,13 @@ Demo: ước lượng SOH theo từng chu kỳ cho MỘT cell, chỉ từ 16 đ�
     # 3) giả lập cell CHƯA ĐO dung lượng: bỏ cột capacity trước khi đưa vào mô hình
     python tools/demo.py predict --model demo/XJTU.pt --csv "..." --an-nhan
 
-    # 4) dự báo SOH tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời,
+    # 4) dự báo SOH tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời bằng HiPINN,
     #    đứng ở chu kỳ 150 (bỏ --den-chu-ky để đứng ở chu kỳ cuối cùng của file)
     python tools/demo.py forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 [--an-nhan]
+    #    --mo-hinh e23: dùng bộ dự báo có xét hồi phục dung lượng của E23 thay cho HiPINN
+
+    # 5) HiPINN cho cả bốn bộ: một cell test mỗi bộ, dự báo từ 40 % đời, hình 2 × 2
+    python tools/demo.py tat-ca
 
 Mô hình chạy nhân quả: ước lượng ở chu kỳ N chỉ dùng đặc trưng của chu kỳ N và chỉ số N; bộ lọc
 ngoại lai chỉ dùng các chu kỳ trước N. Vì vậy cùng một mô hình dùng được trực tuyến trong BMS.
@@ -195,10 +199,169 @@ def _forecaster(path, model, norm, c, split):
     return obj
 
 
+HIPINN_VERSION = 1
+
+
+def _hipinn(model, norm, c, split):
+    """HiPINN của demo: học trên cell có nhãn của cùng fold với mô hình ước lượng, chọn và hiệu chỉnh trên cell
+    validation; khoảng 90 % hiệu chỉnh riêng cho hai kịch bản lịch sử (đo, ước lượng bằng mô hình demo). Lưu ở
+    demo/<bộ>_hipinn.pkl."""
+    import pickle
+    from pinnsoh.data import load_dataset
+    from pinnsoh.hipinn import HiPINN
+    fpath = os.path.join(DEMO_DIR, f'{c["dataset"]}_hipinn.pkl')
+    if os.path.exists(fpath):
+        try:
+            obj = pickle.load(open(fpath, 'rb'))
+            if getattr(obj, 'demo_version', None) == HIPINN_VERSION:
+                return obj
+        except Exception:
+            pass
+    print('lần đầu: huấn luyện HiPINN (GBDT lịch sử, PINN-dự báo, nhánh theo đời) — vài phút ...', flush=True)
+    torch.set_num_threads(1)
+    m = HiPINN.fit(c['dataset'], list(split['labelled']), list(split['val']), list(split['train']), seed=0)
+    by = {x.cid: x for x in load_dataset('PINN4SOH/data', c['dataset'], clean='causal')}
+    m.q['uoc'] = m.calibrate([by[i] for i in m.info['cal']], soh_of=lambda x: _estimate(model, norm, x, filt=True))
+    m.demo_version = HIPINN_VERSION
+    os.makedirs(DEMO_DIR, exist_ok=True)
+    pickle.dump(m, open(fpath, 'wb'))
+    return m
+
+
+def _forecast_hipinn(a, model, norm, c, split):
+    from pinnsoh import forecast as FC
+    M = _hipinn(model, norm, c, split)
+    nominal = a.nominal or _nominal(c['dataset'], a.csv)
+    cell = load_cell_csv(a.csv, nominal, temp_c=a.temp)
+    measured = np.isfinite(cell.soh).all() and not a.an_nhan
+    sc = 'do' if measured else 'uoc'
+    hist = cell.soh.astype(float) if measured else _estimate(model, norm, cell, filt=True)
+    k = cell.cycle[-1] if a.den_chu_ky is None else a.den_chu_ky
+    i = int(np.searchsorted(cell.cycle, k, side='right') - 1)
+    if i < 5:
+        sys.exit('cần ít nhất 6 chu kỳ lịch sử trước gốc dự báo')
+    L, tau = M.L, M.tau
+    step = max(1, int(round(L / 200)))
+    hh = np.arange(step, int(3 * L) + step, step, dtype=float)
+    R = M.forecast(cell, i, hh, soh=None if measured else hist, scen=sc)
+    p, plo, phi = R['hipinn'], R['lo'], R['hi']
+    k0 = int(cell.cycle[i]); w1, w2, w3 = M.info['w']
+    name = os.path.splitext(os.path.basename(a.csv))[0]
+    print(f'cell {name} · gốc dự báo: chu kỳ {k0} · danh định {nominal} Ah · ngưỡng cuối đời SOH {tau:.2f} '
+          f'({tau * nominal:.3f} Ah)')
+    print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
+    print(f'HiPINN: {w1:g} × GBDT lịch sử + {w2:g} × PINN-dự báo'
+          + (' có lịch sử' if M.info['pinn_branch'] == 'pinn_ls' else '') + f' + {w3:g} × nhánh theo đời '
+          f'(trọng số chọn trên {M.info["n_sel"]} cell validation)')
+    print(f'hiện tại: SOH {R["level"]:.3f} · dung lượng {R["level"] * nominal:.3f} Ah')
+    for hr in FC.H_REL:
+        h = int(round(hr * L)); j = min(np.searchsorted(hh, h), len(hh) - 1)
+        print(f'  sau {h:4d} chu kỳ (chu kỳ {k0 + h}): SOH {p[j]:.3f} [{plo[j]:.3f}; {phi[j]:.3f}] · '
+              f'dung lượng {p[j] * nominal:.3f} Ah [{plo[j] * nominal:.3f}; {phi[j] * nominal:.3f}]')
+    rul, rlo, rhi = R['rul'], R['rul_lo'], R['rul_hi']
+    cap = rul >= hh[-1]
+    print('số chu kỳ còn lại tới ngưỡng (RUL): ' + (f'> {int(hh[-1])}' if cap else
+          f'{int(rul)} [{int(rlo)}; ' + (f'> {int(hh[-1])}' if rhi >= hh[-1] else f'{int(rhi)}') + ']'))
+    truth = cell.soh if np.isfinite(cell.soh).all() else None
+    if truth is not None and i < len(cell.soh) - 1:
+        fut = cell.cycle[i + 1:] - k0
+        pp = np.interp(fut, hh, p)
+        cross = np.flatnonzero(cell.soh[i + 1:] <= tau)
+        print(f'đối chiếu với thực đo sau gốc: MAE SOH {np.abs(pp - cell.soh[i + 1:]).mean():.4f}'
+              + (f' · RUL thực {int(cell.cycle[i + 1:][cross[0]] - k0)}' if len(cross) else ''))
+    os.makedirs(DEMO_DIR, exist_ok=True)
+    pd.DataFrame(dict(chu_ky=k0 + hh.astype(int), soh_hipinn=p, soh_can_duoi=plo, soh_can_tren=phi,
+                      gbdt_lich_su=R['gbdt_ls'], pinn_du_bao=R['pinn'], nhanh_theo_doi=R['doi'],
+                      dung_luong_Ah=p * nominal)).to_csv(os.path.join(DEMO_DIR, f'{name}_dubao.csv'), index=False)
+    import matplotlib.pyplot as plt
+    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, save
+    apply_theme()
+    fig, ax = plt.subplots(figsize=(4.8, 2.6))
+    if truth is not None:
+        ax.plot(cell.cycle, truth, color=MODEL_COLOR['truth'], lw=1.0, label='thực đo')
+    ax.plot(cell.cycle[:i + 1], hist[:i + 1], color='#7b5cd6', lw=1.3, label='lịch sử dùng để dự báo')
+    seen = (cell.cycle[-1] - k0) if truth is not None else 0
+    show = hh <= max(min(rul, hh[-1]), seen) * 1.15 + L * 0.05
+    ax.fill_between(k0 + hh[show], plo[show], phi[show], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
+    for key, col, lab in (('gbdt_ls', '#2a78d6', 'GBDT lịch sử'), ('pinn', '#1baf7a', 'PINN-dự báo'),
+                          ('doi', '#7b5cd6', 'nhánh theo đời')):
+        ax.plot(k0 + hh[show], R[key][show], color=col, lw=0.8, ls=(0, (3, 1.5)), label=lab)
+    ax.plot(k0 + hh[show], p[show], color='#d9480f', lw=1.7, label='HiPINN')
+    ax.axhline(tau, color='#c0392b', lw=0.7, ls=(0, (4, 2)))
+    ax.axvline(k0, color='#9aa5ad', lw=0.7, ls=(0, (2, 2)))
+    top = max(float(np.max(hist[:i + 1])), float(np.nanmax(truth)) if truth is not None else 0.0) + 0.03
+    ax.set_ylim(min(tau - 0.04, float(np.nanmin(truth)) - 0.01 if truth is not None else tau - 0.04), top)
+    ax.set_xlabel('chu kỳ'); ax.set_ylabel('SOH')
+    sec = ax.secondary_yaxis('right', functions=(lambda v: v * nominal, lambda q: q / nominal)); sec.set_ylabel('Ah')
+    ax.legend(loc='lower left', fontsize=6.0, framealpha=0.9, ncol=2)
+    fig.tight_layout()
+    save(fig, os.path.join(DEMO_DIR, f'{name}_dubao'), also_pdf=False, dpi=200)
+    print(f'đã ghi {DEMO_DIR}/{name}_dubao.csv và .png')
+
+
+def cmd_all(a):
+    """HiPINN cho cả bốn bộ: với mỗi bộ có mô hình demo, lấy cell test có số chu kỳ ở trung vị, dự báo từ 40 % số chu
+    kỳ của nó (lịch sử đo), ghi demo/hipinn_bon_bo.csv và hình 2 × 2 demo/hipinn_bon_bo.png|pdf."""
+    import matplotlib.pyplot as plt
+    from pinnsoh.data import load_dataset
+    from pinnsoh.plotstyle import apply_theme, save, panel_title, CHEM, GRID
+    apply_theme()
+    fig, axes = plt.subplots(2, 2, figsize=(6.3, 4.6))
+    rows = []
+    for ax, ds in zip(axes.ravel(), ['XJTU', 'TJU', 'MIT', 'HUST']):
+        path = os.path.join(DEMO_DIR, f'{ds}.pt')
+        if not os.path.exists(path):
+            ax.set_visible(False); continue
+        model, norm, c, split = load_model(path)
+        M = _hipinn(model, norm, c, split)
+        by = {x.cid: x for x in load_dataset('PINN4SOH/data', ds, clean='causal')}
+        test = sorted(split['test'], key=lambda cid: (len(by[cid].cycle), cid))
+        cell = by[test[(len(test) - 1) // 2]]
+        i = int(np.searchsorted(cell.cycle, 0.4 * cell.cycle[-1], side='right') - 1)
+        k0 = int(cell.cycle[i]); L = M.L
+        hh = (cell.cycle[i + 1:] - k0).astype(float)
+        R = M.forecast(cell, i, hh)
+        mae = float(np.abs(R['hipinn'] - cell.soh[i + 1:]).mean())
+        rows.append(dict(bo=ds, cell=cell.cid, goc=k0, mae=mae, w_gbdt_ls=M.info['w'][0], w_pinn=M.info['w'][1],
+                         w_doi=M.info['w'][2], nhanh_pinn=M.info['pinn_branch']))
+        ax.plot(cell.cycle, cell.soh, color='#1b2330', lw=1.0, label='SOH đo được')
+        x = k0 + hh
+        ax.fill_between(x, R['lo'], R['hi'], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
+        for key, col, ls, lab in (('gbdt_ls', '#2a78d6', (0, (3, 1.5)), 'GBDT lịch sử'),
+                                  ('pinn', '#1baf7a', (0, (3, 1.5)), 'PINN-dự báo'),
+                                  ('doi', '#7b5cd6', (0, (1, 1.2)), 'nhánh theo đời')):
+            ax.plot(x, R[key], color=col, lw=0.9, ls=ls, label=lab)
+        ax.plot(x, R['hipinn'], color='#d9480f', lw=1.7, label='HiPINN')
+        ax.axhline(M.tau, color='#4a5563', lw=0.8, ls=(0, (4, 2)), label='ngưỡng cuối đời')
+        ax.axvline(k0, color='#9aa5ad', lw=0.8, ls=(0, (2, 2)), label='gốc dự báo')
+        lo_, hi_ = min(float(np.min(cell.soh)), M.tau), float(np.max(cell.soh))
+        ax.set_ylim(lo_ - 0.08 * (hi_ - lo_), hi_ + 0.06 * (hi_ - lo_))
+        ax.locator_params(axis='x', nbins=4); ax.locator_params(axis='y', nbins=4)
+        ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
+        panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
+    for j, ax in enumerate(axes.ravel()):
+        if j % 2 == 0:
+            ax.set_ylabel('SOH')
+        if j >= 2:
+            ax.set_xlabel('chu kỳ')
+    h, l = axes.ravel()[0].get_legend_handles_labels()
+    fig.legend(h, l, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=[0, 0.1, 1, 1], h_pad=1.2, w_pad=1.2)
+    os.makedirs(DEMO_DIR, exist_ok=True)
+    save(fig, os.path.join(DEMO_DIR, 'hipinn_bon_bo'))
+    pd.DataFrame(rows).to_csv(os.path.join(DEMO_DIR, 'hipinn_bon_bo.csv'), index=False)
+    for r in rows:
+        print(f"{r['bo']:5s} {r['cell']:45s} gốc {r['goc']:5d}  MAE {r['mae']:.4f}  trọng số "
+              f"({r['w_gbdt_ls']:g}; {r['w_pinn']:g}; {r['w_doi']:g}), nhánh PINN {r['nhanh_pinn']}")
+    print(f'đã ghi {DEMO_DIR}/hipinn_bon_bo.csv, .png và .pdf')
+
+
 def cmd_forecast(a):
     from pinnsoh import forecast as FC
     from pinnsoh import recovery as RC
     model, norm, c, split = load_model(a.model)
+    if a.mo_hinh == 'hipinn':
+        return _forecast_hipinn(a, model, norm, c, split)
     F = _forecaster(a.model, model, norm, c, split)
     nominal = a.nominal or _nominal(c['dataset'], a.csv)
     cell = load_cell_csv(a.csv, nominal, temp_c=a.temp)
@@ -292,5 +455,8 @@ if __name__ == '__main__':
     f.add_argument('--nominal', type=float, default=None, help='dung lượng danh định (Ah); mặc định theo bộ')
     f.add_argument('--temp', type=float, default=25.0, help='nhiệt độ môi trường (°C)')
     f.add_argument('--an-nhan', action='store_true', help='không dùng dung lượng đo: lịch sử SOH lấy từ mô hình ước lượng')
+    f.add_argument('--mo-hinh', default='hipinn', choices=['hipinn', 'e23'],
+                   help='hipinn (mặc định): mô hình HiPINN; e23: bộ dự báo có xét hồi phục dung lượng')
+    sp.add_parser('tat-ca', help='HiPINN cho một cell test của mỗi bộ dữ liệu, hình 2 × 2')
     a = ap.parse_args()
-    {'train': cmd_train, 'predict': cmd_predict, 'forecast': cmd_forecast}[a.cmd](a)
+    {'train': cmd_train, 'predict': cmd_predict, 'forecast': cmd_forecast, 'tat-ca': cmd_all}[a.cmd](a)

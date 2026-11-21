@@ -1632,6 +1632,41 @@ def e33_section(D):
                 r_kls_ls=ratio(do, 'ket_hop_ls', 'gbdt_ls'))
 
 
+def demo_section():
+    """Chương 4: công cụ dự báo cho một cell (tools/demo.py), HiPINN cho một cell test của mỗi bộ. Số và hình lấy từ
+    demo/hipinn_bon_bo.* (lệnh `python run.py demo tat-ca`); bản sao ở generated/data/ và graphics/."""
+    p = keep_copy('demo/hipinn_bon_bo.csv', 'demo_hipinn.csv')
+    if os.path.exists('demo/hipinn_bon_bo.pdf'):
+        shutil.copy('demo/hipinn_bon_bo.pdf', os.path.join(FIG, 'fig_demo_hipinn.pdf'))
+    text = (r'\section{Công cụ dự báo cho một cell}\label{sec:congcu}' '\n\n'
+            r'Công cụ dòng lệnh của đồ án gói các mô hình để dùng cho một cell bất kỳ, chỉ cần tệp đặc trưng sạc của cell '
+            r'đó. Lệnh thứ nhất học PINN-semi ở 30\,\% nhãn cho một bộ dữ liệu, lệnh thứ hai ước lượng SOH ở từng chu kỳ, '
+            r'lệnh thứ ba dự báo SOH, dung lượng và RUL từ một chu kỳ bất kỳ bằng HiPINN (\Cref{sec:e33pp}). Lần đầu dự báo '
+            r'cho một bộ, HiPINN được học trên các cell có nhãn của cùng fold với mô hình ước lượng, chọn trọng số trên cell '
+            r'validation rồi lưu lại; cell được dự báo '
+            r'không tham gia khi học. Nếu cell không được đo dung lượng, lịch sử SOH lấy từ mô hình ước lượng và khoảng '
+            r'90\,\% dùng phân vị hiệu chỉnh riêng cho trường hợp này.')
+    if p is None or not os.path.exists(os.path.join(FIG, 'fig_demo_hipinn.pdf')):
+        write('doan_cong_cu.tex', text)
+        return
+    Dm = pd.read_csv(p)
+    jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    name = lambda cid: tex_esc(cid.split('/')[-1])
+    text += ('\n\n' r'Lệnh thứ tư áp dụng HiPINN cho cả bốn bộ: với mỗi bộ, lấy cell test có số chu kỳ ở trung vị '
+             r'và dự báo từ 40\,\% số chu kỳ của nó (\Cref{fig:demo4}). MAE trên phần đời còn lại là '
+             + jv([f'{v(1e3 * r.mae, 1)} ở {r.bo} (cell {name(r.cell)})' for r in Dm.itertuples()])
+             + r' ($\times10^{-3}$). Trọng số mà validation chọn khác nhau giữa các bộ: '
+             + jv([f'{r.bo} ({v(r.w_gbdt_ls, 2)}; {v(r.w_pinn, 2)}; {v(r.w_doi, 2)})' for r in Dm.itertuples()])
+             + r' cho GBDT lịch sử, nhánh PINN và nhánh theo đời. Mô hình của công cụ học trên 30\,\% cell có nhãn, ít '
+               r'hơn thí nghiệm E33 với mọi cell train, nên đây là minh hoạ chứ không phải số đánh giá.' '\n\n'
+             r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_demo_hipinn.pdf}' '\n'
+             r'\caption[HiPINN cho một cell test của mỗi bộ dữ liệu]{HiPINN áp dụng cho bốn bộ dữ liệu qua công cụ dòng '
+             r'lệnh: với mỗi bộ, cell test có số chu kỳ ở trung vị, dự báo từ 40\,\% số chu kỳ của cell, lịch sử là dung '
+             r'lượng đo; mô hình học trên 30\,\% cell có nhãn của fold dùng cho công cụ.}\label{fig:demo4}' '\n'
+             r'\end{figure}')
+    write('doan_cong_cu.tex', text)
+
+
 def forecast_section():
     D = forecast_load()
     if D is None:
@@ -1699,6 +1734,7 @@ def main():
     n_rerun = int(B['runs'] * B['n_groups'] + B['runs_cur'] * B['n_groups'])
     n_total = experiments_table(n_rerun, n_feat_jobs, n_feat_fits)
     FC = forecast_section()
+    demo_section()
     D33 = e33_load()
     E33 = None
     if D33 is not None:
