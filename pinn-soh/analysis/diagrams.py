@@ -240,7 +240,8 @@ C_LIFE, E_LIFE = '#efe9fb', '#7b5cd6'
 
 def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     """Mô hình HiPINN (E33, pinnsoh/forecast_combo.py): đặc trưng gốc và đặc trưng lịch sử tại gốc k -> ba nhánh (GBDT
-    lịch sử, PINN-dự báo, nhánh theo đời) -> tổng có trọng số chọn trên validation -> SOH, dung lượng, RUL, khoảng 90 %."""
+    lịch sử và nhánh theo đời nhận cả hai, PINN-dự báo chỉ nhận đặc trưng gốc) -> trung vị -> SOH, dung lượng, RUL,
+    khoảng 90 %."""
     apply_theme(font=font)
     fig = plt.figure(figsize=(7.2, 4.5))
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(0, 6.25); ax.axis('off')
@@ -248,50 +249,50 @@ def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     region(ax, 0.05, 1.2, 1.95, 4.95, 'ĐẦU VÀO TẠI GỐC k')
     region(ax, 2.12, 1.2, 5.83, 4.95, 'HiPINN')
     region(ax, 8.07, 1.2, 1.88, 4.95, 'ĐẦU RA')
-    hs = box(ax, 0.17, 3.85, 1.71, 1.25, 'Lịch sử SOH tới k', 'đo được, hoặc ước\nlượng PINN-lai khi\ncell không được đo',
-             fs=7.0)
-    ch = box(ax, 0.17, 2.0, 1.71, 1.25, 'Đặc trưng sạc tới k', '16 đặc trưng\nmỗi chu kỳ,\nđã chuẩn hoá', fs=7.0)
-    z = box(ax, 2.27, 1.55, 1.5, 1.55, 'Đặc trưng gốc $\\mathbf{z}_k$',
-            '23 giá trị: mức $\\ell_k$,\nđộ dốc 30, 100 hàng,\n$k$, $1/T$, đặc trưng\nsạc gần nhất', C_OUT, '#9aa5ad',
-            fs=6.8)
-    hz = box(ax, 2.27, 3.4, 1.5, 2.15, 'Đặc trưng lịch sử',
-             'SOH tại $k$; cửa sổ\n5, 10, 30, 100, 200\nhàng: trung bình,\nđộ lệch chuẩn, độ dốc;\nđộ trễ 1–63 hàng',
-             C_OUT, '#9aa5ad', fs=6.8)
-    gb = box(ax, 4.05, 4.45, 2.35, 1.1, 'GBDT lịch sử', '$\\to \\ell_k - \\mathrm{SOH}(k+h)$ theo $h$\n6 cấu hình × 3 số cây',
-             C_NET, E_NET, fs=7.0)
-    pn = box(ax, 4.05, 3.0, 2.35, 1.2, 'PINN-dự báo', '$\\to (a \\geq 0,\\ \\lambda)$, nghiệm đóng\n'
-             '$\\ell_k + \\ln(1-\\lambda a h)/\\lambda$\ncó hoặc không có lịch sử', C_PHY, E_PHY, fs=7.0)
-    lf = box(ax, 4.05, 1.4, 2.35, 1.35, 'Nhánh theo đời', 'GBDT đời còn lại $\\to \\hat N$\nkhuôn quỹ đạo của K cell\n'
-             'train theo $u = c/\\hat N$', C_LIFE, E_LIFE, fs=7.0)
-    hp = box(ax, 6.7, 2.7, 1.1, 1.75, 'Tổng có\ntrọng số', '$w_1, w_2, w_3$\nchọn trên\nvalidation', C_LOSS, E_LOSS, fs=7.0)
-    o1 = box(ax, 8.2, 4.3, 1.62, 1.25, 'SOH, dung lượng', '$\\hat y(k+h)$ mọi $h$;\n$\\hat Q = \\hat y\\,\\times$\ndanh định',
-             C_OUT, '#9aa5ad', fs=7.0)
-    o2 = box(ax, 8.2, 3.0, 1.62, 1.0, 'RUL', '$h$ đầu tiên có\n$\\hat y \\leq \\tau$', C_OUT, '#9aa5ad', fs=7.0)
-    o3 = box(ax, 8.2, 1.45, 1.62, 1.25, 'Khoảng 90 %', '$\\hat y \\pm q\\sqrt{1+h/L}$,\n$q$ từ nửa cell\nvalidation còn lại',
-             C_OUT, '#9aa5ad', fs=7.0)
+    box(ax, 0.17, 3.85, 1.71, 1.25, 'Lịch sử SOH tới k', 'đo được, hoặc ước\nlượng PINN-lai khi\ncell không được đo',
+        fs=7.0)
+    box(ax, 0.17, 2.0, 1.71, 1.25, 'Đặc trưng sạc tới k', '16 đặc trưng\nmỗi chu kỳ,\nđã chuẩn hoá', fs=7.0)
+    box(ax, 2.27, 1.55, 1.5, 1.55, 'Đặc trưng gốc $\\mathbf{z}_k$',
+        '23 giá trị: mức $\\ell_k$,\nđộ dốc 30, 100 hàng,\n$k$, $1/T$, đặc trưng\nsạc gần nhất', C_OUT, '#9aa5ad',
+        fs=6.8)
+    box(ax, 2.27, 3.4, 1.5, 2.15, 'Đặc trưng lịch sử',
+        'SOH tại $k$; cửa sổ\n5, 10, 30, 100, 200\nhàng: trung bình,\nđộ lệch chuẩn, độ dốc;\nđộ trễ 1–63 hàng',
+        C_OUT, '#9aa5ad', fs=6.8)
+    box(ax, 4.05, 4.45, 2.35, 1.1, 'GBDT lịch sử', '$\\to \\ell_k - \\mathrm{SOH}(k+h)$ theo $h$\n6 cấu hình × 3 số cây',
+        C_NET, E_NET, fs=7.0)
+    box(ax, 4.05, 2.9, 2.35, 1.3, 'Nhánh theo đời', 'GBDT đời còn lại $\\to \\hat N$\nkhuôn quỹ đạo của K cell\n'
+        'train theo $u = c/\\hat N$', C_LIFE, E_LIFE, fs=7.0)
+    box(ax, 4.05, 1.4, 2.35, 1.2, 'PINN-dự báo', '$\\mathbf{z}_k \\to (a \\geq 0,\\ \\lambda)$, nghiệm đóng\n'
+        '$\\ell_k + \\ln(1-\\lambda a h)/\\lambda$', C_PHY, E_PHY, fs=7.0)
+    box(ax, 6.7, 2.7, 1.1, 1.75, 'Trung vị', 'của ba nhánh\ntại mỗi gốc\nvà tầm $h$', C_LOSS, E_LOSS, fs=7.0)
+    box(ax, 8.2, 4.3, 1.62, 1.25, 'SOH, dung lượng', '$\\hat y(k+h)$ mọi $h$;\n$\\hat Q = \\hat y\\,\\times$\ndanh định',
+        C_OUT, '#9aa5ad', fs=7.0)
+    box(ax, 8.2, 3.0, 1.62, 1.0, 'RUL', '$h$ đầu tiên có\n$\\hat y \\leq \\tau$', C_OUT, '#9aa5ad', fs=7.0)
+    box(ax, 8.2, 1.45, 1.62, 1.25, 'Khoảng 90 %', '$\\hat y \\pm q\\sqrt{1+h/L}$,\n$q$ từ nửa cell\nvalidation còn lại',
+        C_OUT, '#9aa5ad', fs=7.0)
     # đầu vào -> đặc trưng
     poly(ax, [(1.88, 4.475), (2.27, 4.475)], GREY)
     poly(ax, [(1.88, 2.625), (2.06, 2.625), (2.06, 2.33), (2.27, 2.33)], GREY)
     poly(ax, [(1.88, 4.2), (2.08, 4.2), (2.08, 2.75), (2.27, 2.75)], GREY)
-    # đặc trưng -> thanh góp -> ba nhánh
+    # đặc trưng gốc và đặc trưng lịch sử -> thanh góp -> GBDT lịch sử, nhánh theo đời; đặc trưng gốc -> PINN-dự báo
     ax.plot([3.77, 3.9], [4.475, 4.475], color=GREY, lw=0.9)
-    ax.plot([3.77, 3.9], [2.33, 2.33], color=GREY, lw=0.9)
-    ax.plot([3.9, 3.9], [2.07, 5.0], color=GREY, lw=0.9)
-    for b, col in ((gb, E_NET), (pn, E_PHY), (lf, E_LIFE)):
-        y = b[1] + b[3] / 2
-        arrow(ax, (3.9, y), (4.05, y), color=col)
-    # ba nhánh -> tổng
+    ax.plot([3.77, 3.9], [2.85, 2.85], color=GREY, lw=0.9)
+    ax.plot([3.9, 3.9], [2.85, 5.0], color=GREY, lw=0.9)
+    arrow(ax, (3.9, 5.0), (4.05, 5.0), color=E_NET)
+    arrow(ax, (3.9, 3.55), (4.05, 3.55), color=E_LIFE)
+    arrow(ax, (3.77, 2.0), (4.05, 2.0), color=E_PHY)
+    # ba nhánh -> trung vị
     poly(ax, [(6.4, 5.0), (6.55, 5.0), (6.55, 4.2), (6.7, 4.2)], E_NET)
-    arrow(ax, (6.4, 3.6), (6.7, 3.6), color=E_PHY)
-    poly(ax, [(6.4, 2.07), (6.55, 2.07), (6.55, 2.95), (6.7, 2.95)], E_LIFE)
-    # tổng -> đầu ra
+    arrow(ax, (6.4, 3.55), (6.7, 3.55), color=E_LIFE)
+    poly(ax, [(6.4, 2.0), (6.55, 2.0), (6.55, 2.95), (6.7, 2.95)], E_PHY)
+    # trung vị -> đầu ra
     poly(ax, [(7.8, 4.1), (8.0, 4.1), (8.0, 4.92), (8.2, 4.92)], E_LOSS)
     arrow(ax, (7.8, 3.5), (8.2, 3.5), color=E_LOSS)
     poly(ax, [(7.8, 2.95), (8.0, 2.95), (8.0, 2.07), (8.2, 2.07)], E_LOSS)
     box(ax, 0.05, 0.08, 9.9, 0.95, 'Huấn luyện trên cell train, lịch sử đo thật',
-        'mỗi nhánh học trên các cặp (gốc, tầm) của cell train; cấu hình, số cây, trọng số và nhánh PINN chọn theo MAE trên '
-        'một nửa cell validation;\nnửa còn lại để hiệu chỉnh khoảng; cell test không dùng khi học', '#ffffff', '#9aa5ad',
-        fs=7.0)
+        'mỗi nhánh học trên các cặp (gốc, tầm) của cell train; cấu hình và số cây của từng nhánh chọn theo MAE trên một '
+        'nửa cell validation;\nnửa còn lại để hiệu chỉnh khoảng; trung vị không có tham số cần chọn; cell test không '
+        'dùng khi học', '#ffffff', '#9aa5ad', fs=7.0)
     save(fig, out)
 
 

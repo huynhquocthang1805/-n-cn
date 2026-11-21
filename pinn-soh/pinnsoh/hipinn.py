@@ -1,9 +1,9 @@
 """
 HiPINN — mô hình dự báo SOH có đặc trưng lịch sử của đồ án, ở dạng học một lần rồi dự báo cho một cell bất kỳ.
 
-Cùng các nhánh và cùng cách chọn với E33 (pinnsoh/forecast_combo.py): GBDT lịch sử, PINN-dự báo có hoặc không có lịch
-sử, nhánh theo đời; trọng số (w1, w2, w3) trên lưới đơn hình và nhánh PINN chọn theo MAE trên một nửa cell validation;
-khoảng 90 % hiệu chỉnh trên nửa còn lại. Với cùng cách chia, dự báo trùng với lượt E33 tương ứng.
+HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm): GBDT lịch sử, PINN-dự báo, nhánh theo đời. Các nhánh học và chọn
+cấu hình như E33 (pinnsoh/forecast_combo.py): cấu hình của từng nhánh chọn trên một nửa cell validation, khoảng 90 %
+hiệu chỉnh trên nửa còn lại. Với cùng cách chia, dự báo trùng với cột hipinn của lượt E33 tương ứng.
 
     from pinnsoh.hipinn import HiPINN
     m = HiPINN.fit('MIT', lab=..., val=..., train=..., seed=0)
@@ -16,11 +16,11 @@ from .data import Normalizer, load_dataset
 from .forecast import TAU, CLIP, life_scale, train_samples, fit_gbdt, gbdt_predict, PINNForecaster, first_cross
 from . import forecast_hist as H
 from .forecast_life import LifeBranch
-from .forecast_combo import Combo, rich_samples, SIMPLEX, ORIGINS_REL, _rows_at
+from .forecast_combo import Combo, ORIGINS_REL, _rows_at
 
 
 class HiPINN:
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self, model, norm, L, tau, q, info):
         self.model, self.norm, self.L, self.tau, self.info = model, norm, L, tau, info
@@ -47,18 +47,11 @@ class HiPINN:
         Ztr, Htr, Ltr, Ytr = train_samples([by[i] for i in lab], xn)
         Zs, Hs, Ls, Ys = train_samples([by[i] for i in sel], xn)
         nets = [PINNForecaster(seed=1000 * seed + m).fit(Ztr, Htr, Ltr, Ytr, Zs, Hs, Ls, Ys) for m in members]
-        Rtr = rich_samples([by[i] for i in lab], feat)[0]
-        Rs = rich_samples([by[i] for i in sel], feat)[0]
-        nets_ls = [PINNForecaster(seed=1000 * seed + 500 + m).fit(Rtr, Htr, Ltr, Ytr, Rs, Hs, Ls, Ys) for m in members]
         life = LifeBranch.fit(lab, by, feat, tau, seed)
         life_info = life.choose(va, score)
-        model = Combo(gb, m_ls, cfg_ls, a_ls, nets, w=1.0, life=life, nets_ls=nets_ls)
-        Pva = model.predict(va)
-        model.pb = min(('pinn', 'pinn_ls'), key=lambda m: score(Pva[m]))
-        model.w = min(H.ALPHAS, key=lambda a: score(a * Pva['gbdt_ls'] + (1 - a) * Pva[model.pb]))
-        model.wh = min(SIMPLEX, key=lambda t: score(t[0] * Pva['gbdt_ls'] + t[1] * Pva[model.pb] + t[2] * Pva['doi']))
-        obj = cls(model, norm, L, tau, {}, dict(dataset=dataset, seed=seed, pinn_branch=model.pb, w=list(model.wh),
-                                                life=life_info, history=dict(cfg_ls, weight_new=a_ls), gbdt=ginfo,
+        model = Combo(gb, m_ls, cfg_ls, a_ls, nets, w=1.0, life=life)
+        obj = cls(model, norm, L, tau, {}, dict(dataset=dataset, seed=seed, life=life_info,
+                                                history=dict(cfg_ls, weight_new=a_ls), gbdt=ginfo,
                                                 n_lab=len(lab), n_sel=len(sel), n_cal=len(cal), sel=sel, cal=cal,
                                                 origins=origins))
         obj.q['do'] = obj.calibrate([by[i] for i in cal])
@@ -82,6 +75,6 @@ class HiPINN:
         band = self.q.get(scen, self.q['do']) * np.sqrt(1 + hh / self.L)
         lo, hi = np.clip(P['hipinn'] - band, *CLIP), np.clip(P['hipinn'] + band, *CLIP)
         cap = float(hh[-1])
-        return dict(hipinn=P['hipinn'], gbdt_ls=P['gbdt_ls'], pinn=P[self.model.pb], doi=P['doi'], lo=lo, hi=hi,
+        return dict(hipinn=P['hipinn'], gbdt_ls=P['gbdt_ls'], pinn=P['pinn'], doi=P['doi'], lo=lo, hi=hi,
                     level=float(lev[i]), rul=first_cross(P['hipinn'], hh, self.tau, cap),
                     rul_lo=first_cross(lo, hh, self.tau, cap), rul_hi=first_cross(hi, hh, self.tau, cap))

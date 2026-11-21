@@ -21,7 +21,7 @@ thể tải nguyên thư mục `report/` lên Overleaf (trình biên dịch pdfL
 | `chapters/front/` | lời cam đoan, lời cảm ơn, tóm tắt, phân công, danh mục từ viết tắt |
 | `chapters/main/01-introduction.tex` | lý do chọn đề tài, bài toán, mục tiêu, phạm vi, đóng góp |
 | `chapters/main/02-background.tex` | cơ sở lý thuyết, các nghiên cứu liên quan |
-| `chapters/main/03-methodology.tex` | dữ liệu, đặc trưng đầu vào (dùng gì, bỏ gì, số liệu chứng minh), giao thức, các mô hình, dự báo kết hợp (E33) |
+| `chapters/main/03-methodology.tex` | dữ liệu, đặc trưng đầu vào (dùng gì, bỏ gì, số liệu chứng minh), giao thức, các mô hình, dự báo có đặc trưng lịch sử, mô hình HiPINN (E33) |
 | `chapters/main/04-implementation.tex` | yêu cầu, kiến trúc và hiện thực hệ thống |
 | `chapters/main/05-evaluation.tex` | thiết lập thực nghiệm, kết quả (chạy lại PINN4SOH, kết quả của đồ án, dự báo), thảo luận: so với bài báo đã công bố, chỉ số tốt hơn và chưa tốt |
 | `chapters/main/06-conclusion.tex` | kết luận, hạn chế, hướng phát triển |
@@ -42,7 +42,7 @@ Không số nào gõ tay vào bảng.
 | Chương 5: so với PINN4SOH | `benchmark/results/` từ `benchmark/compare.py` |
 | Phụ lục B: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27` so với `generated/data/e27_lan_dau.json` (kết quả của lần chạy E27 đầu tiên, lấy từ `benchmark/results` ở commit `e174340`); tóm tắt ở `generated/data/tai_lap.json` |
 | Chương 3, 5: dự báo SOH, dung lượng, RUL (E22) | `runs/E22` và lịch sử ước lượng ở `runs/E20` (70 % nhãn): `analysis/analyze_e22.py` (bảng `results/e22_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e22_*.pdf`); sơ đồ mô hình `graphics/fig_forecast_arch.pdf` từ `analysis/diagrams.py`. Ba bảng dự báo sinh lại từ kết quả chạy lại và được so từng ô với báo cáo đã nộp |
-| Chương 5, Phụ lục A: dự báo kết hợp (E33) | `runs/E33`: `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`). Phần đối chiếu và bảng bài toán cập nhật đọc các tệp kết quả đã lưu trong repo G-doan (`improvements/forecasts`, `improvements/anchors`; đường dẫn đặt bằng biến môi trường `GDOAN`) |
+| Chương 5, Phụ lục A: dự báo có đặc trưng lịch sử, mô hình HiPINN (E33) | `runs/E33`: `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`). Phần đối chiếu và bảng bài toán cập nhật đọc các tệp kết quả đã lưu trong kho G-doan của đồ án (`improvements/forecasts`, `improvements/anchors`; đường dẫn đặt bằng biến môi trường `GDOAN`) |
 | Chương 5: các bảng còn lại | bảng của báo cáo đã nộp (`archive/thesis/do-an/main.tex`), đọc bằng `paper/thesis_tables.py` |
 
 Khi `runs/E22` đủ 60 lượt (và có `runs/E20`), hoặc `runs/E33` đủ 120 lượt, `build.py` tính lại bảng và vẽ lại các hình

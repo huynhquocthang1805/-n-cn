@@ -199,7 +199,7 @@ def _forecaster(path, model, norm, c, split):
     return obj
 
 
-HIPINN_VERSION = 1
+HIPINN_VERSION = 2
 
 
 def _hipinn(model, norm, c, split):
@@ -245,14 +245,12 @@ def _forecast_hipinn(a, model, norm, c, split):
     hh = np.arange(step, int(3 * L) + step, step, dtype=float)
     R = M.forecast(cell, i, hh, soh=None if measured else hist, scen=sc)
     p, plo, phi = R['hipinn'], R['lo'], R['hi']
-    k0 = int(cell.cycle[i]); w1, w2, w3 = M.info['w']
+    k0 = int(cell.cycle[i])
     name = os.path.splitext(os.path.basename(a.csv))[0]
     print(f'cell {name} · gốc dự báo: chu kỳ {k0} · danh định {nominal} Ah · ngưỡng cuối đời SOH {tau:.2f} '
           f'({tau * nominal:.3f} Ah)')
     print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
-    print(f'HiPINN: {w1:g} × GBDT lịch sử + {w2:g} × PINN-dự báo'
-          + (' có lịch sử' if M.info['pinn_branch'] == 'pinn_ls' else '') + f' + {w3:g} × nhánh theo đời '
-          f'(trọng số chọn trên {M.info["n_sel"]} cell validation)')
+    print('HiPINN: trung vị của GBDT lịch sử, PINN-dự báo và nhánh theo đời')
     print(f'hiện tại: SOH {R["level"]:.3f} · dung lượng {R["level"] * nominal:.3f} Ah')
     for hr in FC.H_REL:
         h = int(round(hr * L)); j = min(np.searchsorted(hh, h), len(hh) - 1)
@@ -322,8 +320,8 @@ def cmd_all(a):
         hh = (cell.cycle[i + 1:] - k0).astype(float)
         R = M.forecast(cell, i, hh)
         mae = float(np.abs(R['hipinn'] - cell.soh[i + 1:]).mean())
-        rows.append(dict(bo=ds, cell=cell.cid, goc=k0, mae=mae, w_gbdt_ls=M.info['w'][0], w_pinn=M.info['w'][1],
-                         w_doi=M.info['w'][2], nhanh_pinn=M.info['pinn_branch']))
+        rows.append(dict(bo=ds, cell=cell.cid, goc=k0, mae=mae,
+                         **{f'mae_{k}': float(np.abs(R[k] - cell.soh[i + 1:]).mean()) for k in ('gbdt_ls', 'pinn', 'doi')}))
         ax.plot(cell.cycle, cell.soh, color='#1b2330', lw=1.0, label='SOH đo được')
         x = k0 + hh
         ax.fill_between(x, R['lo'], R['hi'], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
@@ -351,8 +349,8 @@ def cmd_all(a):
     save(fig, os.path.join(DEMO_DIR, 'hipinn_bon_bo'))
     pd.DataFrame(rows).to_csv(os.path.join(DEMO_DIR, 'hipinn_bon_bo.csv'), index=False)
     for r in rows:
-        print(f"{r['bo']:5s} {r['cell']:45s} gốc {r['goc']:5d}  MAE {r['mae']:.4f}  trọng số "
-              f"({r['w_gbdt_ls']:g}; {r['w_pinn']:g}; {r['w_doi']:g}), nhánh PINN {r['nhanh_pinn']}")
+        print(f"{r['bo']:5s} {r['cell']:45s} gốc {r['goc']:5d}  MAE HiPINN {r['mae']:.4f}  (GBDT lịch sử "
+              f"{r['mae_gbdt_ls']:.4f}; PINN-dự báo {r['mae_pinn']:.4f}; nhánh theo đời {r['mae_doi']:.4f})")
     print(f'đã ghi {DEMO_DIR}/hipinn_bon_bo.csv, .png và .pdf')
 
 

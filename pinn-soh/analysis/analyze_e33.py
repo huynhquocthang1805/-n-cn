@@ -1,12 +1,14 @@
 """
-E33: dự báo kết hợp GBDT lịch sử (repo G-doan) với PINN-dự báo — bảng, kiểm định, hình.
+E33: dự báo SOH có đặc trưng lịch sử — HiPINN (trung vị của GBDT lịch sử, PINN-dự báo, nhánh theo đời), phương án
+trọng số chọn trên validation, các nhánh và các mô hình của E22 — bảng, kiểm định.
 
-    python analysis/analyze_e33.py      # -> results/e33_*.csv, results/fig_e33_*.pdf|png
+    python analysis/analyze_e33.py      # -> results/e33_*.csv
 
-Sai số của một cell (như G-doan): với mỗi gốc, MAE trên mọi chu kỳ đo được sau gốc; lấy trung bình qua các gốc. Bảng
-tổng hợp: trung bình qua cell trong mỗi lần lặp, rồi trung bình ± độ lệch chuẩn qua 3 lần lặp. Kiểm định: Wilcoxon ghép
-cặp theo cell (sai số trung bình qua lần lặp), Holm qua bốn bộ trong mỗi (ngân sách, kịch bản, phép so).
-Kèm số liệu đã lưu của G-doan (improvements/forecasts trong repo G-doan, nếu có) tính cùng cách để đối chiếu.
+Sai số của một cell: với mỗi gốc, MAE trên mọi chu kỳ đo được sau gốc; lấy trung bình qua các gốc. Bảng tổng hợp:
+trung bình qua cell trong mỗi lần lặp, rồi trung bình ± độ lệch chuẩn qua 3 lần lặp. Kiểm định: Wilcoxon ghép cặp theo
+cell (sai số trung bình qua lần lặp), Holm qua bốn bộ trong mỗi (ngân sách, kịch bản, phép so). Sai số trên hai nửa
+validation (mảng vcell) cho phép so các mô hình trên cell không thuộc test. Kèm số liệu đã lưu ở kho G-doan
+(improvements/forecasts, nếu có) tính cùng cách để đối chiếu.
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -18,14 +20,15 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from pinnsoh.forecast_combo import TCOL, RCOL, MODELS, SCEN, ROOT
+from pinnsoh.forecast_combo import TCOL, RCOL, VCOL, MODELS, SCEN, ROOT
 
 OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 GDOAN = os.environ.get('GDOAN', '/home/user/huynhquocthang1805/g-doan')
 LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT (E22)', 'gbdt_ls': 'GBDT lịch sử',
          'pinn': 'PINN-dự báo', 'pinn_ls': 'PINN-dự báo có lịch sử', 'ket_hop': 'Kết hợp E22',
-         'ket_hop_ls': 'HiPINN không có nhánh theo đời', 'doi': 'Nhánh theo đời', 'hipinn': 'HiPINN'}
+         'ket_hop_ls': 'GBDT lịch sử và PINN, trọng số chọn', 'doi': 'Nhánh theo đời', 'tb3': 'Trung bình ba nhánh',
+         'hipinn_w': 'HiPINN, trọng số chọn', 'hipinn': 'HiPINN'}
 FOCUS = 'hipinn'                      # mô hình của đồ án
 PBINS = [0, .5, .7, .8, .9, 1.0001]   # phần đời của chính cell (chỉ để nhóm khi chấm, không dùng khi dự báo)
 PLAB = ['<0.5', '0.5-0.7', '0.7-0.8', '0.8-0.9', '0.9-1']
@@ -61,17 +64,25 @@ def flip_k(d):
 
 
 def load():
-    cells, ruls, choices, horiz, tail = [], [], [], [], []
+    cells, ruls, choices, horiz, tail, vals = [], [], [], [], [], []
     for f in sorted(glob.glob(f'{ROOT}/fc_*.npz')):
         q = np.load(f); i = json.loads(str(q['info']))
         meta = dict(budget=i['budget'], ds=i['ds'], r=i['repeat'], fold=i['fold'])
+        if 'vcell' in q.files:
+            V = pd.DataFrame(q['vcell'], columns=VCOL)
+            V['part'] = np.where(V.part == 0, 'chon', 'hieu_chinh')
+            ids = {'chon': i['split']['sel'], 'hieu_chinh': i['split']['cal']}
+            V['cid'] = [ids[p][int(c)] for p, c in zip(V.part, V.cell)]
+            for k, v in meta.items():
+                V[k] = v
+            vals.append(V.drop(columns='cell'))
         T = pd.DataFrame(q['traj'], columns=TCOL); te = i['split']['test']
         wh = i.get('w_hipinn', [np.nan] * 3); life = i.get('life', {})
         choices.append(dict(**meta, w=i['w_combo'], hist=i['history']['config']['name'],
                             n_trees=i['history']['config']['n_trees'], a=i['history']['weight_new'], L=i['L'],
                             q_ls=i['q_ls'], q_kls=i['q_kls'], q_h=i.get('q_h', np.nan), time_s=i['time_s'],
                             w_ls=wh[0], w_pinn=wh[1], w_doi=wh[2], pinn_branch=i.get('pinn_branch', 'pinn'),
-                            life_K=life.get('K', np.nan),
+                            n_sel=len(i['split']['sel']), n_cal=len(i['split']['cal']), life_K=life.get('K', np.nan),
                             life_trees=life.get('n_trees', np.nan), n_templates=life.get('n_templates', np.nan),
                             **{f'val_{m}': v for m, v in i['val_MAE'].items()},
                             **{f'cal_{m}': v for m, v in i.get('cal_MAE', {}).items()}))
@@ -100,7 +111,7 @@ def load():
                 R[k] = v
             ruls.append(R)
     return (pd.DataFrame(cells), pd.concat(ruls, ignore_index=True), pd.DataFrame(choices), pd.DataFrame(horiz),
-            pd.DataFrame(tail))
+            pd.DataFrame(tail), pd.concat(vals, ignore_index=True) if vals else None)
 
 
 def gdoan_cells():
@@ -152,7 +163,7 @@ def main():
     if not glob.glob(f'{ROOT}/fc_*.npz'):
         print(f'chưa có lượt nào trong {ROOT}: chạy python run.py E33 trước')
         return
-    C, R, CH, H, TL = load()
+    C, R, CH, H, TL, V = load()
     print(f'{len(CH)} lượt; {len(C)} dòng (cell × kịch bản × lần lặp)')
     C.to_csv(f'{OUT}/e33_cells.csv', index=False); CH.to_csv(f'{OUT}/e33_choices.csv', index=False)
     keys = ['budget', 'scen', 'ds']
@@ -168,8 +179,8 @@ def main():
     # ---- kiểm định ghép cặp theo cell (trung bình qua lần lặp)
     pc = C.groupby(keys + ['cid'])[MODELS].mean().reset_index()
     pairs = [(FOCUS, m) for m in MODELS if m != FOCUS] + [
-        ('gbdt_ls', 'gbdt'), ('gbdt_ls', 'ket_hop'), ('gbdt_ls', 'pinn'), ('ket_hop_ls', 'gbdt_ls'),
-        ('ket_hop_ls', 'ket_hop'), ('doi', 'gbdt_ls'), ('doi', 'gbdt'), ('pinn_ls', 'pinn')]
+        ('gbdt_ls', 'gbdt'), ('gbdt_ls', 'ket_hop'), ('gbdt_ls', 'pinn'), ('hipinn_w', 'gbdt_ls'),
+        ('hipinn_w', 'ket_hop'), ('tb3', 'gbdt_ls'), ('doi', 'gbdt_ls'), ('doi', 'gbdt'), ('pinn_ls', 'pinn')]
     rows = []
     for (b, sc), g in pc.groupby(['budget', 'scen']):
         for a, c in pairs:
@@ -201,8 +212,8 @@ def main():
     RS['n_cell'] = rc.groupby(keys).size().values
     RS.to_csv(f'{OUT}/e33_rul.csv', index=False)
     rows = []
-    rpairs = [(FOCUS, c) for c in ('gbdt', 'gbdt_ls', 'pinn', 'pinn_ls', 'ket_hop', 'ket_hop_ls', 'doi')] + [
-        ('pinn_ls', 'pinn')]
+    rpairs = [(FOCUS, c) for c in ('gbdt', 'gbdt_ls', 'pinn', 'pinn_ls', 'ket_hop', 'doi', 'tb3', 'hipinn_w')] + [
+        ('pinn_ls', 'pinn'), ('gbdt_ls', 'ket_hop')]
     for (b, sc), g in rc.reset_index().groupby(['budget', 'scen']):
         for a, c in rpairs:
             tmp = []
@@ -224,9 +235,29 @@ def main():
     cc = [c for c in CH.columns if c.startswith('cal_')]
     if cc:
         CA = CH.groupby(['budget', 'ds'])[cc].mean().reset_index()
-        CA['hipinn_lt_two'] = CH.groupby(['budget', 'ds']).apply(
-            lambda x: float((x.cal_hipinn < x.cal_ket_hop_ls).mean()), include_groups=False).values
+        for c in ('hipinn_w', 'gbdt_ls', 'tb3'):          # tỉ lệ lượt mà HiPINN thấp hơn trên nửa hiệu chỉnh
+            CA[f'lt_{c}'] = CH.groupby(['budget', 'ds']).apply(
+                lambda x: float((x.cal_hipinn < x[f'cal_{c}']).mean()), include_groups=False).values
+        CA['n_runs'] = CH.groupby(['budget', 'ds']).size().values
         CA.to_csv(f'{OUT}/e33_cal.csv', index=False)
+    # ---- trên hai nửa validation, theo cell: mỗi cell lấy trung bình qua các lượt nó thuộc nửa đó
+    if V is not None:
+        vc = V.groupby(['budget', 'ds', 'part', 'cid'])[MODELS].mean().reset_index()
+        VS = vc.groupby(['budget', 'ds', 'part'])[MODELS].mean().reset_index()
+        VS['n_cell'] = vc.groupby(['budget', 'ds', 'part']).size().values
+        VS.to_csv(f'{OUT}/e33_val.csv', index=False)
+        rows = []
+        for (b, part), g in vc.groupby(['budget', 'part']):
+            for c in ('hipinn_w', 'gbdt_ls', 'tb3', 'ket_hop'):
+                tmp = []
+                for ds in DS:
+                    x = g[g.ds == ds]; d = x[FOCUS].values - x[c].values
+                    tmp.append(dict(budget=b, part=part, ds=ds, a=FOCUS, b=c, n=len(d), mae_a=x[FOCUS].mean(),
+                                    mae_b=x[c].mean(), a_better=int((d < 0).sum()), a_wins=a_wins(d),
+                                    p=stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0))
+                for t, ph in zip(tmp, holm([t['p'] for t in tmp])):
+                    t['p_holm'] = ph; rows.append(t)
+        pd.DataFrame(rows).to_csv(f'{OUT}/e33_val_tests.csv', index=False)
     # ---- theo tầm
     hc = H.groupby(keys + ['hb', 'cid'])[MODELS].mean().groupby(keys + ['hb']).mean().reset_index()
     hc.to_csv(f'{OUT}/e33_horizon.csv', index=False)

@@ -579,20 +579,22 @@ def e22_rul():
 
 
 
-# ─────────────────────────────────────────────────────────── E33: dự báo kết hợp GBDT lịch sử + PINN-dự báo
+# ─────────────────────────────────────────────────────────── E33: dự báo có đặc trưng lịch sử (HiPINN)
 E33_SET = [('lab30', 'do', '30 % nhãn, lịch sử đo', '#9cc3e6', 'o'), ('all', 'do', 'mọi cell train, lịch sử đo', '#2a78d6', 's'),
            ('all', 'uoc', 'mọi cell train, lịch sử ước lượng', '#0b3d73', 'D')]
 
 
+E33_FIG_MODELS = ['giu', 'tuyen', 'gbdt', 'pinn', 'ket_hop', 'gbdt_ls', 'pinn_ls', 'doi', 'hipinn_w', 'hipinn']
+
+
 def e33_mae():
-    """MAE theo cell (trung bình qua 3 lần lặp) của bảy mô hình, ba thiết lập, mỗi bộ một panel."""
+    """MAE theo cell (trung bình qua 3 lần lặp) của các mô hình, ba thiết lập, mỗi bộ một panel."""
     plt = setup()
-    from pinnsoh.forecast_combo import MODELS
     from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
     import analyze_e33 as A
     S = pd.read_csv(f'{OUT}/e33_summary.csv')
     fig, axes = _grid(plt, 5.6)
-    order = list(reversed(MODELS))
+    order = list(reversed(E33_FIG_MODELS))
     for ax, ds in zip(axes, DS):
         for j, (b, sc, lab, col, mk) in enumerate(E33_SET):
             r = S[(S.budget == b) & (S.scen == sc) & (S.ds == ds)]
@@ -622,7 +624,8 @@ def e33_mae():
 
 
 MIN_H = 0.25                                     # E33: cell minh hoạ phải còn ít nhất 0,25L chu kỳ đo sau gốc
-E33_TAIL = [('gbdt_ls', 'GBDT lịch sử', '#2a78d6', (0, (3, 1.5)), 's'), ('pinn', 'PINN-dự báo', '#1baf7a', (0, (3, 1.5)), '^'),
+E33_TAIL = [('ket_hop', 'kết hợp E22', '#9aa5ad', (0, (5, 1.5)), 'v'),
+            ('gbdt_ls', 'GBDT lịch sử', '#2a78d6', (0, (3, 1.5)), 's'), ('pinn', 'PINN-dự báo', '#1baf7a', (0, (3, 1.5)), '^'),
             ('doi', 'nhánh theo đời', '#7b5cd6', (0, (1, 1.2)), 'D'), ('hipinn', 'HiPINN', '#d9480f', '-', 'o')]
 
 
@@ -650,7 +653,7 @@ def e33_tail():
         if i >= 2:
             ax.set_xlabel('phần đời của cell (chu kỳ / chu kỳ cuối)')
     h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.legend(h, l, loc='lower center', ncol=5, frameon=False, bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=[0, 0.07, 1, 1], h_pad=1.2, w_pad=1.2)
     save(fig, f'{OUT}/fig_e33_tail')
 
@@ -671,8 +674,6 @@ def e33_traj():
             q = np.load(f); info = _json.loads(str(q['info']))
             T = pd.DataFrame(q['traj'], columns=TCOL); T = T[(T.scen == 0) & (T.origin == T.origin)]
             T['cid'] = np.asarray(info['split']['test'])[T.cell.astype(int)]; T['L'] = info['L']
-            T['w_ls'], T['w_pinn'], T['w_doi'] = info['w_hipinn']
-            T['pb'] = info.get('pinn_branch', 'pinn')
             T['o_idx'] = T.groupby('cid').origin.rank(method='dense').astype(int)
             parts.append(T)
         if not parts:
@@ -688,11 +689,10 @@ def e33_traj():
         _e22_measured(ax, cell)
         x = k0 + g.h.values
         ax.fill_between(x, g.lo_h, g.hi_h, color=E22C['band'], alpha=0.18, lw=0, zorder=1)
-        pb = g.pb.iloc[0]                                   # nhánh PINN mà HiPINN dùng ở lượt này
-        ax.plot(x, g[pb], color=E22C['pinn'], lw=1.0, ls=(0, (3, 1.5)), zorder=3)
+        ax.plot(x, g.pinn, color=E22C['pinn'], lw=1.0, ls=(0, (3, 1.5)), zorder=3)
         ax.plot(x, g.doi, color=E22C['est'], lw=1.0, ls=(0, (1, 1.2)), zorder=3)
+        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.0, ls=(0, (3, 1.5)), zorder=3)
         ax.plot(x, g.hipinn, color=E22C['ket_hop'], lw=1.9, zorder=4)
-        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.0, ls=(0, (3, 1.5)), zorder=5)   # trên cùng: thấy được khi w1 = 1
         ax.axhline(TAU[ds], color=E22C['tau'], lw=0.9, ls=(0, (4, 2)), zorder=1)
         ax.axvline(k0, color=E22C['org'], lw=0.9, ls=(0, (2, 2)), zorder=1)
         lo_, hi_ = min(float(cell.soh.min()), TAU[ds]), float(cell.soh.max())
@@ -700,9 +700,8 @@ def e33_traj():
         ax.locator_params(axis='x', nbins=4); ax.locator_params(axis='y', nbins=4)
         ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
         panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
-        rows.append(dict(ds=ds, cid=cid, k0=k0, mae=float(e[cid]), w_ls=float(g.w_ls.iloc[0]),
-                         w_pinn=float(g.w_pinn.iloc[0]), w_doi=float(g.w_doi.iloc[0]), pinn_branch=pb,
-                         h_max=float(g.h.max()), L=L,
+        rows.append(dict(ds=ds, cid=cid, k0=k0, mae=float(e[cid]), h_max=float(g.h.max()), L=L,
+                         **{f'mae_{m}': float((g[m] - g.y).abs().mean()) for m in ('gbdt_ls', 'pinn', 'doi')},
                          n_cand=len(e), min_h=MIN_H, cov=float(((g.y >= g.lo_h) & (g.y <= g.hi_h)).mean())))
     for i, ax in enumerate(axes):
         if i % 2 == 0:

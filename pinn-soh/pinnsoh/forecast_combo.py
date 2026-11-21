@@ -1,6 +1,7 @@
 """
 E33 — dự báo SOH có đặc trưng lịch sử: GBDT lịch sử (pinnsoh/forecast_hist.py), PINN-dự báo có lịch sử, nhánh theo đời
-(pinnsoh/forecast_life.py) và mô hình HiPINN ghép ba nhánh, cùng một giao thức, sửa các điểm còn rò rỉ của E22.
+(pinnsoh/forecast_life.py) và mô hình HiPINN lấy trung vị của ba nhánh, cùng một giao thức, sửa các điểm còn
+rò rỉ của E22.
 
 Giao thức: cùng fold theo cell của E13/E20/E22 (5 fold, 70/10/20 % cell, lần lặp 0–2). Cell validation
 chia đôi theo thứ tự tên: nửa 'chọn' (chọn cấu hình, số cây, trọng số, dừng sớm) và nửa 'hiệu chỉnh' (khoảng dự báo).
@@ -20,13 +21,16 @@ Mô hình:
     pinn         PINN-dự báo của E22 (3 mạng, đầu vào 23 đặc trưng gốc)
     pinn_ls      PINN-dự báo có lịch sử: như pinn nhưng đầu vào là 23 đặc trưng gốc và đặc trưng lịch sử SOH
     ket_hop      kết hợp của E22: ½ gbdt + ½ pinn
-    ket_hop_ls   HiPINN không có nhánh theo đời: w·gbdt_ls + (1 − w)·p, p là nhánh PINN chọn trên validation
-                 (pinn hoặc pinn_ls), w ∈ {0; 0,25; 0,5; 0,75; 1}
+    ket_hop_ls   w·gbdt_ls + (1 − w)·p, p là nhánh PINN chọn trên validation (pinn hoặc pinn_ls),
+                 w ∈ {0; 0,25; 0,5; 0,75; 1}
     doi          nhánh theo đời: đời còn lại dự đoán + khuôn quỹ đạo của cell train
-    hipinn       HiPINN: w1·gbdt_ls + w2·p + w3·doi, (w1, w2, w3) trên lưới bước 0,25 của đơn hình, chọn trên validation
+    tb3          trung bình đều của gbdt_ls, pinn, doi
+    hipinn_w     phương án đầu của HiPINN: w1·gbdt_ls + w2·p + w3·doi, (w1, w2, w3) trên lưới bước 0,25 của đơn
+                 hình, chọn trên validation cùng với p
+    hipinn       HiPINN: trung vị của gbdt_ls, pinn, doi tại từng (gốc, tầm); không có trọng số cần chọn
 Khoảng 90 % (dự đoán phù hợp): q = phân vị 90 % của |y − p| / sqrt(1 + h/L) trên nửa 'hiệu chỉnh';
-khoảng p ± q·sqrt(1 + h/L), tính cho gbdt_ls, ket_hop_ls và hipinn. MAE trên nửa 'hiệu chỉnh' (cal_MAE) được lưu để
-so các mô hình trên dữ liệu không dùng để chọn.
+khoảng p ± q·sqrt(1 + h/L), tính cho gbdt_ls, ket_hop_ls và hipinn. MAE trên nửa 'chọn' (val_MAE) và nửa
+'hiệu chỉnh' (cal_MAE), tổng và theo từng cell (mảng vcell), được lưu để so các mô hình trên dữ liệu không thuộc test.
 RUL: như E22 (gốc ở 25, 50, 75 % chu kỳ cuối đời thật, lưới tầm tới 3L, lúc dự báo chạm ngưỡng tau).
 """
 from __future__ import annotations
@@ -39,13 +43,15 @@ from .forecast import (TAU, CLIP, life_scale, eol_cycle, first_cross, train_samp
 from . import forecast_hist as H
 from .forecast_life import LifeBranch
 
-ROOT = 'runs/E33'
+ROOT = os.environ.get('E33_ROOT', 'runs/E33')         # thư mục kết quả; đổi được bằng biến môi trường E33_ROOT
 BUDGETS = ('lab30', 'all')
 ORIGINS_REL = (0.2, 0.4, 0.6)
-MODELS = ['giu', 'tuyen', 'gbdt', 'gbdt_ls', 'pinn', 'pinn_ls', 'ket_hop', 'ket_hop_ls', 'doi', 'hipinn']
+MODELS = ['giu', 'tuyen', 'gbdt', 'gbdt_ls', 'pinn', 'pinn_ls', 'ket_hop', 'ket_hop_ls', 'doi', 'tb3', 'hipinn_w',
+          'hipinn']
 TCOL = ['scen', 'cell', 'origin', 'h', 'y'] + MODELS + ['cand', 'lo_ls', 'hi_ls', 'lo_kls', 'hi_kls', 'lo_h', 'hi_h']
 RCOL = ['scen', 'cell', 'q', 'k', 'true'] + MODELS + ['lo_kls', 'hi_kls', 'lo_h', 'hi_h']
-SIMPLEX = [(a / 4, b / 4, (4 - a - b) / 4) for a in range(5) for b in range(5 - a)]   # (gbdt_ls, nhánh PINN, doi)
+VCOL = ['part', 'cell'] + MODELS                       # part 0: nửa 'chọn', 1: nửa 'hiệu chỉnh'
+SIMPLEX = [(a / 4, b / 4, (4 - a - b) / 4) for a in range(5) for b in range(5 - a)]   # hipinn_w: (gbdt_ls, p, doi)
 SCEN = ['do', 'uoc']
 
 
@@ -103,8 +109,20 @@ class Combo:
         P['ket_hop_ls'] = self.w * P['gbdt_ls'] + (1 - self.w) * P[self.pb]
         P['doi'] = (np.clip(self.life.predict(d), *CLIP) if self.life is not None
                     else np.full(len(d['h']), np.nan))
-        P['hipinn'] = self.wh[0] * P['gbdt_ls'] + self.wh[1] * P[self.pb] + self.wh[2] * P['doi']
+        P['hipinn_w'] = self.wh[0] * P['gbdt_ls'] + self.wh[1] * P[self.pb] + self.wh[2] * P['doi']
+        B = np.column_stack([P['gbdt_ls'], P['pinn'], P['doi']])
+        P['tb3'], P['hipinn'] = B.mean(axis=1), np.median(B, axis=1)
         return P
+
+
+def cell_mae(d, P):
+    """MAE theo cell như khi chấm test: mỗi gốc lấy MAE trên mọi hàng sau gốc, rồi trung bình qua các gốc của cell.
+    Trả mảng (số cell, 1 + số mô hình): chỉ số cell trong danh sách đã lấy mẫu, rồi MAE của từng mô hình."""
+    w = H.weights(d['cell'], d['origin']); out = []
+    for c in np.unique(d['cell']):
+        ix = d['cell'] == c; wc = w[ix] / w[ix].sum()
+        out.append([c] + [float(wc @ np.abs(P[m][ix] - d['y'][ix])) for m in MODELS])
+    return np.asarray(out, float)
 
 
 def _rows_at(z, rich, lev, i, hgrid, origin):
@@ -128,7 +146,7 @@ def run_fold(ds: str, budget: str, r: int, k: int, root: str = ROOT, members=(0,
     origins = np.maximum(1, np.rint(np.array(ORIGINS_REL) * L)).astype(int).tolist()
     xn = {i: norm.transform(c) for i, c in by.items()}
     feat = {i: H.features(c, xn[i]) for i, c in by.items()}
-    # ---- học: GBDT gốc (E22), GBDT lịch sử (G-doan), PINN-dự báo (E22), trên cell 'lab'; chọn trên nửa 'chọn'
+    # ---- học: GBDT gốc (E22), GBDT lịch sử, PINN-dự báo (E22), trên cell 'lab'; chọn trên nửa 'chọn'
     tr = H.sample(lab, by, feat)
     va = H.sample(sel, by, feat, origins)
     gb, ginfo = fit_gbdt(*train_samples([by[i] for i in lab], xn), *train_samples([by[i] for i in sel], xn), seed=seed)
@@ -146,14 +164,14 @@ def run_fold(ds: str, budget: str, r: int, k: int, root: str = ROOT, members=(0,
     life_info = life.choose(va, score)
     model = Combo(gb, m_ls, cfg_ls, a_ls, nets, w=1.0, life=life, nets_ls=nets_ls)
     Pva = model.predict(va)
-    pb = min(('pinn', 'pinn_ls'), key=lambda m: score(Pva[m]))              # nhánh PINN của HiPINN
+    pb = min(('pinn', 'pinn_ls'), key=lambda m: score(Pva[m]))              # nhánh PINN của ket_hop_ls, hipinn_w
     model.pb = pb
     w = min(H.ALPHAS, key=lambda a: score(a * Pva['gbdt_ls'] + (1 - a) * Pva[pb]))
     model.w = w
     Pva['ket_hop_ls'] = w * Pva['gbdt_ls'] + (1 - w) * Pva[pb]
     wh = min(SIMPLEX, key=lambda t: score(t[0] * Pva['gbdt_ls'] + t[1] * Pva[pb] + t[2] * Pva['doi']))
     model.wh = wh
-    Pva['hipinn'] = wh[0] * Pva['gbdt_ls'] + wh[1] * Pva[pb] + wh[2] * Pva['doi']
+    Pva['hipinn_w'] = wh[0] * Pva['gbdt_ls'] + wh[1] * Pva[pb] + wh[2] * Pva['doi']
     val_mae = {m: score(Pva[m]) for m in MODELS}
     # ---- khoảng dự báo: nửa 'hiệu chỉnh'
     ca = H.sample(cal, by, feat, origins); Pca = model.predict(ca)
@@ -163,6 +181,8 @@ def run_fold(ds: str, budget: str, r: int, k: int, root: str = ROOT, members=(0,
     q_h = float(np.quantile(norm_err(Pca['hipinn']), .9, method='higher'))
     wc = H.weights(ca['cell'], ca['origin'])
     cal_mae = {m: float(wc @ np.abs(Pca[m] - ca['y'])) for m in MODELS}
+    cm_s, cm_c = cell_mae(va, Pva), cell_mae(ca, Pca)
+    vcell = np.vstack([np.column_stack([np.zeros(len(cm_s)), cm_s]), np.column_stack([np.ones(len(cm_c)), cm_c])])
     # ---- chấm trên cell test
     te_ids = list(sp['test'])
     scens = ['do'] + (['uoc'] if budget == 'all' else [])
@@ -212,7 +232,7 @@ def run_fold(ds: str, budget: str, r: int, k: int, root: str = ROOT, members=(0,
     os.makedirs(root, exist_ok=True)
     tmp = path[:-4] + f'.{os.getpid()}.tmp.npz'
     np.savez_compressed(tmp, traj=np.vstack(T).astype(np.float64), rul=np.asarray(RUL, np.float64),
-                        info=np.asarray(json.dumps(info)))
+                        vcell=vcell.astype(np.float64), info=np.asarray(json.dumps(info)))
     os.replace(tmp, path)
     t = np.vstack(T)
     return float(np.abs(t[:, 5 + MODELS.index('hipinn')] - t[:, 4])[t[:, 0] == 0].mean())

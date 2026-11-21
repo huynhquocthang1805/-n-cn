@@ -26,7 +26,7 @@ TJU, MIT, HUST:
 | E28 | ngân sách đo: đo thưa mọi cell train thay vì đo đầy đủ một phần cell |
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
-| E33 | đưa lịch sử của cell vào dự báo: GBDT lịch sử, PINN-dự báo có lịch sử, nhánh theo đời và mô hình HiPINN ghép ba nhánh, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
+| E33 | đưa lịch sử của cell vào dự báo: GBDT lịch sử, PINN-dự báo có lịch sử, nhánh theo đời và mô hình HiPINN lấy trung vị của ba nhánh, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
 | features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
@@ -152,6 +152,7 @@ pinn-soh/
 │   ├── forecast_hist.py    GBDT có đặc trưng lịch sử SOH (E33; bản phát triển ở kho G-doan của đồ án)
 │   ├── forecast_life.py    nhánh dự báo theo đời: đời còn lại dự đoán + khuôn quỹ đạo của cell train (E33)
 │   ├── forecast_combo.py   mô hình HiPINN và các nhánh, giao thức E33
+│   ├── hipinn.py           HiPINN học một lần rồi dự báo cho một cell bất kỳ (dùng trong tools/demo.py)
 │   ├── pinn4soh_splits.json, pinn4soh_reported.csv   cách chia và số công bố của PINN4SOH
 │   ├── experiments.py      định nghĩa E13–E33 thành danh sách lượt chạy
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
@@ -251,13 +252,27 @@ python run.py report    # runs/E22 đủ 60 lượt thì tính lại bảng và 
 * Chưa tốt: RUL nằm trong ±20 % RUL thực ở 38–65 % số gốc; khoảng RUL 90 % chỉ phủ 65–84 %. Từ gốc ở 20 % đời,
   nghiệm đóng có thể đi qua điểm kỳ dị và kéo dự báo xuống giới hạn dưới 0,40 (2–5 % số quỹ đạo).
 
-### Dự báo kết hợp với GBDT lịch sử (E33)
+### Dự báo có đặc trưng lịch sử: HiPINN (E33)
 
-`pinnsoh/forecast_hist.py` là GBDT có đặc trưng lịch sử SOH lấy từ phần cải tiến của repo G-doan;
-`pinnsoh/forecast_combo.py` ghép nó với PINN-dự báo: ŷ = w·GBDT lịch sử + (1 − w)·PINN-dự báo, w chọn trên một nửa cell
-validation, nửa còn lại hiệu chỉnh khoảng 90 %. Thang đời L và chuẩn hoá chỉ tính trên cell train, gốc dự báo ở 0,2L,
-0,4L, 0,6L (E22 tính L trên mọi cell và đặt gốc theo số hàng của cell test). Hai ngân sách nhãn: 30 % số cell như
-G-doan, và mọi cell train như E22; lịch sử SOH tới gốc là dung lượng đo, hoặc ước lượng PINN-lai như E22.
+HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm):
+
+* GBDT lịch sử (`pinnsoh/forecast_hist.py`, phát triển trong kho G-doan của đồ án): GBDT dự báo độ giảm SOH với đặc
+  trưng gốc và đặc trưng lịch sử SOH (trung bình, độ lệch chuẩn, độ dốc trên nhiều cửa sổ; thay đổi theo độ trễ);
+* PINN-dự báo của E22 (23 đặc trưng gốc, nghiệm đóng của đường suy giảm);
+* nhánh theo đời (`pinnsoh/forecast_life.py`): GBDT dự đoán đời còn lại, rồi đặt khuôn quỹ đạo của K cell train gần nhất
+  lên đời dự đoán.
+
+Trung vị không có tham số cần chọn; khi một nhánh sai xa, nó đi theo hai nhánh còn lại. Phương án đầu (tổng có trọng số,
+trọng số chọn trên nửa validation dùng để chọn, chỉ 3–7 cell mỗi lượt) không giữ được ưu thế trên nửa còn lại; dạng
+trung vị được chọn sau khi đã xem kết quả test của phương án đầu, nên là kết quả sau thí nghiệm. E33 vẫn lưu phương án
+trọng số (`hipinn_w`), trung bình đều ba nhánh (`tb3`), PINN-dự báo có lịch sử (`pinn_ls`) và sai số theo cell trên hai nửa
+validation (mảng `vcell`) để đối chiếu.
+
+Giao thức (`pinnsoh/forecast_combo.py`): cùng fold với E22; cell validation chia đôi theo tên, một nửa để chọn cấu hình
+từng nhánh, nửa còn lại để hiệu chỉnh khoảng 90 % và so các mô hình trên dữ liệu không thuộc test. Thang đời L và chuẩn
+hoá chỉ tính trên cell train, gốc dự báo ở 0,2L, 0,4L, 0,6L (E22 tính L trên mọi cell và đặt gốc theo số hàng của cell
+test). Hai ngân sách nhãn: 30 % số cell và mọi cell train; lịch sử SOH tới gốc là dung lượng đo, hoặc ước lượng PINN-lai
+như E22.
 
 ```bash
 python run.py data                      # tải dữ liệu nếu chưa có
