@@ -1,0 +1,121 @@
+dataset,frac,repeat,fold,n_kept,dropped
+HUST,0.1,0,0,13,CC charge time;voltage entropy;current mean;current std
+HUST,0.1,0,1,6,voltage mean;voltage std;voltage kurtosis;voltage skewness;voltage slope;voltage entropy;current mean;current std;current skewness;CV Q;current slope
+HUST,0.1,0,2,5,voltage mean;voltage std;voltage kurtosis;CC charge time;voltage slope;voltage entropy;current mean;current std;current kurtosis;current skewness;CV charge time;current entropy
+HUST,0.1,0,3,10,voltage slope;current mean;current std;current kurtosis;current skewness;CV Q;CV charge time
+HUST,0.1,0,4,2,voltage std;voltage kurtosis;voltage skewness;CC Q;CC charge time;voltage slope;voltage entropy;current mean;current std;current kurtosis;current skewness;CV Q;CV charge time;current slope;current entropy
+HUST,0.1,1,0,9,voltage std;voltage kurtosis;voltage entropy;current mean;current std;CV Q;CV charge time;current entropy
+HUST,0.1,1,1,8,voltage std;voltage kurtosis;current mean;current std;current skewness;CV Q;CV charge time;current slope;current entropy
+HUST,0.1,1,2,9,voltage std;voltage skewness;voltage slope;voltage entropy;current mean;current std;current skewness;current entropy
+HUST,0.1,1,3,12,CC charge time;current mean;current std;current skewness;CV Q
+HUST,0.1,1,4,7,voltage std;voltage slope;voltage entropy;current mean;current std;current kurtosis;current skewness;CV Q;CV charge time;current entropy
+HUST,0.1,2,0,2,voltage mean;voltage std;voltage kurtosis;voltage skewness;CC charge time;voltage slope;voltage entropy;current mean;current std;current kurtosis;current skewness;CV Q;CV charge time;current slope;current entropy
+HUST,0.1,2,1,9,voltage std;voltage entropy;current mean;current std;current skewness;CV Q;CV charge time;current entropy
+HUST,0.1,2,2,7,voltage std;voltage kurtosis;voltage slope;voltage entropy;current mean;current std;current kurtosis;current skewness;CV Q;current slope
+HUST,0.1,2,3,5,voltage std;voltage kurtosis;voltage skewness;voltage slope;voltage entropy;current mean;current std;current skewness;CV Q;CV charge time;current slope;current entropy
+HUST,0.1,2,4,6,voltage mean;voltage std;voltage kurtosis;voltage skewness;CC charge time;voltage slope;voltage entropy;current mean;current std;current skewness;CV charge time
+HUST,0.7,0,0,15,current mean;current std
+HUST,0.7,0,1,13,voltage kurtosis;current mean;current std;CV Q
+HUST,0.7,0,2,13,voltage kurtosis;current mean;current std;CV Q
+HUST,0.7,0,3,14,current mean;current std;CV Q
+HUST,0.7,0,4,13,current mean;current std;current skewness;CV Q
+HUST,0.7,1,0,11,voltage kurtosis;current mean;current std;CV Q;current slope;current entropy
+HUST,0.7,1,1,11,voltage std;current mean;current std;current skewness;CV Q;current slope
+HUST,0.7,1,2,15,current mean;current std
+HUST,0.7,1,3,12,voltage kurtosis;voltage entropy;current mean;current std;CV Q
+HUST,0.7,1,4,14,current mean;current std;CV Q
+HUST,0.7,2,0,12,voltage std;current mean;current std;current skewness;CV Q
+HUST,0.7,2,1,13,voltage std;current mean;current std;CV Q
+HUST,0.7,2,2,14,current mean;current std;CV Q
+HUST,0.7,2,3,15,current mean;current std
+HUST,0.7,2,4,16,current mean
+MIT,0.1,0,0,17,
+MIT,0.1,0,1,14,current std;current skewness;current entropy
+MIT,0.1,0,2,15,current mean;current skewness
+MIT,0.1,0,3,14,current mean;current kurtosis;current skewness
+MIT,0.1,0,4,12,voltage std;voltage kurtosis;current std;current kurtosis;current skewness
+MIT,0.1,1,0,12,voltage std;current mean;current std;current kurtosis;current skewness
+MIT,0.1,1,1,12,current mean;current std;current kurtosis;current skewness;current slope
+MIT,0.1,1,2,11,voltage std;voltage skewness;current mean;current std;current skewness;current slope
+MIT,0.1,1,3,15,current mean;current kurtosis
+MIT,0.1,1,4,9,voltage kurtosis;current mean;current std;current kurtosis;current skewness;CV Q;current slope;current entropy
+MIT,0.1,2,0,15,current std;current skewness
+MIT,0.1,2,1,12,voltage std;voltage skewness;current mean;current kurtosis;current skewness
+MIT,0.1,2,2,14,current mean;current std;current skewness
+MIT,0.1,2,3,12,voltage kurtosis;current mean;current std;current kurtosis;current skewness
+MIT,0.1,2,4,12,current mean;current std;current kurtosis;current skewness;current slope
+MIT,0.7,0,0,17,
+MIT,0.7,0,1,17,
+MIT,0.7,0,2,17,
+MIT,0.7,0,3,16,current kurtosis
+MIT,0.7,0,4,15,current kurtosis;current skewness
+MIT,0.7,1,0,17,
+MIT,0.7,1,1,16,current skewness
+MIT,0.7,1,2,15,current std;current skewness
+MIT,0.7,1,3,16,current kurtosis
+MIT,0.7,1,4,15,current std;current skewness
+MIT,0.7,2,0,17,
+MIT,0.7,2,1,17,
+MIT,0.7,2,2,17,
+MIT,0.7,2,3,17,
+MIT,0.7,2,4,16,current kurtosis
+TJU,0.1,0,0,11,voltage mean;voltage std;voltage kurtosis;CC Q;current std;current entropy
+TJU,0.1,0,1,12,voltage mean;voltage std;CC Q;current mean;current std
+TJU,0.1,0,2,16,current mean
+TJU,0.1,0,3,11,voltage mean;voltage std;voltage kurtosis;current mean;CV charge time;current entropy
+TJU,0.1,0,4,11,voltage mean;voltage std;CC Q;CC charge time;voltage entropy;current mean
+TJU,0.1,1,0,12,voltage mean;voltage std;CC Q;current mean;CV charge time
+TJU,0.1,1,1,12,voltage mean;voltage std;CC Q;voltage entropy;current mean
+TJU,0.1,1,2,16,voltage mean
+TJU,0.1,1,3,10,voltage std;voltage skewness;CC Q;CC charge time;current mean;current std;current entropy
+TJU,0.1,1,4,13,voltage std;voltage kurtosis;voltage entropy;current mean
+TJU,0.1,2,0,10,voltage mean;voltage std;CC Q;voltage entropy;current mean;current std;current skewness
+TJU,0.1,2,1,10,voltage mean;voltage kurtosis;voltage skewness;CC Q;current mean;current kurtosis;current skewness
+TJU,0.1,2,2,12,voltage std;voltage skewness;voltage slope;voltage entropy;current mean
+TJU,0.1,2,3,12,voltage mean;voltage std;CC Q;CC charge time;current mean
+TJU,0.1,2,4,9,voltage mean;CC Q;CC charge time;voltage slope;current mean;current std;current skewness;current entropy
+TJU,0.7,0,0,14,voltage std;current mean;current std
+TJU,0.7,0,1,16,voltage mean
+TJU,0.7,0,2,17,
+TJU,0.7,0,3,16,current mean
+TJU,0.7,0,4,17,
+TJU,0.7,1,0,13,voltage mean;voltage std;CC Q;current mean
+TJU,0.7,1,1,15,voltage std;current mean
+TJU,0.7,1,2,17,
+TJU,0.7,1,3,14,voltage mean;voltage std;current mean
+TJU,0.7,1,4,14,voltage std;voltage entropy;current mean
+TJU,0.7,2,0,12,voltage mean;voltage std;CC Q;current mean;current std
+TJU,0.7,2,1,13,voltage mean;voltage std;current mean;current skewness
+TJU,0.7,2,2,13,voltage mean;voltage std;CC Q;current mean
+TJU,0.7,2,3,15,voltage mean;CC Q
+TJU,0.7,2,4,12,voltage mean;voltage std;CC Q;current mean;current std
+XJTU,0.1,0,0,14,voltage std;voltage entropy;current skewness
+XJTU,0.1,0,1,15,current std;current kurtosis
+XJTU,0.1,0,2,10,voltage mean;voltage std;voltage kurtosis;voltage entropy;current mean;current std;current kurtosis
+XJTU,0.1,0,3,7,voltage mean;voltage std;voltage kurtosis;CC charge time;voltage slope;current mean;current std;current kurtosis;current skewness;current entropy
+XJTU,0.1,0,4,5,voltage mean;voltage std;voltage kurtosis;voltage skewness;CC Q;voltage entropy;current mean;current std;current kurtosis;current skewness;CV Q;current slope
+XJTU,0.1,1,0,9,voltage mean;voltage std;voltage kurtosis;CC Q;current mean;current kurtosis;current skewness;CV Q
+XJTU,0.1,1,1,7,voltage std;voltage kurtosis;CC Q;current mean;current std;current kurtosis;current skewness;CV Q;current slope;t
+XJTU,0.1,1,2,10,voltage std;voltage kurtosis;CC Q;CC charge time;voltage entropy;current std;current kurtosis
+XJTU,0.1,1,3,16,current mean
+XJTU,0.1,1,4,7,voltage std;voltage skewness;CC charge time;current mean;current std;current kurtosis;current skewness;CV Q;current slope;current entropy
+XJTU,0.1,2,0,13,voltage std;current mean;current skewness;CV Q
+XJTU,0.1,2,1,13,voltage std;voltage entropy;current mean;current kurtosis
+XJTU,0.1,2,2,10,voltage mean;voltage std;current mean;current std;current kurtosis;CV Q;current entropy
+XJTU,0.1,2,3,5,voltage std;voltage kurtosis;voltage skewness;CC Q;CC charge time;voltage slope;current mean;current std;current kurtosis;current skewness;CV Q;current entropy
+XJTU,0.1,2,4,14,voltage mean;voltage std;current mean
+XJTU,0.7,0,0,13,voltage mean;CC charge time;voltage entropy;CV Q
+XJTU,0.7,0,1,15,voltage std;current kurtosis
+XJTU,0.7,0,2,16,voltage std
+XJTU,0.7,0,3,13,voltage mean;voltage std;current std;current kurtosis
+XJTU,0.7,0,4,14,voltage mean;CC charge time;current kurtosis
+XJTU,0.7,1,0,16,voltage mean
+XJTU,0.7,1,1,15,current mean;current skewness
+XJTU,0.7,1,2,16,voltage std
+XJTU,0.7,1,3,13,voltage mean;current mean;current std;current kurtosis
+XJTU,0.7,1,4,11,voltage std;CC Q;current mean;current skewness;CV Q;current slope
+XJTU,0.7,2,0,17,
+XJTU,0.7,2,1,17,
+XJTU,0.7,2,2,10,voltage mean;voltage std;voltage skewness;CC charge time;voltage entropy;current std;current kurtosis
+XJTU,0.7,2,3,15,voltage std;current skewness
+XJTU,0.7,2,4,14,voltage mean;current mean;current kurtosis

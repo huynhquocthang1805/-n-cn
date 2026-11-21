@@ -11,6 +11,11 @@ model kinds
 Physics losses are evaluated on (N, N+h) pairs of the same cell with a random horizon
 1 <= h <= h_max cycles.  Using a horizon (instead of only consecutive cycles) keeps the
 finite-difference derivative  (u(N+h)-u(N))/(h/1000)  well above the network's own noise.
+
+Pipeline v2 (Config.v2() bật cả năm): clean='causal', norm_pool='train' (MỌI mô hình dùng CÙNG một
+normaliser fit trên đặc trưng của mọi cell train — hợp lệ vì đặc trưng không phải nhãn — nên khác biệt
+giữa MLP và PINN chỉ còn là hàm mất mát), pair_by='cycle', nhãn tuỳ chọn, EOL theo chu kỳ.
+split='cv' dùng kiểm định chéo K-fold theo cell (data.cv_split).
 """
 from __future__ import annotations
 import json, math, os, time
@@ -21,7 +26,8 @@ import torch
 import torch.nn.functional as Fnn
 from torch.autograd import grad
 
-from .data import (Normalizer, PointSet, load_dataset, split_cells, choose_labelled, make_pointset)
+from .data import (Normalizer, PointSet, load_dataset, split_cells, choose_labelled, make_pointset, cv_split,
+                   norm_tag)
 from .models import SOHModel
 from .metrics import evaluate as eval_metrics
 
@@ -73,55 +79,199 @@ class Config:
     transfer_to: tuple = ()
     transfer_test_only: bool = True  # đánh giá trên tập TEST của bộ đích (cùng seed) -> đường chéo của
                                      # ma trận chuyển miền trùng đúng kết quả trong miền
+    # ---- pipeline v2 (mặc định = v1 để 1 387 log cũ tái lập được)
+    clean: str = 'life3sigma'        # life3sigma (v1) | causal (v2: chỉ dùng quá khứ của cell)
+    norm_pool: str = 'model'         # model (v1: semi -> mọi cell train, còn lại -> cell có nhãn) | train (v2: mọi mô hình)
+    pair_by: str = 'row'             # row (v1: h đếm theo hàng sau lọc) | cycle (v2: h đếm theo chu kỳ gốc)
+    split: str = 'seed'              # seed (70/15/15 gieo theo seed) | cv (K-fold theo cell, lặp lại)
+    fold: int = 0
+    n_folds: int = 5
+    repeat: int = 0
+    val_frac_cv: float = 0.10
+    save_model: bool = False         # lưu trọng số + normaliser (<tên>.pt) để dùng cho demo
+    # ---- cải tiến E20 (mặc định tắt -> mọi lượt cũ giữ nguyên từng bit)
+    member: int = 0                  # thành viên ensemble: đổi hạt giống khởi tạo và lấy mẫu batch,
+                                     # GIỮ NGUYÊN cách chia và tập cell có nhãn (chọn theo `seed`)
+    alpha_euler: float = 0.0         # residual='autograd': thêm phần dư Euler dọc quỹ đạo thật với cùng r
+    distill_w: float = 0.0           # > 0: GBDT học trên cell có nhãn làm mô hình thầy; dự đoán của nó trên
+                                     # cell không nhãn là nhãn mềm cho mạng (học bán giám sát kiểu tự huấn luyện)
+    save_val_predictions: bool = False
+    lam_init: float = 1.0            # giá trị khởi tạo của hệ số đầu gối lam và năng lượng hoạt hoá Ea (kJ/mol) — E26 đổi
+    ea_init_kj: float = 30.0         # để kiểm tra hai tham số có xác định được từ dữ liệu không
+    range_first: tuple = (0.85, 1.10)  # miền SOH hợp lý ở chu kỳ đầu của cell
+    paper_key: str = ''              # split='paper': khoá cách chia của PINN4SOH trong pinn4soh_splits.json (E27)
+    meas_every: float = 0.0          # > 0: cell có nhãn chỉ được đo dung lượng ở chu kỳ đầu và sau mỗi meas_every·L chu kỳ (E28)
+    meas_interp: bool = False        #   True: nhãn giữa hai lần đo lấy theo nội suy tuyến tính (lan nhãn trước khi học)
+    label_smooth: int = 0            # > 0: nhãn của cell train có nhãn được làm trơn dọc quỹ đạo (trung vị rồi trung bình
+                                     # trượt có tâm, cửa sổ label_smooth chu kỳ) trước khi học; validation, test giữ nhãn gốc
+
+    def v2(self) -> 'Config':
+        """Bật đủ năm sửa đổi của pipeline v2."""
+        self.clean, self.norm_pool, self.pair_by = 'causal', 'train', 'cycle'
+        return self
 
 
 def set_seed(seed: int):
     np.random.seed(seed); torch.manual_seed(seed)
 
 
-def metrics(y: np.ndarray, p: np.ndarray, cell_idx: Optional[np.ndarray] = None) -> Dict[str, float]:
-    return eval_metrics(y, p, cell_idx)
+def metrics(y: np.ndarray, p: np.ndarray, cell_idx: Optional[np.ndarray] = None,
+            cycle: Optional[np.ndarray] = None) -> Dict[str, float]:
+    return eval_metrics(y, p, cell_idx, cycle=cycle)
+
+
+_CACHE: Dict[tuple, list] = {}
+
+
+def _load(cfg: Config, name: str):
+    # chỉ truyền `clean` khi khác v1 -> các script cũ vá load_dataset(root, name) vẫn chạy.
+    # v2 được nhớ đệm trong tiến trình (Cell không bị sửa ở đâu cả; transform luôn tạo mảng mới).
+    if cfg.clean == 'life3sigma':
+        return load_dataset(cfg.root, name)
+    key = (cfg.root, name, cfg.clean)
+    if key not in _CACHE:
+        _CACHE[key] = load_dataset(cfg.root, name, clean=cfg.clean)
+    return list(_CACHE[key])
+
+
+def default_device() -> str:
+    """'cpu' trừ khi đặt PINNSOH_DEVICE (ví dụ 'cuda'). Mọi kết quả trong báo cáo chạy trên CPU một luồng;
+    GPU cho kết quả lệch ở mức làm tròn số thực, không tái lập từng bit."""
+    return os.environ.get('PINNSOH_DEVICE', 'cpu')
+
+
+class _Tensors:
+    """Các cột của một PointSet dưới dạng tensor, dựng MỘT lần cho cả lượt huấn luyện (trên CPU là view
+    không sao chép của mảng numpy). Lấy batch bằng index_select cho đúng các giá trị mà cách cũ
+    torch.from_numpy(a[idx]) cho ra, nên kết quả không đổi."""
+    __slots__ = ('X', 'T', 'Y', 'invT')
+
+    def __init__(self, S: PointSet, dev):
+        self.X, self.T, self.Y, self.invT = (torch.from_numpy(a).to(dev) for a in (S.X, S.T, S.Y, S.invT))
 
 
 class Trainer:
-    def __init__(self, cfg: Config, device='cpu'):
-        self.cfg, self.dev = cfg, device
-        set_seed(cfg.seed)
+    def __init__(self, cfg: Config, device=None):
+        self.cfg, self.dev = cfg, device or default_device()
+        self._tcache = {}
+        set_seed(self.train_seed)
+
+    @property
+    def train_seed(self) -> int:
+        return self.cfg.seed + 7919 * self.cfg.member
+
+    def _t(self, S: PointSet) -> _Tensors:
+        key = id(S)
+        if key not in self._tcache:
+            self._tcache[key] = (S, _Tensors(S, self.dev))     # giữ tham chiếu S để id không bị tái dùng
+        return self._tcache[key][1]
+
+    def _gather(self, S: PointSet, idx: np.ndarray):
+        tt, ix = self._t(S), torch.from_numpy(idx).to(self.dev)
+        return tt.X.index_select(0, ix), tt.T.index_select(0, ix), tt.Y.index_select(0, ix)
 
     # ---------------------------------------------------------------- data
     def prepare(self):
         cfg = self.cfg
-        cells = load_dataset(cfg.root, cfg.dataset)
+        cells = _load(cfg, cfg.dataset)
+        if cfg.split == 'paper':
+            return self._prepare_paper(cells)
         by_id = {c.cid: c for c in cells}
-        split = split_cells(cells, cfg.seed)
+        if cfg.split == 'cv':
+            split = cv_split(cells, cfg.fold, cfg.repeat, cfg.n_folds, cfg.val_frac_cv)
+        else:
+            split = split_cells(cells, cfg.seed)
         lab_ids, unl_ids = choose_labelled(split['train'], cfg.label_frac, len(cells), cfg.seed, by_id)
         self.split = dict(split, labelled=lab_ids, unlabelled=unl_ids)
         tr_lab = [by_id[i] for i in lab_ids]; tr_unl = [by_id[i] for i in unl_ids]
         va = [by_id[i] for i in split['val']]; te = [by_id[i] for i in split['test']]
         semi = cfg.model in ('pinn_semi', 'pinn_bb')
-        # Normaliser: fitted on features only (labels never used). Semi-supervised models may use all
-        # training cells' features; purely supervised models only see labelled cells.
-        self.norm = Normalizer(cfg.norm).fit(tr_lab + tr_unl if semi else tr_lab)
-        self.S_lab = make_pointset(tr_lab, self.norm, cfg.cyc)
+        # Normaliser: fitted on features only (labels never used).
+        #   v1 (norm_pool='model'): semi-supervised models use all training cells' features, purely
+        #       supervised models only labelled cells -> MLP và PINN khác nhau CẢ ở normaliser.
+        #   v2 (norm_pool='train'): mọi mô hình dùng cùng pool đặc trưng của mọi cell train.
+        pool = tr_lab + tr_unl if (semi or cfg.norm_pool == 'train') else tr_lab
+        self.norm = Normalizer(cfg.norm).fit(pool)
+        lab_only = cfg.clean != 'life3sigma'          # v2: loss dữ liệu / val / test chỉ trên hàng có nhãn
+        self.S_pairs = None
+        if cfg.meas_every > 0:                        # E28: nhãn thưa theo lịch đo; cặp vật lý lấy trên MỌI hàng của cell
+            from .budget import life_steps, sparse_cells
+            self.meas_step = life_steps(tr_lab + tr_unl, cfg.meas_every)
+            self.S_lab = make_pointset(sparse_cells(tr_lab, self.meas_step, cfg.meas_interp), self.norm, cfg.cyc,
+                                       labelled_only=True)
+            self.S_pairs = make_pointset(tr_lab, self.norm, cfg.cyc)
+        elif cfg.label_smooth > 0:
+            from .budget import smooth_cells
+            self.S_lab = make_pointset(smooth_cells(tr_lab, cfg.label_smooth), self.norm, cfg.cyc, labelled_only=lab_only)
+            self.S_pairs = make_pointset(tr_lab, self.norm, cfg.cyc, labelled_only=lab_only)
+        else:
+            self.S_lab = make_pointset(tr_lab, self.norm, cfg.cyc, labelled_only=lab_only)
         self.S_unl = make_pointset(tr_unl, self.norm, cfg.cyc) if (semi and tr_unl) else None
-        self.val = make_pointset(va, self.norm, cfg.cyc)
-        self.test = make_pointset(te, self.norm, cfg.cyc)
+        self.val = make_pointset(va, self.norm, cfg.cyc, labelled_only=lab_only)
+        self.test = make_pointset(te, self.norm, cfg.cyc, labelled_only=lab_only)
+        self.test_ids = [c.cid for c in te]
+        self.val_ids = [c.cid for c in va]
+        if cfg.distill_w > 0 and self.S_unl is not None:
+            self.teacher_unl = self._teacher(tr_lab, va, self.S_unl)
         self.n_cells = dict(train_labelled=len(tr_lab), train_unlabelled=len(tr_unl), val=len(va), test=len(te),
                             all=len(cells))
+        if cfg.meas_every > 0:
+            self.n_cells.update(meas_step=self.meas_step, lab_rows=len(self.S_lab))
         self.transfer = {}
         for tgt in cfg.transfer_to:
-            tcells = load_dataset(cfg.root, tgt)
+            tcells = _load(cfg, tgt)
             if cfg.transfer_test_only:
                 keep = set(split_cells(tcells, cfg.seed)['test'])
                 tcells = [c for c in tcells if c.cid in keep]
             self.transfer[tgt] = make_pointset(tcells, self.norm, cfg.cyc)
         return self
 
+    def _prepare_paper(self, cells):
+        """E27: cách chia của PINN4SOH (pinnsoh/paper.py). Validation = 20 % hàng ngẫu nhiên của các cell có nhãn như
+        trong bài; cell train không nhãn (chế độ ít mẫu) chỉ góp đặc trưng cho các hàm mất mát vật lý."""
+        from .paper import paper_split, row_split
+        cfg = self.cfg
+        by_id = {c.cid: c for c in cells}
+        sp = paper_split(cfg.paper_key)
+        tr_lab = [by_id[i] for i in sp['labelled']]; tr_unl = [by_id[i] for i in sp['unlabelled']]
+        te = [by_id[i] for i in sp['test']]
+        self.split = dict(train=sp['labelled'] + sp['unlabelled'], val=[], test=sp['test'], labelled=sp['labelled'],
+                          unlabelled=sp['unlabelled'])
+        self.norm = Normalizer(cfg.norm).fit(tr_lab + tr_unl)
+        self.S_pairs = None
+        lab_tr, lab_va = row_split(tr_lab, cfg.seed)
+        semi = cfg.model in ('pinn_semi', 'pinn_bb')
+        self.S_lab = make_pointset(lab_tr, self.norm, cfg.cyc, labelled_only=True)
+        self.S_unl = make_pointset(tr_unl, self.norm, cfg.cyc) if (semi and tr_unl) else None
+        self.val = make_pointset(lab_va, self.norm, cfg.cyc, labelled_only=True)
+        self.test = make_pointset(te, self.norm, cfg.cyc, labelled_only=True)
+        self.test_ids = [c.cid for c in te]
+        self.val_ids = [c.cid for c in tr_lab]
+        self.n_cells = dict(train_labelled=len(tr_lab), train_unlabelled=len(tr_unl), val=0, test=len(te),
+                            all=len(cells))
+        self.transfer = {}
+        return self
+
+    def _teacher(self, lab_cells, val_cells, S_unl: PointSet) -> torch.Tensor:
+        """GBDT (cùng cấu hình và cách chọn số cây theo validation như đối chứng E16) học trên cell có nhãn,
+        trả dự đoán của nó cho mọi điểm của cell không nhãn. Không dùng nhãn nào ngoài cell có nhãn."""
+        from .baselines import fit_predict
+        lab_only = self.cfg.clean != 'life3sigma'
+        Sl = make_pointset(lab_cells, self.norm, self.cfg.cyc, labelled_only=lab_only)
+        Sv = make_pointset(val_cells, self.norm, self.cfg.cyc, labelled_only=lab_only)
+        xy = lambda S: np.hstack([S.X, S.T])
+        p, v, hp = fit_predict('gbdt', xy(Sl), Sl.Y.ravel(), xy(Sv), Sv.Y.ravel(), xy(S_unl), self.cfg.seed)
+        self.teacher_info = dict(val_MAE=v, **hp)
+        return torch.from_numpy(np.asarray(p, dtype=np.float32).reshape(-1, 1)).to(self.dev)
+
     def _pairs(self, S: PointSet, rng, batch):
-        i, j = S.sample_pairs(rng, batch, self.cfg.h_min, self.cfg.h_max)
-        f = lambda a, idx: torch.from_numpy(a[idx]).to(self.dev)
-        return dict(x1=f(S.X, i), x2=f(S.X, j), t1=f(S.T, i), t2=f(S.T, j), y1=f(S.Y, i), y2=f(S.Y, j),
-                    invT=f(S.invT, i), first=torch.from_numpy(i == S.start[i]).to(self.dev))
+        sampler = S.sample_pairs_cycle if self.cfg.pair_by == 'cycle' else S.sample_pairs
+        i, j = sampler(rng, batch, self.cfg.h_min, self.cfg.h_max)
+        tt = self._t(S)
+        ii, jj = torch.from_numpy(i).to(self.dev), torch.from_numpy(j).to(self.dev)
+        return dict(x1=tt.X.index_select(0, ii), x2=tt.X.index_select(0, jj), t1=tt.T.index_select(0, ii),
+                    t2=tt.T.index_select(0, jj), y1=tt.Y.index_select(0, ii), y2=tt.Y.index_select(0, jj),
+                    invT=tt.invT.index_select(0, ii), first=torch.from_numpy(i == S.start[i]).to(self.dev))
 
     # ---------------------------------------------------------------- losses
     def physics(self, model: SOHModel, b: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -150,13 +300,16 @@ class Trainer:
                 out['ode'] = (((u2 - u1) + rate * (t2 - t1)) ** 2).mean()
             else:
                 out['ode'] = ((u_t + rate) ** 2).mean()
+                if cfg.alpha_euler > 0:
+                    out['euler'] = (((u2 - u1) + rate * (t2 - t1)) ** 2).mean()
         else:
             u1 = model.u(x1, t1); u2 = model.u(x2, t2)
         # label-free monotonicity with tolerance for regeneration
         out['mono'] = Fnn.relu(u2 - u1 - cfg.eps_mono).mean()
         # plausibility: fresh cell SOH in [0.85, 1.10]; global bounds
         first = b['first'].float().unsqueeze(1)
-        rng = Fnn.relu(u1 - 1.15) + Fnn.relu(0.4 - u1) + (Fnn.relu(u1 - 1.10) + Fnn.relu(0.85 - u1)) * first
+        lo, hi = cfg.range_first
+        rng = Fnn.relu(u1 - 1.15) + Fnn.relu(0.4 - u1) + (Fnn.relu(u1 - hi) + Fnn.relu(lo - u1)) * first
         out['range'] = rng.mean()
         return out
 
@@ -164,12 +317,13 @@ class Trainer:
     def fit(self, verbose=True) -> Dict:
         cfg = self.cfg
         dyn = {'mlp': 'none', 'pinn_sup': 'greybox', 'pinn_semi': 'greybox', 'pinn_bb': 'blackbox'}[cfg.model]
-        model = SOHModel(dyn=dyn, hidden=cfg.hidden, dropout=cfg.dropout, use_cycle=cfg.use_cycle,
+        model = SOHModel(dyn=dyn, n_feat=self.S_lab.X.shape[1], hidden=cfg.hidden, dropout=cfg.dropout,
+                         use_cycle=cfg.use_cycle,
                          use_knee=cfg.use_knee, use_arrhenius=cfg.use_arrhenius,
-                         act=cfg.act, arch=cfg.arch).to(self.dev)
-        opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd)
+                         act=cfg.act, arch=cfg.arch, lam_init=cfg.lam_init, ea_init_kj=cfg.ea_init_kj).to(self.dev)
+        opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.wd, foreach=True)   # gộp phép tính, kết quả như cũ
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg.max_steps, eta_min=cfg.lr * 0.05)
-        rng = np.random.RandomState(cfg.seed)
+        rng = np.random.RandomState(self.train_seed)
         n_lab = len(self.S_lab)
         use_phys = cfg.model != 'mlp'
         nl, nu = self.n_cells['train_labelled'], self.n_cells['train_unlabelled']
@@ -181,36 +335,44 @@ class Trainer:
             model.train()
             # ----- data loss on labelled points
             idx = rng.randint(0, n_lab, size=min(cfg.batch, n_lab))
-            xb = torch.from_numpy(self.S_lab.X[idx]).to(self.dev); tb = torch.from_numpy(self.S_lab.T[idx]).to(self.dev)
-            yb = torch.from_numpy(self.S_lab.Y[idx]).to(self.dev)
+            xb, tb, yb = self._gather(self.S_lab, idx)
             loss_data = Fnn.mse_loss(model.u(xb, tb), yb)
             loss = loss_data
             logs = dict(data=loss_data.item())
             # ----- physics losses on (N, N+h) pairs
             if use_phys:
                 w = w_adapt * min(1.0, step / max(1, cfg.warmup_frac * cfg.max_steps))
-                bl = self._pairs(self.S_lab, rng, cfg.batch // 2 if self.S_unl is not None else cfg.batch)
+                bl = self._pairs(self.S_lab if getattr(self, 'S_pairs', None) is None else self.S_pairs, rng,
+                                 cfg.batch // 2 if self.S_unl is not None else cfg.batch)
                 if self.S_unl is not None:
                     bu = self._pairs(self.S_unl, rng, cfg.batch // 2)
                     bl = {k: torch.cat([bl[k], bu[k]], 0) for k in bl}
                 ph = self.physics(model, bl)
                 loss = loss + w * (cfg.alpha_ode * ph.get('ode', torch.zeros(())) + cfg.beta_mono * ph['mono']
                                    + cfg.gamma_range * ph['range'])
+                if 'euler' in ph:
+                    loss = loss + w * cfg.alpha_euler * ph['euler']
                 logs.update(ode=float(ph['ode'].detach()) if 'ode' in ph else 0.0,
                             mono=float(ph['mono'].detach()), range=float(ph['range'].detach()))
+            if cfg.distill_w > 0 and getattr(self, 'teacher_unl', None) is not None:
+                iu = rng.randint(0, len(self.S_unl), size=cfg.batch // 2)
+                xu, tu, _ = self._gather(self.S_unl, iu)
+                loss_kd = Fnn.mse_loss(model.u(xu, tu), self.teacher_unl.index_select(0, torch.from_numpy(iu).to(self.dev)))
+                loss = loss + cfg.distill_w * loss_kd
+                logs['kd'] = loss_kd.item()
             opt.zero_grad(); loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0, foreach=True)
             opt.step(); sched.step()
             if step % cfg.eval_every == 0:
-                vm = self.evaluate(model, self.val)
-                hist.append(dict(step=step, val_MAE=vm['MAE'], **logs))
-                if vm['MAE'] < best - 1e-6:
-                    best, bad = vm['MAE'], 0
+                vmae = self.val_mae(model, self.val)
+                hist.append(dict(step=step, val_MAE=vmae, **logs))
+                if vmae < best - 1e-6:
+                    best, bad = vmae, 0
                     best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
                 else:
                     bad += 1
                 if verbose and step % (cfg.eval_every * 5) == 0:
-                    print(f'  step {step:5d} val MAE {vm["MAE"]:.4f} best {best:.4f} ' +
+                    print(f'  step {step:5d} val MAE {vmae:.4f} best {best:.4f} ' +
                           ' '.join(f'{k}={v:.2e}' for k, v in logs.items()), flush=True)
                 if bad >= cfg.patience:
                     break
@@ -221,41 +383,91 @@ class Trainer:
                    test=self.evaluate(model, self.test), history=hist, split=self.split)
         res['w_adapt'] = w_adapt; res['f_lab'] = f_lab
         if dyn == 'greybox':
-            res['physics_params'] = dict(lam=float(model.dyn.lam), Ea_kJ_mol=float(model.dyn.Ea) / 1e3)
+            res['physics_params'] = dict(lam=model.dyn.lam.item(), Ea_kJ_mol=model.dyn.Ea.item() / 1e3)
         for tgt, pts in self.transfer.items():
             res[f'transfer_{tgt}'] = self.evaluate(model, pts)
+        if getattr(self, 'teacher_info', None):
+            res['teacher'] = self.teacher_info
+        if cfg.save_val_predictions:
+            res['val_predictions'] = self.predict(model, self.val)
+            res['val_predictions']['cell_ids'] = self.val_ids
         if cfg.save_predictions:
             res['test_predictions'] = self.predict(model, self.test)
+            res['test_predictions']['cell_ids'] = getattr(self, 'test_ids', None)
         return res
+
+    def save_checkpoint(self, path: str):
+        """Trọng số mạng + thống kê normaliser + cấu hình: đủ để dự đoán SOH cho một cell mới."""
+        torch.save(dict(state=self.model.state_dict(), mu=self.norm.mu, sd=self.norm.sd,
+                        norm_mode=self.norm.mode, config=asdict(self.cfg)), path)
+
+    @torch.no_grad()
+    def _forward(self, model, S: PointSet) -> np.ndarray:
+        model.eval()
+        tt = self._t(S)
+        return model.u(tt.X, tt.T).cpu().numpy()
+
+    def val_mae(self, model, S: PointSet) -> float:
+        """Chỉ MAE gộp — đủ cho dừng sớm, và tính đúng như metrics.evaluate (float64, bỏ nhãn không hữu
+        hạn) nên quyết định dừng không đổi; bỏ phần tính chỉ số theo cell/EOL vốn chỉ cần ở cuối."""
+        y = np.asarray(S.Y, dtype=float).ravel(); p = np.asarray(self._forward(model, S), dtype=float).ravel()
+        keep = np.isfinite(y)
+        if not keep.all():
+            y, p = y[keep], p[keep]
+        return float(np.abs(p - y).mean())
 
     @torch.no_grad()
     def predict(self, model, S: PointSet):
-        model.eval()
-        p = model.u(torch.from_numpy(S.X).to(self.dev), torch.from_numpy(S.T).to(self.dev)).cpu().numpy()
-        return dict(y=S.Y.ravel().tolist(), p=p.ravel().tolist(), cell=S.cell.tolist())
+        p = self._forward(model, S)
+        out = dict(y=S.Y.ravel().tolist(), p=p.ravel().tolist(), cell=S.cell.tolist())
+        if S.cyc is not None:
+            out['cycle'] = S.cyc.tolist()
+        return out
 
     @torch.no_grad()
     def evaluate(self, model, S: PointSet) -> Dict[str, float]:
-        model.eval()
-        p = model.u(torch.from_numpy(S.X).to(self.dev), torch.from_numpy(S.T).to(self.dev)).cpu().numpy()
-        return metrics(S.Y, p, S.cell)
+        p = self._forward(model, S)
+        return metrics(S.Y, p, S.cell, S.cyc if self.cfg.clean != 'life3sigma' else None)
 
 
 def run_name(cfg: Config) -> str:
     extra = '' if (cfg.act == 'silu' and cfg.arch == 'mlp') else f'_{cfg.act}-{cfg.arch}'
-    return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{cfg.norm}_{cfg.cyc}{extra}'
+    if cfg.split == 'cv':
+        extra += f'_cv{cfg.repeat}-{cfg.fold}of{cfg.n_folds}'
+    elif cfg.split == 'paper':
+        extra += '_' + cfg.paper_key.replace('|', '_')
+    if cfg.meas_every > 0:
+        extra += f'_q{cfg.meas_every}' + ('i' if cfg.meas_interp else '')
+    if cfg.label_smooth > 0:
+        extra += f'_ls{cfg.label_smooth}'
+    if cfg.member:
+        extra += f'_m{cfg.member}'
+    return f'{cfg.tag + "_" if cfg.tag else ""}{cfg.dataset}_{cfg.model}_f{cfg.label_frac}_s{cfg.seed}_{norm_tag(cfg.norm)}_{cfg.cyc}{extra}'
 
 
-def run(cfg: Config, verbose=True, skip_existing=True) -> Dict:
-    os.makedirs(cfg.out_dir, exist_ok=True)
+def write_json(res: Dict, path: str):
+    """Ghi nguyên tử (file tạm rồi đổi tên): bị ngắt giữa chừng không để lại file dở dang mà lần chạy sau
+    tưởng là đã xong."""
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+    tmp = f'{path}.{os.getpid()}.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(res, f)
+    os.replace(tmp, path)
+
+
+def run(cfg: Config, verbose=True, skip_existing=True, log=True) -> Dict:
     path = os.path.join(cfg.out_dir, run_name(cfg) + '.json')
     if skip_existing and os.path.exists(path):
         with open(path) as f:
             return json.load(f)
     tr = Trainer(cfg).prepare()
     res = tr.fit(verbose=verbose)
-    with open(path, 'w') as f:
-        json.dump(res, f)
+    if cfg.save_model:
+        os.makedirs(cfg.out_dir, exist_ok=True)
+        tr.save_checkpoint(path[:-5] + '.pt')
+    write_json(res, path)
+    if not log:
+        return res
     t = res['test']
     extra = ' '.join(f'{k[9:]}:MAE={v["MAE"]:.4f}' for k, v in res.items() if k.startswith('transfer_'))
     print(f'[{run_name(cfg)}] test MAE {t["MAE"]:.4f} RMSE {t["RMSE"]:.4f} MAPE {t["MAPE"]:.2f}% '

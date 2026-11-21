@@ -1,8 +1,14 @@
-# Phiên bản đã dùng để sinh toàn bộ kết quả trong báo cáo (Python 3.11.15).
-# Bản CPU của torch là đủ; bản CUDA chỉ nhanh hơn, không đổi kết quả.
+# Phiên bản đã dùng để sinh toàn bộ kết quả của báo cáo đồ án (Python 3.11.15, CPU 1 luồng mỗi tiến trình).
+# Bản torch CPU là đủ; bản CUDA chỉ cần nếu muốn chạy với --device cuda.
+# Cài: pip install -r requirements.txt
+# (torch CPU trên Linux/Windows nhỏ hơn nhiều nếu cài từ https://download.pytorch.org/whl/cpu)
 
 torch==2.14.0
-numpy==2.4.4
-pandas==3.0.2
+numpy==2.4.6
+pandas==3.0.6
 scipy==1.17.1
-matplotlib==3.10.9
+scikit-learn==1.9.1
+matplotlib==3.11.2
+
+# chỉ cần cho slide/ (dựng lại bộ slide .pptx)
+python-pptx==1.0.2

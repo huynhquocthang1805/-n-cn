@@ -1,0 +1,825 @@
+{
+ "HUST|full|all": {
+  "train": [
+   "HUST/1-1",
+   "HUST/1-2",
+   "HUST/1-3",
+   "HUST/1-5",
+   "HUST/1-6",
+   "HUST/1-7",
+   "HUST/10-1",
+   "HUST/10-2",
+   "HUST/10-3",
+   "HUST/10-5",
+   "HUST/10-6",
+   "HUST/10-7",
+   "HUST/2-2",
+   "HUST/2-3",
+   "HUST/2-5",
+   "HUST/2-6",
+   "HUST/2-7",
+   "HUST/3-1",
+   "HUST/3-2",
+   "HUST/3-3",
+   "HUST/3-5",
+   "HUST/3-6",
+   "HUST/3-7",
+   "HUST/4-1",
+   "HUST/4-2",
+   "HUST/4-3",
+   "HUST/4-5",
+   "HUST/4-6",
+   "HUST/4-7",
+   "HUST/5-1",
+   "HUST/5-2",
+   "HUST/5-3",
+   "HUST/5-5",
+   "HUST/5-6",
+   "HUST/6-1",
+   "HUST/6-2",
+   "HUST/6-3",
+   "HUST/6-5",
+   "HUST/6-6",
+   "HUST/7-1",
+   "HUST/7-2",
+   "HUST/7-3",
+   "HUST/7-5",
+   "HUST/7-6",
+   "HUST/7-7",
+   "HUST/8-1",
+   "HUST/8-2",
+   "HUST/8-3",
+   "HUST/8-5",
+   "HUST/8-6",
+   "HUST/8-7",
+   "HUST/9-1",
+   "HUST/9-2",
+   "HUST/9-3",
+   "HUST/9-5",
+   "HUST/9-6",
+   "HUST/9-7"
+  ],
+  "test": [
+   "HUST/1-4",
+   "HUST/1-8",
+   "HUST/10-4",
+   "HUST/10-8",
+   "HUST/2-4",
+   "HUST/2-8",
+   "HUST/3-4",
+   "HUST/3-8",
+   "HUST/4-4",
+   "HUST/4-8",
+   "HUST/5-4",
+   "HUST/5-7",
+   "HUST/6-4",
+   "HUST/6-8",
+   "HUST/7-4",
+   "HUST/7-8",
+   "HUST/8-4",
+   "HUST/8-8",
+   "HUST/9-4",
+   "HUST/9-8"
+  ]
+ },
+ "HUST|n1|all": {
+  "train": [
+   "HUST/1-1"
+  ],
+  "test": [
+   "HUST/1-4",
+   "HUST/1-8",
+   "HUST/10-4",
+   "HUST/10-8",
+   "HUST/2-4",
+   "HUST/2-8",
+   "HUST/3-4",
+   "HUST/3-8",
+   "HUST/4-4",
+   "HUST/4-8",
+   "HUST/5-4",
+   "HUST/5-7",
+   "HUST/6-4",
+   "HUST/6-8",
+   "HUST/7-4",
+   "HUST/7-8",
+   "HUST/8-4",
+   "HUST/8-8",
+   "HUST/9-4",
+   "HUST/9-8"
+  ]
+ },
+ "HUST|n2|all": {
+  "train": [
+   "HUST/1-1",
+   "HUST/1-2"
+  ],
+  "test": [
+   "HUST/1-4",
+   "HUST/1-8",
+   "HUST/10-4",
+   "HUST/10-8",
+   "HUST/2-4",
+   "HUST/2-8",
+   "HUST/3-4",
+   "HUST/3-8",
+   "HUST/4-4",
+   "HUST/4-8",
+   "HUST/5-4",
+   "HUST/5-7",
+   "HUST/6-4",
+   "HUST/6-8",
+   "HUST/7-4",
+   "HUST/7-8",
+   "HUST/8-4",
+   "HUST/8-8",
+   "HUST/9-4",
+   "HUST/9-8"
+  ]
+ },
+ "HUST|n3|all": {
+  "train": [
+   "HUST/1-1",
+   "HUST/1-2",
+   "HUST/1-3"
+  ],
+  "test": [
+   "HUST/1-4",
+   "HUST/1-8",
+   "HUST/10-4",
+   "HUST/10-8",
+   "HUST/2-4",
+   "HUST/2-8",
+   "HUST/3-4",
+   "HUST/3-8",
+   "HUST/4-4",
+   "HUST/4-8",
+   "HUST/5-4",
+   "HUST/5-7",
+   "HUST/6-4",
+   "HUST/6-8",
+   "HUST/7-4",
+   "HUST/7-8",
+   "HUST/8-4",
+   "HUST/8-8",
+   "HUST/9-4",
+   "HUST/9-8"
+  ]
+ },
+ "HUST|n4|all": {
+  "train": [
+   "HUST/1-1",
+   "HUST/1-2",
+   "HUST/1-3",
+   "HUST/1-5"
+  ],
+  "test": [
+   "HUST/1-4",
+   "HUST/1-8",
+   "HUST/10-4",
+   "HUST/10-8",
+   "HUST/2-4",
+   "HUST/2-8",
+   "HUST/3-4",
+   "HUST/3-8",
+   "HUST/4-4",
+   "HUST/4-8",
+   "HUST/5-4",
+   "HUST/5-7",
+   "HUST/6-4",
+   "HUST/6-8",
+   "HUST/7-4",
+   "HUST/7-8",
+   "HUST/8-4",
+   "HUST/8-8",
+   "HUST/9-4",
+   "HUST/9-8"
+  ]
+ },
+ "MIT|full|all": {
+  "train": [
+   "MIT/2017-05-12_battery-1",
+   "MIT/2017-05-12_battery-11",
+   "MIT/2017-05-12_battery-12",
+   "MIT/2017-05-12_battery-13",
+   "MIT/2017-05-12_battery-14",
+   "MIT/2017-05-12_battery-16",
+   "MIT/2017-05-12_battery-17",
+   "MIT/2017-05-12_battery-18",
+   "MIT/2017-05-12_battery-19",
+   "MIT/2017-05-12_battery-2",
+   "MIT/2017-05-12_battery-21",
+   "MIT/2017-05-12_battery-22",
+   "MIT/2017-05-12_battery-23",
+   "MIT/2017-05-12_battery-24",
+   "MIT/2017-05-12_battery-26",
+   "MIT/2017-05-12_battery-27",
+   "MIT/2017-05-12_battery-28",
+   "MIT/2017-05-12_battery-29",
+   "MIT/2017-05-12_battery-3",
+   "MIT/2017-05-12_battery-31",
+   "MIT/2017-05-12_battery-32",
+   "MIT/2017-05-12_battery-33",
+   "MIT/2017-05-12_battery-34",
+   "MIT/2017-05-12_battery-36",
+   "MIT/2017-05-12_battery-37",
+   "MIT/2017-05-12_battery-38",
+   "MIT/2017-05-12_battery-39",
+   "MIT/2017-05-12_battery-4",
+   "MIT/2017-05-12_battery-41",
+   "MIT/2017-05-12_battery-42",
+   "MIT/2017-05-12_battery-43",
+   "MIT/2017-05-12_battery-44",
+   "MIT/2017-05-12_battery-46",
+   "MIT/2017-05-12_battery-6",
+   "MIT/2017-05-12_battery-7",
+   "MIT/2017-05-12_battery-8",
+   "MIT/2017-05-12_battery-9",
+   "MIT/2017-06-30_battery-1",
+   "MIT/2017-06-30_battery-11",
+   "MIT/2017-06-30_battery-12",
+   "MIT/2017-06-30_battery-13",
+   "MIT/2017-06-30_battery-14",
+   "MIT/2017-06-30_battery-18",
+   "MIT/2017-06-30_battery-19",
+   "MIT/2017-06-30_battery-2",
+   "MIT/2017-06-30_battery-21",
+   "MIT/2017-06-30_battery-22",
+   "MIT/2017-06-30_battery-23",
+   "MIT/2017-06-30_battery-24",
+   "MIT/2017-06-30_battery-26",
+   "MIT/2017-06-30_battery-27",
+   "MIT/2017-06-30_battery-28",
+   "MIT/2017-06-30_battery-29",
+   "MIT/2017-06-30_battery-3",
+   "MIT/2017-06-30_battery-31",
+   "MIT/2017-06-30_battery-32",
+   "MIT/2017-06-30_battery-33",
+   "MIT/2017-06-30_battery-34",
+   "MIT/2017-06-30_battery-36",
+   "MIT/2017-06-30_battery-37",
+   "MIT/2017-06-30_battery-38",
+   "MIT/2017-06-30_battery-39",
+   "MIT/2017-06-30_battery-4",
+   "MIT/2017-06-30_battery-41",
+   "MIT/2017-06-30_battery-42",
+   "MIT/2017-06-30_battery-43",
+   "MIT/2017-06-30_battery-44",
+   "MIT/2017-06-30_battery-46",
+   "MIT/2017-06-30_battery-47",
+   "MIT/2017-06-30_battery-48",
+   "MIT/2017-06-30_battery-6",
+   "MIT/2017-06-30_battery-7",
+   "MIT/2018-04-12_battery-1",
+   "MIT/2018-04-12_battery-11",
+   "MIT/2018-04-12_battery-12",
+   "MIT/2018-04-12_battery-14",
+   "MIT/2018-04-12_battery-16",
+   "MIT/2018-04-12_battery-18",
+   "MIT/2018-04-12_battery-19",
+   "MIT/2018-04-12_battery-2",
+   "MIT/2018-04-12_battery-21",
+   "MIT/2018-04-12_battery-22",
+   "MIT/2018-04-12_battery-24",
+   "MIT/2018-04-12_battery-26",
+   "MIT/2018-04-12_battery-27",
+   "MIT/2018-04-12_battery-29",
+   "MIT/2018-04-12_battery-31",
+   "MIT/2018-04-12_battery-33",
+   "MIT/2018-04-12_battery-34",
+   "MIT/2018-04-12_battery-36",
+   "MIT/2018-04-12_battery-37",
+   "MIT/2018-04-12_battery-38",
+   "MIT/2018-04-12_battery-39",
+   "MIT/2018-04-12_battery-4",
+   "MIT/2018-04-12_battery-41",
+   "MIT/2018-04-12_battery-42",
+   "MIT/2018-04-12_battery-43",
+   "MIT/2018-04-12_battery-44",
+   "MIT/2018-04-12_battery-46",
+   "MIT/2018-04-12_battery-6",
+   "MIT/2018-04-12_battery-8",
+   "MIT/2018-04-12_battery-9"
+  ],
+  "test": [
+   "MIT/2017-05-12_battery-10",
+   "MIT/2017-05-12_battery-15",
+   "MIT/2017-05-12_battery-20",
+   "MIT/2017-05-12_battery-25",
+   "MIT/2017-05-12_battery-30",
+   "MIT/2017-05-12_battery-35",
+   "MIT/2017-05-12_battery-40",
+   "MIT/2017-05-12_battery-45",
+   "MIT/2017-05-12_battery-5",
+   "MIT/2017-06-30_battery-15",
+   "MIT/2017-06-30_battery-20",
+   "MIT/2017-06-30_battery-25",
+   "MIT/2017-06-30_battery-30",
+   "MIT/2017-06-30_battery-35",
+   "MIT/2017-06-30_battery-40",
+   "MIT/2017-06-30_battery-45",
+   "MIT/2017-06-30_battery-5",
+   "MIT/2018-04-12_battery-10",
+   "MIT/2018-04-12_battery-15",
+   "MIT/2018-04-12_battery-25",
+   "MIT/2018-04-12_battery-30",
+   "MIT/2018-04-12_battery-40",
+   "MIT/2018-04-12_battery-45"
+  ]
+ },
+ "TJU|full|0-0": {
+  "train": [
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#1",
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#2",
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#3",
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#4",
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#6",
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#7",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#1",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#11",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#12",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#13",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#14",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#15",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#17",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#18",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#19",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#3",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#4",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#5",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#6",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#7",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#9",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#1",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#2",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#4",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#5",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#6",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#7",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#8",
+   "TJU/Dataset_1_NCA_battery/CY35-05_1-#1",
+   "TJU/Dataset_1_NCA_battery/CY35-05_1-#2",
+   "TJU/Dataset_1_NCA_battery/CY35-05_1-#3",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#10",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#11",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#12",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#13",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#14",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#16",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#17",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#18",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#2",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#20",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#21",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#22",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#23",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#25",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#26",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#27",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#3",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#4",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#5",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#6",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#7",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#9"
+  ],
+  "test": [
+   "TJU/Dataset_1_NCA_battery/CY25-025_1-#5",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#10",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#16",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#2",
+   "TJU/Dataset_1_NCA_battery/CY25-05_1-#8",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#3",
+   "TJU/Dataset_1_NCA_battery/CY25-1_1-#9",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#1",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#15",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#19",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#24",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#28",
+   "TJU/Dataset_1_NCA_battery/CY45-05_1-#8"
+  ]
+ },
+ "TJU|full|1-1": {
+  "train": [
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#1",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#10",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#11",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#13",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#14",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#15",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#17",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#18",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#19",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#2",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#20",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#22",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#23",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#3",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#5",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#6",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#7",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#8",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#9",
+   "TJU/Dataset_2_NCM_battery/CY35-05_1-#2",
+   "TJU/Dataset_2_NCM_battery/CY35-05_1-#3",
+   "TJU/Dataset_2_NCM_battery/CY35-05_1-#4",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#10",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#11",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#12",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#13",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#14",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#16",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#17",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#18",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#2",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#20",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#21",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#22",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#23",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#25",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#26",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#27",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#3",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#4",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#5",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#6",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#7",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#9"
+  ],
+  "test": [
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#12",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#16",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#21",
+   "TJU/Dataset_2_NCM_battery/CY25-05_1-#4",
+   "TJU/Dataset_2_NCM_battery/CY35-05_1-#1",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#1",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#15",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#19",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#24",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#28",
+   "TJU/Dataset_2_NCM_battery/CY45-05_1-#8"
+  ]
+ },
+ "TJU|full|2-2": {
+  "train": [
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_1-#1",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_1-#2",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_1-#3",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_2-#1",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_2-#3",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_4-#1",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_4-#2"
+  ],
+  "test": [
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_2-#2",
+   "TJU/Dataset_3_NCM_NCA_battery/CY25-05_4-#3"
+  ]
+ },
+ "XJTU|full|0-0": {
+  "train": [
+   "XJTU/2C_battery-1",
+   "XJTU/2C_battery-2",
+   "XJTU/2C_battery-3",
+   "XJTU/2C_battery-5",
+   "XJTU/2C_battery-6",
+   "XJTU/2C_battery-7"
+  ],
+  "test": [
+   "XJTU/2C_battery-4",
+   "XJTU/2C_battery-8"
+  ]
+ },
+ "XJTU|full|1-1": {
+  "train": [
+   "XJTU/3C_battery-1",
+   "XJTU/3C_battery-10",
+   "XJTU/3C_battery-11",
+   "XJTU/3C_battery-12",
+   "XJTU/3C_battery-13",
+   "XJTU/3C_battery-15",
+   "XJTU/3C_battery-2",
+   "XJTU/3C_battery-3",
+   "XJTU/3C_battery-5",
+   "XJTU/3C_battery-6",
+   "XJTU/3C_battery-7",
+   "XJTU/3C_battery-9"
+  ],
+  "test": [
+   "XJTU/3C_battery-14",
+   "XJTU/3C_battery-4",
+   "XJTU/3C_battery-8"
+  ]
+ },
+ "XJTU|full|2-2": {
+  "train": [
+   "XJTU/R2.5_battery-1",
+   "XJTU/R2.5_battery-2",
+   "XJTU/R2.5_battery-3",
+   "XJTU/R2.5_battery-5",
+   "XJTU/R2.5_battery-6",
+   "XJTU/R2.5_battery-7"
+  ],
+  "test": [
+   "XJTU/R2.5_battery-4",
+   "XJTU/R2.5_battery-8"
+  ]
+ },
+ "XJTU|full|3-3": {
+  "train": [
+   "XJTU/R3_battery-1",
+   "XJTU/R3_battery-2",
+   "XJTU/R3_battery-3",
+   "XJTU/R3_battery-5",
+   "XJTU/R3_battery-6",
+   "XJTU/R3_battery-7"
+  ],
+  "test": [
+   "XJTU/R3_battery-4",
+   "XJTU/R3_battery-8"
+  ]
+ },
+ "XJTU|full|4-4": {
+  "train": [
+   "XJTU/RW_battery-1",
+   "XJTU/RW_battery-2",
+   "XJTU/RW_battery-3",
+   "XJTU/RW_battery-5",
+   "XJTU/RW_battery-6",
+   "XJTU/RW_battery-7"
+  ],
+  "test": [
+   "XJTU/RW_battery-4",
+   "XJTU/RW_battery-8"
+  ]
+ },
+ "XJTU|full|5-5": {
+  "train": [
+   "XJTU/Sim_satellite_battery-1",
+   "XJTU/Sim_satellite_battery-2",
+   "XJTU/Sim_satellite_battery-3",
+   "XJTU/Sim_satellite_battery-5",
+   "XJTU/Sim_satellite_battery-6",
+   "XJTU/Sim_satellite_battery-7"
+  ],
+  "test": [
+   "XJTU/Sim_satellite_battery-4",
+   "XJTU/Sim_satellite_battery-8"
+  ]
+ },
+ "XJTU|n1|0-0": {
+  "train": [
+   "XJTU/2C_battery-1"
+  ],
+  "test": [
+   "XJTU/2C_battery-4",
+   "XJTU/2C_battery-8"
+  ]
+ },
+ "XJTU|n1|1-1": {
+  "train": [
+   "XJTU/3C_battery-1"
+  ],
+  "test": [
+   "XJTU/3C_battery-14",
+   "XJTU/3C_battery-4",
+   "XJTU/3C_battery-8"
+  ]
+ },
+ "XJTU|n1|2-2": {
+  "train": [
+   "XJTU/R2.5_battery-1"
+  ],
+  "test": [
+   "XJTU/R2.5_battery-4",
+   "XJTU/R2.5_battery-8"
+  ]
+ },
+ "XJTU|n1|3-3": {
+  "train": [
+   "XJTU/R3_battery-1"
+  ],
+  "test": [
+   "XJTU/R3_battery-4",
+   "XJTU/R3_battery-8"
+  ]
+ },
+ "XJTU|n1|4-4": {
+  "train": [
+   "XJTU/RW_battery-1"
+  ],
+  "test": [
+   "XJTU/RW_battery-4",
+   "XJTU/RW_battery-8"
+  ]
+ },
+ "XJTU|n1|5-5": {
+  "train": [
+   "XJTU/Sim_satellite_battery-1"
+  ],
+  "test": [
+   "XJTU/Sim_satellite_battery-4",
+   "XJTU/Sim_satellite_battery-8"
+  ]
+ },
+ "XJTU|n2|0-0": {
+  "train": [
+   "XJTU/2C_battery-1",
+   "XJTU/2C_battery-2"
+  ],
+  "test": [
+   "XJTU/2C_battery-4",
+   "XJTU/2C_battery-8"
+  ]
+ },
+ "XJTU|n2|1-1": {
+  "train": [
+   "XJTU/3C_battery-1",
+   "XJTU/3C_battery-10"
+  ],
+  "test": [
+   "XJTU/3C_battery-14",
+   "XJTU/3C_battery-4",
+   "XJTU/3C_battery-8"
+  ]
+ },
+ "XJTU|n2|2-2": {
+  "train": [
+   "XJTU/R2.5_battery-1",
+   "XJTU/R2.5_battery-2"
+  ],
+  "test": [
+   "XJTU/R2.5_battery-4",
+   "XJTU/R2.5_battery-8"
+  ]
+ },
+ "XJTU|n2|3-3": {
+  "train": [
+   "XJTU/R3_battery-1",
+   "XJTU/R3_battery-2"
+  ],
+  "test": [
+   "XJTU/R3_battery-4",
+   "XJTU/R3_battery-8"
+  ]
+ },
+ "XJTU|n2|4-4": {
+  "train": [
+   "XJTU/RW_battery-1",
+   "XJTU/RW_battery-2"
+  ],
+  "test": [
+   "XJTU/RW_battery-4",
+   "XJTU/RW_battery-8"
+  ]
+ },
+ "XJTU|n2|5-5": {
+  "train": [
+   "XJTU/Sim_satellite_battery-1",
+   "XJTU/Sim_satellite_battery-2"
+  ],
+  "test": [
+   "XJTU/Sim_satellite_battery-4",
+   "XJTU/Sim_satellite_battery-8"
+  ]
+ },
+ "XJTU|n3|0-0": {
+  "train": [
+   "XJTU/2C_battery-1",
+   "XJTU/2C_battery-2",
+   "XJTU/2C_battery-3"
+  ],
+  "test": [
+   "XJTU/2C_battery-4",
+   "XJTU/2C_battery-8"
+  ]
+ },
+ "XJTU|n3|1-1": {
+  "train": [
+   "XJTU/3C_battery-1",
+   "XJTU/3C_battery-10",
+   "XJTU/3C_battery-11"
+  ],
+  "test": [
+   "XJTU/3C_battery-14",
+   "XJTU/3C_battery-4",
+   "XJTU/3C_battery-8"
+  ]
+ },
+ "XJTU|n3|2-2": {
+  "train": [
+   "XJTU/R2.5_battery-1",
+   "XJTU/R2.5_battery-2",
+   "XJTU/R2.5_battery-3"
+  ],
+  "test": [
+   "XJTU/R2.5_battery-4",
+   "XJTU/R2.5_battery-8"
+  ]
+ },
+ "XJTU|n3|3-3": {
+  "train": [
+   "XJTU/R3_battery-1",
+   "XJTU/R3_battery-2",
+   "XJTU/R3_battery-3"
+  ],
+  "test": [
+   "XJTU/R3_battery-4",
+   "XJTU/R3_battery-8"
+  ]
+ },
+ "XJTU|n3|4-4": {
+  "train": [
+   "XJTU/RW_battery-1",
+   "XJTU/RW_battery-2",
+   "XJTU/RW_battery-3"
+  ],
+  "test": [
+   "XJTU/RW_battery-4",
+   "XJTU/RW_battery-8"
+  ]
+ },
+ "XJTU|n3|5-5": {
+  "train": [
+   "XJTU/Sim_satellite_battery-1",
+   "XJTU/Sim_satellite_battery-2",
+   "XJTU/Sim_satellite_battery-3"
+  ],
+  "test": [
+   "XJTU/Sim_satellite_battery-4",
+   "XJTU/Sim_satellite_battery-8"
+  ]
+ },
+ "XJTU|n4|0-0": {
+  "train": [
+   "XJTU/2C_battery-1",
+   "XJTU/2C_battery-2",
+   "XJTU/2C_battery-3",
+   "XJTU/2C_battery-5"
+  ],
+  "test": [
+   "XJTU/2C_battery-4",
+   "XJTU/2C_battery-8"
+  ]
+ },
+ "XJTU|n4|1-1": {
+  "train": [
+   "XJTU/3C_battery-1",
+   "XJTU/3C_battery-10",
+   "XJTU/3C_battery-11",
+   "XJTU/3C_battery-12"
+  ],
+  "test": [
+   "XJTU/3C_battery-14",
+   "XJTU/3C_battery-4",
+   "XJTU/3C_battery-8"
+  ]
+ },
+ "XJTU|n4|2-2": {
+  "train": [
+   "XJTU/R2.5_battery-1",
+   "XJTU/R2.5_battery-2",
+   "XJTU/R2.5_battery-3",
+   "XJTU/R2.5_battery-5"
+  ],
+  "test": [
+   "XJTU/R2.5_battery-4",
+   "XJTU/R2.5_battery-8"
+  ]
+ },
+ "XJTU|n4|3-3": {
+  "train": [
+   "XJTU/R3_battery-1",
+   "XJTU/R3_battery-2",
+   "XJTU/R3_battery-3",
+   "XJTU/R3_battery-5"
+  ],
+  "test": [
+   "XJTU/R3_battery-4",
+   "XJTU/R3_battery-8"
+  ]
+ },
+ "XJTU|n4|4-4": {
+  "train": [
+   "XJTU/RW_battery-1",
+   "XJTU/RW_battery-2",
+   "XJTU/RW_battery-3",
+   "XJTU/RW_battery-5"
+  ],
+  "test": [
+   "XJTU/RW_battery-4",
+   "XJTU/RW_battery-8"
+  ]
+ },
+ "XJTU|n4|5-5": {
+  "train": [
+   "XJTU/Sim_satellite_battery-1",
+   "XJTU/Sim_satellite_battery-2",
+   "XJTU/Sim_satellite_battery-3",
+   "XJTU/Sim_satellite_battery-5"
+  ],
+  "test": [
+   "XJTU/Sim_satellite_battery-4",
+   "XJTU/Sim_satellite_battery-8"
+  ]
+ }
+}

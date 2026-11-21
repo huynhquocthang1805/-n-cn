@@ -1,0 +1,93 @@
+% =====================================================================
+%  BÁO CÁO ĐỒ ÁN CHUYÊN NGÀNH -- theo mẫu Specialized-Project-Template-VI
+%  (hcmut-thesis.cls, dựa trên https://github.com/hoang-himself/hcmut-thesis, LPPL 1.3c)
+%  Biên dịch: pdflatex -> bibtex -> pdflatex -> pdflatex  (hoặc: latexmk -pdf main.tex)
+%  Bảng và đoạn văn có số trong generated/, hình trong graphics/: sinh bởi build.py
+% =====================================================================
+\documentclass[vietnamese,final]{hcmut-thesis}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs,tabularx,longtable,array,multirow,float,adjustbox}
+\usepackage{enumitem,placeins}
+\usepackage[nameinlink]{cleveref}   % dùng \Cref{} thay cho \ref{}
+
+% ký tự Unicode ngoài bảng mã T5 (dấu trừ trong số âm, dấu nhân)
+\DeclareUnicodeCharacter{2212}{\ensuremath{-}}
+\DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
+
+% đặt hình và bảng
+\renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}\setcounter{bottomnumber}{2}\setcounter{totalnumber}{5}
+\setlist{itemsep=2pt,topsep=4pt}
+\emergencystretch=1.5em
+
+% định lý, ký hiệu
+\theoremstyle{plain}
+\newtheorem{menhde}{Mệnh đề}[chapter]
+\theoremstyle{definition}
+\newtheorem{dinhnghia}[menhde]{Định nghĩa}
+\renewcommand{\proofname}{Chứng minh}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+
+\input{generated/so_lieu}            % \TomTat: tóm tắt có số, sinh bởi build.py
+
+% ---------------------------------------------------------------------
+%  Thông tin báo cáo
+% ---------------------------------------------------------------------
+\reporttype{Đồ án chuyên ngành}
+\title{Dự đoán thông số sức khoẻ của pin bằng mô hình học sâu được hỗ trợ từ thông tin hoá lý của hệ pin}
+\stumajor{Khoa học Máy tính}
+\reporttime{tháng 11/2026}
+
+% hcmut-thesis.cls khai báo hai trường không bắt buộc bằng \newcommand (macro \long) nên phép \ifx với \@empty luôn
+% sai và bìa luôn in "Hội đồng", "Giảng viên phản biện"; đặt lại bằng \def để chúng chỉ hiện khi được điền
+\makeatletter\def\@defcouncil{}\def\@reviewer{}\makeatother
+
+\supervisor{
+  ......................................................
+}
+\stuname{
+  \begin{tabular}{@{}l@{\hspace{1em}}l@{}}
+    Huỳnh Quốc Thắng & -- 2313178 \\
+  \end{tabular}
+}
+
+\begin{document}
+\coverpage%
+
+\frontmatter%
+\include{chapters/front/declaration}
+\include{chapters/front/acknowledgements}
+\include{chapters/front/abstract}
+\include{chapters/front/workload}
+
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+\include{chapters/front/abbreviations}
+
+\mainmatter%
+\counterwithin{equation}{chapter}
+\counterwithin{table}{chapter}
+\counterwithin{figure}{chapter}
+
+\include{chapters/main/01-introduction}
+\include{chapters/main/02-background}
+\include{chapters/main/03-methodology}
+\include{chapters/main/04-implementation}
+\include{chapters/main/05-evaluation}
+\include{chapters/main/06-conclusion}
+
+\bibliographystyle{plain}
+\bibliography{refs/references}
+
+\appendix
+\include{chapters/back/appendix-a}
+\include{chapters/back/appendix-b}
+
+\end{document}

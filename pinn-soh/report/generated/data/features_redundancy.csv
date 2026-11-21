@@ -1,0 +1,35 @@
+dataset,f1,f2,rho
+XJTU,voltage mean,voltage skewness,-0.9670
+XJTU,CC charge time,voltage slope,-0.9809
+XJTU,CC charge time,voltage entropy,0.9732
+XJTU,voltage slope,voltage entropy,-0.9540
+XJTU,current mean,current kurtosis,-0.9814
+XJTU,current mean,current skewness,-0.9873
+XJTU,current kurtosis,current skewness,0.9838
+XJTU,CV Q,CV charge time,0.9966
+XJTU,CV Q,current slope,0.9699
+XJTU,CV Q,current entropy,0.9962
+XJTU,CV charge time,current slope,0.9585
+XJTU,CV charge time,current entropy,0.9975
+XJTU,current slope,current entropy,0.9610
+TJU,current mean,current kurtosis,-0.9839
+TJU,current mean,current skewness,-0.9886
+TJU,current kurtosis,current skewness,0.9981
+TJU,CV Q,CV charge time,0.9790
+MIT,voltage kurtosis,voltage skewness,0.9808
+MIT,CC Q,CC charge time,0.9977
+MIT,current kurtosis,current skewness,0.9795
+HUST,voltage mean,voltage std,0.9580
+HUST,voltage mean,voltage kurtosis,-0.9855
+HUST,voltage mean,voltage skewness,-0.9884
+HUST,voltage std,voltage kurtosis,-0.9696
+HUST,voltage kurtosis,voltage skewness,0.9948
+HUST,CC Q,CC charge time,0.9999
+HUST,CC Q,voltage entropy,0.9876
+HUST,CC charge time,voltage entropy,0.9873
+HUST,current kurtosis,current skewness,0.9952
+HUST,CV Q,CV charge time,0.9931
+HUST,CV Q,current slope,0.9654
+HUST,CV Q,current entropy,0.9981
+HUST,CV charge time,current entropy,0.9977
+HUST,current slope,current entropy,0.9551

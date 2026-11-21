@@ -1,0 +1,353 @@
+[
+ {
+  "key": "HUST|full|all",
+  "logged": [
+   0.009325
+  ],
+  "ours": 0.009325372396841556,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "HUST|n1|all",
+  "logged": [
+   0.00147
+  ],
+  "ours": 0.0014700651168823241,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "HUST|n2|all",
+  "logged": [
+   0.001777
+  ],
+  "ours": 0.0017769336700439453,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "HUST|n3|all",
+  "logged": [
+   0.001727
+  ],
+  "ours": 0.0017266210756803815,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "HUST|n4|all",
+  "logged": [
+   0.001673
+  ],
+  "ours": 0.001672643788006841,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "MIT|full|all",
+  "logged": [
+   0.043094
+  ],
+  "ours": 0.043093645347739164,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "TJU|full|0-0",
+  "logged": [
+   0.003016
+  ],
+  "ours": 0.0030163725217183432,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "TJU|full|1-1",
+  "logged": [
+   0.008106
+  ],
+  "ours": 0.00810581270386191,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "TJU|full|2-2",
+  "logged": [
+   0.034752
+  ],
+  "ours": 0.03475196253169666,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|full|0-0",
+  "logged": [
+   0.043214
+  ],
+  "ours": 0.04321418489728655,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|full|1-1",
+  "logged": [
+   0.040833
+  ],
+  "ours": 0.04083333412806193,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|full|2-2",
+  "logged": [
+   0.808227
+  ],
+  "ours": 0.8082274144346063,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|full|3-3",
+  "logged": [
+   0.018548
+  ],
+  "ours": 0.018548439849506725,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|full|4-4",
+  "logged": [
+   0.023468
+  ],
+  "ours": 0.023467838764190674,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|full|5-5",
+  "logged": [
+   0.038881
+  ],
+  "ours": 0.038881195443017144,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n1|0-0",
+  "logged": [
+   0.017333
+  ],
+  "ours": 0.01733328898747762,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n1|1-1",
+  "logged": [
+   0.0145
+  ],
+  "ours": 0.014500021934509277,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n1|2-2",
+  "logged": [
+   0.412
+  ],
+  "ours": 0.4120000898838043,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n1|3-3",
+  "logged": [
+   0.010614
+  ],
+  "ours": 0.010614141821861267,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n1|4-4",
+  "logged": [
+   0.022459
+  ],
+  "ours": 0.02245914936065674,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n1|5-5",
+  "logged": [
+   0.017017
+  ],
+  "ours": 0.017016589641571045,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n2|0-0",
+  "logged": [
+   0.0199
+  ],
+  "ours": 0.01989995241165161,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n2|1-1",
+  "logged": [
+   0.016667
+  ],
+  "ours": 0.016666630903879803,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n2|2-2",
+  "logged": [
+   0.4565
+  ],
+  "ours": 0.45650006192071096,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n2|3-3",
+  "logged": [
+   0.009469
+  ],
+  "ours": 0.009469248354434967,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n2|4-4",
+  "logged": [
+   0.010419
+  ],
+  "ours": 0.01041881243387858,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n2|5-5",
+  "logged": [
+   0.018749
+  ],
+  "ours": 0.018748778104782104,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n3|0-0",
+  "logged": [
+   0.021857
+  ],
+  "ours": 0.021857125418526784,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n3|1-1",
+  "logged": [
+   0.019375
+  ],
+  "ours": 0.01937498152256012,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n3|2-2",
+  "logged": [
+   0.418545
+  ],
+  "ours": 0.41854548996145075,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n3|3-3",
+  "logged": [
+   0.009773
+  ],
+  "ours": 0.009772766720164906,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n3|4-4",
+  "logged": [
+   0.00904
+  ],
+  "ours": 0.009040355682373047,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n3|5-5",
+  "logged": [
+   0.018439
+  ],
+  "ours": 0.01843861596924918,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n4|0-0",
+  "logged": [
+   0.01995
+  ],
+  "ours": 0.01994999051094055,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n4|1-1",
+  "logged": [
+   0.0185
+  ],
+  "ours": 0.018499958515167236,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n4|2-2",
+  "logged": [
+   0.438964
+  ],
+  "ours": 0.4389643371105194,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n4|3-3",
+  "logged": [
+   0.009426
+  ],
+  "ours": 0.009426450729370118,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n4|4-4",
+  "logged": [
+   0.00956
+  ],
+  "ours": 0.009559740622838339,
+  "constant": true,
+  "equal": true
+ },
+ {
+  "key": "XJTU|n4|5-5",
+  "logged": [
+   0.020321
+  ],
+  "ours": 0.020320584899500796,
+  "constant": true,
+  "equal": true
+ }
+]

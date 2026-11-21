@@ -1,0 +1,30 @@
+Bảng~\ref{tab:relevance} cho thấy trong từng cell, chỉ số chu kỳ gần như tỉ lệ nghịch với SOH ($\rho$ trung vị từ −1{,}00 đến −0{,}94), điều dễ hiểu vì SOH giảm dần theo thời gian. Nhiều đặc trưng sạc cũng biến thiên chặt theo SOH; số đặc trưng có $|\rho|$ trung vị từ 0,9 trở lên là 4 ở XJTU, 9 ở TJU, 5 ở MIT và 7 ở HUST. Nhưng đặc trưng mạnh nhất không giống nhau giữa các bộ: điện lượng pha CV ở XJTU, thời gian pha CV ở TJU, trung bình điện áp ở MIT và thời gian pha CC ở HUST. Có đặc trưng còn đổi chiều theo hệ hoá học: độ nhọn dòng điện tăng theo SOH ở hai bộ LFP ($\rho$ 0{,}77 và 0{,}87) nhưng giảm ở XJTU và TJU (−0{,}70 và −0{,}98). Không đặc trưng nào yếu ($|\rho| < 0{,}3$) ở cả bốn bộ, nên không có lý do bỏ một đặc trưng chỉ vì tương quan thấp.
+
+Một số cặp đặc trưng gần như trùng nhau ($|\rho| \ge 0{,}95$ trên mọi chu kỳ của bộ): 13 cặp ở XJTU, 4 cặp ở TJU, 3 cặp ở MIT và 14 cặp ở HUST, nhưng chỉ có cặp độ nhọn dòng điện và độ bất đối xứng dòng điện trùng ở cả bốn bộ. Một cặp trùng ở bộ này lại mang hai thông tin khác nhau ở bộ khác, nên với một tập đầu vào chung không thể bỏ cột nào chỉ vì trùng lặp. Trùng lặp cũng làm phép hoán vị từng cột đánh giá thấp tầm quan trọng của mỗi cột trong cặp, vì vậy các phép thử dưới đây bỏ và hoán vị theo nhóm. Ngoài ra, tương quan đơn biến không cho biết một đặc trưng có giúp phân biệt các cell khi đi cùng các đặc trưng khác hay không, nên việc giữ hay bỏ phải được thử trực tiếp bằng mô hình.
+
+\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}
+\caption[Tương quan hạng giữa từng đầu vào và SOH]{Hệ số Spearman $\rho$ giữa từng đầu vào và SOH: trung vị qua các cell của $\rho$ tính trong từng cell (cột “trong cell”), và $\rho$ trên mọi chu kỳ của bộ (cột “gộp”). Dấu âm: đầu vào giảm khi SOH tăng.}\label{tab:relevance}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
+ & \multicolumn{2}{c}{XJTU} & \multicolumn{2}{c}{TJU} & \multicolumn{2}{c}{MIT} & \multicolumn{2}{c}{HUST} \\\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+Đầu vào & trong cell & gộp & trong cell & gộp & trong cell & gộp & trong cell & gộp \\\midrule
+trung bình điện áp & 0{,}56 & 0{,}32 & 0{,}05 & 0{,}19 & −0{,}99 & −0{,}75 & −0{,}94 & −0{,}58 \\
+độ lệch chuẩn điện áp & −0{,}51 & −0{,}54 & 0{,}24 & 0{,}27 & −0{,}25 & 0{,}11 & −0{,}91 & −0{,}58 \\
+độ nhọn điện áp & 0{,}42 & 0{,}45 & −0{,}56 & −0{,}30 & 0{,}97 & 0{,}55 & 0{,}95 & 0{,}63 \\
+độ bất đối xứng điện áp & −0{,}59 & −0{,}32 & 0{,}07 & 0{,}01 & 0{,}97 & 0{,}45 & 0{,}95 & 0{,}63 \\
+độ dốc điện áp & −0{,}19 & −0{,}06 & −0{,}95 & −0{,}61 & 0{,}88 & 0{,}28 & 0{,}45 & 0{,}13 \\
+entropy điện áp & −0{,}18 & −0{,}05 & 0{,}61 & 0{,}29 & 0{,}78 & 0{,}81 & 0{,}97 & 0{,}78 \\
+\addlinespace[2pt]
+trung bình dòng điện & 0{,}61 & 0{,}42 & 0{,}88 & 0{,}57 & −0{,}78 & −0{,}52 & −0{,}72 & −0{,}48 \\
+độ lệch chuẩn dòng điện & 0{,}64 & 0{,}48 & 0{,}54 & 0{,}41 & −0{,}62 & −0{,}41 & −0{,}39 & −0{,}37 \\
+độ nhọn dòng điện & −0{,}70 & −0{,}45 & −0{,}98 & −0{,}59 & 0{,}77 & 0{,}51 & 0{,}87 & 0{,}55 \\
+độ bất đối xứng dòng điện & −0{,}63 & −0{,}43 & −0{,}98 & −0{,}59 & 0{,}78 & 0{,}52 & 0{,}87 & 0{,}53 \\
+độ dốc dòng điện & −0{,}93 & −0{,}81 & −1{,}00 & −0{,}53 & −0{,}59 & −0{,}10 & 0{,}25 & 0{,}09 \\
+entropy dòng điện & −0{,}93 & −0{,}82 & −1{,}00 & −0{,}55 & 0{,}37 & 0{,}35 & 0{,}60 & 0{,}26 \\
+\addlinespace[2pt]
+điện lượng pha CC & −0{,}10 & −0{,}11 & 0{,}95 & 0{,}57 & 0{,}98 & 0{,}89 & 0{,}97 & 0{,}84 \\
+thời gian pha CC & −0{,}09 & −0{,}01 & 0{,}95 & 0{,}74 & 0{,}98 & 0{,}90 & 0{,}97 & 0{,}84 \\
+điện lượng pha CV & −0{,}94 & −0{,}82 & −1{,}00 & −0{,}69 & 0{,}34 & 0{,}30 & 0{,}55 & 0{,}24 \\
+thời gian pha CV & −0{,}94 & −0{,}82 & −1{,}00 & −0{,}65 & 0{,}59 & 0{,}41 & 0{,}64 & 0{,}30 \\
+\addlinespace[2pt]
+$t$ (chỉ số chu kỳ) & −0{,}94 & −0{,}74 & −1{,}00 & −0{,}93 & −1{,}00 & −0{,}72 & −1{,}00 & −0{,}92 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

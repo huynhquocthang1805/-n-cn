@@ -22,7 +22,19 @@ nói đúng thứ người dùng pin quan tâm:
     EOL_cov                        : tỉ lệ cell test thực sự cắt ngưỡng (mẫu số của hai chỉ số trên)
     RateErr                        : sai số tương đối của tốc độ suy giảm ước lượng trên cửa sổ 100 chu kỳ
 
+  Bản v2 (khi truyền `cycle` = chỉ số chu kỳ gốc) — sửa hai hạn chế của EOL_* ở trên:
+    EOL_* đếm bằng CHỈ SỐ HÀNG (sai khi có hàng bị lọc) và, khi dự đoán không bao giờ cắt ngưỡng,
+    gán sai số = len(pp) - a, tức coi như cắt ở hàng cuối, trộn quan sát bị kiểm duyệt với quan sát đủ.
+    EOLc_MAE / EOLc_bias           : sai số (CHU KỲ gốc) trên các cell mà CẢ nhãn lẫn dự đoán cùng cắt ngưỡng
+    EOLc_n                         : số cell đó (mẫu số)
+    EOLc_ntrue                     : số cell mà nhãn cắt ngưỡng
+    EOLc_miss                      : số cell nhãn cắt nhưng dự đoán KHÔNG cắt (bỏ sót — bị kiểm duyệt phải)
+    EOLc_false                     : số cell dự đoán cắt nhưng nhãn không cắt (báo động giả)
+    MonoViol100                    : tổng bước tăng ngược của dự đoán chia cho (độ dài cell / 100 chu kỳ),
+                                     trung bình theo cell — không thiên vị cell dài như MonoViol
+
 Quy ước: mọi chỉ số đều "càng nhỏ càng tốt" trừ R2 và EOL_cov.
+Hàng có nhãn không hữu hạn (cell/chu kỳ chưa đo dung lượng) bị bỏ qua khi tính chỉ số.
 """
 from __future__ import annotations
 from typing import Dict, Optional
@@ -39,8 +51,13 @@ def _first_crossing(v: np.ndarray, thr: float) -> Optional[int]:
 
 
 def evaluate(y: np.ndarray, p: np.ndarray, cell: Optional[np.ndarray] = None,
-             thr: float = EOL_THRESHOLD) -> Dict[str, float]:
+             thr: float = EOL_THRESHOLD, cycle: Optional[np.ndarray] = None) -> Dict[str, float]:
     y = np.asarray(y, dtype=float).ravel(); p = np.asarray(p, dtype=float).ravel()
+    keep = np.isfinite(y)
+    if not keep.all():
+        y, p = y[keep], p[keep]
+        cell = None if cell is None else np.asarray(cell).ravel()[keep]
+        cycle = None if cycle is None else np.asarray(cycle).ravel()[keep]
     e = p - y
     out = dict(
         MAE=float(np.abs(e).mean()),
@@ -89,9 +106,37 @@ def evaluate(y: np.ndarray, p: np.ndarray, cell: Optional[np.ndarray] = None,
         out['EOL_MAE'] = float('nan'); out['EOL_bias'] = float('nan')
     out['EOL_cov'] = float(len(eol_err) / max(1, len(np.unique(cell))))
     out['n_cells'] = int(len(np.unique(cell)))
+    if cycle is not None:
+        out.update(eol_cycle(y, p, cell, np.asarray(cycle).ravel(), thr))
     return out
 
 
+def eol_cycle(y: np.ndarray, p: np.ndarray, cell: np.ndarray, cycle: np.ndarray,
+              thr: float = EOL_THRESHOLD) -> Dict[str, float]:
+    """EOL theo CHU KỲ gốc, tách rõ quan sát đủ / bị kiểm duyệt; MonoViol chuẩn hoá theo độ dài."""
+    err, miss, false, ntrue, mv = [], 0, 0, 0, []
+    for k in np.unique(cell):
+        m = cell == k
+        yy, pp, cc = y[m], p[m], cycle[m]
+        a, b = _first_crossing(yy, thr), _first_crossing(pp, thr)
+        if a is not None:
+            ntrue += 1
+            if b is not None:
+                err.append(float(cc[b] - cc[a]))
+            else:
+                miss += 1
+        elif b is not None:
+            false += 1
+        span = max(1.0, float(cc[-1] - cc[0]))
+        d = np.diff(pp)
+        mv.append(float(d[d > 0].sum()) / (span / 100.0))
+    e = np.asarray(err, dtype=float)
+    return dict(EOLc_MAE=float(np.abs(e).mean()) if len(e) else float('nan'),
+                EOLc_bias=float(e.mean()) if len(e) else float('nan'),
+                EOLc_n=int(len(e)), EOLc_ntrue=int(ntrue), EOLc_miss=int(miss), EOLc_false=int(false),
+                MonoViol100=float(np.mean(mv)))
+
+
 # giữ tên cũ để phần code còn lại không phải đổi
-def metrics(y, p, cell_idx=None):
-    return evaluate(y, p, cell_idx)
+def metrics(y, p, cell_idx=None, cycle=None):
+    return evaluate(y, p, cell_idx, cycle=cycle)

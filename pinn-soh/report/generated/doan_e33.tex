@@ -1,0 +1,61 @@
+\FloatBarrier
+\subsection{Dự báo SOH, dung lượng và RUL: HiGBDT và HiPINN}\label{sec:e33res}
+
+\Cref{tab:e33} cho MAE của SOH dự báo ở ba thiết lập: ngân sách 30\,\% nhãn hoặc mọi cell train, lịch sử SOH của cell test là dung lượng đo hoặc ước lượng. Hai mô hình chỉ dựa vào chính cell là giữ nguyên và ngoại suy tuyến tính có sai số gấp 1{,}6--10{,}3 lần HiPINN nên không đưa vào bảng (có trong \Cref{fig:e33mae}).
+
+\begin{table}[!htbp]\centering\small
+\caption[MAE của SOH dự báo, E33]{MAE theo cell ($\times10^{-3}$) của SOH dự báo trên mọi chu kỳ đo được sau gốc ($0{,}2L$, $0{,}4L$, $0{,}6L$), trung bình qua 3 lần lặp; in đậm là thấp nhất mỗi hàng. $^{*}$/$^{\dagger}$: HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT theo kiểm định Wilcoxon ghép cặp theo cell (Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
+ & \multicolumn{3}{c}{chỉ đặc trưng gốc} & \multicolumn{5}{c}{có đặc trưng lịch sử} \\\cmidrule(lr){2-4}\cmidrule(lr){5-9}
+Bộ & \begin{tabular}[b]{@{}r@{}}GBDT\\theo tầm\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-\\dự báo\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-\\GBDT\end{tabular} & \begin{tabular}[b]{@{}r@{}}\\HiGBDT\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN có\\lịch sử\end{tabular} & \begin{tabular}[b]{@{}r@{}}Theo\\đời\end{tabular} & \begin{tabular}[b]{@{}r@{}}\\HiPINN-w\end{tabular} & \begin{tabular}[b]{@{}r@{}}\\HiPINN\end{tabular} \\\midrule
+\multicolumn{9}{@{}l}{\textit{30\,\% nhãn, lịch sử đo}} \\
+XJTU & 18{,}71 & 31{,}23 & 26{,}51 & 17{,}34 & 27{,}25 & 19{,}54 & 25{,}26 & \textbf{16{,}37}\phantom{$^{*}$} \\
+TJU & 7{,}55 & 9{,}66 & 9{,}01 & 7{,}07 & 9{,}03 & 8{,}91 & 8{,}05 & \textbf{6{,}10}$^{*}$ \\
+MIT & 12{,}07 & 16{,}72 & 14{,}47 & \textbf{10{,}24} & 18{,}27 & 12{,}72 & 12{,}00 & 10{,}29\phantom{$^{*}$} \\
+HUST & 14{,}13 & 18{,}88 & 15{,}82 & 12{,}78 & 16{,}41 & 12{,}84 & 13{,}90 & \textbf{12{,}27}$^{*}$ \\
+\addlinespace[3pt]
+\multicolumn{9}{@{}l}{\textit{mọi cell train, lịch sử đo}} \\
+XJTU & 15{,}81 & 15{,}15 & 14{,}49 & 13{,}97 & 16{,}79 & 15{,}59 & 15{,}42 & \textbf{13{,}21}$^{*}$ \\
+TJU & 6{,}30 & 7{,}44 & 6{,}99 & 5{,}89 & 7{,}08 & 7{,}00 & 6{,}84 & \textbf{5{,}09}$^{*}$ \\
+MIT & 10{,}82 & 13{,}15 & 11{,}66 & 9{,}43 & 13{,}78 & 11{,}20 & 9{,}93 & \textbf{9{,}27}$^{*}$ \\
+HUST & 12{,}17 & 13{,}61 & 11{,}79 & 11{,}24 & 12{,}54 & 11{,}24 & 10{,}90 & \textbf{10{,}35}$^{*}$ \\
+\addlinespace[3pt]
+\multicolumn{9}{@{}l}{\textit{mọi cell train, lịch sử ước lượng}} \\
+XJTU & 21{,}62 & 23{,}84 & 21{,}97 & 21{,}30 & 32{,}21 & 23{,}53 & 26{,}29 & \textbf{20{,}43}$^{*}$ \\
+TJU & 11{,}31 & 11{,}42 & 11{,}14 & 11{,}67 & 12{,}46 & 11{,}25 & 11{,}21 & \textbf{10{,}43}$^{*}$ \\
+MIT & 11{,}33 & 13{,}43 & 12{,}10 & 10{,}34 & 14{,}48 & 12{,}14 & 10{,}87 & \textbf{10{,}12}$^{*}$ \\
+HUST & 26{,}49 & 29{,}89 & 27{,}62 & 27{,}19 & 33{,}63 & 26{,}48 & 27{,}72 & \textbf{25{,}50}$^{*}$ \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\paragraph{Thêm lịch sử vào từng nhánh.} Với GBDT, đặc trưng lịch sử giúp rõ rệt: khi lịch sử là dung lượng đo, HiGBDT có MAE bằng 0{,}85--0{,}94 lần GBDT theo tầm, thấp hơn có ý nghĩa ở cả hai ngân sách trên cả bốn bộ. Cây quyết định dùng được trực tiếp những thông tin như độ dốc trên nhiều cửa sổ hay mức dao động gần đây để nhận ra cell đang suy giảm nhanh hay chậm. Với PINN-dự báo, lợi ích không đều: bản có lịch sử có MAE bằng 0{,}87--1{,}11 lần bản không có lịch sử, thấp hơn có ý nghĩa ở cả hai ngân sách trên HUST. Một cách giải thích: mạng chỉ chọn hai tham số $(a, \lambda)$ của một đường suy giảm có dạng cố định, nên thông tin thêm từ lịch sử chủ yếu giúp ước lượng tốc độ hiện tại, điều mà hai độ dốc trong $\mathbf{z}_k$ đã có một phần, trong khi số đầu vào tăng hơn gấp đôi. Vì vậy HiPINN giữ PINN-dự báo không có lịch sử làm nhánh PINN, còn lịch sử đi vào mô hình qua hai nhánh kia.
+
+\paragraph{HiPINN-w.} HiPINN-w, phương án đầu của HiPINN, chọn trọng số của ba nhánh và nhánh PINN trên nửa validation dùng để chọn; nửa này chỉ có 3--7 cell mỗi lượt. Trên chính nửa đó, HiPINN-w có MAE bằng 0{,}71--0{,}92 lần HiGBDT; trên nửa hiệu chỉnh, tỉ số này là 0{,}80--1{,}45 (\Cref{tab:e33val} ở \Cref{app:additional}), và trên cell test với lịch sử đo là 0{,}97--1{,}46, cao hơn HiGBDT ở 7/8 trường hợp. Trọng số chọn trên vài cell phản ánh chính các cell đó nhiều hơn là quy luật chung, nên ưu thế mất đi khi chuyển sang cell khác. HiPINN vì vậy dùng trung vị, không có trọng số cần chọn (\Cref{sec:e33pp}).
+
+\paragraph{HiPINN.} HiPINN có MAE thấp nhất trong tám mô hình của \Cref{tab:e33} ở 11/12 trường hợp (bộ $\times$ thiết lập). So với HiGBDT, nhánh tốt nhất khi đứng riêng, MAE của HiPINN bằng 0{,}86--1{,}01 lần và thấp hơn ở 11/12 trường hợp; theo kiểm định ghép cặp, HiPINN tốt hơn có ý nghĩa ở 10/12 và kém hơn có ý nghĩa ở 0/12 trường hợp, với 62--82\,\% số cell có sai số thấp hơn. Khi lịch sử là dung lượng đo, MAE của HiPINN bằng 0{,}62--0{,}91 lần PINN-GBDT (thấp hơn có ý nghĩa ở 8/8 trường hợp). Trung vị cũng tốt hơn hai cách ghép còn lại: MAE của HiPINN bằng 0{,}65--0{,}95 lần HiPINN-w (thấp hơn ở 12/12 trường hợp) và 0{,}79--0{,}99 lần HiPINN-tb, tức trung bình đều ba nhánh (thấp hơn ở 12/12). Khi một nhánh sai xa, trung bình bị kéo theo, còn trung vị đi theo hai nhánh còn lại. Khi lịch sử là ước lượng, khác biệt nhỏ lại: HiPINN bằng 0{,}89--0{,}98 lần HiGBDT và 0{,}84--0{,}94 lần PINN-GBDT (thấp hơn có ý nghĩa trên MIT và HUST so với mô hình này). Khi đó một phần sai số đến từ mức SOH ước lượng tại gốc, chung cho mọi mô hình: cùng ngân sách, MAE của HiPINN khi lịch sử là ước lượng bằng 1{,}09--2{,}46 lần khi lịch sử là dung lượng đo.
+
+\paragraph{Kiểm tra trên nửa hiệu chỉnh.} Dạng trung vị được chọn sau khi đã thấy kết quả test của HiPINN-w, nên cần một kiểm tra không dùng cell test. Nửa hiệu chỉnh không dùng để chọn gì cho các mô hình trong \Cref{tab:e33val}, và sai số của trung vị trên nửa này chưa được xem khi quyết định. Trên nửa này, HiPINN có MAE thấp hơn HiPINN-w ở 7/8 trường hợp; so với HiGBDT, HiPINN thấp hơn ở 4/4 bộ khi học trên mọi cell train (tốt hơn có ý nghĩa ở 3) và 2/4 bộ với 30\,\% nhãn. Kết quả cùng chiều với test khi học trên mọi cell train; với 30\,\% nhãn, ưu thế của HiPINN so với HiGBDT trên test chưa được nửa hiệu chỉnh xác nhận, nên một phần ưu thế đó có thể do chính việc chọn dạng trung vị sau khi xem kết quả.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_e33_mae.pdf}
+\caption[MAE của SOH dự báo trong E33]{MAE theo cell (trung bình qua 3 lần lặp, thang log) của các mô hình ở ba thiết lập: ngân sách 30\,\% nhãn hoặc mọi cell train, lịch sử SOH đo hoặc ước lượng.}\label{fig:e33mae}
+\end{figure}
+
+\paragraph{Phần cuối đời.} \Cref{fig:e33tail} chia sai số theo phần đời của chính cell (mọi cell train, lịch sử đo). Sai số của các mô hình nhìn chung tăng về cuối đời, và với HiPINN lớn nhất ở 10\,\% đời cuối trên cả bốn bộ. Ở MIT, MAE trên 10\,\% đời cuối là 26{,}2 với PINN-GBDT và 20{,}6 với HiPINN, giảm 22\,\% ($\times10^{-3}$; HiGBDT 20{,}8). Phần sai số còn lại chủ yếu là dự báo cao hơn thực tế: độ lệch trung bình ở đoạn này là +12{,}7 với HiPINN và +15{,}3 với HiGBDT. Thời điểm gãy mỗi cell một khác, nên dự báo trực tiếp thành một đường trung bình thoải hơn thực tế. Nhánh theo đời đặt hình dạng suy giảm lên đời dự đoán của từng cell nên độ lệch chỉ còn +3{,}6, nhưng MAE của nó (21{,}7) không thấp hơn vì khi đời bị đoán sai thì điểm gãy cũng bị đặt sai chỗ. Ở đoạn này, GBDT theo tầm có MAE thấp nhất (19{,}2). Trên bốn bộ, MAE ở 10\,\% đời cuối của HiPINN thấp hơn PINN-GBDT ở 4/4 bộ với mọi cell train và 4/4 bộ với 30\,\% nhãn.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_e33_tail.pdf}
+\caption[Sai số dự báo theo phần đời của cell]{MAE ($\times10^{-3}$) của SOH dự báo theo phần đời của chính cell (chu kỳ chia chu kỳ cuối ghi được), mọi cell train, lịch sử đo, trung bình theo cell. Phần đời chỉ dùng để chia nhóm khi chấm, mô hình không biết nó.}\label{fig:e33tail}
+\end{figure}
+
+\Cref{fig:e33traj} minh hoạ dự báo cho một cell mỗi bộ. Ở mỗi tầm, HiPINN trùng với nhánh nằm giữa trong ba nhánh, nên đường của nó gãy khúc ở chỗ hai nhánh cắt nhau. Hình chỉ vẽ hai nhánh có đặc trưng lịch sử; ở những đoạn HiPINN không trùng đường nào trong hai đường đó, nhánh nằm giữa là PINN-dự báo.
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_e33_traj.pdf}
+\caption[Dự báo của HiPINN so với SOH đo được]{Dự báo của HiPINN, HiGBDT và nhánh theo đời so với SOH đo được cho một cell test mỗi bộ: mọi cell train, lịch sử đo, lần lặp 0, gốc ở $0{,}4L$; trong các cell còn ít nhất $0{,}25L$ chu kỳ đo sau gốc, chọn cell có sai số của HiPINN ở trung vị. Khoảng 90\,\% theo dự đoán phù hợp. PINN-dự báo, nhánh thứ ba của HiPINN, không vẽ để hình dễ đọc.}\label{fig:e33traj}
+\end{figure}
+
+\paragraph{Kiểm định và trung bình ngược chiều.} Ở TJU, có 2 phép so mà kiểm định ghép cặp và MAE trung bình chỉ hai hướng khác nhau: phần lớn cell đi theo hướng của kiểm định, còn trung bình bị kéo bởi vài cell sai rất lớn; bỏ 1--2 cell như vậy thì trung bình cũng đổi chiều. Cell gây chênh lệch lớn nhất là CY25-025\_1-\#1 của TJU: MAE của PINN-dự báo 241, của HiGBDT 42, của HiPINN 42 ($\times10^{-3}$).
+
+\paragraph{RUL và khoảng dự báo.} \Cref{tab:e33rul} ở \Cref{app:additional} cho MAE của RUL. Với mọi cell train, RUL của HiPINN có MAE bằng 0{,}90--1{,}70 lần PINN-GBDT khi lịch sử đo (thấp hơn có ý nghĩa trên TJU và MIT) và 0{,}90--1{,}36 lần khi lịch sử ước lượng (thấp hơn có ý nghĩa trên TJU và MIT); so với HiGBDT, tỉ số là 0{,}34--0{,}80 khi lịch sử đo (thấp hơn có ý nghĩa trên cả bốn bộ). HiGBDT dự báo RUL dài hơn thực tế trên MIT và HUST (sai số có dấu trung bình MIT +201 và HUST +477 chu kỳ), cùng nguyên nhân với độ lệch dương ở phần cuối đời. Khoảng SOH 90\,\% của HiPINN phủ 89--93\,\% khi lịch sử đo và 69--90\,\% khi lịch sử ước lượng; khoảng này hiệu chỉnh trên lịch sử đo của cell validation nên hẹp hơn mức cần khi mức SOH tại gốc cũng là ước lượng.
+
+\paragraph{Nên dùng mô hình nào.} Ba mô hình HiPINN, HiGBDT và PINN-GBDT được so theo cùng một quy tắc: mô hình được chọn phải có MAE thấp hơn từng mô hình còn lại trên ít nhất ba bộ và không kém có ý nghĩa trên bộ nào. Vì cả quy tắc lẫn dạng trung vị của HiPINN được đặt sau khi đã có kết quả test, lựa chọn dưới đây là gợi ý cho lần dùng sau, chưa được kiểm chứng trên dữ liệu mới. Với SOH, quy tắc chọn HiPINN ở cả ba thiết lập. Với RUL, quy tắc chọn HiPINN cho cả hai kịch bản lịch sử.

@@ -1,0 +1,11 @@
+Mọi lượt chạy dùng một luồng và hạt giống cố định, nên trên cùng loại CPU và cùng phiên bản thư viện, chạy lại phải cho dự đoán trùng từng bit. Các kiểm tra đã làm:
+
+\begin{enumerate}
+\item Hai mươi lượt mẫu phủ mọi loại thí nghiệm chính (MLP, PINN-semi, PINN-sup, PINN hộp đen, Ridge, GPR, GBDT, kiểm toán rò rỉ, chuyển miền), chạy lại vào thư mục tạm và so với giá trị lưu của lần chạy báo cáo đã nộp: 20 trên 20 lượt có MAE theo cell và mã băm của toàn bộ dự đoán test trùng từng bit.
+\item Kiểm toán rò rỉ (160 lượt của bốn cách làm sai và 40 lượt tham chiếu theo cell) được chạy lại toàn bộ; 5 trên 5 lượt có giá trị tham chiếu lưu sẵn trùng từng bit, và các tỉ số ở Bảng~\ref{tab:leak} khớp với báo cáo đã nộp.
+\item PINN-lai, GBDT và PINN-semi trên 39 nhóm của PINN4SOH (1.002 lượt) được chạy lại toàn bộ và so với kết quả của lần chạy trước: 216 trên 216 giá trị trung bình (MAE, RMSE và độ lệch chuẩn qua ba hạt giống của PINN-lai, GBDT và trung bình ba PINN-semi, với hai cách tiền xử lý, trên 12 chế độ) trùng từng bit; MAE và RMSE theo cell của cả 3.852 dòng trùng ở 6 chữ số có nghĩa đã lưu.
+\item GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\ref{sec:dt_pp}) cho MAE theo cell trùng từng bit với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\,\% nhãn, lần lặp 0, fold 0).
+\item Mã gốc PINN4SOH: giá trị loss đơn điệu tính lại trên các hàng train mà lớp đọc dữ liệu của bài tạo ra khớp với nhật ký công bố ở cả 39 nhóm, tức dữ liệu train trùng với lần chạy của bài (Mục~\ref{sec:rerun}); sai số chạy lại không trùng số công bố vì khác phần cứng và thư viện.
+\end{enumerate}
+
+Khác CPU (ví dụ AVX-512 so với AVX2) hoặc khác phiên bản PyTorch có thể làm kết quả lệch ở mức làm tròn số thực; khi đó các kết luận không đổi nhưng chữ số cuối trong bảng có thể khác.
