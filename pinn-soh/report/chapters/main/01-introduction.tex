@@ -61,9 +61,10 @@ thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU
         không có gradient (\Cref{sec:rerun}).
   \item Phân tích đặc trưng đầu vào bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên validation
         (\Cref{ch:dactrung}).
-  \item Dự báo SOH, dung lượng và RUL: PINN-GBDT (trung bình PINN-dự báo và GBDT theo tầm), rồi hai mô hình có đặc
-        trưng lịch sử là HiGBDT và HiPINN, trung vị của HiGBDT, PINN-dự báo và nhánh theo đời dựa trên đời còn lại dự
-        đoán; đánh giá trong một giao thức đã sửa các điểm rò rỉ còn lại (\Cref{sec:mo_rong,sec:e33pp}).
+  \item Đo dung lượng thưa trên mọi cell và cập nhật ước lượng khi cell mới được đo vài lần (\Cref{sec:mo_rong}).
+  \item Dự báo SOH, dung lượng và RUL với hai mô hình có đặc trưng lịch sử: HiGBDT và HiPINN, trung vị của HiGBDT,
+        PINN-dự báo và nhánh theo đời dựa trên đời còn lại dự đoán; thang đời, bộ chuẩn hoá và mọi lựa chọn chỉ dựa
+        vào cell train và validation (\Cref{sec:e33pp}).
   \item Mã nguồn chạy được từ dữ liệu tới báo cáo bằng một lệnh, kiểm tra tái lập từng bit (\Cref{app:source-code}).
 \end{itemize}
 

@@ -235,18 +235,19 @@ trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`resu
 * Chuẩn hoá theo cả vòng đời cell, lọc ngoại lai dùng cả vòng đời và fit normaliser trên cell test bị loại vì là rò rỉ
   (kiểm toán E15).
 
-### Dự báo so với SOH đo được (E22)
+### Dự báo so với SOH đo được (E22, không còn trong báo cáo)
 
 `pinnsoh/forecast.py`: tại gốc k, GBDT theo tầm và PINN-dự báo (mạng trả hai tham số của nghiệm đóng của động học xám)
 dự báo SOH ở mọi chu kỳ sau k; PINN-GBDT lấy trung bình hai nhánh, rồi suy ra dung lượng, RUL và khoảng 90 %. Cell
 test không được đo dung lượng: lịch sử tới gốc là ước lượng PINN-lai (E20, 70 % nhãn), SOH đo được chỉ dùng để chấm.
-Báo cáo có sơ đồ mô hình (Chương 3) và sáu hình so dự báo với số đo (Chương 5): một và ba cell mỗi bộ, ba gốc dự báo cho
-cùng một cell, SOH dự báo so với đo ở ba tầm, sai số theo tầm, RUL dự báo so với RUL thực.
+Báo cáo đã nộp có mục dự báo này; báo cáo hiện tại thay nó bằng E33 (mục dưới), chạy trên cùng fold, với PINN-GBDT
+học lại làm mốc so sánh. Bảng và hình của E22 vẫn tính lại được từ `runs/E22`.
 
 ```bash
 python run.py E20       # E22 chỉ cần các lượt PINN-semi và GBDT ở 70 % nhãn
 python run.py E22
-python run.py report    # runs/E22 đủ 60 lượt thì tính lại bảng và vẽ lại các hình dự báo
+python analysis/analyze_e22.py                 # bảng results/e22_*.csv
+python analysis/figures_report.py e22_traj     # và e22_cells, e22_origins, e22_parity, e22_horizon, e22_rul
 ```
 
 * Chạy lại toàn bộ (240 lượt E20 ở 70 % nhãn, 60 lượt E22): 188/188 ô của ba bảng dự báo trùng với báo cáo đã nộp.

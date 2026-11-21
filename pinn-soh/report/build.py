@@ -14,13 +14,13 @@ Nguồn số liệu, không số nào gõ tay vào bảng:
   * results/features_*.csv (analysis/features.py): phân tích đặc trưng; một bản sao ở report/generated/data/;
   * results/thesis_leakage.csv (analysis/analyze_thesis.py): kiểm toán rò rỉ chạy lại; bản sao ở report/generated/data/;
   * số lượt chạy của từng thí nghiệm: pinnsoh/experiments.py;
-  * dự báo (E22): runs/E22 và runs/E20 -> analysis/analyze_e22.py, analysis/figures_report.py; bản sao bảng ở
-    report/generated/data/e22_*.csv, hình ở report/graphics/fig_e22_*.pdf;
-  * dự báo có đặc trưng lịch sử, HiPINN (E33): runs/E33 -> analysis/analyze_e33.py, analysis/figures_report.py; bản sao
-    bảng ở report/generated/data/e33_*.csv, hình ở report/graphics/fig_e33_*.pdf; bảng mô hình cập nhật có đặc trưng
-    lịch sử và số của lần chạy trước lấy từ các tệp kết quả trong kho phát triển G-doan (biến môi trường GDOAN).
+  * dự báo SOH, dung lượng, RUL với HiGBDT và HiPINN (E33): runs/E33 -> analysis/analyze_e33.py,
+    analysis/figures_report.py; bản sao bảng ở report/generated/data/e33_*.csv, hình ở report/graphics/fig_e33_*.pdf;
+  * HiGBDT cho bài toán cập nhật (E34): runs/E34 -> analysis/analyze_e34.py (khi chưa đủ lượt, dùng kết quả đã lưu của
+    kho phát triển G-doan, biến môi trường GDOAN); bản sao bảng ở report/generated/data/e34_*.csv.
 Các con số trong lời văn của Chương 5 (kết quả từ báo cáo đã nộp) chép từ lời văn của báo cáo đó, trừ mục dự báo
-(sinh từ kết quả chạy lại E22) và mục HiPINN (sinh từ E33).
+(sinh từ E33). Mục dự báo E22 của báo cáo đã nộp không còn trong báo cáo: E33 thay nó, với PINN-GBDT của E22 học lại
+làm mốc so sánh.
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -86,9 +86,6 @@ def keep_copy(src, name):
 
 
 # --------------------------------------------------------------------------- bảng lấy nguyên từ báo cáo đã nộp
-E22_NAMES = [('mô hình kết hợp', 'PINN-GBDT'), ('Kết hợp', 'PINN-GBDT')]      # tên mô hình của E22 trong bảng đã nộp
-
-
 def thesis_block(label, edits=()):
     s = open(THESIS, encoding='utf-8').read()
     i = s.index(f'\\label{{{label}}}')
@@ -108,11 +105,28 @@ def thesis_tables():
     write('bang_nguon_loi.tex', thesis_block('tab:source'))
     write('bang_mae_chinh.tex', thesis_block('tab:allmae', [(
         r'mô hình cuối là PINN-lai dùng hay không dùng lịch sử theo validation (Mục~\ref{sec:histres}).',
-        r'mô hình cuối là PINN-lai dùng hay không dùng lịch sử của cell theo validation (Mục~\ref{sec:dt_bo}); cả hai '
-        r'là phân tích hậu kiểm.')]))
-    write('bang_rmse.tex', thesis_block('tab:allrm'))
+        r'PINN-lai + lịch sử là PINN-lai có thêm đặc trưng lịch sử của cell ở những trường hợp validation chọn (TJU và '
+        r'HUST từ 30\,\% nhãn), các hàng khác trùng PINN-lai (Mục~\ref{sec:dt_bo}); cả hai là phân tích hậu kiểm.'),
+        ('Mô hình cuối', head2('PINN-lai', '+ lịch sử'))]))
+    write('bang_rmse.tex', thesis_block('tab:allrm', [
+        ('MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột.',
+         'MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. PINN-lai + lịch sử như ở '
+         'Bảng~\\ref{tab:allmae}.'),
+        ('Mô hình cuối &', 'PINN-lai + lịch sử &')]))
     write('bang_ngan_sach.tex', thesis_block('tab:e28'))
-    write('bang_du_bao.tex', thesis_block('tab:e22soh', E22_NAMES) + '\n' + thesis_block('tab:e22rul', E22_NAMES))
+    write('bang_du_bao_tham_so.tex', fcset_table())
+
+
+def fcset_table():
+    """Tham số của từng bộ cho bài toán dự báo, lấy từ bảng của báo cáo đã nộp, bỏ cột ba tầm báo cáo của E22."""
+    blk = thesis_block('tab:fcset', [
+        ('$L$ là trung vị số chu kỳ ghi được, $\\tau$ là ngưỡng cuối đời.',
+         '$L$ là trung vị số chu kỳ ghi được của mọi cell trong bộ (khi học, $L$ tính lại trên cell train của từng '
+         'fold), $\\tau$ là ngưỡng cuối đời.'),
+        ('{lrrcrrr}', '{lrrrrr}'), (' & Tầm $0{,}1L$, $0{,}25L$, $0{,}5L$', '')])
+    out = re.sub(r'^(\w+ & [^&]+ & [^&]+) & [0-9, ]+ &', r'\1 &', blk, flags=re.M)
+    assert out.count('\n') == blk.count('\n') and len(re.findall(r'^\w+ & ', out, flags=re.M)) == 5, out
+    return out
 
 
 def history_table():
@@ -157,8 +171,8 @@ EXPS = [(['E13'], 'Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn
         (['E29dev', 'E29'], 'Đầu vào có lịch sử của cell: chọn dạng trên validation; PINN-semi, MLP, GBDT'),
         (['E28'], 'Ngân sách đo: đo thưa mọi cell train theo 4 lịch đo'),
         (['E32'], 'GBDT-cập nhật: cập nhật SOH từ lần đo gần nhất'),
-        (['E22', 'E23'], 'Dự báo SOH, dung lượng, RUL; bản có xét hồi phục dung lượng'),
-        (['E33'], 'Dự báo có đặc trưng lịch sử: HiGBDT, HiPINN và các nhánh, 2 ngân sách nhãn, 3 lần lặp'),
+        (['E33'], 'Dự báo SOH, dung lượng, RUL: HiGBDT, HiPINN, các nhánh và mô hình đối chứng, 2 ngân sách nhãn, '
+                  '3 lần lặp'),
         (['E34'], 'HiGBDT cho bài toán cập nhật: GBDT-cập nhật, HiGBDT-$\\Delta$, -R, -V trên 4 lịch đo'),
         (['E27'], 'PINN-lai, GBDT và PINN-semi trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống')]
 
@@ -699,8 +713,8 @@ def features_parts(F, L_leak):
            else '') + ', nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist}, '
         'Hình~\\ref{fig:e29pinn} và~\\ref{fig:e29lai}) '
         'giúp trên TJU và HUST khi có từ 30\\,\\% nhãn nhưng làm kém đi trên XJTU và ở 10\\,\\% nhãn, khi số chiều đầu vào '
-        'tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy mô hình chính không dùng chúng, và mô hình cuối chỉ '
-        'dùng ở các trường hợp validation chọn (phân tích hậu kiểm). '
+        'tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy PINN-lai không dùng chúng, còn biến thể PINN-lai + '
+        'lịch sử chỉ dùng chúng ở các trường hợp validation chọn (phân tích hậu kiểm). '
         + ('Nhiệt độ là hằng số trên ba bộ nên không mang thông tin; trên TJU, thêm $1/T$ vào GBDT cho tỉ số '
            + tT_txt.replace('$^{*}$', ' (có ý nghĩa)').replace('$^{\\dagger}$', ' (có ý nghĩa)')
            + ', tức thay đổi dưới 1\\,\\%, nên nhiệt độ chỉ được giữ trong thừa số Arrhenius của động học. '
@@ -798,7 +812,7 @@ def best_rmse_table(S):
     return tab, rows
 
 
-def compare_chapter(S, T, B, L_leak, D22=None, E33=None):
+def compare_chapter(S, T, B, L_leak, E33=None):
     pub = {k: PAPER_MAE[k] for k in ROWS}
     out = [r'\begin{table}[!htbp]\centering\small',
            r'\caption[Đối chiếu với số liệu công bố của bài PINN4SOH]{MAE theo cell ($\times10^{-3}$) trên đúng cách chia '
@@ -889,30 +903,22 @@ def compare_chapter(S, T, B, L_leak, D22=None, E33=None):
         rf'Đồ án không tái lập được chính xác số công bố của PINN4SOH: mã gốc chạy lại cho sai số bằng {rng(B["rep_full"])} '
         rf'lần ở chế độ đầy đủ, cao hơn có ý nghĩa theo cell ở {B["rep_sig"][1]} trên 4 bộ (Mục~\ref{{sec:rerun}}).',
     ]
-    if D22 is not None:                                     # dự báo: từ kết quả chạy lại E22
-        _, t22, r22 = _e22_get(D22)
-        fc_cov = pct_rng([t22(ds, sc, 'cov') for ds in DS for sc in ('do', 'uoc')])
-        fc_rcov = pct_rng([r22(ds, sc, 'cov') for ds in DS for sc in ('do', 'uoc')])
-        fc_in20 = ', '.join(f'{pct(r22(ds, "uoc", "in20_ket_hop"))} ({ds})' for ds in DS)
-    else:                                                   # số của báo cáo đã nộp
-        fc_cov, fc_rcov = r'78--84\,\%', r'62--84\,\%'
-        fc_in20 = r'38\,\% (XJTU), 65\,\% (TJU), 48\,\% (MIT), 52\,\% (HUST)'
     internal = [
         r'GBDT đơn lẻ có sai số thấp hơn PINN-semi ở 14/16 trường hợp bộ $\times$ mức nhãn (10 có ý nghĩa); PINN-semi chỉ '
         r'vượt GBDT có ý nghĩa ở HUST 30\,\% nhãn (Mục~\ref{sec:labels}). PINN-lai cố định vẫn kém GBDT có ý nghĩa ở TJU 70\,\%.',
         r'Ở 70\,\% nhãn, PINN-semi kém MLP có ý nghĩa trên TJU (tỉ số 1{,}09); với kiểm định bảo thủ ở mức fold, lợi ích ở '
         r'30\,\% nhãn chỉ đứng vững trên MIT.',
-        r'Khoảng dự đoán 90\,\% có độ phủ thực tế 84{,}9--92{,}6\,\% (trung bình 88{,}8\,\%), 14--25\,\% số cell có độ phủ '
-        r'dưới 80\,\%; khoảng dự báo SOH 90\,\% chỉ phủ ' + fc_cov + ' và khoảng RUL ' + fc_rcov + '.',
-        r'Tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật chỉ là ' + fc_in20 + '.',
+        r'Khoảng dự đoán 90\,\% của ước lượng SOH có độ phủ thực tế 84{,}9--92{,}6\,\% (trung bình 88{,}8\,\%), '
+        r'14--25\,\% số cell có độ phủ dưới 80\,\%.',
         r'Tham số vật lý không được dữ liệu xác định: $\lambda$ ở mức 0{,}96--0{,}97 trên mọi bộ (khởi tạo 1), $E_a$ dịch '
         r'không quá 1{,}1\,kJ/mol; tốc độ $r$ học được trung bình 0{,}001--0{,}063 trong khi tốc độ suy giảm thực đo là '
         r'0{,}137--0{,}356 SOH trên 1\,000 chu kỳ.',
         r'Bộ lọc xu thế không bảo đảm SOH dự đoán không tăng (đầu ra tăng ở 28--44\,\% số bước); ép không tăng làm sai số '
         r'trên XJTU tăng 1{,}76--1{,}94 lần vì dung lượng đo được của XJTU tăng ở đầu đời.',
     ]
-    if E33 is not None and (min(E33['cov_h']) < 0.9 or min(E33['cov_rul']) < 0.9):
-        internal.append(r'Với HiPINN (\Cref{sec:e33res}), khoảng SOH 90\,\% theo dự đoán phù hợp phủ '
+    if E33 is not None:
+        assert min(E33['cov_h']) < 0.9 or min(E33['cov_rul']) < 0.9, 'khoảng dự báo đã đạt độ phủ: sửa câu "chưa đạt"'
+        internal.insert(3, r'Với HiPINN (\Cref{sec:e33res}), khoảng SOH 90\,\% theo dự đoán phù hợp phủ '
                         + pct_rng(E33['cov_h']) + r' tuỳ bộ và thiết lập, khoảng RUL 90\,\% phủ '
                         + pct_rng(E33['cov_rul']) + r'; tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật khi lịch sử là ước '
                         r'lượng là ' + pct_rng(E33['in20']) + r'. Ở 10\,\% đời cuối của ' + E33['worst']
@@ -932,7 +938,7 @@ def compare_chapter(S, T, B, L_leak, D22=None, E33=None):
 
 
 # --------------------------------------------------------------------------- chạy lại các thí nghiệm của đồ án
-def reproducibility(B, FC=None):
+def reproducibility(B):
     """Kiểm tra tái lập: kiểm toán rò rỉ so với các lượt tham chiếu; 20 lượt mẫu; E27 chạy lại so với lần chạy đầu
     (generated/data/e27_lan_dau.json). Kết quả được lưu ở generated/data/tai_lap.json để dựng được khi không có runs/."""
     path = os.path.join(DATA, 'tai_lap.json')
@@ -972,9 +978,7 @@ def reproducibility(B, FC=None):
         rec['e27'] = dict(runs=len(os.listdir('runs/E27')), summary_n=3 * len(ref['tong_hop']), summary_same=int(same),
                           cells=len(D), cells_same=bool(sha == ref['theo_cell']['sha1']
                                                         and len(D) == ref['theo_cell']['dong']))
-    if FC is not None and len(glob.glob('runs/E22/fc_*.npz')) >= E22_RUNS:
-        rec['e22'] = dict(FC, runs_e22=len(glob.glob('runs/E22/fc_*.npz')),
-                          runs_e20=len(glob.glob('runs/E20/*_f0.7_*.json')))
+    rec.pop('e22', None)                                  # mục dự báo E22 không còn trong báo cáo (E33 thay)
     log = os.path.join(DATA, 'kiem_tai_lap.txt')
     if os.path.exists(log):
         mm = re.search(r'(\d+)/(\d+) lượt giống từng bit', open(log).read())
@@ -1004,12 +1008,6 @@ def reproducibility(B, FC=None):
                      'trên 12 chế độ) trùng từng bit; '
                      + (f'MAE và RMSE theo cell của cả {thou(e["cells"])} dòng trùng ở 6 chữ số có nghĩa đã lưu.'
                         if e['cells_same'] else 'bảng MAE và RMSE theo cell không trùng hoàn toàn ở 6 chữ số có nghĩa đã lưu.'))
-    if 'e22' in rec:
-        e = rec['e22']
-        items.append(f'Dự báo (Mục~\\ref{{sec:forecastres}}) được chạy lại toàn bộ: {thou(e["runs_e20"])} lượt ước lượng '
-                     f'PINN-lai ở 70\\,\\% nhãn làm lịch sử, rồi {e["runs_e22"]} lượt dự báo; {thou(e["same"])} trên '
-                     f'{thou(e["n"])} ô của ba bảng dự báo (Bảng~\\ref{{tab:fcset}}, \\ref{{tab:e22soh}} và '
-                     '\\ref{tab:e22rul}) trùng với báo cáo đã nộp.')
     items.append('GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\\ref{sec:dt_pp}) cho MAE theo cell trùng từng bit '
                  'với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\\,\\% nhãn, lần lặp 0, fold 0).')
     items.append(f'Mã gốc PINN4SOH: giá trị loss đơn điệu tính lại trên các hàng train mà lớp đọc dữ liệu của bài tạo ra '
@@ -1046,7 +1044,8 @@ def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
         rf'báo và báo cáo; {thou(n_total)} lượt huấn luyện có kết quả trong báo cáo, mọi bảng sinh tự động từ kết quả, chạy '
         r'lại cho kết quả trùng từng bit (Mục~\ref{sec:tailap}).',
     ]
-    write('doan_ket_luan.tex', '\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}')
+    write('doan_ket_luan.tex', '\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}'
+          + '\n\n' + final_table(B, C6, E33))
     tomtat = (
         r'Đồ án ước lượng trạng thái sức khoẻ (SOH) của cell lithium-ion từ 16 đặc trưng đoạn sạc khi chỉ một phần nhỏ cell '
         r'được đo dung lượng, trên bốn bộ dữ liệu công khai (387 cell). Phân tích đặc trưng bằng tương quan hạng, bỏ từng '
@@ -1067,6 +1066,64 @@ def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
     return tomtat
 
 
+def final_table(B, C6, E33=None):
+    """Chương 6: mô hình cuối của từng bài toán. Số của ba hàng ước lượng và của bộ lọc Kalman chép từ lời văn Chương 5
+    (báo cáo đã nộp); số của hàng dự báo và của HiGBDT-V tính từ E33, E34; hàng PINN4SOH từ phần so sánh."""
+    jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    rows = [
+        ('Ước lượng SOH từ đoạn sạc khi ít nhãn', 'PINN-lai',
+         r'trung bình ba PINN-semi ghép với GBDT ($\omega = \tfrac12$), rồi lọc xu thế nhân quả 10 hàng',
+         r'MAE bằng 0{,}67--0{,}95 lần PINN-semi (16/16 có ý nghĩa); thấp hơn GBDT ở 10/16 trường hợp bộ $\times$ '
+         r'mức nhãn (8 có ý nghĩa), kém hơn có ý nghĩa ở 1 (TJU 70\,\%)', r'\ref{sec:e20res}'),
+        ('Như trên, khi theo dõi được đặc trưng sạc của cell qua thời gian', 'PINN-lai + lịch sử',
+         r'PINN-lai tinh chỉnh có thêm trung bình trượt mũ và độ dốc của đặc trưng sạc, chỉ dùng ở các trường hợp '
+         r'validation chọn (TJU và HUST từ 30\,\% nhãn)',
+         r'MAE bằng 0{,}89--0{,}97 lần PINN-lai tinh chỉnh ở các trường hợp đó; phân tích hậu kiểm', r'\ref{sec:dt_bo}'),
+        ('Học khi chỉ đo thưa dung lượng', 'PINN-lai, nhãn thưa',
+         r'mọi cell train được đo dung lượng mỗi $0{,}05L$ chu kỳ, tức 1{,}2--6{,}0\,\% số chu kỳ',
+         r'MAE bằng 0{,}85--0{,}93 lần PINN-lai học với 30\,\% số cell có nhãn đầy đủ, thấp hơn có ý nghĩa trên cả bốn '
+         r'bộ', r'\ref{sec:budgetres}'),
+    ]
+    upd = (r'thấp hơn bộ lọc Kalman ở 47/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo và thấp hơn giữ lần đo ở '
+           r'48/48')
+    if E33 is not None and E33.get('D34') is not None:
+        GA = E33['D34']['anchor']
+        ga = lambda ds, t, m: float(GA[(GA.ds == ds) & (GA.tier == t)][m].iloc[0])
+        low = {t: sum(ga(ds, t, 'selected') < ga(ds, t, 'e32_style') for ds in DS) for t in ('q20', 'q10')}
+        assert low['q20'] < 3 and low['q10'] < 3, 'HiGBDT-V tốt hơn GBDT-cập nhật khi đo thưa: đổi mô hình cuối'
+        upd += (f'; HiGBDT-V, bản có lịch sử, chỉ thấp hơn nó ở {low["q20"]}/4 bộ khi đo mỗi $0{{,}}2L$ và '
+                f'{low["q10"]}/4 bộ khi đo mỗi $0{{,}}1L$')
+    rows.append(('Cập nhật SOH khi cell mới được đo vài lần', 'GBDT-cập nhật',
+                 'GBDT học SOH đã đổi bao nhiêu kể từ lần đo dung lượng gần nhất', upd,
+                 r'\ref{sec:budgetres}, \ref{sec:anchor}'))
+    if E33 is not None:
+        E = E33
+        rows.append(('Dự báo SOH, dung lượng và RUL', 'HiPINN',
+                     'trung vị của HiGBDT, PINN-dự báo và nhánh theo đời tại từng gốc và tầm',
+                     f'MAE thấp nhất trong tám mô hình ở {E["best_n"]}/{E["n_all"]} trường hợp; bằng {rng(E["r_hl"])} '
+                     f'lần HiGBDT (tốt hơn có ý nghĩa ở {E["up_l"]}/{E["n_all"]}, kém hơn ở {E["dn_l"]}) và '
+                     f'{rng(E["r_hk"])} lần PINN-GBDT khi lịch sử là dung lượng đo (tốt hơn có ý nghĩa ở '
+                     f'{E["up_k"]}/{E["n_do"]}); khoảng SOH 90\\,\\% phủ {pct_rng(E["cov_h"])}', r'\ref{sec:e33res}'))
+    rows.append(('So với PINN4SOH trên đúng cách chia của bài', 'PINN-lai',
+                 'cùng tiền xử lý với bài, và tiền xử lý không rò rỉ',
+                 f'MAE thấp hơn số công bố ở {len(B["beat_pub"])}/12 chế độ và thấp hơn mã gốc chạy lại ở '
+                 f'{B["beat_rerun"]}/12; với tiền xử lý không rò rỉ, thấp hơn số công bố trên '
+                 + jv([k[0] for k in C6['st_better']]) + ', cao hơn trên ' + jv([k[0] for k in C6['st_worse']]),
+                 r'\ref{sec:rerun}, \ref{ch:sosanh}'))
+    L = lambda w: r'>{\raggedright\arraybackslash}' + w
+    out = [r'\Cref{tab:final} tóm tắt mô hình cuối của đồ án cho từng bài toán và kết quả chính trên test. Các mô hình '
+           r'khác trong báo cáo là mốc so sánh hoặc bước trung gian để đi tới các mô hình này.',
+           r'\begin{table}[!htbp]\centering\footnotesize',
+           r'\caption[Mô hình cuối của đồ án cho từng bài toán]{Mô hình cuối của đồ án cho từng bài toán. Tỉ số là MAE '
+           r'theo cell trên test của mô hình cuối chia cho mô hình được so; ý nghĩa theo kiểm định Wilcoxon ghép cặp '
+           r'theo cell.}\label{tab:final}',
+           r'\begin{tabularx}{\textwidth}{' + L('p{2.3cm}') + L('p{1.9cm}') + L('X') + L('X') + r'l}\toprule',
+           r'Bài toán & Mô hình cuối & Cách làm & Kết quả chính trên test & Mục \\\midrule']
+    out += [' & '.join(r) + r' \\' + (r'\addlinespace' if i < len(rows) - 1 else '') for i, r in enumerate(rows)]
+    out += [r'\bottomrule\end{tabularx}\end{table}']
+    return '\n'.join(out)
+
+
 def e33_item(E):
     """Một ý của phần kết luận về E33."""
     t = (r'Đưa lịch sử của cell vào dự báo với hai mô hình: HiGBDT (GBDT có đặc trưng lịch sử SOH) và HiPINN, trung vị '
@@ -1085,241 +1142,13 @@ def e33_item(E):
 def e33_abstract(E):
     return (r' Đưa lịch sử của cell vào dự báo, đồ án xây dựng HiGBDT (GBDT có đặc trưng lịch sử SOH) và HiPINN, mô hình '
             r'lấy trung vị của HiGBDT, PINN-dự báo và một nhánh theo đời cell; khi có lịch sử đo dung lượng, HiPINN có sai '
-            rf'số dự báo SOH bằng {rng(E["r_hk"])} lần PINN-GBDT, mô hình dự báo của E22.')
+            rf'số dự báo SOH bằng {rng(E["r_hk"])} lần PINN-GBDT, mô hình dự báo không có đặc trưng lịch sử.')
 
 
 # --------------------------------------------------------------------------- hình
-# --------------------------------------------------------------------------- dự báo SOH, dung lượng còn lại, RUL (E22)
-E22_FIGS = ['e22_traj', 'e22_cells', 'e22_origins', 'e22_parity', 'e22_horizon', 'e22_rul']
-E22_CSV = ['horizon', 'traj', 'origin', 'tests', 'rul', 'rul_tests', 'lambda', 'setting', 'cells_pick',
-           'origins_pick', 'parity']
-E22_MODELS = [('giu', 'Giữ nguyên'), ('tuyen', 'Tuyến tính'), ('vatly', 'Vật lý theo cell'), ('gbdt', 'GBDT'),
-              ('pinn', 'PINN-dự báo'), ('ket_hop', 'PINN-GBDT')]
-E22_RUNS = 60                                    # 3 lần lặp × 4 bộ × 5 fold
-
-
-def forecast_load():
-    """Khi runs/E22 đủ 60 lượt (và có runs/E20 cho lịch sử ước lượng): tính lại bảng (analysis/analyze_e22.py), vẽ lại
-    hình (analysis/figures_report.py) vào results/, chép hình sang report/graphics/. Bảng giữ bản sao ở generated/data/,
-    nên không có runs/ vẫn dựng được báo cáo từ bản đã lưu."""
-    fresh = len(glob.glob('runs/E22/fc_*.npz')) >= E22_RUNS and os.path.isdir('runs/E20')
-    if fresh:
-        import analyze_e22, figures_report as FR
-        analyze_e22.main()
-        for name in E22_FIGS:
-            FR.FIGS[name]()
-            shutil.copy(f'results/fig_{name}.pdf', os.path.join(FIG, f'fig_{name}.pdf'))
-    D = {}
-    for name in E22_CSV:
-        p = keep_copy(f'results/e22_{name}.csv', f'e22_{name}.csv')
-        if p is None:
-            return None
-        D[name] = pd.read_csv(p)
-    return D
-
-
 def m3(x, n=1):
     """SOH (hoặc sai số SOH) theo đơn vị 10⁻³."""
     return v(1e3 * x, n)
-
-
-def _e22_get(D):
-    hz, tj, ru = D['horizon'], D['traj'], D['rul']
-    h = lambda ds, sc, hr, m: float(hz[(hz.ds == ds) & (hz.scen == sc) & np.isclose(hz.h_rel, hr)][m].iloc[0])
-    t = lambda ds, sc, m: float(tj[(tj.ds == ds) & (tj.scen == sc)][m].iloc[0])
-    r = lambda ds, sc, m: float(ru[(ru.ds == ds) & (ru.scen == sc)][m].iloc[0])
-    return h, t, r
-
-
-def _body(blk):
-    return blk[blk.index('\\midrule') + len('\\midrule'):blk.index('\\bottomrule')]
-
-
-def _rows(body):
-    from thesis_tables import _cell
-    return [[_cell(c) for c in raw.split('&')] for raw in body.split('\\\\') if raw.strip()]
-
-
-def forecast_tables(D):
-    """Ba bảng dự báo sinh lại từ kết quả chạy lại, đúng định dạng của báo cáo đã nộp (cùng tiêu đề, cùng cách làm tròn,
-    in đậm số thấp nhất); trả số ô trùng với bảng của báo cáo đã nộp."""
-    h, t, r = _e22_get(D)
-    soh = []
-    for ds in DS:
-        for k, hr in enumerate((0.1, 0.25, 0.5)):
-            vals = [h(ds, 'uoc', hr, f'e_{m}') for m, _ in E22_MODELS]
-            cells = [(r'\textbf{' + m3(x) + '}') if x == min(vals) else m3(x) for x in vals]
-            soh.append(' & '.join([ds if k == 0 else '', v(hr, 2 if hr == 0.25 else 1) + '$L$'] + cells
-                                  + [m3(h(ds, 'do', hr, 'e_ket_hop')), v(h(ds, 'uoc', hr, 'mah'), 0)]) + r' \\')
-    rul = []
-    for ds in DS:
-        vals = [r(ds, 'uoc', f'e_{m}') for m, _ in E22_MODELS[1:]]
-        cells = [(r'\textbf{' + v(x, 0) + '}') if x == min(vals) else v(x, 0) for x in vals]
-        rul.append(' & '.join([ds, v(r(ds, 'uoc', 'true'), 0)] + cells
-                              + [v(r(ds, 'do', 'e_ket_hop'), 0), pct(r(ds, 'uoc', 'in20_ket_hop')),
-                                 pct(r(ds, 'uoc', 'cov'))]) + r' \\')
-    st = []
-    for x in D['setting'].itertuples():
-        nom = v(x.nom_min, 1) if x.nom_min == x.nom_max else f'{v(x.nom_min, 1)}--{v(x.nom_max, 1)}'
-        st.append(' & '.join([x.ds, str(x.n_cell), str(int(x.L)), f'{x.h1}, {x.h2}, {x.h3}', v(x.tau, 2),
-                              pct(x.reach), nom]) + r' \\')
-    out, same, n = {}, 0, 0
-    for label, rows in (('tab:e22soh', soh), ('tab:e22rul', rul), ('tab:fcset', st)):
-        old = thesis_block(label, E22_NAMES if label != 'tab:fcset' else ())
-        body = '\n' + '\n'.join(rows) + '\n'
-        a, b = _rows(_body(old)), _rows(body)
-        n += sum(len(x) for x in a)
-        same += sum(x == y for ra, rb in zip(a, b) for x, y in zip(ra, rb)) if len(a) == len(b) else 0
-        i, j = old.index('\\midrule') + len('\\midrule'), old.index('\\bottomrule')
-        out[label] = old[:i] + body + old[j:]
-    nontop = lambda blk: blk.replace('\\begin{table}[!htbp]', '\\begin{table}[!hbp]', 1)   # không đẩy lên trên tiêu đề mục
-    write('bang_du_bao.tex', nontop(out['tab:e22soh']) + '\n' + nontop(out['tab:e22rul']))
-    write('bang_du_bao_tham_so.tex', out['tab:fcset'])
-    return dict(n=n, same=same)
-
-
-def forecast_text(D):
-    """Lời văn Mục dự báo (Chương 5): mọi số lấy từ bảng kết quả E22 chạy lại."""
-    h, t, r = _e22_get(D)
-    T, RT, lam = D['tests'], D['rul_tests'], D['lambda']
-    test = lambda tb, ds, vs: tb[(tb.ds == ds) & (tb.scen == 'uoc') & (tb.vs == vs)].iloc[0]
-    sig = lambda tb, ds, vs, better: (test(tb, ds, vs).p_holm < 0.05) and \
-        ((test(tb, ds, vs).better > test(tb, ds, vs).n / 2) == better)
-    ratio = {vs: [float(test(T, ds, vs).ratio) for ds in DS] for vs in ('giu', 'tuyen', 'vatly', 'gbdt', 'pinn')}
-    beats = all(sig(T, ds, vs, True) for ds in DS for vs in ('giu', 'tuyen', 'vatly'))
-    join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
-    where = lambda xs: 'cả bốn bộ' if len(xs) == 4 else (join(xs) if xs else 'không bộ nào')
-    gb_better = [ds for ds in DS if sig(T, ds, 'gbdt', True)]; gb_worse = [ds for ds in DS if sig(T, ds, 'gbdt', False)]
-    rul_gb = [r(ds, 'uoc', 'e_gbdt') / r(ds, 'uoc', 'e_ket_hop') for ds in DS]
-    rul_gb_sig = [ds for ds in DS if sig(RT, ds, 'gbdt', True)]
-    L = {x.ds: x for x in lam.itertuples()}
-    pos = [ds for ds in DS if L[ds].lam_median > 0]; neg = [ds for ds in DS if L[ds].lam_median <= 0]
-    s = [
-        r'Bảng~\ref{tab:e22soh} và~\ref{tab:e22rul} cho sai số ở kịch bản cell test không được đo dung lượng lần nào, '
-        r'lịch sử SOH tới gốc là ước lượng PINN-lai. Trên toàn bộ phần đời còn lại, sai số của PINN-GBDT bằng '
-        f'{rng(ratio["giu"])} lần dự báo giữ nguyên, {rng(ratio["tuyen"])} lần ngoại suy tuyến tính và '
-        f'{rng(ratio["vatly"])} lần khớp vật lý theo cell'
-        + (', khác biệt có ý nghĩa trên cả bốn bộ' if beats else '') + '. '
-        f'Giữa các mô hình học từ nhiều cell khác biệt nhỏ hơn: so với GBDT, tỉ số là {rng(ratio["gbdt"])}'
-        + (f', thấp hơn có ý nghĩa trên {where(gb_better)}' if gb_better else '')
-        + (f', cao hơn có ý nghĩa trên {where(gb_worse)}' if gb_worse else '')
-        + f'; so với PINN-dự báo, tỉ số là {rng(ratio["pinn"])}. Quy ra dung lượng, sai số của PINN-GBDT ở tầm '
-        f'$0{{,}}5L$ là {rng([h(ds, "uoc", 0.5, "mah") for ds in DS], 0)}\\,mAh. '
-        r'Về RUL, GBDT không ngoại suy được ra ngoài miền tầm dự báo đã học nên cắt ngưỡng quá muộn; sai số RUL của nó '
-        f'gấp {rng(rul_gb, 1)} lần PINN-GBDT, và PINN-GBDT tốt hơn GBDT có ý nghĩa trên {where(rul_gb_sig)}. '
-        r'Dấu của $\lambda$ học được khớp hình dạng quỹ đạo: '
-        + (f'trung vị dương ở {join(pos)} (tỉ lệ gốc có $\\lambda > 0$ là '
-           f'{"; ".join(pct(L[ds].frac_pos) for ds in pos)}, các bộ có đầu gối)' if pos else '')
-        + (f', còn ở {join(neg)} trung vị âm (suy giảm chậm dần)' if neg else '') + '.']
-    return '\n'.join(s)
-
-
-def forecast_figs_text(D):
-    """Đoạn văn và hình so dự báo với SOH đo được (Chương 5); mọi số và mọi nhận xét định tính đều tính từ bảng E22."""
-    h, t, r = _e22_get(D)
-    pick, og, op, par = D['cells_pick'], D['origin'], D['origins_pick'], D['parity']
-    HR = (0.1, 0.25, 0.5)
-    join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
-    where = lambda xs: 'cả bốn bộ' if len(xs) == 4 else join(xs)
-    pk = lambda ds: pick[pick.ds == ds].sort_values('q')
-    o = lambda ds, q, col='e_ket_hop': float(og[(og.ds == ds) & (og.scen == 'uoc') & (og.oq == q)][col].iloc[0])
-    lst3 = lambda f, fmt: '; '.join(f'{ds} ' + ', '.join(fmt(f(ds, x)) for x in HR) for ds in DS)
-    fig = lambda name, cap, short, label: (
-        '\\begin{figure}[!htbp]\\centering\n\\includegraphics[width=\\textwidth]{graphics/' + name + '.pdf}\n'
-        '\\caption[' + short + ']{' + cap + '}\\label{' + label + '}\n\\end{figure}')
-    s = []
-    # --- một cell và ba cell mỗi bộ
-    s.append(
-        r'\paragraph{Dự báo so với SOH đo được.} Các hình dưới đây dùng cùng kịch bản: cell test không được đo dung lượng, '
-        r'lịch sử tới gốc là ước lượng, còn SOH đo được (chấm đen) chỉ dùng để chấm. Hình~\ref{fig:e22traj} cho một cell '
-        r'mỗi bộ, cell có sai số ở trung vị, với dự báo của ba mô hình học từ nhiều cell. Hình~\ref{fig:e22cells} cho ba '
-        r'cell mỗi bộ, chọn theo sai số của PINN-GBDT ở phân vị 25, 50 và 75\,\% trong số cell test của bộ, để thấy '
-        r'cả trường hợp dự báo tốt lẫn kém. Sai số trung bình trên phần đời còn lại của ba cell này là '
-        + '; '.join(f'{ds} ' + ', '.join(m3(x) for x in pk(ds).mae) for ds in DS)
-        + r' ($\times10^{-3}$), và tỉ lệ chu kỳ có SOH đo nằm trong khoảng 90\,\% là '
-        + '; '.join(f'{ds} ' + ', '.join(pct(x) for x in pk(ds)['cov']) for ds in DS) + '.'
-        + ''.join(f' Ở cell phân vị {int(x.q)}\\,\\% của {x.ds}, mức SOH ước lượng tại gốc đã '
-                  f'{"cao" if x.bias0 > 0 else "thấp"} hơn số đo {m3(abs(x.bias0))}$\\times10^{{-3}}$; dự báo bắt đầu '
-                  f'từ mức này nên lệch theo, và ' + ('không chu kỳ nào' if x.cov == 0 else f'chỉ {pct(x.cov)} số chu kỳ')
-                  + ' có SOH đo nằm trong khoảng.'
-                  for x in pick.itertuples() if x.cov < 0.5 and abs(x.bias0) >= 0.005))
-    s.append(fig('fig_e22_traj',
-                 r'Dự báo cho một cell test mỗi bộ (lần lặp 0, gốc ở 40\,\% đời, cell có sai số của PINN-GBDT ở trung vị): SOH '
-                 r'đo được (chấm), SOH ước lượng tới gốc, dự báo của GBDT, PINN-dự báo và PINN-GBDT kèm khoảng '
-                 r'90\,\%; trục phải là dung lượng (Ah).', 'Dự báo cho một cell test mỗi bộ', 'fig:e22traj'))
-    s.append(fig('fig_e22_cells',
-                 r'Dự báo của PINN-GBDT so với SOH đo được cho ba cell test mỗi bộ, cell có sai số ở phân vị 25, '
-                 r'50 và 75\,\% của bộ (lần lặp 0, gốc ở 40\,\% đời, cell test không được đo dung lượng).',
-                 'Dự báo so với SOH đo được, ba cell mỗi bộ', 'fig:e22cells'))
-    # --- nhiều gốc cho cùng một cell
-    dec = [ds for ds in DS if o(ds, 0) > o(ds, 1) > o(ds, 2)]; inc = [ds for ds in DS if o(ds, 0) < o(ds, 1) < o(ds, 2)]
-    flat = [ds for ds in DS if ds not in dec + inc and max(o(ds, q) for q in (0, 1, 2)) < 1.1 * min(o(ds, q) for q in (0, 1, 2))]
-    mixed = [ds for ds in DS if ds not in dec + inc + flat]
-    out_fig = [ds for ds in DS if op[(op.ds == ds) & (op.oq == 0)].below.any()]
-    floor_fig = [ds for ds in out_fig if op[(op.ds == ds) & (op.oq == 0)].floor.any()]
-    txt = (r'\paragraph{Dự báo từ nhiều gốc.} Hình~\ref{fig:e22origins} giữ nguyên cell của Hình~\ref{fig:e22traj} và '
-           r'dự báo lại từ gốc ở 20, 40 và 60\,\% đời. Gốc muộn hơn thì lịch sử dài hơn và phần cần ngoại suy ngắn hơn, '
-           r'nhưng sai số cũng được chấm trên một đoạn khác, chỉ gồm phần đời còn lại sau gốc. Sai số trên phần đời còn '
-           r'lại, trung bình qua mọi cell và lần lặp, ở gốc 20, 40 và 60\,\% là '
-           + '; '.join(f'{ds} {m3(o(ds, 0))}, {m3(o(ds, 1))}, {m3(o(ds, 2))}' for ds in DS) + r' ($\times10^{-3}$)'
-           + ': ' + ', '.join(f'{what} ở {where(xs)}' for what, xs in (('giảm dần theo gốc', dec), ('tăng dần', inc),
-                                                                         ('gần như không đổi', flat),
-                                                                         ('không theo một chiều', mixed)) if xs) + '. ')
-    sing = (r'khi $\lambda > 0$, nghiệm đóng~\eqref{eq:fcdrop} có điểm kỳ dị tại $h = 1/(\lambda a)$, nên ở tầm đủ dài '
-            r'PINN-dự báo rơi tới giới hạn dưới 0{,}40 của SOH và kéo PINN-GBDT xuống theo')
-    txt += (f'Từ gốc 20\\,\\%, đường dự báo của {join(floor_fig)} trong hình đi ra mép dưới: {sing}. ' if floor_fig
-            else 'K' + sing[1:] + '. ')
-    txt += (r'Trên mọi cell và lần lặp, điều này xảy ra ở '
-            + ', '.join(pct_rng([o(ds, q, 'floor_pinn') for ds in DS]) + f' số quỹ đạo từ gốc {lab}'
-                        for q, lab in ((0, r'20\,\%'), (1, r'40\,\%'), (2, r'60\,\%')))
-            + ' (thấp nhất và cao nhất trong bốn bộ).')
-    s.append(txt)
-    s.append(fig('fig_e22_origins',
-                 r'Dự báo của PINN-GBDT cho cùng cell của Hình~\ref{fig:e22traj} từ ba gốc ở 20, 40 và 60\,\% đời '
-                 r'(đường chấm dọc), so với SOH đo được; trục SOH giữ theo khoảng của số đo, đường đi ra mép dưới là dự '
-                 r'báo thấp hơn khung.', 'Dự báo từ ba gốc cho cùng một cell', 'fig:e22origins'))
-    # --- SOH dự báo so với đo ở ba tầm
-    grow = [ds for ds in DS if h(ds, 'uoc', 0.1, 'e_ket_hop') < h(ds, 'uoc', 0.25, 'e_ket_hop') < h(ds, 'uoc', 0.5, 'e_ket_hop')]
-    low = [ds for ds in DS if all(h(ds, 'uoc', x, 'd_ket_hop') < 0 for x in HR)]
-    nb = par.groupby('ds')[['n', 'below']].sum()
-    s.append(
-        r'\paragraph{SOH dự báo so với SOH đo ở ba tầm.} Hình~\ref{fig:e22parity} đặt SOH dự báo cạnh SOH đo được ở tầm '
-        r'$0{,}1L$, $0{,}25L$ và $0{,}5L$ cho mọi cell test và mọi gốc của lần lặp 0. '
-        + (f'Sai số tăng theo tầm ở {where(grow)} (Bảng~\\ref{{tab:e22soh}}), nên các điểm toả rộng dần khỏi đường chéo. '
-           if grow else '')
-        + r'Sai số có dấu trung bình (dự báo trừ số đo) ở ba tầm là '
-        + lst3(lambda ds, x: h(ds, 'uoc', x, 'd_ket_hop'), m3) + r' ($\times10^{-3}$)'
-        + (f', tức trung bình dự báo thấp hơn số đo ở cả ba tầm trên {where(low)}' if low else '')
-        + r'. Tỉ lệ số đo nằm trong khoảng 90\,\% ở ba tầm là ' + lst3(lambda ds, x: h(ds, 'uoc', x, 'cov'), pct) + '. '
-        + 'Số điểm có dự báo thấp hơn khung hình (vẽ bằng tam giác ở mép dưới) là '
-        + '; '.join(f'{ds} {int(nb.loc[ds, "below"])} trên {int(nb.loc[ds, "n"])}' for ds in DS) + '.')
-    s.append(fig('fig_e22_parity',
-                 r'SOH dự báo của PINN-GBDT so với SOH đo được ở ba tầm dự báo (lần lặp 0, mọi cell test, gốc ở 20, '
-                 r'40 và 60\,\% đời); đường chéo là dự báo đúng bằng số đo, tam giác ở mép dưới là dự báo thấp hơn khung.',
-                 'SOH dự báo so với SOH đo ở ba tầm', 'fig:e22parity'))
-    # --- sai số theo tầm và RUL
-    own = ('giu', 'tuyen', 'vatly')
-    short = [ds for ds in DS if min(h(ds, 'uoc', 0.1, f'e_{m}') for m in own) < h(ds, 'uoc', 0.1, 'e_ket_hop')]
-    far = [ds for ds in DS if min(h(ds, 'uoc', 0.5, f'e_{m}') for m in own) > h(ds, 'uoc', 0.5, 'e_ket_hop')]
-    s.append(
-        r'\paragraph{Sai số theo tầm và RUL.} Hình~\ref{fig:e22horizon} cho sai số của sáu mô hình theo tầm dự báo. '
-        + (f'Ở tầm $0{{,}}5L$, ba mô hình chỉ dựa vào lịch sử của chính cell đều kém PINN-GBDT trên {where(far)}'
-           if far else 'Ở tầm $0{,}5L$, khác biệt giữa các mô hình nhỏ')
-        + (f'; ở tầm ngắn $0{{,}}1L$, ít nhất một trong ba mô hình đó tốt hơn PINN-GBDT trên {where(short)} '
-           r'(Bảng~\ref{tab:e22soh})' if short else '') + '. '
-        r'Hình~\ref{fig:e22rul} so RUL dự báo với RUL thực tại gốc ở 25, 50 và 75\,\% của chu kỳ cuối đời thật; tỉ lệ '
-        r'dự báo nằm trong $\pm20\,\%$ RUL thực là ' + '; '.join(f'{ds} {pct(r(ds, "uoc", "in20_ket_hop"))}' for ds in DS)
-        + r', và độ phủ của khoảng RUL 90\,\% là ' + '; '.join(f'{ds} {pct(r(ds, "uoc", "cov"))}' for ds in DS)
-        + r', thấp hơn mức đặt ra. Khoảng RUL được hiệu chỉnh trên ít cell validation (10\,\% số cell), trong khi sai '
-          r'số của một cell tương quan mạnh giữa các tầm, nên phân vị lấy từ vài cell hẹp hơn phân bố sai số của cell mới.')
-    s.append(fig('fig_e22_horizon',
-                 r'MAE theo cell của sáu mô hình theo tầm dự báo $h/L$ ($L$: trung vị số chu kỳ của bộ), kịch bản lịch sử '
-                 r'ước lượng, mọi lần lặp và mọi gốc.', 'Sai số dự báo theo tầm', 'fig:e22horizon'))
-    s.append(fig('fig_e22_rul',
-                 r'RUL dự báo của PINN-GBDT so với RUL thực, trung bình qua ba lần lặp, tại gốc ở 25, 50 và 75\,\% '
-                 r'của chu kỳ cuối đời thật; dải xám là sai lệch trong $\pm20\,\%$, $\tau$ là ngưỡng cuối đời của bộ. Dự báo '
-                 r'không chạm ngưỡng trong $3L$ chu kỳ được ghi là $3L$.', 'RUL dự báo so với RUL thực', 'fig:e22rul'))
-    return '\n\n'.join(s)
 
 
 def pct_rng(vals, n=0):
@@ -1446,7 +1275,7 @@ def e33_table(E):
             r'$^{*}$/$^{\dagger}$: HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT theo kiểm định Wilcoxon ghép '
             r'cặp theo cell (Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33}' '\n'
             r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(E33_TAB) + r'}\toprule' '\n'
-            r' & \multicolumn{3}{c}{mô hình của E22} & \multicolumn{5}{c}{có đặc trưng lịch sử} \\'
+            r' & \multicolumn{3}{c}{chỉ đặc trưng gốc} & \multicolumn{5}{c}{có đặc trưng lịch sử} \\'
             r'\cmidrule(lr){2-4}\cmidrule(lr){5-9}' '\n'
             'Bộ & ' + ' & '.join(head2(*E33_HEAD[m]) for m in E33_TAB) + r' \\\midrule' '\n'
             + '\n'.join(rows[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
@@ -1691,7 +1520,7 @@ def e33_section(D):
                + sig2('pinn_ls', 'pinn') + '. Một cách giải thích: mạng chỉ chọn hai tham số $(a, \\lambda)$ của một '
                'đường suy giảm có dạng cố định, nên thông tin thêm từ lịch sử chủ yếu giúp ước lượng tốc độ hiện tại, '
                'điều mà hai độ dốc trong $\\mathbf{z}_k$ đã có một phần, trong khi số đầu vào tăng hơn gấp đôi. Vì vậy '
-               'HiPINN giữ PINN-dự báo của E22 làm nhánh PINN, còn lịch sử đi vào mô hình qua hai nhánh kia.')
+               'HiPINN giữ PINN-dự báo không có lịch sử làm nhánh PINN, còn lịch sử đi vào mô hình qua hai nhánh kia.')
     # ---------------- HiPINN-w: trọng số chọn trên vài cell
     halves = [(b, ds) for b in ('lab30', 'all') for ds in DS]
     r_sel = [E.half(b, ds, 'chon', 'hipinn_w') / E.half(b, ds, 'chon', 'gbdt_ls') for b, ds in halves]
@@ -1724,6 +1553,8 @@ def e33_section(D):
     r_hl_u = E.ratios(uoc, 'hipinn', 'gbdt_ls')
     gap = lambda rs: float(np.mean(np.abs(np.log(rs))))
     smaller = gap(r_hl_u + r_hk_u) < gap(E.ratios(do, 'hipinn', 'gbdt_ls') + r_hk)
+    r_uo = [E.val('all', 'uoc', ds, 'hipinn') / E.val('all', 'do', ds, 'hipinn') for ds in DS]
+    assert not smaller or min(r_uo) > 1, 'lịch sử ước lượng không làm sai số tăng ở mọi bộ'
     p3 = (r'\paragraph{HiPINN.} '
           f'HiPINN có MAE thấp nhất trong tám mô hình của \\Cref{{tab:e33}} ở {best_n}/{n_all} trường hợp (bộ $\\times$ '
           f'thiết lập). So với HiGBDT, nhánh tốt nhất khi đứng riêng, MAE của HiPINN bằng {rng(r_hl)} lần và thấp '
@@ -1739,7 +1570,8 @@ def e33_section(D):
           + ('Khi lịch sử là ước lượng, khác biệt nhỏ lại: ' if smaller else 'Khi lịch sử là ước lượng, ')
           + f'HiPINN bằng {rng(r_hl_u)} lần HiGBDT và {rng(r_hk_u)} lần PINN-GBDT ('
           + sig_txt(uk_u, dk_u) + ' so với mô hình này)'
-          + (', vì khi đó sai số của mức SOH ước lượng tại gốc chiếm phần lớn sai số dự báo (\\Cref{sec:forecastres}).'
+          + ('. Khi đó một phần sai số đến từ mức SOH ước lượng tại gốc, chung cho mọi mô hình: cùng ngân sách, MAE '
+             f'của HiPINN khi lịch sử là ước lượng bằng {rng(r_uo)} lần khi lịch sử là dung lượng đo.'
              if smaller else '.'))
     lab_b = {'all': 'khi học trên mọi cell train', 'lab30': r'với 30\,\% nhãn'}
     cl_b = {bb: [E.half(bb, ds, 'hieu_chinh', 'hipinn') < E.half(bb, ds, 'hieu_chinh', 'gbdt_ls') for ds in DS]
@@ -1887,7 +1719,7 @@ def e33_section(D):
                 r'các cell còn ít nhất $' + v(float(TP.min_h.iloc[0]), 2) + r'L$ chu kỳ đo sau gốc, chọn cell có sai số '
                 r'của HiPINN ở trung vị. Khoảng 90\,\% theo dự đoán phù hợp. PINN-dự báo, nhánh thứ ba của HiPINN, không '
                 r'vẽ để hình dễ đọc.}\label{fig:e33traj}' '\n' r'\end{figure}')
-    body = ('\\FloatBarrier\n\\subsection{Dự báo có đặc trưng lịch sử: HiGBDT và HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
+    body = ('\\FloatBarrier\n\\subsection{Dự báo SOH, dung lượng và RUL: HiGBDT và HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
             + e33_table(E) + '\n\n' + p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + p3b + '\n\n' + figs + '\n\n'
             + p4 + '\n\n'
             + fig_tail + '\n\n' + p5 + '\n\n' + fig_traj + '\n\n' + (p6 + '\n\n' if p6 else '') + p7 + '\n\n' + p8
@@ -1896,7 +1728,7 @@ def e33_section(D):
     # ---------------- Phụ lục A
     D34 = e34_load() or dict(anchor=D['gdoan_anchor'], cost=None, repro=None)
     a_text, a_tab = e34_anchor(D34)
-    pa = (r'\section{Dự báo có đặc trưng lịch sử: RUL và hai nửa validation}' '\n\n' + e33_rul_table(E) + '\n\n'
+    pa = (r'\section{Dự báo SOH: RUL và hai nửa validation}' '\n\n' + e33_rul_table(E) + '\n\n'
           + e33_val_table(E) + '\n\n'
           r'\section{HiGBDT cho bài toán cập nhật}\label{sec:anchor}' '\n\n' + a_text + '\n\n' + a_tab + '\n\n'
           r'\section{HiGBDT: lần chạy này và lần chạy trước}\label{sec:e33repro}' '\n\n' + e33_repro(E))
@@ -1905,7 +1737,8 @@ def e33_section(D):
                 n_all=n_all, n_hl=n_hl, cov_h=cov_do + cov_u,
                 cov_rul=[E.rv('all', sc, ds, 'cov_h') for sc in ('do', 'uoc') for ds in DS],
                 in20=[E.rv('all', 'uoc', ds, 'in20_hipinn') for ds in DS], worst=worst,
-                tail_ls=tail(worst, 'gbdt_ls'), tail_h=tail(worst, 'hipinn'), mit_k=tk, mit_h=th)
+                tail_ls=tail(worst, 'gbdt_ls'), tail_h=tail(worst, 'hipinn'), mit_k=tk, mit_h=th,
+                up_l=up_l, dn_l=dn_l, up_k=up_k, dn_k=dn_k, n_do=len(do) * len(DS), D34=D34)
 
 
 def demo_branch_txt(Dm):
@@ -1967,26 +1800,11 @@ def demo_section():
     write('doan_cong_cu.tex', text)
 
 
-def forecast_section():
-    D = forecast_load()
-    if D is None:
-        write('bang_du_bao_tham_so.tex', thesis_block('tab:fcset'))
-        write('doan_du_bao.tex', r'(Chưa có kết quả E22: chạy \texttt{python run.py E20}, \texttt{python run.py E22} rồi '
-                                 r'dựng lại báo cáo.)')
-        write('doan_du_bao_hinh.tex', '')
-        return None
-    rep = forecast_tables(D)
-    write('doan_du_bao.tex', forecast_text(D))
-    write('doan_du_bao_hinh.tex', forecast_figs_text(D))
-    return dict(rep, D=D)
-
-
 def figures():
     import diagrams
     os.makedirs(FIG, exist_ok=True)
     diagrams.arch('vi', os.path.join(FIG, 'fig_arch'))
     diagrams.pipeline(os.path.join(FIG, 'fig_pipeline'))
-    diagrams.forecast_arch(os.path.join(FIG, 'fig_forecast_arch'))
     diagrams.hipinn_arch(os.path.join(FIG, 'fig_hipinn_arch'))
     for src, dst in [('fig_thesis_leakage', 'fig_leakage'), ('fig_thesis_curve_physics', 'fig_curve_physics'),
                      ('fig_e28_budget', 'fig_e28_budget'), ('fig_e29_pinn', 'fig_e29_pinn'), ('fig_e29_lai', 'fig_e29_lai')]:
@@ -2033,7 +1851,6 @@ def main():
     write('doan_ket_luan_dt.tex', concl)
     n_rerun = int(B['runs'] * B['n_groups'] + B['runs_cur'] * B['n_groups'])
     n_total = experiments_table(n_rerun, n_feat_jobs, n_feat_fits)
-    FC = forecast_section()
     demo_section()
     D33 = e33_load()
     E33 = None
@@ -2042,8 +1859,8 @@ def main():
     else:
         write('doan_e33.tex', r'(Chưa có kết quả E33 với HiPINN: chạy E33 rồi dựng lại báo cáo.)')
         write('phu_luc_a.tex', '')
-    C6 = compare_chapter(S, T, B, L_leak, FC['D'] if FC else None, E33)
-    reproducibility(B, {k: x for k, x in FC.items() if k != 'D'} if FC else None)
+    C6 = compare_chapter(S, T, B, L_leak, E33)
+    reproducibility(B)
     tomtat = conclusion(B, L_leak, C6, F is not None, n_total, E33)
     write('so_lieu.tex', r'\newcommand{\TomTat}{' + tomtat + '}')
     figures()

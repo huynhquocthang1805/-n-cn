@@ -41,16 +41,15 @@ Không số nào gõ tay vào bảng.
 | Chương 4: số lượt chạy | `pinnsoh/experiments.py`, `benchmark/results/summary.csv`, `results/features_prune.csv` |
 | Chương 5: so với PINN4SOH | `benchmark/results/` từ `benchmark/compare.py` |
 | Phụ lục B: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27` so với `generated/data/e27_lan_dau.json` (kết quả của lần chạy E27 đầu tiên, lấy từ `benchmark/results` ở commit `e174340`); tóm tắt ở `generated/data/tai_lap.json` |
-| Chương 3, 5: dự báo SOH, dung lượng, RUL (E22) | `runs/E22` và lịch sử ước lượng ở `runs/E20` (70 % nhãn): `analysis/analyze_e22.py` (bảng `results/e22_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e22_*.pdf`); sơ đồ mô hình `graphics/fig_forecast_arch.pdf` từ `analysis/diagrams.py`. Ba bảng dự báo sinh lại từ kết quả chạy lại và được so từng ô với báo cáo đã nộp |
-| Chương 5, Phụ lục A: dự báo có đặc trưng lịch sử, mô hình HiPINN (E33) | `runs/E33`: `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`). Phần đối chiếu và bảng bài toán cập nhật đọc các tệp kết quả đã lưu trong kho G-doan của đồ án (`improvements/forecasts`, `improvements/anchors`; đường dẫn đặt bằng biến môi trường `GDOAN`) |
+| Chương 3, 5, Phụ lục A: dự báo SOH, dung lượng, RUL với HiGBDT và HiPINN (E33) | `runs/E33` (lịch sử ước lượng lấy từ `runs/E20`, 70 % nhãn): `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`); sơ đồ `graphics/fig_hipinn_arch.pdf` từ `analysis/diagrams.py`. Phần đối chiếu với lần chạy trước đọc kết quả đã lưu trong kho G-doan của đồ án (`improvements/forecasts`; đường dẫn đặt bằng biến môi trường `GDOAN`) |
+| Phụ lục A: HiGBDT cho bài toán cập nhật (E34) | `runs/E34`: `analysis/analyze_e34.py` (bảng `results/e34_*.csv`, bản sao ở `generated/data/`, hình `graphics/fig_e34_cost.pdf`); khi `runs/E34` chưa đủ 60 lượt, dùng kết quả đã lưu của kho G-doan (`improvements/anchors`) |
 | Chương 5: các bảng còn lại | bảng của báo cáo đã nộp (`archive/thesis/do-an/main.tex`), đọc bằng `paper/thesis_tables.py` |
 
-Khi `runs/E22` đủ 60 lượt (và có `runs/E20`), hoặc `runs/E33` đủ 120 lượt, `build.py` tính lại bảng và vẽ lại các hình
-tương ứng; không có thì dùng bản đã lưu ở `generated/data/` và `graphics/`. Chỉ chạy lại phần dự báo:
-`python run.py E20` (E22 và E33 chỉ cần các lượt PINN-semi và GBDT ở 70 % nhãn), `python run.py E22`,
-`python run.py E33`.
+Khi `runs/E33` đủ 120 lượt (hoặc `runs/E34` đủ 60 lượt), `build.py` tính lại bảng và vẽ lại các hình tương ứng; không có thì dùng bản đã lưu ở `generated/data/` và `graphics/`. Chỉ chạy lại phần dự báo: `python run.py E20` (E33 chỉ cần các lượt PINN-semi và GBDT ở 70 % nhãn, cho kịch bản lịch sử ước lượng), `python run.py E33`, `python run.py E34`.
 
-Trừ hai mục dự báo (sinh từ kết quả chạy lại E22 và từ E33), các con số trong lời văn của Chương 5 chép từ lời văn của
+Mục dự báo E22 của báo cáo đã nộp không còn trong báo cáo: E33 thay nó trên cùng fold, với PINN-GBDT của E22 học lại làm mốc so sánh. Mã của E22 (`pinnsoh/forecast.py`, `analysis/analyze_e22.py`) vẫn giữ vì E33 dùng các khối của nó.
+
+Trừ mục dự báo (sinh từ E33), các con số trong lời văn của Chương 5 chép từ lời văn của
 báo cáo đã nộp; báo cáo đó sinh từ `results/` của lần chạy ở commit `2d66f75`, thư mục `runs/` của lần chạy đó không
 còn. Mọi phần nói tới bộ NASA đã bỏ; các khoảng số trong báo cáo đã nộp có gộp NASA (ví dụ đo cell mới một lần lúc nhận
 pin) không được dùng.

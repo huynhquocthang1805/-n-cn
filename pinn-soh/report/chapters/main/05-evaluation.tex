@@ -125,8 +125,8 @@ chỉ tương quan vừa (Pearson 0{,}50--0{,}80) và ngược dấu nhau ở 16
 ba PINN-semi, PINN-lai tốt hơn có ý nghĩa ở 7/16 trường hợp và kém hơn ở 1; tỉ số trung bình nhân 0{,}716 ở 10\,\% và
 1{,}002 ở 70\,\% nhãn: phần vật lý vẫn đóng góp khi ít nhãn.
 
-\paragraph{RMSE, MAPE và $R^2$.} Ở 30\,\% nhãn (Bảng~\ref{tab:allrm}), RMSE và MAPE cũng thấp nhất ở PINN-lai hoặc mô hình
-cuối và cao nhất ở MLP trên cả bốn bộ. Mô hình có MAE thấp nhất cũng có $R^2$ cao nhất ở 14/16 trường hợp; $R^2$ tính từ chu
+\paragraph{RMSE, MAPE và $R^2$.} Ở 30\,\% nhãn (Bảng~\ref{tab:allrm}), RMSE và MAPE cũng thấp nhất ở PINN-lai hoặc
+PINN-lai + lịch sử và cao nhất ở MLP trên cả bốn bộ. Mô hình có MAE thấp nhất cũng có $R^2$ cao nhất ở 14/16 trường hợp; $R^2$ tính từ chu
 kỳ 10 của PINN-lai ở 30\,\% nhãn là 0{,}867--0{,}992.
 
 \input{generated/bang_rmse}
@@ -159,15 +159,6 @@ bằng bộ lọc Kalman, MAE trên các chu kỳ không được đo còn 1{,}2
 với 70\,\% số cell có nhãn đầy đủ nhưng không đo cell mới. GBDT-cập nhật, mô hình học thẳng thay đổi SOH kể từ lần đo
 gần nhất, thấp hơn bộ lọc Kalman ở 47/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (tỉ số 0{,}15--1{,}06) và thấp hơn việc giữ
 nguyên giá trị đo gần nhất ở 48/48 (tỉ số 0{,}07--0{,}53).
-
-\FloatBarrier
-\subsection{Dự báo SOH tương lai và RUL}\label{sec:forecastres}
-
-\input{generated/doan_du_bao}
-
-\input{generated/bang_du_bao}
-
-\input{generated/doan_du_bao_hinh}
 
 \input{generated/doan_e33}
 
