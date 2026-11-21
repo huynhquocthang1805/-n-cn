@@ -325,11 +325,10 @@ def cmd_all(a):
         ax.plot(cell.cycle, cell.soh, color='#1b2330', lw=1.0, label='SOH đo được')
         x = k0 + hh
         ax.fill_between(x, R['lo'], R['hi'], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
-        for key, col, ls, lab in (('gbdt_ls', '#2a78d6', (0, (3, 1.5)), 'GBDT lịch sử'),
-                                  ('pinn', '#1baf7a', (0, (3, 1.5)), 'PINN-dự báo'),
-                                  ('doi', '#7b5cd6', (0, (1, 1.2)), 'nhánh theo đời')):
-            ax.plot(x, R[key], color=col, lw=0.9, ls=ls, label=lab)
-        ax.plot(x, R['hipinn'], color='#d9480f', lw=1.7, label='HiPINN')
+        for key, col, ls, lab in (('gbdt_ls', '#2a78d6', (0, (3, 1.5)), 'GBDT lịch sử'),     # PINN-dự báo không vẽ
+                                  ('doi', '#7b5cd6', (0, (1, 1.2)), 'nhánh theo đời')):     # để hình dễ đọc
+            ax.plot(x, R[key], color=col, lw=0.9, ls=ls, label=lab, zorder=4)
+        ax.plot(x, R['hipinn'], color='#d9480f', lw=1.7, label='HiPINN', zorder=3)
         ax.axhline(M.tau, color='#4a5563', lw=0.8, ls=(0, (4, 2)), label='ngưỡng cuối đời')
         ax.axvline(k0, color='#9aa5ad', lw=0.8, ls=(0, (2, 2)), label='gốc dự báo')
         lo_, hi_ = min(float(np.min(cell.soh)), M.tau), float(np.max(cell.soh))

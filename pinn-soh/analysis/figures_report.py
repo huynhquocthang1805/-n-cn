@@ -660,7 +660,8 @@ def e33_tail():
 
 def e33_traj():
     """Một cell test mỗi bộ (mọi cell train, lịch sử đo, lần lặp 0, gốc 0,4L; trong các cell còn ít nhất 0,25L chu kỳ
-    đo sau gốc, cell có sai số HiPINN ở trung vị): SOH đo, ba nhánh, HiPINN và khoảng 90 %."""
+    đo sau gốc, cell có sai số HiPINN ở trung vị): SOH đo, GBDT lịch sử, nhánh theo đời, HiPINN và khoảng 90 %.
+    PINN-dự báo (nhánh thứ ba của HiPINN) không vẽ để hình dễ đọc."""
     plt = setup()
     import json as _json, glob as _glob
     from pinnsoh.forecast_combo import TCOL, ROOT as R33
@@ -689,10 +690,10 @@ def e33_traj():
         _e22_measured(ax, cell)
         x = k0 + g.h.values
         ax.fill_between(x, g.lo_h, g.hi_h, color=E22C['band'], alpha=0.18, lw=0, zorder=1)
-        ax.plot(x, g.pinn, color=E22C['pinn'], lw=1.0, ls=(0, (3, 1.5)), zorder=3)
-        ax.plot(x, g.doi, color=E22C['est'], lw=1.0, ls=(0, (1, 1.2)), zorder=3)
-        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.0, ls=(0, (3, 1.5)), zorder=3)
-        ax.plot(x, g.hipinn, color=E22C['ket_hop'], lw=1.9, zorder=4)
+        ax.plot(x, g.hipinn, color=E22C['ket_hop'], lw=1.9, zorder=3)
+        # hai nhánh vẽ đè lên HiPINN: chỗ HiPINN trùng một nhánh (trung vị) vẫn thấy nét đứt của nhánh đó
+        ax.plot(x, g.doi, color=E22C['est'], lw=1.0, ls=(0, (1, 1.2)), zorder=4)
+        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.0, ls=(0, (3, 1.5)), zorder=4)
         ax.axhline(TAU[ds], color=E22C['tau'], lw=0.9, ls=(0, (4, 2)), zorder=1)
         ax.axvline(k0, color=E22C['org'], lw=0.9, ls=(0, (2, 2)), zorder=1)
         lo_, hi_ = min(float(cell.soh.min()), TAU[ds]), float(cell.soh.max())
@@ -712,7 +713,6 @@ def e33_traj():
           plt.Line2D([], [], color=E22C['ket_hop'], lw=2, label='HiPINN'),
           plt.Rectangle((0, 0), 1, 1, color=E22C['band'], alpha=0.25, label='khoảng 90 %'),
           plt.Line2D([], [], color='#2a78d6', lw=1.2, ls=(0, (3, 1.5)), label='GBDT lịch sử'),
-          plt.Line2D([], [], color=E22C['pinn'], lw=1.2, ls=(0, (3, 1.5)), label='PINN-dự báo'),
           plt.Line2D([], [], color=E22C['est'], lw=1.2, ls=(0, (1, 1.2)), label='nhánh theo đời'),
           plt.Line2D([], [], color=E22C['tau'], lw=1, ls=(0, (4, 2)), label='ngưỡng cuối đời'),
           plt.Line2D([], [], color=E22C['org'], lw=1, ls=(0, (2, 2)), label='gốc dự báo')]

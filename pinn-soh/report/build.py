@@ -1681,8 +1681,9 @@ def e33_section(D):
            f'bộ với mọi cell train và {len(lt_k["lab30"])}/4 bộ với 30\\,\\% nhãn.')
     worst = max(DS, key=lambda ds: tail(ds, 'hipinn'))
     # ---------------- ví dụ
-    p5 = (r'\Cref{fig:e33traj} minh hoạ dự báo cho một cell mỗi bộ. Ở mỗi tầm, HiPINN trùng với nhánh nằm giữa, nên '
-          'đường của nó gãy khúc ở chỗ hai nhánh cắt nhau.')
+    p5 = (r'\Cref{fig:e33traj} minh hoạ dự báo cho một cell mỗi bộ. Ở mỗi tầm, HiPINN trùng với nhánh nằm giữa trong '
+          'ba nhánh, nên đường của nó gãy khúc ở chỗ hai nhánh cắt nhau. Hình chỉ vẽ hai nhánh có đặc trưng lịch sử; ở '
+          'những đoạn HiPINN không trùng đường nào trong hai đường đó, nhánh nằm giữa là PINN-dự báo.')
     # ---------------- kiểm định và trung bình ngược chiều
     odd = []
     for b, sc, lab in E33_SET:
@@ -1759,10 +1760,11 @@ def e33_section(D):
                 r'\end{figure}')
     TP = E.TP
     fig_traj = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e33_traj.pdf}'
-                '\n' r'\caption[Dự báo của HiPINN so với SOH đo được]{Dự báo của HiPINN và ba nhánh so với SOH đo được '
-                r'cho một cell test mỗi bộ: mọi cell train, lịch sử đo, lần lặp 0, gốc ở $0{,}4L$; trong các cell còn ít '
-                r'nhất $' + v(float(TP.min_h.iloc[0]), 2) + r'L$ chu kỳ đo sau gốc, chọn cell có sai số của HiPINN ở '
-                r'trung vị. Khoảng 90\,\% theo dự đoán phù hợp.}\label{fig:e33traj}' '\n' r'\end{figure}')
+                '\n' r'\caption[Dự báo của HiPINN so với SOH đo được]{Dự báo của HiPINN, GBDT lịch sử và nhánh theo đời '
+                r'so với SOH đo được cho một cell test mỗi bộ: mọi cell train, lịch sử đo, lần lặp 0, gốc ở $0{,}4L$; trong '
+                r'các cell còn ít nhất $' + v(float(TP.min_h.iloc[0]), 2) + r'L$ chu kỳ đo sau gốc, chọn cell có sai số '
+                r'của HiPINN ở trung vị. Khoảng 90\,\% theo dự đoán phù hợp. PINN-dự báo, nhánh thứ ba của HiPINN, không '
+                r'vẽ để hình dễ đọc.}\label{fig:e33traj}' '\n' r'\end{figure}')
     body = ('\\FloatBarrier\n\\subsection{Dự báo có đặc trưng lịch sử: HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
             + e33_table(E) + '\n\n' + p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + p3b + '\n\n' + figs + '\n\n'
             + p4 + '\n\n'
@@ -1826,7 +1828,8 @@ def demo_section():
              r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_demo_hipinn.pdf}' '\n'
              r'\caption[HiPINN cho một cell test của mỗi bộ dữ liệu]{HiPINN áp dụng cho bốn bộ dữ liệu qua công cụ dòng '
              r'lệnh: với mỗi bộ, cell test có số chu kỳ ở trung vị, dự báo từ 40\,\% số chu kỳ của cell, lịch sử là dung '
-             r'lượng đo; mô hình học trên 30\,\% cell có nhãn của fold dùng cho công cụ.}\label{fig:demo4}' '\n'
+             r'lượng đo; mô hình học trên 30\,\% cell có nhãn của fold dùng cho công cụ. PINN-dự báo, nhánh thứ ba của '
+             r'HiPINN, không vẽ để hình dễ đọc.}\label{fig:demo4}' '\n'
              r'\end{figure}')
     write('doan_cong_cu.tex', text)
 
