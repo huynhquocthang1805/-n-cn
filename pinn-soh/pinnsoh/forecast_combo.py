@@ -1,5 +1,5 @@
 """
-E33 — dự báo SOH có đặc trưng lịch sử: GBDT lịch sử (pinnsoh/forecast_hist.py), PINN-dự báo có lịch sử, nhánh theo đời
+E33 — dự báo SOH có đặc trưng lịch sử: HiGBDT (pinnsoh/forecast_hist.py), PINN-dự báo có lịch sử, nhánh theo đời
 (pinnsoh/forecast_life.py) và mô hình HiPINN lấy trung vị của ba nhánh, cùng một giao thức, sửa các điểm còn
 rò rỉ của E22.
 
@@ -17,15 +17,15 @@ PINN-lai của E20 ở 70 % nhãn, như E22).
 Mô hình:
     giu, tuyen   giữ mức l_k; ngoại suy tuyến tính theo độ dốc 100 hàng
     gbdt         GBDT theo tầm của E22 (dừng sớm trên nửa 'chọn')
-    gbdt_ls      GBDT lịch sử: cấu hình tốt nhất trộn với gbdt theo trọng số chọn trên validation
+    gbdt_ls      HiGBDT: cấu hình tốt nhất trộn với gbdt theo trọng số chọn trên validation
     pinn         PINN-dự báo của E22 (3 mạng, đầu vào 23 đặc trưng gốc)
     pinn_ls      PINN-dự báo có lịch sử: như pinn nhưng đầu vào là 23 đặc trưng gốc và đặc trưng lịch sử SOH
-    ket_hop      kết hợp của E22: ½ gbdt + ½ pinn
+    ket_hop      PINN-GBDT của E22: ½ gbdt + ½ pinn
     ket_hop_ls   w·gbdt_ls + (1 − w)·p, p là nhánh PINN chọn trên validation (pinn hoặc pinn_ls),
                  w ∈ {0; 0,25; 0,5; 0,75; 1}
     doi          nhánh theo đời: đời còn lại dự đoán + khuôn quỹ đạo của cell train
-    tb3          trung bình đều của gbdt_ls, pinn, doi
-    hipinn_w     phương án đầu của HiPINN: w1·gbdt_ls + w2·p + w3·doi, (w1, w2, w3) trên lưới bước 0,25 của đơn
+    tb3          HiPINN-tb: trung bình đều của gbdt_ls, pinn, doi
+    hipinn_w     HiPINN-w, phương án đầu của HiPINN: w1·gbdt_ls + w2·p + w3·doi, (w1, w2, w3) trên lưới bước 0,25 của đơn
                  hình, chọn trên validation cùng với p
     hipinn       HiPINN: trung vị của gbdt_ls, pinn, doi tại từng (gốc, tầm); không có trọng số cần chọn
 Khoảng 90 % (dự đoán phù hợp): q = phân vị 90 % của |y − p| / sqrt(1 + h/L) trên nửa 'hiệu chỉnh';
@@ -146,7 +146,7 @@ def run_fold(ds: str, budget: str, r: int, k: int, root: str = ROOT, members=(0,
     origins = np.maximum(1, np.rint(np.array(ORIGINS_REL) * L)).astype(int).tolist()
     xn = {i: norm.transform(c) for i, c in by.items()}
     feat = {i: H.features(c, xn[i]) for i, c in by.items()}
-    # ---- học: GBDT gốc (E22), GBDT lịch sử, PINN-dự báo (E22), trên cell 'lab'; chọn trên nửa 'chọn'
+    # ---- học: GBDT gốc (E22), HiGBDT, PINN-dự báo (E22), trên cell 'lab'; chọn trên nửa 'chọn'
     tr = H.sample(lab, by, feat)
     va = H.sample(sel, by, feat, origins)
     gb, ginfo = fit_gbdt(*train_samples([by[i] for i in lab], xn), *train_samples([by[i] for i in sel], xn), seed=seed)

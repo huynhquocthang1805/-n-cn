@@ -156,8 +156,8 @@ số là 0{,}97--1{,}05: tốt hơn có ý nghĩa ở TJU, kém hơn có ý ngh�
 từng cell, mô hình chỉ học được khi thấy nhãn của chính cell đó, còn các chu kỳ liền nhau của một cell gần như lặp lại
 thông tin của nhau. Khi cell mới cũng được đo theo lịch $0{,}1L$ (1--3\,\% số chu kỳ của nó) và ước lượng được cập nhật
 bằng bộ lọc Kalman, MAE trên các chu kỳ không được đo còn 1{,}2--7{,}5 ($\times10^{-3}$), bằng 0{,}34--0{,}77 lần GBDT học
-với 70\,\% số cell có nhãn đầy đủ nhưng không đo cell mới. Mô hình cập nhật học thẳng thay đổi SOH kể từ lần đo gần nhất
-thấp hơn bộ lọc Kalman ở 47/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (tỉ số 0{,}15--1{,}06) và thấp hơn việc giữ
+với 70\,\% số cell có nhãn đầy đủ nhưng không đo cell mới. GBDT-cập nhật, mô hình học thẳng thay đổi SOH kể từ lần đo
+gần nhất, thấp hơn bộ lọc Kalman ở 47/48 trường hợp bộ $\times$ mức nhãn $\times$ lịch đo (tỉ số 0{,}15--1{,}06) và thấp hơn việc giữ
 nguyên giá trị đo gần nhất ở 48/48 (tỉ số 0{,}07--0{,}53).
 
 \FloatBarrier

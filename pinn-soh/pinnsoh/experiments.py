@@ -20,7 +20,7 @@
     E29  đặc trưng lịch sử của cell (E29dev chọn dạng trên validation)                          840 + 400
     E30  CNN, LSTM, Transformer (E30dev chọn cửa sổ trên validation)                            720 + 240
     E32  mô hình học cập nhật từ lần đo dung lượng gần nhất                                         240
-    E33  dự báo kết hợp GBDT lịch sử (repo G-doan) với PINN-dự báo, 2 ngân sách nhãn                 120
+    E33  HiGBDT và HiPINN: dự báo có đặc trưng lịch sử, 2 ngân sách nhãn                                120
 E25 (bộ lọc Kalman cho độ lệch theo cell) không có lượt riêng: analysis/analyze_e25.py và analyze_e32.py tính trên dự
 đoán đã lưu của E20.
 
@@ -239,7 +239,7 @@ def E22(repeats=E20_REPEATS, datasets=DATASETS, seeds=None, out='runs/E22') -> L
             for r, ds, k in itertools.product(range(repeats), datasets, range(E13_FOLDS))]
 
 
-# E33: dự báo kết hợp GBDT lịch sử (mã của repo G-doan) với PINN-dự báo, L và chuẩn hoá chỉ từ cell train
+# E33: HiGBDT (kho G-doan của đồ án) và HiPINN, dự báo có đặc trưng lịch sử, L và chuẩn hoá chỉ từ cell train
 #      (pinnsoh/forecast_combo.py); hai ngân sách nhãn của bộ dự báo: 30 % tổng số cell (như G-doan) và mọi cell train
 #      (như E22, thêm kịch bản lịch sử ước lượng nên cần E20 ở 70 % nhãn)
 E33_COST = {'XJTU': 90, 'TJU': 200, 'MIT': 200, 'HUST': 150}

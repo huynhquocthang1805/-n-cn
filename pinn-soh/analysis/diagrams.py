@@ -189,7 +189,7 @@ def pipeline(out='results/fig_thesis_pipeline'):
 
 def forecast_arch(out='results/fig_forecast_arch', font='TeX Gyre Heros'):
     """Mô hình dự báo (E22, pinnsoh/forecast.py): tại gốc k, đặc trưng gốc z_k -> GBDT theo tầm và PINN-dự báo
-    (a, λ của nghiệm đóng) -> kết hợp -> SOH, dung lượng, RUL và khoảng 90 %."""
+    (a, λ của nghiệm đóng) -> PINN-GBDT -> SOH, dung lượng, RUL và khoảng 90 %."""
     apply_theme(font=font)
     fig = plt.figure(figsize=(7.2, 3.9))
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(0, 5.4); ax.axis('off')
@@ -209,7 +209,7 @@ def forecast_arch(out='results/fig_forecast_arch', font='TeX Gyre Heros'):
              C_PHY, E_PHY, fs=7.0)
     cf = box(ax, 4.2, 1.42, 2.15, 1.0, 'Nghiệm đóng động học xám',
              '$\\hat y(k+h) = \\ell_k + \\ln(1-\\lambda a h)/\\lambda$\nkhông tăng theo $h$', C_PHY, E_PHY, fs=7.0)
-    kh = box(ax, 6.6, 2.6, 0.92, 1.25, 'Kết hợp', '½ GBDT +\n½ PINN-dự báo', C_LOSS, E_LOSS, fs=7.0)
+    kh = box(ax, 6.6, 2.6, 0.92, 1.25, 'PINN-GBDT', '½ GBDT +\n½ PINN-dự báo', C_LOSS, E_LOSS, fs=7.0)
     o1 = box(ax, 7.95, 3.92, 1.85, 1.12, 'SOH và dung lượng', '$\\hat y(k+h)$ với mọi $h$\n$\\hat Q = \\hat y$ × dung lượng\ndanh định',
              C_OUT, '#9aa5ad', fs=7.0)
     o2 = box(ax, 7.95, 2.75, 1.85, 0.95, 'RUL', '$h$ đầu tiên có $\\hat y \\leq \\tau$', C_OUT, '#9aa5ad', fs=7.0)
@@ -258,7 +258,7 @@ def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     box(ax, 2.27, 3.4, 1.5, 2.15, 'Đặc trưng lịch sử',
         'SOH tại $k$; cửa sổ\n5, 10, 30, 100, 200\nhàng: trung bình,\nđộ lệch chuẩn, độ dốc;\nđộ trễ 1–63 hàng',
         C_OUT, '#9aa5ad', fs=6.8)
-    box(ax, 4.05, 4.45, 2.35, 1.1, 'GBDT lịch sử', '$\\to \\ell_k - \\mathrm{SOH}(k+h)$ theo $h$\n6 cấu hình × 3 số cây',
+    box(ax, 4.05, 4.45, 2.35, 1.1, 'HiGBDT', '$\\to \\ell_k - \\mathrm{SOH}(k+h)$ theo $h$\n6 cấu hình × 3 số cây',
         C_NET, E_NET, fs=7.0)
     box(ax, 4.05, 2.9, 2.35, 1.3, 'Nhánh theo đời', 'GBDT đời còn lại $\\to \\hat N$\nkhuôn quỹ đạo của K cell\n'
         'train theo $u = c/\\hat N$', C_LIFE, E_LIFE, fs=7.0)
@@ -274,7 +274,7 @@ def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     poly(ax, [(1.88, 4.475), (2.27, 4.475)], GREY)
     poly(ax, [(1.88, 2.625), (2.06, 2.625), (2.06, 2.33), (2.27, 2.33)], GREY)
     poly(ax, [(1.88, 4.2), (2.08, 4.2), (2.08, 2.75), (2.27, 2.75)], GREY)
-    # đặc trưng gốc và đặc trưng lịch sử -> thanh góp -> GBDT lịch sử, nhánh theo đời; đặc trưng gốc -> PINN-dự báo
+    # đặc trưng gốc và đặc trưng lịch sử -> thanh góp -> HiGBDT, nhánh theo đời; đặc trưng gốc -> PINN-dự báo
     ax.plot([3.77, 3.9], [4.475, 4.475], color=GREY, lw=0.9)
     ax.plot([3.77, 3.9], [2.85, 2.85], color=GREY, lw=0.9)
     ax.plot([3.9, 3.9], [2.85, 5.0], color=GREY, lw=0.9)

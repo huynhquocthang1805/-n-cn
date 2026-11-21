@@ -1,7 +1,7 @@
 """
 HiPINN — mô hình dự báo SOH có đặc trưng lịch sử của đồ án, ở dạng học một lần rồi dự báo cho một cell bất kỳ.
 
-HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm): GBDT lịch sử, PINN-dự báo, nhánh theo đời. Các nhánh học và chọn
+HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm): HiGBDT, PINN-dự báo, nhánh theo đời. Các nhánh học và chọn
 cấu hình như E33 (pinnsoh/forecast_combo.py): cấu hình của từng nhánh chọn trên một nửa cell validation, khoảng 90 %
 hiệu chỉnh trên nửa còn lại. Với cùng cách chia, dự báo trùng với cột hipinn của lượt E33 tương ứng.
 

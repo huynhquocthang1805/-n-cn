@@ -128,7 +128,7 @@ bằng các thí nghiệm riêng nêu ở Mục~\ref{sec:dt_bo}.
 
 \section{Phương pháp}\label{ch:thuchien}
 
-Mục này mô tả những gì đồ án xây dựng: giao thức đánh giá không rò rỉ, mô hình PINN bán giám sát, mô hình kết hợp
+Mục này mô tả những gì đồ án xây dựng: giao thức đánh giá không rò rỉ, PINN-semi (PINN bán giám sát), mô hình kết hợp
 PINN-lai, các mô hình đối chứng, quy trình chạy lại mã gốc PINN4SOH và các phần mở rộng.
 
 \subsection{Giao thức đánh giá không rò rỉ}\label{sec:protocol}
@@ -290,12 +290,12 @@ học nhãn nội suy tuyến tính giữa các lần đo.
 
 \paragraph{Cập nhật theo cell khi dùng.} Khi cell mới cũng được đo vài lần, sai số $y_n - p_n$ giữa SOH đo và SOH ước
 lượng được mô hình hoá bằng một độ lệch trôi chậm hồi quy về trung bình (quá trình Ornstein--Uhlenbeck) cộng nhiễu, và
-được cập nhật bằng bộ lọc Kalman mỗi khi có một lần đo; bốn tham số lấy trên validation. Một cách khác là mô hình cập
+được cập nhật bằng bộ lọc Kalman mỗi khi có một lần đo; bốn tham số lấy trên validation. Một cách khác là GBDT-cập
 nhật: GBDT học thẳng SOH đã đổi bao nhiêu kể từ lần đo gần nhất.
 
 \paragraph{Dự báo SOH, dung lượng và RUL.} Đứng ở chu kỳ gốc $k$ của một cell, biết đặc trưng sạc của mọi chu kỳ tới $k$
 và một chuỗi SOH lịch sử tới $k$, cần dự báo SOH ở mọi chu kỳ $k+h$ sau đó; dung lượng là SOH nhân dung lượng danh định,
-RUL là số chu kỳ tới khi SOH xuống dưới ngưỡng cuối đời $\tau$ của bộ. Hình~\ref{fig:fcarch} tóm tắt mô hình. Từ lịch sử
+RUL là số chu kỳ tới khi SOH xuống dưới ngưỡng cuối đời $\tau$ của bộ. Hình~\ref{fig:fcarch} tóm tắt PINN-GBDT, mô hình dự báo của E22. Từ lịch sử
 tới $k$ tính vectơ đặc trưng gốc $\mathbf{z}_k$ gồm 23 giá trị: mức SOH hiện tại $\ell_k$ (xu thế nhân quả trên 10 hàng),
 độ dốc bình phương tối thiểu trên 30 và 100 hàng gần nhất, mức ban đầu $\ell_0$ và độ giảm $\ell_0 - \ell_k$, $k$, $1/T$
 và trung bình 16 đặc trưng sạc đã chuẩn hoá trên 10 hàng gần nhất. PINN-dự báo là một mạng nhỏ (hai lớp ẩn 64 nút) nhận
@@ -306,16 +306,16 @@ $v = 1 - \text{SOH}$, khi coi tốc độ cơ sở là hằng trong tầm dự b
 \end{equation}
 với $a \geq 0$ là tốc độ suy giảm tại $k$. Đường dự báo luôn không tăng; nó giảm nhanh dần khi $\lambda > 0$ (đầu gối) và
 chậm dần khi $\lambda < 0$. Ba mạng với hạt giống khác nhau được lấy trung bình. GBDT theo tầm học trực tiếp độ giảm
-$\ell_k - \text{SOH}(k+h)$ từ $(\mathbf{z}_k, h)$, có ràng buộc đơn điệu tăng theo $h$. Mô hình kết hợp lấy trung bình hai
-mô hình này với trọng số bằng nhau. Khoảng dự báo 90\,\% lấy từ phân vị 5 và 95\,\% của sai số có dấu của mô hình kết hợp
+$\ell_k - \text{SOH}(k+h)$ từ $(\mathbf{z}_k, h)$, có ràng buộc đơn điệu tăng theo $h$. PINN-GBDT lấy trung bình hai
+mô hình này với trọng số bằng nhau. Khoảng dự báo 90\,\% lấy từ phân vị 5 và 95\,\% của sai số có dấu của PINN-GBDT
 trên cell validation, theo nhóm tầm $h/L$; lúc biên dưới và biên trên chạm $\tau$ cho khoảng RUL. Mọi mô hình học trên các
 mẫu (gốc, tầm) lấy từ lịch sử đo thật của cell train, 40 gốc và 40 tầm mỗi cell; số cây của GBDT và điểm dừng của
 PINN-dự báo chọn theo MAE trên cell validation.
 
 \begin{figure}[!htbp]\centering
 \includegraphics[width=\textwidth]{graphics/fig_forecast_arch.pdf}
-\caption[Mô hình dự báo SOH, dung lượng và RUL]{Mô hình dự báo SOH, dung lượng và RUL tại gốc $k$: đặc trưng gốc
-$\mathbf{z}_k$ đi vào GBDT theo tầm và PINN-dự báo (tham số của nghiệm đóng~\eqref{eq:fcdrop}); mô hình kết hợp lấy trung
+\caption[PINN-GBDT dự báo SOH, dung lượng và RUL]{PINN-GBDT dự báo SOH, dung lượng và RUL tại gốc $k$: đặc trưng
+gốc $\mathbf{z}_k$ đi vào GBDT theo tầm và PINN-dự báo (tham số của nghiệm đóng~\eqref{eq:fcdrop}); PINN-GBDT lấy trung
 bình hai nhánh, rồi suy ra dung lượng, RUL và khoảng 90\,\%.}\label{fig:fcarch}
 \end{figure}
 
@@ -334,14 +334,15 @@ Holm qua các mô hình được so trong mỗi bộ.
 \input{generated/bang_du_bao_tham_so}
 
 
-\subsection{Dự báo có đặc trưng lịch sử: mô hình HiPINN}\label{sec:e33pp}
+\subsection{Dự báo có đặc trưng lịch sử: HiGBDT và HiPINN}\label{sec:e33pp}
 
-Mô hình dự báo ở trên nhìn cell tại gốc qua 23 đặc trưng, trong đó phần lịch sử chỉ có mức SOH và hai độ dốc. Thí
-nghiệm E33 đưa thêm quá khứ của cell vào bài toán dự báo và xây dựng mô hình HiPINN (History-informed PINN) gồm ba
-nhánh: hai nhánh dùng lịch sử SOH theo hai cách khác nhau và nhánh PINN-dự báo giữ ràng buộc vật lý của E22
-(\Cref{fig:hipinn}).
+PINN-GBDT ở trên nhìn cell tại gốc qua 23 đặc trưng, trong đó phần lịch sử chỉ có mức SOH và hai độ dốc. Thí nghiệm
+E33 đưa thêm quá khứ của cell vào bài toán dự báo và xây dựng hai mô hình: HiGBDT (History-informed GBDT), một GBDT có
+đặc trưng lịch sử SOH, và HiPINN (History-informed PINN) gồm ba nhánh. Trong HiPINN, HiGBDT và nhánh theo đời dùng lịch
+sử SOH theo hai cách khác nhau, còn PINN-dự báo giữ ràng buộc vật lý của E22 (\Cref{fig:hipinn}).
 
-\paragraph{GBDT lịch sử.} Ngoài 23 đặc trưng gốc $\mathbf{z}_k$, mô hình nhận SOH tại $k$ và độ lệch của nó so với mức
+\paragraph{HiGBDT.} HiGBDT được phát triển trong kho G-doan của đồ án (\Cref{app:source-code}); nó vừa là một mô
+hình dự báo đứng riêng, vừa là một nhánh của HiPINN. Ngoài 23 đặc trưng gốc $\mathbf{z}_k$, HiGBDT nhận SOH tại $k$ và độ lệch của nó so với mức
 $\ell_k$; với các cửa sổ 5, 10, 30, 100 và 200 hàng gần nhất: trung bình trừ SOH hiện tại, độ lệch chuẩn và độ dốc; với độ
 trễ 1, 3, 7, 15, 31 và 63 hàng: thay đổi SOH và khoảng chu kỳ tương ứng. Tất cả chỉ dùng các hàng tới gốc. GBDT học độ
 giảm $\ell_k - \text{SOH}(k+h)$ theo (đặc trưng, $h$). Sáu cấu hình được thử: hàm mất mát $L_2$ hoặc $L_1$, 15 hoặc 31 lá,
@@ -352,7 +353,7 @@ khi chọn, mỗi cell và mỗi gốc có tổng trọng số như nhau, để 
 
 \paragraph{PINN-dự báo có lịch sử.} Để trả lời câu hỏi lịch sử có giúp chính PINN-dự báo không, mạng và nghiệm
 đóng~\eqref{eq:fcdrop} được giữ nguyên, chỉ đổi đầu vào thành 23 đặc trưng gốc cộng các đặc trưng lịch sử ở trên. Khi đó
-mạng và GBDT lịch sử nhận cùng một lượng thông tin và chỉ khác dạng mô hình: cây quyết định học tự do theo $h$, còn mạng
+mạng và HiGBDT nhận cùng một lượng thông tin và chỉ khác dạng mô hình: cây quyết định học tự do theo $h$, còn mạng
 chỉ chọn tham số cho một đường suy giảm có dạng vật lý. Mô hình này được so riêng, không nằm trong HiPINN.
 
 \paragraph{Nhánh theo đời.} Hai nhánh trên dự báo trực tiếp SOH tại $k+h$. Với các cell suy giảm chậm rồi gãy gần cuối
@@ -374,24 +375,24 @@ nghiệm.
 
 \paragraph{HiPINN.} Mô hình lấy trung vị của ba nhánh tại từng gốc và tầm:
 \begin{equation}\label{eq:e33}
-\hat y = \operatorname{med}\bigl(\hat y_\text{GBDT lịch sử},\ \hat y_\text{PINN},\ \hat y_\text{theo đời}\bigr),
+\hat y = \operatorname{med}\bigl(\hat y_\text{HiGBDT},\ \hat y_\text{PINN},\ \hat y_\text{theo đời}\bigr),
 \end{equation}
 trong đó nhánh PINN là PINN-dự báo với 23 đặc trưng gốc như E22. Ba nhánh sai theo những cách khác nhau: PINN-dự báo
 có thể lệch xa ở cell có đường suy giảm khác dạng nghiệm đóng, nhánh theo đời đặt sai điểm gãy khi đời bị đoán sai, còn
-GBDT lịch sử thường dự báo phần cuối đời cao hơn thực tế. Khi chỉ một nhánh sai xa, trung vị đi theo hai nhánh còn lại,
+HiGBDT thường dự báo phần cuối đời cao hơn thực tế. Khi chỉ một nhánh sai xa, trung vị đi theo hai nhánh còn lại,
 trong khi trung bình bị kéo về phía nhánh sai. Trung vị cũng không có tham số nào cần chọn.
 
-Phương án đầu của HiPINN là tổng có trọng số $w_1\hat y_\text{GBDT lịch sử} + w_2\hat y_\text{PINN} +
+Phương án đầu của HiPINN, gọi là HiPINN-w, là tổng có trọng số $w_1\hat y_\text{HiGBDT} + w_2\hat y_\text{PINN} +
 w_3\hat y_\text{theo đời}$, với $(w_1, w_2, w_3)$ trên lưới bước 0,25 có tổng bằng 1 và nhánh PINN (có hoặc không có
 lịch sử) chọn theo MAE trên nửa validation dùng để chọn. Nửa này chỉ gồm vài cell mỗi lượt, nên trọng số chọn được
 không giữ được ưu thế trên nửa còn lại (\Cref{sec:e33res}); vì vậy HiPINN dùng trung vị. Quyết định này đưa ra sau khi
-đã có kết quả test của phương án đầu, nên kết quả của HiPINN là kết quả sau thí nghiệm. Phương án trọng số và trung bình
-đều ba nhánh được giữ trong các bảng để đối chiếu. Khoảng 90\,\% theo dự đoán phù hợp: $q$ là phân vị 90\,\% của
+đã có kết quả test của phương án đầu, nên kết quả của HiPINN là kết quả sau thí nghiệm. HiPINN-w và HiPINN-tb, trung bình
+đều ba nhánh, được giữ trong các bảng để đối chiếu. Khoảng 90\,\% theo dự đoán phù hợp: $q$ là phân vị 90\,\% của
 $|y - \hat y| / \sqrt{1 + h/L}$ trên các cell hiệu chỉnh, khoảng là $\hat y \pm q\sqrt{1 + h/L}$.
 
 \begin{figure}[!htbp]\centering
 \includegraphics[width=\textwidth]{graphics/fig_hipinn_arch.pdf}
-\caption[Mô hình HiPINN]{Mô hình HiPINN tại gốc $k$: GBDT lịch sử và nhánh theo đời nhận đặc trưng gốc và đặc trưng
+\caption[Mô hình HiPINN]{Mô hình HiPINN tại gốc $k$: HiGBDT và nhánh theo đời nhận đặc trưng gốc và đặc trưng
 lịch sử SOH, PINN-dự báo nhận đặc trưng gốc; trung vị của ba nhánh cho SOH và dung lượng dự báo, RUL và khoảng
 90\,\%.}\label{fig:hipinn}
 \end{figure}
@@ -404,4 +405,4 @@ không phụ thuộc đời thật của cell test; sai số của một cell l�
 gốc. Có hai ngân sách nhãn cho dữ liệu học của bộ dự báo: chỉ các cell train có nhãn, bằng 30\,\% tổng số cell, và mọi cell
 train như E22. Lịch sử SOH của cell test tới gốc là dung lượng đo; với ngân sách mọi cell train có thêm kịch bản lịch sử là
 ước lượng PINN-lai ở 70\,\% nhãn như E22. RUL được tính như E22. Ngoài các nhánh và HiPINN, các mô hình được so gồm giữ
-nguyên, ngoại suy tuyến tính, GBDT theo tầm, PINN-dự báo và mô hình kết hợp của E22, tất cả học lại theo giao thức này.
+nguyên, ngoại suy tuyến tính, GBDT theo tầm, PINN-dự báo và PINN-GBDT của E22, tất cả học lại theo giao thức này.

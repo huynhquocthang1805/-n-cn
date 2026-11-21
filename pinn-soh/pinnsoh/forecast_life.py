@@ -5,7 +5,7 @@ Lý do: dự báo trực tiếp theo tầm (GBDT, PINN-dự báo) cho đường 
 cuối đời cao hơn, vì thời điểm gãy (knee) của từng cell khác nhau và mẫu học ở tầm dài chỉ đến từ các cell sống lâu.
 Nhánh này tách hai việc:
 
-1. Đời còn lại: GBDT học log(N_j − c) từ đặc trưng tại gốc (23 đặc trưng gốc và lịch sử SOH, như GBDT lịch sử), với
+1. Đời còn lại: GBDT học log(N_j − c) từ đặc trưng tại gốc (23 đặc trưng gốc và lịch sử SOH, như HiGBDT), với
    N_j là chu kỳ cuối đời (SOH chạm ngưỡng tau) của cell train j; cell train chưa chạm ngưỡng không dùng.
 2. Hình dạng: mỗi cell train j cho một khuôn f_j(u) = SOH_j(u·N_j) theo thời gian chuẩn hoá u (trung vị trượt 9 hàng;
    sau hàng cuối giữ giá trị cuối: trên validation lần lặp 0, kéo dài theo độ dốc cuối đời làm dự báo sụp xuống giới hạn

@@ -296,7 +296,7 @@ def pred_traj():
 # Mọi hình E22 dùng kịch bản 'uoc': cell test không được đo dung lượng lần nào, lịch sử SOH tới gốc là ước lượng
 # PINN-lai; SOH đo được chỉ dùng để chấm. SOH đo vẽ bằng chấm, dự báo bằng đường.
 E22C = {'gbdt': '#2a78d6', 'pinn': '#1baf7a', 'ket_hop': '#d9480f', 'est': '#7b5cd6', 'tau': '#4a5563',
-        'org': '#9aa5ad', 'band': '#fd7e14', 'meas': '#1b2330'}      # dự báo kết hợp màu cam để tách khỏi chấm số đo
+        'org': '#9aa5ad', 'band': '#fd7e14', 'meas': '#1b2330'}      # PINN-GBDT màu cam để tách khỏi chấm số đo
 E22_ORIGIN = {0: '20 %', 1: '40 %', 2: '60 %'}          # gốc dự báo: tỉ lệ số hàng dữ liệu đã qua của cell
 _E22 = {}
 
@@ -322,7 +322,7 @@ def _e22_cells(ds):
 
 
 def _e22_rank(T, ds):
-    """Sai số kết hợp của mỗi cell test, trung bình trên phần đời còn lại (lần lặp 0, gốc 40 %), xếp tăng dần."""
+    """Sai số của PINN-GBDT ở mỗi cell test, trung bình trên phần đời còn lại (lần lặp 0, gốc 40 %), xếp tăng dần."""
     t = T[(T.ds == ds) & (T.r == 0) & (T.scen == 'uoc') & (T.oq == 1)]
     return t.groupby('cid').e_ket_hop.mean().sort_values()
 
@@ -340,7 +340,7 @@ def _e22_measured(ax, cell, s=1.5):
 def _e22_handles(plt, models=False):
     hd = [plt.Line2D([], [], color=E22C['meas'], marker='o', ls='', ms=3, alpha=0.7, label='SOH đo được'),
           plt.Line2D([], [], color=E22C['est'], lw=1.6, label='SOH ước lượng tới gốc'),
-          plt.Line2D([], [], color=E22C['ket_hop'], lw=2, label='dự báo kết hợp'),
+          plt.Line2D([], [], color=E22C['ket_hop'], lw=2, label='PINN-GBDT'),
           plt.Rectangle((0, 0), 1, 1, color=E22C['band'], alpha=0.25, label='khoảng 90 %')]
     if models:
         hd += [plt.Line2D([], [], color=E22C['gbdt'], lw=1.2, ls=(0, (3, 1.5)), label='GBDT'),
@@ -373,7 +373,7 @@ def _e22_panel(ax, T, ds, cid, models=False, lw=2.0):
 
 
 def e22_traj():
-    """Một cell test mỗi bộ (lần lặp 0, gốc 40 %, sai số kết hợp ở trung vị), đủ ba mô hình và trục dung lượng."""
+    """Một cell test mỗi bộ (lần lặp 0, gốc 40 %, sai số PINN-GBDT ở trung vị), đủ ba mô hình và trục dung lượng."""
     plt = setup()
     from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
     _, T, _ = _e22()
@@ -398,7 +398,7 @@ def e22_traj():
 
 
 def e22_cells():
-    """Ba cell test mỗi bộ, chọn theo sai số kết hợp ở phân vị 25, 50 và 75 % của bộ (lần lặp 0, gốc 40 %)."""
+    """Ba cell test mỗi bộ, chọn theo sai số PINN-GBDT ở phân vị 25, 50 và 75 % của bộ (lần lặp 0, gốc 40 %)."""
     plt = setup()
     from pinnsoh.plotstyle import panel_title, save, GRID
     _, T, _ = _e22()
@@ -431,7 +431,7 @@ def e22_cells():
 
 
 def e22_origins():
-    """Cùng cell của e22_traj, dự báo kết hợp từ ba gốc 20, 40 và 60 % so với SOH đo được."""
+    """Cùng cell của e22_traj, dự báo PINN-GBDT từ ba gốc 20, 40 và 60 % so với SOH đo được."""
     plt = setup()
     from pinnsoh.forecast import TAU
     from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
@@ -476,7 +476,7 @@ def e22_origins():
 
 
 def e22_parity():
-    """SOH dự báo (kết hợp) so với SOH đo được ở ba tầm h = 0,1L; 0,25L; 0,5L (lần lặp 0, mọi cell và gốc)."""
+    """SOH dự báo (PINN-GBDT) so với SOH đo được ở ba tầm h = 0,1L; 0,25L; 0,5L (lần lặp 0, mọi cell và gốc)."""
     plt = setup()
     from pinnsoh.forecast import H_REL
     from pinnsoh.plotstyle import panel_title, save, CHEM, GRID, MUTED
@@ -546,7 +546,7 @@ def e22_horizon():
 
 
 def e22_rul():
-    """RUL dự báo (kết hợp) so với RUL thực ở ba gốc 25, 50, 75 % của chu kỳ cuối đời thật; trung bình qua lần lặp."""
+    """RUL dự báo (PINN-GBDT) so với RUL thực ở ba gốc 25, 50, 75 % của chu kỳ cuối đời thật; trung bình qua lần lặp."""
     plt = setup()
     from pinnsoh.forecast import TAU, RUL_ORIGINS
     from pinnsoh.plotstyle import panel_title, save, MUTED
@@ -624,8 +624,8 @@ def e33_mae():
 
 
 MIN_H = 0.25                                     # E33: cell minh hoạ phải còn ít nhất 0,25L chu kỳ đo sau gốc
-E33_TAIL = [('ket_hop', 'kết hợp E22', '#9aa5ad', (0, (5, 1.5)), 'v'),
-            ('gbdt_ls', 'GBDT lịch sử', '#2a78d6', (0, (3, 1.5)), 's'), ('pinn', 'PINN-dự báo', '#1baf7a', (0, (3, 1.5)), '^'),
+E33_TAIL = [('ket_hop', 'PINN-GBDT', '#9aa5ad', (0, (5, 1.5)), 'v'),
+            ('gbdt_ls', 'HiGBDT', '#2a78d6', (0, (3, 1.5)), 's'), ('pinn', 'PINN-dự báo', '#1baf7a', (0, (3, 1.5)), '^'),
             ('doi', 'nhánh theo đời', '#7b5cd6', (0, (1, 1.2)), 'D'), ('hipinn', 'HiPINN', '#d9480f', '-', 'o')]
 
 
@@ -660,7 +660,7 @@ def e33_tail():
 
 def e33_traj():
     """Một cell test mỗi bộ (mọi cell train, lịch sử đo, lần lặp 0, gốc 0,4L; trong các cell còn ít nhất 0,25L chu kỳ
-    đo sau gốc, cell có sai số HiPINN ở trung vị): SOH đo, GBDT lịch sử, nhánh theo đời, HiPINN và khoảng 90 %.
+    đo sau gốc, cell có sai số HiPINN ở trung vị): SOH đo, HiGBDT, nhánh theo đời, HiPINN và khoảng 90 %.
     PINN-dự báo (nhánh thứ ba của HiPINN) không vẽ để hình dễ đọc."""
     plt = setup()
     import json as _json, glob as _glob
@@ -712,7 +712,7 @@ def e33_traj():
     hd = [plt.Line2D([], [], color=E22C['meas'], marker='o', ls='', ms=3, alpha=0.7, label='SOH đo được'),
           plt.Line2D([], [], color=E22C['ket_hop'], lw=2, label='HiPINN'),
           plt.Rectangle((0, 0), 1, 1, color=E22C['band'], alpha=0.25, label='khoảng 90 %'),
-          plt.Line2D([], [], color='#2a78d6', lw=1.2, ls=(0, (3, 1.5)), label='GBDT lịch sử'),
+          plt.Line2D([], [], color='#2a78d6', lw=1.2, ls=(0, (3, 1.5)), label='HiGBDT'),
           plt.Line2D([], [], color=E22C['est'], lw=1.2, ls=(0, (1, 1.2)), label='nhánh theo đời'),
           plt.Line2D([], [], color=E22C['tau'], lw=1, ls=(0, (4, 2)), label='ngưỡng cuối đời'),
           plt.Line2D([], [], color=E22C['org'], lw=1, ls=(0, (2, 2)), label='gốc dự báo')]

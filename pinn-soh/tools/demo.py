@@ -217,7 +217,7 @@ def _hipinn(model, norm, c, split):
                 return obj
         except Exception:
             pass
-    print('lần đầu: huấn luyện HiPINN (GBDT lịch sử, PINN-dự báo, nhánh theo đời) — vài phút ...', flush=True)
+    print('lần đầu: huấn luyện HiPINN (HiGBDT, PINN-dự báo, nhánh theo đời) — vài phút ...', flush=True)
     torch.set_num_threads(1)
     m = HiPINN.fit(c['dataset'], list(split['labelled']), list(split['val']), list(split['train']), seed=0)
     by = {x.cid: x for x in load_dataset('PINN4SOH/data', c['dataset'], clean='causal')}
@@ -250,7 +250,7 @@ def _forecast_hipinn(a, model, norm, c, split):
     print(f'cell {name} · gốc dự báo: chu kỳ {k0} · danh định {nominal} Ah · ngưỡng cuối đời SOH {tau:.2f} '
           f'({tau * nominal:.3f} Ah)')
     print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
-    print('HiPINN: trung vị của GBDT lịch sử, PINN-dự báo và nhánh theo đời')
+    print('HiPINN: trung vị của HiGBDT, PINN-dự báo và nhánh theo đời')
     print(f'hiện tại: SOH {R["level"]:.3f} · dung lượng {R["level"] * nominal:.3f} Ah')
     for hr in FC.H_REL:
         h = int(round(hr * L)); j = min(np.searchsorted(hh, h), len(hh) - 1)
@@ -269,7 +269,7 @@ def _forecast_hipinn(a, model, norm, c, split):
               + (f' · RUL thực {int(cell.cycle[i + 1:][cross[0]] - k0)}' if len(cross) else ''))
     os.makedirs(DEMO_DIR, exist_ok=True)
     pd.DataFrame(dict(chu_ky=k0 + hh.astype(int), soh_hipinn=p, soh_can_duoi=plo, soh_can_tren=phi,
-                      gbdt_lich_su=R['gbdt_ls'], pinn_du_bao=R['pinn'], nhanh_theo_doi=R['doi'],
+                      higbdt=R['gbdt_ls'], pinn_du_bao=R['pinn'], nhanh_theo_doi=R['doi'],
                       dung_luong_Ah=p * nominal)).to_csv(os.path.join(DEMO_DIR, f'{name}_dubao.csv'), index=False)
     import matplotlib.pyplot as plt
     from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, save
@@ -281,7 +281,7 @@ def _forecast_hipinn(a, model, norm, c, split):
     seen = (cell.cycle[-1] - k0) if truth is not None else 0
     show = hh <= max(min(rul, hh[-1]), seen) * 1.15 + L * 0.05
     ax.fill_between(k0 + hh[show], plo[show], phi[show], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
-    for key, col, lab in (('gbdt_ls', '#2a78d6', 'GBDT lịch sử'), ('doi', '#7b5cd6', 'nhánh theo đời')):
+    for key, col, lab in (('gbdt_ls', '#2a78d6', 'HiGBDT'), ('doi', '#7b5cd6', 'nhánh theo đời')):
         ax.plot(k0 + hh[show], R[key][show], color=col, lw=0.8, ls=(0, (3, 1.5)), label=lab, zorder=4)
     ax.plot(k0 + hh[show], p[show], color='#d9480f', lw=1.7, label='HiPINN', zorder=3)   # PINN-dự báo chỉ có trong CSV
     ax.axhline(tau, color='#c0392b', lw=0.7, ls=(0, (4, 2)))
@@ -324,7 +324,7 @@ def cmd_all(a):
         ax.plot(cell.cycle, cell.soh, color='#1b2330', lw=1.0, label='SOH đo được')
         x = k0 + hh
         ax.fill_between(x, R['lo'], R['hi'], color='#fd7e14', alpha=0.18, lw=0, label='khoảng 90 %')
-        for key, col, ls, lab in (('gbdt_ls', '#2a78d6', (0, (3, 1.5)), 'GBDT lịch sử'),     # PINN-dự báo không vẽ
+        for key, col, ls, lab in (('gbdt_ls', '#2a78d6', (0, (3, 1.5)), 'HiGBDT'),     # PINN-dự báo không vẽ
                                   ('doi', '#7b5cd6', (0, (1, 1.2)), 'nhánh theo đời')):     # để hình dễ đọc
             ax.plot(x, R[key], color=col, lw=0.9, ls=ls, label=lab, zorder=4)
         ax.plot(x, R['hipinn'], color='#d9480f', lw=1.7, label='HiPINN', zorder=3)
@@ -347,7 +347,7 @@ def cmd_all(a):
     save(fig, os.path.join(DEMO_DIR, 'hipinn_bon_bo'))
     pd.DataFrame(rows).to_csv(os.path.join(DEMO_DIR, 'hipinn_bon_bo.csv'), index=False)
     for r in rows:
-        print(f"{r['bo']:5s} {r['cell']:45s} gốc {r['goc']:5d}  MAE HiPINN {r['mae']:.4f}  (GBDT lịch sử "
+        print(f"{r['bo']:5s} {r['cell']:45s} gốc {r['goc']:5d}  MAE HiPINN {r['mae']:.4f}  (HiGBDT "
               f"{r['mae_gbdt_ls']:.4f}; PINN-dự báo {r['mae_pinn']:.4f}; nhánh theo đời {r['mae_doi']:.4f})")
     print(f'đã ghi {DEMO_DIR}/hipinn_bon_bo.csv, .png và .pdf')
 

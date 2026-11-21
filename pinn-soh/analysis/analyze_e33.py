@@ -1,5 +1,5 @@
 """
-E33: dự báo SOH có đặc trưng lịch sử — HiPINN (trung vị của GBDT lịch sử, PINN-dự báo, nhánh theo đời), phương án
+E33: dự báo SOH có đặc trưng lịch sử — HiPINN (trung vị của HiGBDT, PINN-dự báo, nhánh theo đời), phương án
 trọng số chọn trên validation, các nhánh và các mô hình của E22 — bảng, kiểm định.
 
     python analysis/analyze_e33.py      # -> results/e33_*.csv
@@ -25,10 +25,10 @@ from pinnsoh.forecast_combo import TCOL, RCOL, VCOL, MODELS, SCEN, ROOT
 OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 GDOAN = os.environ.get('GDOAN', '/home/user/huynhquocthang1805/g-doan')
-LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT (E22)', 'gbdt_ls': 'GBDT lịch sử',
-         'pinn': 'PINN-dự báo', 'pinn_ls': 'PINN-dự báo có lịch sử', 'ket_hop': 'Kết hợp E22',
-         'ket_hop_ls': 'GBDT lịch sử và PINN, trọng số chọn', 'doi': 'Nhánh theo đời', 'tb3': 'Trung bình ba nhánh',
-         'hipinn_w': 'HiPINN, trọng số chọn', 'hipinn': 'HiPINN'}
+LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT theo tầm (E22)', 'gbdt_ls': 'HiGBDT',
+         'pinn': 'PINN-dự báo', 'pinn_ls': 'PINN-dự báo có lịch sử', 'ket_hop': 'PINN-GBDT (E22)',
+         'ket_hop_ls': 'HiGBDT và PINN, trọng số chọn', 'doi': 'Nhánh theo đời', 'tb3': 'HiPINN-tb',
+         'hipinn_w': 'HiPINN-w', 'hipinn': 'HiPINN'}
 FOCUS = 'hipinn'                      # mô hình của đồ án
 PBINS = [0, .5, .7, .8, .9, 1.0001]   # phần đời của chính cell (chỉ để nhóm khi chấm, không dùng khi dự báo)
 PLAB = ['<0.5', '0.5-0.7', '0.7-0.8', '0.8-0.9', '0.9-1']

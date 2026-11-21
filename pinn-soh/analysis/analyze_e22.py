@@ -22,7 +22,7 @@ from pinnsoh.data import load_dataset
 OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'vatly': 'Vật lý theo cell', 'gbdt': 'GBDT',
-         'pinn': 'PINN-dự báo', 'ket_hop': 'Kết hợp'}
+         'pinn': 'PINN-dự báo', 'ket_hop': 'PINN-GBDT'}
 TCOL = ['scen', 'cell', 'oq', 'k', 'h', 'y'] + MODELS + ['lo', 'hi']
 RCOL = ['scen', 'cell', 'q', 'k', 'true'] + MODELS + ['lo', 'hi', 'a', 'lam']
 
@@ -277,7 +277,7 @@ def figures(T, H, R):
     fig.text(0.995, 0.56, 'dung lượng (Ah)', rotation=90, ha='right', va='center', fontsize=7.5)
     hd = [plt.Line2D([], [], color=MODEL_COLOR['truth'], lw=1.2, label='thực đo'),
           plt.Line2D([], [], color='#7b5cd6', lw=1.3, label='lịch sử ước lượng'),
-          plt.Line2D([], [], color=col['ket_hop'], lw=1.7, label='dự báo kết hợp'),
+          plt.Line2D([], [], color=col['ket_hop'], lw=1.7, label='PINN-GBDT'),
           plt.Rectangle((0, 0), 1, 1, color='#1baf7a', alpha=0.25, label='khoảng 90 %'),
           plt.Line2D([], [], color=col['gbdt'], lw=1.0, ls=(0, (3, 1.5)), label='GBDT'),
           plt.Line2D([], [], color=col['pinn'], lw=1.0, ls=(0, (3, 1.5)), label='PINN-dự báo'),

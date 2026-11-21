@@ -1,5 +1,5 @@
 """
-GBDT dự báo có đặc trưng lịch sử SOH ("GBDT lịch sử"), lấy từ repo G-doan (improvements/features.py và hàm
+HiGBDT: GBDT dự báo có đặc trưng lịch sử SOH, lấy từ kho G-doan của đồ án (improvements/features.py và hàm
 `forecast` trong improvements/study.py, ngày 30/10/2026), giữ nguyên cấu hình và cách chọn để kết quả trùng với bản đó.
 
 Đặc trưng tại gốc k (chỉ dùng hàng <= k):

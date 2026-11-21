@@ -26,7 +26,7 @@ TJU, MIT, HUST:
 | E28 | ngân sách đo: đo thưa mọi cell train thay vì đo đầy đủ một phần cell |
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
-| E33 | đưa lịch sử của cell vào dự báo: GBDT lịch sử, PINN-dự báo có lịch sử, nhánh theo đời và mô hình HiPINN lấy trung vị của ba nhánh, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
+| E33 | đưa lịch sử của cell vào dự báo: HiGBDT (GBDT có đặc trưng lịch sử), PINN-dự báo có lịch sử, nhánh theo đời và HiPINN lấy trung vị của ba nhánh, so với PINN-GBDT của E22, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
 | features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
@@ -235,7 +235,7 @@ trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`resu
 ### Dự báo so với SOH đo được (E22)
 
 `pinnsoh/forecast.py`: tại gốc k, GBDT theo tầm và PINN-dự báo (mạng trả hai tham số của nghiệm đóng của động học xám)
-dự báo SOH ở mọi chu kỳ sau k; mô hình kết hợp lấy trung bình hai nhánh, rồi suy ra dung lượng, RUL và khoảng 90 %. Cell
+dự báo SOH ở mọi chu kỳ sau k; PINN-GBDT lấy trung bình hai nhánh, rồi suy ra dung lượng, RUL và khoảng 90 %. Cell
 test không được đo dung lượng: lịch sử tới gốc là ước lượng PINN-lai (E20, 70 % nhãn), SOH đo được chỉ dùng để chấm.
 Báo cáo có sơ đồ mô hình (Chương 3) và sáu hình so dự báo với số đo (Chương 5): một và ba cell mỗi bộ, ba gốc dự báo cho
 cùng một cell, SOH dự báo so với đo ở ba tầm, sai số theo tầm, RUL dự báo so với RUL thực.
@@ -247,26 +247,27 @@ python run.py report    # runs/E22 đủ 60 lượt thì tính lại bảng và 
 ```
 
 * Chạy lại toàn bộ (240 lượt E20 ở 70 % nhãn, 60 lượt E22): 188/188 ô của ba bảng dự báo trùng với báo cáo đã nộp.
-* Trên phần đời còn lại, sai số của mô hình kết hợp bằng 0,21–0,46 lần giữ nguyên, 0,39–0,60 lần ngoại suy tuyến tính
+* Trên phần đời còn lại, sai số của PINN-GBDT bằng 0,21–0,46 lần giữ nguyên, 0,39–0,60 lần ngoại suy tuyến tính
   và 0,27–0,58 lần khớp vật lý theo cell; so với GBDT là 0,91–1,06. Ở tầm 0,5L, sai số quy ra dung lượng là 20–57 mAh.
 * Chưa tốt: RUL nằm trong ±20 % RUL thực ở 38–65 % số gốc; khoảng RUL 90 % chỉ phủ 65–84 %. Từ gốc ở 20 % đời,
   nghiệm đóng có thể đi qua điểm kỳ dị và kéo dự báo xuống giới hạn dưới 0,40 (2–5 % số quỹ đạo).
 
-### Dự báo có đặc trưng lịch sử: HiPINN (E33)
+### Dự báo có đặc trưng lịch sử: HiGBDT và HiPINN (E33)
 
-HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm):
+Hai mô hình dự báo có đặc trưng lịch sử của đồ án: HiGBDT, và HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm):
 
-* GBDT lịch sử (`pinnsoh/forecast_hist.py`, phát triển trong kho G-doan của đồ án): GBDT dự báo độ giảm SOH với đặc
+* HiGBDT (`pinnsoh/forecast_hist.py`, phát triển trong kho G-doan của đồ án): GBDT dự báo độ giảm SOH với đặc
   trưng gốc và đặc trưng lịch sử SOH (trung bình, độ lệch chuẩn, độ dốc trên nhiều cửa sổ; thay đổi theo độ trễ);
 * PINN-dự báo của E22 (23 đặc trưng gốc, nghiệm đóng của đường suy giảm);
 * nhánh theo đời (`pinnsoh/forecast_life.py`): GBDT dự đoán đời còn lại, rồi đặt khuôn quỹ đạo của K cell train gần nhất
   lên đời dự đoán.
 
-Trung vị không có tham số cần chọn; khi một nhánh sai xa, nó đi theo hai nhánh còn lại. Phương án đầu (tổng có trọng số,
-trọng số chọn trên nửa validation dùng để chọn, chỉ 3–7 cell mỗi lượt) không giữ được ưu thế trên nửa còn lại; dạng
-trung vị được chọn sau khi đã xem kết quả test của phương án đầu, nên là kết quả sau thí nghiệm. E33 vẫn lưu phương án
-trọng số (`hipinn_w`), trung bình đều ba nhánh (`tb3`), PINN-dự báo có lịch sử (`pinn_ls`) và sai số theo cell trên hai nửa
-validation (mảng `vcell`) để đối chiếu.
+Trung vị không có tham số cần chọn; khi một nhánh sai xa, nó đi theo hai nhánh còn lại. Phương án đầu HiPINN-w (tổng
+có trọng số, trọng số chọn trên nửa validation dùng để chọn, chỉ 3–7 cell mỗi lượt) không giữ được ưu thế trên nửa còn
+lại; dạng trung vị được chọn sau khi đã xem kết quả test của HiPINN-w, nên là kết quả sau thí nghiệm. E33 vẫn lưu
+HiPINN-w (`hipinn_w`), HiPINN-tb là trung bình đều ba nhánh (`tb3`), PINN-dự báo có lịch sử (`pinn_ls`) và sai số theo
+cell trên hai nửa validation (mảng `vcell`) để đối chiếu. Mô hình dự báo của E22 là PINN-GBDT (½ GBDT theo tầm +
+½ PINN-dự báo, cột `ket_hop`).
 
 Giao thức (`pinnsoh/forecast_combo.py`): cùng fold với E22; cell validation chia đôi theo tên, một nửa để chọn cấu hình
 từng nhánh, nửa còn lại để hiệu chỉnh khoảng 90 % và so các mô hình trên dữ liệu không thuộc test. Thang đời L và chuẩn

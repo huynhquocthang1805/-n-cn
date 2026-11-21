@@ -8,7 +8,12 @@ BMS & Hệ thống quản lý pin (Battery Management System)\\
 CC--CV & Sạc dòng không đổi -- áp không đổi (Constant Current -- Constant Voltage)\\
 CNN & Mạng nơ-ron tích chập (Convolutional Neural Network)\\
 GBDT & Cây quyết định tăng cường gradient (Gradient Boosting Decision Tree)\\
+GBDT-cập nhật & GBDT học thay đổi SOH kể từ lần đo dung lượng gần nhất (E32)\\
 GPR & Hồi quy quá trình Gauss (Gaussian Process Regression)\\
+HiGBDT & GBDT dự báo có đặc trưng lịch sử SOH (History-informed GBDT)\\
+HiGBDT-$\Delta$, -R, -V & HiGBDT cho bài toán cập nhật: học độ giảm, học phần dư, chọn trên validation\\
+HiPINN & Trung vị của HiGBDT, PINN-dự báo và nhánh theo đời (History-informed PINN)\\
+HiPINN-w, HiPINN-tb & HiPINN với trọng số chọn trên validation; với trung bình đều ba nhánh\\
 KTC & Khoảng tin cậy\\
 LAM & Mất vật liệu hoạt động (Loss of Active Material)\\
 LFP & Lithium sắt phốt phát (LiFePO$_4$)\\
@@ -21,6 +26,8 @@ NCA, NCM & Oxit niken--coban--nhôm, oxit niken--coban--mangan\\
 PINN & Mạng nơ-ron có thông tin vật lý (Physics-Informed Neural Network)\\
 PINN-semi & PINN bán giám sát, loss vật lý áp lên cả cell không nhãn\\
 PINN-lai & Mô hình kết hợp: ba PINN-semi, GBDT và bộ lọc quỹ đạo\\
+PINN-dự báo & PINN chọn tham số nghiệm đóng của đường suy giảm để dự báo SOH\\
+PINN-GBDT & Trung bình của PINN-dự báo và GBDT theo tầm (dự báo, E22)\\
 PINN4SOH & PINN của Wang và cộng sự (2024), bài gốc được chạy lại\\
 RMSE & Căn bậc hai sai số bình phương trung bình (Root Mean Square Error)\\
 RUL & Số chu kỳ còn lại tới ngưỡng cuối đời (Remaining Useful Life)\\
