@@ -58,6 +58,11 @@ def rng(vals, n=2):
     return lo if lo == hi else (f'{lo} đến {hi}' if min(vals) < 0 else f'{lo}--{hi}')
 
 
+def tex_esc(t):
+    """Tên cell trong lời văn: thoát các ký tự đặc biệt của LaTeX."""
+    return ''.join('\\' + c if c in '_#%&$' else c for c in str(t))
+
+
 def pct(x, n=0):
     return v(100 * x, n) + r'\,\%'
 
@@ -988,17 +993,35 @@ def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
 def e33_item(E):
     """Một ý của phần kết luận về E33, lấy số từ e33_section."""
     lab = {(b, sc): l for b, sc, l in E33_SET}
+    hist = lambda sc: 'lịch sử đo' if sc == 'do' else 'lịch sử ước lượng'
+    soh = set(E['soh'].values())
+    if len(soh) == 1 and None in soh:
+        soh_txt = 'với SOH, không mô hình nào thoả ở cả ba thiết lập' + (f', vì {E["soh_why"]}' if E['soh_why'] else '')
+    elif len(soh) == 1:
+        soh_txt = f'với SOH, quy tắc chọn {E["name"](soh.pop())} ở cả ba thiết lập'
+    else:
+        soh_txt = 'với SOH: ' + '; '.join(f'{lab[k]}: {E["name"](m)}' for k, m in E['soh'].items())
+    if E['ls_best_do']:
+        soh_txt += '; khi có lịch sử đo, GBDT lịch sử có MAE trung bình thấp nhất trên cả bốn bộ ở cả hai ngân sách'
+    rul = set(E['rul'].values())
+    rul_txt = (('với RUL, không mô hình nào thoả ở cả hai kịch bản lịch sử' if None in rul else
+                f'với RUL, quy tắc chọn {E["name"](rul.pop())} ở cả hai kịch bản lịch sử') if len(rul) == 1 else
+               'với RUL: ' + '; '.join(f'{hist(sc)}: {E["name"](m)}' for sc, m in E['rul'].items()))
     return (r'Kết hợp GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) với PINN-dự báo, đánh giá trong một giao thức đã '
             r'sửa các điểm còn rò rỉ của E22 (E33, \Cref{sec:e33res}): khi có lịch sử đo dung lượng, GBDT lịch sử có MAE '
             rf'bằng {rng(E["r_ls_gbdt"])} lần GBDT theo tầm, mô hình kết hợp mới bằng {rng(E["r_kls_kh"])} lần kết hợp '
             rf'E22 và {rng(E["r_kls_ls"])} lần GBDT lịch sử; với lịch sử ước lượng, kết hợp mới bằng '
-            rf'{rng(E["r_kls_kh_uoc"])} lần kết hợp E22. Theo quy tắc chọn sau thí nghiệm, mô hình dự báo SOH nên dùng là '
-            + '; '.join(f'{lab[k]}: {E["name"](m)}' for k, m in E['soh'].items())
-            + '; với RUL: ' + '; '.join(f'{"lịch sử đo" if sc == "do" else "lịch sử ước lượng"}: {E["name"](m)}'
-                                        for sc, m in E['rul'].items()) + '.')
+            rf'{rng(E["r_kls_kh_uoc"])} lần kết hợp E22. Theo quy tắc chọn sau thí nghiệm, {soh_txt}; {rul_txt}.')
 
 
 def e33_abstract(E):
+    if E['ls_best_do'] and min(E['r_kls_ls']) > 1:
+        s = (r' Với dự báo SOH khi có lịch sử đo dung lượng, GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) có MAE '
+             rf'trung bình thấp nhất trên cả bốn bộ, bằng {rng(E["r_ls_gbdt"])} lần GBDT dự báo theo tầm; ghép thêm '
+             rf'PINN-dự báo không giảm MAE trung bình ({rng(E["r_kls_ls"])} lần)')
+        if set(E['rul'].values()) == {'ket_hop'}:
+            s += '; với RUL, quy tắc chọn giữ mô hình kết hợp GBDT theo tầm với PINN-dự báo'
+        return s + '.'
     return (r' Ghép GBDT có đặc trưng lịch sử SOH với PINN-dự báo cho sai số dự báo SOH bằng '
             rf'{rng(E["r_kls_kh"])} lần mô hình kết hợp trước đó khi có lịch sử đo dung lượng và '
             rf'{rng(E["r_kls_kh_uoc"])} lần khi lịch sử là ước lượng.')
@@ -1252,6 +1275,7 @@ E33_LAB = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT (E22)
 E33_SET = [('lab30', 'do', r'30\,\% nhãn, lịch sử đo'), ('all', 'do', 'mọi cell train, lịch sử đo'),
            ('all', 'uoc', 'mọi cell train, lịch sử ước lượng')]
 E33_RUNS = 120
+NUMW = {1: 'Một', 2: 'Hai', 3: 'Ba', 4: 'Bốn', 5: 'Năm', 6: 'Sáu', 7: 'Bảy', 8: 'Tám', 9: 'Chín'}
 
 
 def e33_load():
@@ -1294,6 +1318,7 @@ E33_TXT = {'giu': 'giữ nguyên', 'tuyen': 'ngoại suy tuyến tính', 'gbdt':
 def e33_section(D):
     """Mục kết quả E33 (Chương 5) và các bảng chi tiết ở Phụ lục A; mọi số và mọi nhận định lấy từ bảng kết quả."""
     S, T, R, RT, CH = D['summary'], D['tests'], D['rul'], D['rul_tests'], D['choices']
+    TP = D['traj_pick']
     G, GM, GA = D['gdoan'], D['gdoan_match'], D['gdoan_anchor']
     join = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
     where = lambda xs: 'cả bốn bộ' if len(xs) == 4 else (join(xs) if xs else 'không bộ nào')
@@ -1301,10 +1326,14 @@ def e33_section(D):
     rv = lambda b, sc, ds, col: float(R[(R.budget == b) & (R.scen == sc) & (R.ds == ds)][col].iloc[0])
     lab_of = {(b, sc): lab for b, sc, lab in E33_SET}
 
+    def prow(b, sc, ds, x, y, tab):
+        """Dòng kiểm định của cặp (x, y), dù bảng lưu cặp theo thứ tự nào."""
+        return tab[(tab.budget == b) & (tab.scen == sc) & (tab.ds == ds)
+                   & (((tab.a == x) & (tab.b == y)) | ((tab.a == y) & (tab.b == x)))].iloc[0]
+
     def pair(b, sc, ds, x, y, tab):
         """(p sau Holm, x tốt hơn y theo hướng của Wilcoxon, tỉ số MAE x/y), dù bảng lưu cặp theo thứ tự nào."""
-        r = tab[(tab.budget == b) & (tab.scen == sc) & (tab.ds == ds)
-                & (((tab.a == x) & (tab.b == y)) | ((tab.a == y) & (tab.b == x)))].iloc[0]
+        r = prow(b, sc, ds, x, y, tab)
         return float(r.p_holm), (r.a_wins == 1) == (r.a == x), float(r.ratio if r.a == x else 1 / r.ratio)
 
     odd = []                                   # kiểm định ghép cặp và tỉ số trung bình ngược chiều
@@ -1313,8 +1342,8 @@ def e33_section(D):
         res = {ds: pair(b, sc, ds, x, y, tab) for ds in DS}
         up = [ds for ds in DS if res[ds][0] < 0.05 and res[ds][1]]
         dn = [ds for ds in DS if res[ds][0] < 0.05 and not res[ds][1]]
-        odd.extend((lab_of[(b, sc)], x, y, ds, 'tốt hơn') for ds in up if res[ds][2] > 1)
-        odd.extend((lab_of[(b, sc)], x, y, ds, 'kém hơn') for ds in dn if res[ds][2] < 1)
+        odd.extend((b, sc, x, y, ds) for ds in up if res[ds][2] > 1)
+        odd.extend((b, sc, x, y, ds) for ds in dn if res[ds][2] < 1)
         s = 'tỉ số ' + rng([res[ds][2] for ds in DS])
         s += f', tốt hơn có ý nghĩa trên {where(up)}' if up else ''
         s += f', kém hơn có ý nghĩa trên {where(dn)}' if dn else ''
@@ -1370,10 +1399,23 @@ def e33_section(D):
           r'Wilcoxon ghép cặp theo cell, hiệu chỉnh Holm qua bốn bộ, $p<0{,}05$.' '\n'
           r'\begin{itemize}' '\n' + '\n'.join(li) + '\n' r'\end{itemize}')
     if odd:
-        p2 += ('\n' + ('Một phép so' if len(odd) == 1 else f'{len(odd)} phép so')
+        ro = [prow(b, sc, ds, x, y, T) for b, sc, x, y, ds in odd]
+        p2 += ('\n' + f'{NUMW.get(len(odd), str(len(odd)))} phép so'
                + ' có kiểm định ghép cặp và tỉ số trung bình ngược chiều: '
-               + '; '.join(f'{ds}, {lab}, {E33_TXT[x]} so với {E33_TXT[y]}' for lab, x, y, ds, _ in odd)
-               + '. Ở đó phần lớn cell đi theo hướng của kiểm định, còn vài cell có sai số lớn quyết định trung bình.')
+               + '; '.join(f'{ds}, {lab_of[(b, sc)]}, {E33_TXT[x]} so với {E33_TXT[y]}' for b, sc, x, y, ds in odd)
+               + '. Ở ' + ('phép so đó' if len(odd) == 1 else 'các phép so đó') + ', bỏ '
+               + rng([r.flip_k for r in ro], 0) + ' cell có hiệu ngược hướng kiểm định lớn nhất thì hiệu của hai trung '
+               'bình cũng đổi chiều.')
+        tops = {r.top_cell for r in ro}
+        if len(tops) == 1:
+            top = tops.pop()
+            p2 += (' Cell có hiệu ngược hướng lớn nhất '
+                   + ('' if len(odd) == 1 else f'ở cả {NUMW.get(len(odd), str(len(odd))).lower()} phép so ')
+                   + f'là cell {tex_esc(top.split("/")[-1])} của {top.split("/")[0]}, nơi PINN-dự báo có MAE '
+                   + rng([1e3 * r.top_pinn for r in ro], 0) + r' ($\times10^{-3}$) còn GBDT lịch sử có MAE '
+                   + rng([1e3 * r.top_gbdt_ls for r in ro], 0) + '; hai mô hình kết hợp, có nhánh PINN-dự báo, cũng sai '
+                   'nhiều ở cell này (MAE ' + rng([1e3 * r[m] for r in ro for m in ('top_ket_hop', 'top_ket_hop_ls')], 0)
+                   + ').')
     w_share = lambda b, wv: pct((CH[CH.budget == b].w == wv).mean())
     def best_txt(b, sc):
         by_m = {}
@@ -1392,16 +1434,33 @@ def e33_section(D):
             r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e33_traj.pdf}' '\n'
             r'\caption[Dự báo của mô hình kết hợp mới so với SOH đo được]{Dự báo của mô hình kết hợp mới (GBDT lịch sử và '
             r'PINN-dự báo, trọng số chọn trên validation) so với SOH đo được cho một cell test mỗi bộ: mọi cell train, '
-            r'lịch sử đo, lần lặp 0, gốc ở $0{,}4L$, cell có sai số ở trung vị; khoảng 90\,\% theo dự đoán phù hợp.}'
+            r'lịch sử đo, lần lặp 0, gốc ở $0{,}4L$; trong các cell còn ít nhất $' + v(float(TP.min_h.iloc[0]), 2)
+            + r'L$ chu kỳ đo sau gốc, chọn cell có sai số ở trung vị. Trọng số $w$ của GBDT lịch sử trong lượt chứa cell '
+            r'đó: ' + '; '.join(f'{r.ds} {v(r.w, 2)}' for r in TP.itertuples())
+            + (r' (với $w=1$, kết hợp mới trùng GBDT lịch sử)' if (TP.w == 1).any() else '')
+            + r'. Khoảng 90\,\% theo dự đoán phù hợp.}'
             r'\label{fig:e33traj}' '\n' r'\end{figure}')
     # ---- RUL và độ phủ
     hist = lambda sc: 'lịch sử đo' if sc == 'do' else 'lịch sử ước lượng'
+    sg = lambda x: ('+' if round(x) > 0 else '') + v(x, 0)
+    over = [ds for ds in DS if rv('all', 'do', ds, 's_gbdt_ls') > 0.8 * rv('all', 'do', ds, 'e_gbdt_ls')]
+    over_k = [ds for ds in over if rv('all', 'do', ds, 's_ket_hop_ls') > 0.8 * rv('all', 'do', ds, 'e_ket_hop_ls')]
+    rul_bias = ('' if not over else
+                ' Sai số RUL của GBDT lịch sử trên ' + join(over) + ' chủ yếu là dự báo dài hơn thực tế: với mọi cell '
+                'train và lịch sử đo, sai số có dấu trung bình là '
+                + join([f'{ds} {sg(rv("all", "do", ds, "s_gbdt_ls"))}' for ds in over]) + ' chu kỳ, so với MAE '
+                + join([v(rv('all', 'do', ds, 'e_gbdt_ls'), 0) for ds in over]) + '.'
+                + ('' if over_k != over else
+                   ' Kết hợp mới, có nhánh GBDT lịch sử, lệch cùng chiều: '
+                   + join([f'{ds} {sg(rv("all", "do", ds, "s_ket_hop_ls"))}' for ds in over]) + ' chu kỳ, so với MAE '
+                   + join([v(rv('all', 'do', ds, 'e_ket_hop_ls'), 0) for ds in over]) + '.'))
     p4 = (r'\paragraph{RUL và khoảng dự báo.} \Cref{tab:e33rul} ở \Cref{app:additional} cho MAE của RUL (chu kỳ). Với mọi '
           r'cell train, MAE của RUL của kết hợp mới so với kết hợp E22: '
           + '; '.join(f'khi {hist(sc)}, {cmp("all", sc, "ket_hop_ls", "ket_hop", RT)}' for sc in ('do', 'uoc'))
           + '. So với GBDT lịch sử: '
           + '; '.join(f'khi {hist(sc)}, {cmp("all", sc, "ket_hop_ls", "gbdt_ls", RT)}' for sc in ('do', 'uoc'))
-          + r'. Với lịch sử ước lượng, tỉ lệ dự báo RUL của kết hợp mới nằm trong $\pm20\,\%$ RUL thực là '
+          + '.' + rul_bias
+          + r' Với lịch sử ước lượng, tỉ lệ dự báo RUL của kết hợp mới nằm trong $\pm20\,\%$ RUL thực là '
           + '; '.join(f'{ds} {pct(rv("all", "uoc", ds, "in20_ket_hop_ls"))}' for ds in DS)
           + r', độ phủ của khoảng RUL 90\,\% là ' + '; '.join(f'{ds} {pct(rv("all", "uoc", ds, "cov"))}' for ds in DS)
           + r'. Độ phủ của khoảng SOH 90\,\% của kết hợp mới là '
@@ -1420,12 +1479,43 @@ def e33_section(D):
     rul = {sc: verdict('all', sc, ['ket_hop_ls', 'ket_hop'], RT, lambda b, s, ds, m: rv(b, s, ds, f'e_{m}'))
            for sc in ('do', 'uoc')}
     name = lambda m: E33_TXT[m] if m else 'không mô hình nào thoả'
+
+    def why_not(b, sc, cand, tab, get):
+        """Các mô hình có MAE thấp hơn từng mô hình còn lại trên ít nhất ba bộ, kèm các bộ chúng kém có ý nghĩa."""
+        out = []
+        for a in cand:
+            if all(sum(get(b, sc, ds, a) < get(b, sc, ds, c) for ds in DS) >= 3 for c in cand if c != a):
+                bad = {}
+                for c in cand:
+                    for ds in (worse_sig(b, sc, a, c, tab) if c != a else []):
+                        bad.setdefault(ds, []).append(E33_TXT[c])
+                out.append(E33_TXT[a] + ' có MAE trung bình thấp hơn từng mô hình còn lại trên ít nhất ba bộ nhưng kém '
+                           'có ý nghĩa trên ' + '; '.join(f'{ds} so với {join(cs)}' for ds, cs in bad.items()))
+        return '; '.join(out) if out else 'không mô hình nào có MAE trung bình thấp hơn từng mô hình còn lại trên ba bộ'
+    soh_cand = ['ket_hop_ls', 'gbdt_ls', 'ket_hop']
+    soh_why = {(b, sc): why_not(b, sc, soh_cand, T, val) for b, sc, _ in E33_SET if soh[(b, sc)] is None}
+    if len(set(soh_why.values())) == 1 and len(soh_why) == len(E33_SET):
+        why_txt = ' Ở cả ba thiết lập, ' + next(iter(soh_why.values())) + '.'
+    else:
+        why_txt = ''.join(f' Ở {lab_of[k]}, {w}.' for k, w in soh_why.items())
+    best4 = {k: m for b, sc, _ in E33_SET for k, m in [((b, sc), best_of(b, sc, DS[0]))]
+             if all(best_of(b, sc, ds) == m for ds in DS)}
+    do_keys = [('lab30', 'do'), ('all', 'do')]
+    if all(k in best4 and soh[k] is None for k in do_keys) and best4[do_keys[0]] == best4[do_keys[1]]:
+        best4_txt = (f' Khi có lịch sử đo, ở cả hai ngân sách, {E33_TXT[best4[do_keys[0]]]} có MAE trung bình thấp nhất '
+                     r'trên cả bốn bộ (\Cref{tab:e33}).')
+        best4_txt += ''.join(f' Ở {lab_of[k]}, {E33_TXT[m]} có MAE trung bình thấp nhất trên cả bốn bộ.'
+                             for k, m in best4.items() if k not in do_keys and soh[k] is None)
+    else:
+        best4_txt = ''.join(f' Ở {lab_of[k]}, {E33_TXT[m]} có MAE trung bình thấp nhất trên cả bốn bộ (\\Cref{{tab:e33}}).'
+                            for k, m in best4.items() if soh[k] is None)
     p5 = (r'\paragraph{Lựa chọn mô hình.} Bảy mô hình được định trước; cấu hình, số cây và các trọng số $a$, $w$ của mỗi '
           r'lượt chỉ chọn trên validation. Các phép so ở trên là trên test, sau khi đã có kết quả, nên lựa chọn dưới đây là '
           r'lựa chọn sau thí nghiệm. Quy tắc: mô hình được chọn phải có MAE thấp hơn từng mô hình còn lại trên ít nhất ba '
           r'bộ và không kém có ý nghĩa trên bộ nào. Với SOH, trong ba mô hình kết hợp mới, GBDT lịch sử và kết hợp E22, '
-          r'quy tắc chọn: ' + '; '.join(f'{lab}: {name(soh[(b, sc)])}' for b, sc, lab in E33_SET)
-          + '. Với RUL, giữa kết hợp mới và kết hợp E22: '
+          r'quy tắc chọn: ' + '; '.join(f'{lab}: {name(soh[(b, sc)])}' for b, sc, lab in E33_SET) + '.' + why_txt
+          + best4_txt
+          + ' Với RUL, giữa kết hợp mới và kết hợp E22: '
           + '; '.join(f'{hist(sc)}: {name(rul[sc])}' for sc in ('do', 'uoc')) + '.')
     body = ('\\FloatBarrier\n\\subsection{Dự báo kết hợp với GBDT lịch sử}\\label{sec:e33res}\n\n' + p1 + '\n\n' + tab
             + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + figs + '\n\n' + p4 + '\n\n' + p5 + '\n')
@@ -1480,6 +1570,14 @@ def e33_section(D):
     low = {t: [ds for ds in DS if ga(ds, t, 'selected') < ga(ds, t, 'e32_style')] for t, _ in tiers}
     nlow = lambda t: f'{len(low[t])}/4 bộ' + (f' ({join(low[t])})' if 0 < len(low[t]) < 4 else '')
     keep = len(low['q10']) < 3 and len(low['q20']) < 3
+    tl = dict(tiers)
+    anchor_odd = ''.join(
+        f' Ở {r_.ds}, lịch đo {tl[r_.tier]}, mô hình chọn trên validation có sai số thấp hơn ở '
+        f'{int(r_.better_selected)}/{int(r_.n_cell)} cell và kiểm định cho nó '
+        + ('tốt hơn' if r_.wins_selected == 1 else 'kém hơn') + ' có ý nghĩa dù MAE trung bình '
+        + ('cao hơn' if r_.wins_selected == 1 else 'thấp hơn') + f'; bỏ {int(r_.flip_selected)} cell thì hiệu của hai '
+        'trung bình đổi chiều.'
+        for r_ in GA.itertuples() if r_.tier != 'M2' and r_.p_selected < 0.05 and r_.flip_selected > 0)
     pa = (r'\section{Dự báo kết hợp: RUL}' '\n\n' + tab_rul + '\n\n'
           r'\section{Bài toán cập nhật của repo G-doan}\label{sec:anchor}' '\n\n'
           r'Repo G-doan cũng thử đặc trưng lịch sử cho bài toán cập nhật: ước lượng SOH ở các chu kỳ không đo từ lần đo '
@@ -1487,11 +1585,14 @@ def e33_section(D):
           r'tệp kết quả đã lưu trong repo đó. Mô hình chọn trên validation có MAE trung bình thấp hơn mô hình kiểu E32 '
           f'trên {nlow("q20")} ở lịch đo mỗi $0{{,}}2L$, {nlow("q10")} ở mỗi $0{{,}}1L$, {nlow("q05")} ở mỗi '
           f'$0{{,}}05L$ và {nlow("M2")} khi biết mọi lần đo trước; mức cuối không đại diện cho đo thưa.'
-          + (' Vì vậy đồ án giữ mô hình cập nhật kiểu E32.' if keep else '') + '\n\n' + tab_anchor)
+          + anchor_odd + (' Vì vậy đồ án giữ mô hình cập nhật kiểu E32.' if keep else '') + '\n\n' + tab_anchor)
     write('phu_luc_a.tex', pa)
     ratio = lambda sets, a, c: [val(b, sc, ds, a) / val(b, sc, ds, c) for b, sc in sets for ds in DS]
     do = [('lab30', 'do'), ('all', 'do')]
     return dict(soh=soh, rul=rul, name=name, r_ls_gbdt=ratio(do, 'gbdt_ls', 'gbdt'),
+                soh_why=(next(iter(soh_why.values())) if len(set(soh_why.values())) == 1
+                         and len(soh_why) == len(E33_SET) else None),
+                ls_best_do=all(best4.get(k) == 'gbdt_ls' for k in do),
                 cov_kls=[val(b, sc, ds, 'cov_kls') for b, sc, _ in E33_SET for ds in DS],
                 cov_rul=[rv('all', sc, ds, 'cov') for sc in ('do', 'uoc') for ds in DS],
                 in20=[rv('all', 'uoc', ds, 'in20_ket_hop_ls') for ds in DS],
@@ -1530,7 +1631,7 @@ def compile_pdf():
         print('không có latexmk/pdflatex: bỏ qua bước biên dịch')
         return
     r = subprocess.run(['latexmk', '-pdf', '-interaction=nonstopmode', '-halt-on-error', 'main.tex'], cwd=REP,
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')   # log T5 không phải UTF-8
     if r.returncode != 0:
         print(r.stdout[-3000:])
         raise SystemExit('biên dịch lỗi: xem report/main.log')

@@ -1,4 +1,4 @@
-Bảng~\ref{tab:dropped} tóm tắt những gì đã thử và bỏ. Ba dạng đầu là rò rỉ: chúng làm sai số đo được khác sai số thật khi triển khai, theo cả hai chiều tuỳ bộ (Bảng~\ref{tab:leak}), nên bị loại dù trên một số bộ chúng làm con số đẹp hơn. Đặc trưng tương đối bị loại ở bước chọn hướng cải tiến của PINN-lai vì làm sai số validation của PINN-semi tăng (tỉ số 1,692); phép chia cho mức ban đầu của cell khuếch đại các đặc trưng có giá trị ban đầu gần 0. Với GBDT, tác động của chúng trái chiều giữa các bộ (thấp hơn có ý nghĩa ở TJU 70\,\%, cao hơn có ý nghĩa ở MIT với cả hai mức nhãn), nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\ref{tab:hist}) giúp trên TJU và HUST khi có từ 30\,\% nhãn nhưng làm kém đi trên XJTU và ở 10\,\% nhãn, khi số chiều đầu vào tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy mô hình chính không dùng chúng, và mô hình cuối chỉ dùng ở các trường hợp validation chọn (phân tích hậu kiểm). Nhiệt độ là hằng số trên ba bộ nên không mang thông tin; trên TJU, thêm $1/T$ vào GBDT cho tỉ số 0{,}99 (có ý nghĩa) ở 10\,\%, 1{,}00 ở 70\,\%, tức thay đổi dưới 1\,\%, nên nhiệt độ chỉ được giữ trong thừa số Arrhenius của động học. Đặc trưng từ lần xả và dung lượng các chu kỳ trước bị loại khỏi bài toán ước lượng vì đó chính là nhãn.
+Bảng~\ref{tab:dropped} tóm tắt những gì đã thử và bỏ. Ba dạng đầu là rò rỉ: chúng làm sai số đo được khác sai số thật khi triển khai, theo cả hai chiều tuỳ bộ (Bảng~\ref{tab:leak}), nên bị loại dù trên một số bộ chúng làm con số đẹp hơn. Đặc trưng tương đối bị loại ở bước chọn hướng cải tiến của PINN-lai vì làm sai số validation của PINN-semi tăng (tỉ số 1,692); phép chia cho mức ban đầu của cell khuếch đại các đặc trưng có giá trị ban đầu gần 0. Với GBDT, tác động của chúng trái chiều giữa các bộ (thấp hơn có ý nghĩa ở TJU 70\,\%, cao hơn có ý nghĩa ở MIT với cả hai mức nhãn), nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\ref{tab:hist}, Hình~\ref{fig:e29pinn} và~\ref{fig:e29lai}) giúp trên TJU và HUST khi có từ 30\,\% nhãn nhưng làm kém đi trên XJTU và ở 10\,\% nhãn, khi số chiều đầu vào tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy mô hình chính không dùng chúng, và mô hình cuối chỉ dùng ở các trường hợp validation chọn (phân tích hậu kiểm). Nhiệt độ là hằng số trên ba bộ nên không mang thông tin; trên TJU, thêm $1/T$ vào GBDT cho tỉ số 0{,}99 (có ý nghĩa) ở 10\,\%, 1{,}00 ở 70\,\%, tức thay đổi dưới 1\,\%, nên nhiệt độ chỉ được giữ trong thừa số Arrhenius của động học. Đặc trưng từ lần xả và dung lượng các chu kỳ trước bị loại khỏi bài toán ước lượng vì đó chính là nhãn.
 
 \begin{table}[!htbp]\centering\small
 \caption[Các đặc trưng và cách biến đổi đã thử và bỏ]{Các đặc trưng và cách biến đổi đầu vào đã thử và bỏ, lý do và số liệu. Tỉ số là MAE so với cấu hình được dùng (lớn hơn 1: kém hơn; nhỏ hơn 1 ở hai hàng đầu: sai số trông thấp hơn thực tế vì rò rỉ).}\label{tab:dropped}
@@ -45,3 +45,13 @@ HUST & 10\,\% & 22{,}76 & 23{,}63 & 20{,}36 & 20{,}15 \\
  & 50\,\% & 16{,}42 & 14{,}81$^{*}$ & 14{,}26 & 13{,}17$^{*}$ \\
  & 70\,\% & 16{,}38 & 13{,}71$^{*}$ & 13{,}76 & 12{,}24$^{*}$ \\
 \bottomrule\end{tabular}\end{table}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_e29_pinn.pdf}
+\caption[PINN-semi khi có và không có lịch sử của cell]{MAE theo cell trên test của PINN-semi không có (nét đứt) và có lịch sử của cell (nét liền), trên ba bộ có dạng lịch sử được chọn; trên MIT không dạng nào được chọn.}\label{fig:e29pinn}
+\end{figure}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_e29_lai.pdf}
+\caption[PINN-lai khi có và không có lịch sử của cell]{MAE theo cell trên test của PINN-lai tinh chỉnh không có (nét đứt) và có lịch sử của cell (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation.}\label{fig:e29lai}
+\end{figure}

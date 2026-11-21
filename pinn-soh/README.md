@@ -26,10 +26,11 @@ TJU, MIT, HUST:
 | E28 | ngân sách đo: đo thưa mọi cell train thay vì đo đầy đủ một phần cell |
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
+| E33 | dự báo kết hợp GBDT có đặc trưng lịch sử SOH (mã của repo G-doan) với PINN-dự báo, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
 | features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
-Tổng cộng 10 575 lượt huấn luyện (đếm theo tệp kết quả của `pinnsoh/experiments.py`), cộng các lần chạy lại mã gốc
+Tổng cộng 10 695 lượt huấn luyện (đếm theo tệp kết quả của `pinnsoh/experiments.py`), cộng các lần chạy lại mã gốc
 PINN4SOH ở `benchmark/` và phân tích đặc trưng. Ba sản phẩm viết:
 
 * `report/bao-cao-do-an.pdf`: báo cáo đồ án chuyên ngành bản hoàn thiện, tiếng Việt, không còn phần bộ NASA
@@ -115,8 +116,9 @@ python run.py report                   # -> report/bao-cao-do-an.pdf
 | E30dev | Chọn độ dài cửa sổ của CNN, LSTM, Transformer trên validation (L ∈ {16, 48}) | 240 | 1,8 | 0,5 | 0,2 |
 | E30 | CNN, LSTM, Transformer cùng fold với E20 (3 lần lặp × 5 fold × 4 mức nhãn × 4 bộ) | 720 | 3,7 | 0,9 | 0,5 |
 | E32 | Mô hình học cập nhật từ lần đo gần nhất (GBDT), cùng fold với E20 (4 bộ × 4 mức nhãn) | 240 | 6,7 | 1,7 | 0,8 |
+| E33 | Dự báo kết hợp GBDT lịch sử (repo G-doan) với PINN-dự báo, cùng fold với E22, 2 ngân sách nhãn (cần E20) | 120 | 6,8 | 1,7 | 0,8 |
 | benchmark | Mã gốc PINN4SOH, 39 nhóm: bản công bố 10 lần, bản đã sửa 3 lần mỗi nhóm | 507 | ≈ 6 | ≈ 1,5 | ≈ 0,8 |
-| **Tổng** | | **10 922** | **≈ 88** | **≈ 22** | **≈ 11** |
+| **Tổng** | | **11 042** | **≈ 95** | **≈ 24** | **≈ 12** |
 
 E20 gồm 1 440 lượt, trong đó 160 lượt trùng cấu hình với E20dev: chép `runs/E20dev/P_*` và `runs/E20dev/gbdt_*` sang
 `runs/E20/` trước thì chỉ còn 1 280 lượt mới (bảng tính theo con số này). Cấu hình E20 chốt trong `docs/de-cuong-E20.md`.
@@ -147,8 +149,10 @@ pinn-soh/
 │   ├── paper.py            cách chia của PINN4SOH, GBDT trên cách chia đó (E27)
 │   ├── budget.py           ngân sách đo dung lượng (E28)
 │   ├── update.py           mô hình học cập nhật từ lần đo dung lượng gần nhất (E32)
+│   ├── forecast_hist.py    GBDT có đặc trưng lịch sử SOH, lấy từ phần cải tiến của repo G-doan (E33)
+│   ├── forecast_combo.py   dự báo kết hợp GBDT lịch sử với PINN-dự báo, giao thức E33
 │   ├── pinn4soh_splits.json, pinn4soh_reported.csv   cách chia và số công bố của PINN4SOH
-│   ├── experiments.py      định nghĩa E13–E32 thành danh sách lượt chạy
+│   ├── experiments.py      định nghĩa E13–E33 thành danh sách lượt chạy
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
 │   ├── runcache.py         nhớ kết quả đọc runs/*.json giữa các lần phân tích
 │   └── plotstyle.py        khuôn vẽ hình
@@ -245,6 +249,39 @@ python run.py report    # runs/E22 đủ 60 lượt thì tính lại bảng và 
   và 0,27–0,58 lần khớp vật lý theo cell; so với GBDT là 0,91–1,06. Ở tầm 0,5L, sai số quy ra dung lượng là 20–57 mAh.
 * Chưa tốt: RUL nằm trong ±20 % RUL thực ở 38–65 % số gốc; khoảng RUL 90 % chỉ phủ 65–84 %. Từ gốc ở 20 % đời,
   nghiệm đóng có thể đi qua điểm kỳ dị và kéo dự báo xuống giới hạn dưới 0,40 (2–5 % số quỹ đạo).
+
+### Dự báo kết hợp với GBDT lịch sử (E33)
+
+`pinnsoh/forecast_hist.py` là GBDT có đặc trưng lịch sử SOH lấy từ phần cải tiến của repo G-doan;
+`pinnsoh/forecast_combo.py` ghép nó với PINN-dự báo: ŷ = w·GBDT lịch sử + (1 − w)·PINN-dự báo, w chọn trên một nửa cell
+validation, nửa còn lại hiệu chỉnh khoảng 90 %. Thang đời L và chuẩn hoá chỉ tính trên cell train, gốc dự báo ở 0,2L,
+0,4L, 0,6L (E22 tính L trên mọi cell và đặt gốc theo số hàng của cell test). Hai ngân sách nhãn: 30 % số cell như
+G-doan, và mọi cell train như E22; lịch sử SOH tới gốc là dung lượng đo, hoặc ước lượng PINN-lai như E22.
+
+```bash
+python run.py E20       # E33 cần các lượt PINN-semi và GBDT ở 70 % nhãn của E20
+python run.py E33
+GDOAN=<thư mục repo G-doan> python run.py report    # runs/E33 đủ 120 lượt thì tính lại bảng và hình
+```
+
+Kết quả (Mục 5.2.10 và Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
+
+* Chạy lại GBDT lịch sử ở 30 % nhãn với lịch sử đo cho XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; số đã lưu của
+  G-doan là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy).
+  Mọi so sánh dùng số chạy lại, mọi mô hình trong cùng một môi trường.
+* Có lịch sử đo: GBDT lịch sử có MAE trung bình thấp nhất trên cả bốn bộ ở cả hai ngân sách, bằng 0,85–0,94 lần GBDT
+  theo tầm của E22 (tốt hơn có ý nghĩa trên cả bốn bộ). Kết hợp mới bằng 0,79–0,99 lần kết hợp E22 nhưng 1,01–1,48 lần
+  GBDT lịch sử: thêm PINN-dự báo không giảm MAE trung bình.
+* Ngoại lệ TJU: phần lớn cell có sai số thấp hơn với hai mô hình kết hợp (kiểm định ghép cặp có ý nghĩa); trung bình
+  nghiêng về GBDT lịch sử vì cell CY25-025_1-#1, nơi PINN-dự báo có MAE 219–241 còn GBDT lịch sử 36–42. Bỏ 1–2 cell thì
+  hiệu của hai trung bình đổi chiều. Vì vậy quy tắc chọn sau thí nghiệm (thấp hơn trên ≥ 3 bộ, không kém có ý nghĩa ở
+  bộ nào) không chọn được mô hình SOH nào.
+* Lịch sử ước lượng: chênh lệch nhỏ, kết hợp mới bằng 0,90–1,01 lần kết hợp E22.
+* RUL: quy tắc chọn giữ kết hợp E22. GBDT lịch sử dự báo RUL dài hơn thực tế trên MIT và HUST (sai số có dấu +201 và
+  +477 chu kỳ, MAE 229 và 512).
+* Khoảng SOH 90 % của kết hợp mới phủ 85–93 % khi lịch sử đo, 65–90 % khi lịch sử ước lượng.
+* Bài toán cập nhật (số đã lưu của G-doan, không chạy lại): mô hình chọn trên validation có MAE trung bình thấp hơn mô
+  hình kiểu E32 trên 0/4 bộ ở lịch đo mỗi 0,2L và 0,1L, nên giữ mô hình cập nhật kiểu E32.
 
 ## 5. Tối ưu và tái lập
 

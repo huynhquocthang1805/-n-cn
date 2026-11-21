@@ -44,6 +44,17 @@ def a_wins(d):
     return int(r[d < 0].sum() > r[d > 0].sum())
 
 
+def flip_k(d):
+    """Số cell có hiệu lớn nhất ngược hướng của kiểm định cần bỏ để hiệu của hai trung bình đổi chiều theo hướng đó, và
+    vị trí của cell có hiệu ngược hướng lớn nhất; (0, -1) khi trung bình và kiểm định cùng hướng."""
+    d = np.asarray(d, float)
+    t = d if a_wins(d) else -d                       # t > 0: cell đi ngược hướng của kiểm định
+    if t.sum() <= 0:
+        return 0, -1
+    v = np.sort(t)[::-1]
+    return int(np.argmax(t.sum() - np.cumsum(v) <= 0) + 1), int(np.argmax(t))
+
+
 def load():
     cells, ruls, choices, horiz = [], [], [], []
     for f in sorted(glob.glob(f'{ROOT}/fc_*.npz')):
@@ -114,6 +125,7 @@ def gdoan_anchor():
         S[f'p_{c}'] = [stats.wilcoxon(g[c] - g['e32_style']).pvalue for _, g in pc.groupby(['ds', 'tier'])]
         S[f'better_{c}'] = [int((g[c] < g['e32_style']).sum()) for _, g in pc.groupby(['ds', 'tier'])]
         S[f'wins_{c}'] = [a_wins(g[c] - g['e32_style']) for _, g in pc.groupby(['ds', 'tier'])]
+        S[f'flip_{c}'] = [flip_k(g[c] - g['e32_style'])[0] for _, g in pc.groupby(['ds', 'tier'])]
     S['n_cell'] = [len(g) for _, g in pc.groupby(['ds', 'tier'])]
     S.to_csv(f'{OUT}/e33_gdoan_anchor.csv', index=False)
     return S
@@ -150,18 +162,23 @@ def main():
                 if len(x) < 3:
                     continue
                 d = x[a].values - x[c].values
+                k, top = flip_k(d)
                 tmp.append(dict(budget=b, scen=sc, ds=ds, a=a, b=c, n=len(d), mae_a=x[a].mean(), mae_b=x[c].mean(),
                                 ratio=x[a].mean() / x[c].mean(), a_better=int((d < 0).sum()), a_wins=a_wins(d),
-                                p=stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0))
+                                p=stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0, flip_k=k,
+                                top_cell=x.cid.values[top] if top >= 0 else '',
+                                **{f'top_{m}': x[m].values[top] if top >= 0 else np.nan for m in MODELS}))
             for t, ph in zip(tmp, holm([t['p'] for t in tmp])):
                 t['p_holm'] = ph; rows.append(t)
     pd.DataFrame(rows).to_csv(f'{OUT}/e33_tests.csv', index=False)
     # ---- RUL: sai số tuyệt đối (chu kỳ) theo cell, tỉ lệ trong ±20 %, độ phủ khoảng
     for m in MODELS:
+        R[f's_{m}'] = R[m] - R.true                  # sai số có dấu: dương là dự báo RUL dài hơn thực tế
         R[f'e_{m}'] = (R[m] - R.true).abs()
         R[f'in20_{m}'] = (R[f'e_{m}'] / R.true.clip(lower=1) <= 0.2).astype(float)
     R['cov'] = ((R.true >= R.lo_kls) & (R.true <= R.hi_kls)).astype(float)
-    rc = R.groupby(keys + ['cid'])[[f'e_{m}' for m in MODELS] + [f'in20_{m}' for m in MODELS] + ['cov', 'true']].mean()
+    rc = R.groupby(keys + ['cid'])[[f'e_{m}' for m in MODELS] + [f's_{m}' for m in MODELS] + [f'in20_{m}' for m in MODELS]
+                                   + ['cov', 'true']].mean()
     RS = rc.groupby(keys).mean().reset_index()
     RS['n_cell'] = rc.groupby(keys).size().values
     RS.to_csv(f'{OUT}/e33_rul.csv', index=False)
@@ -173,7 +190,8 @@ def main():
                 x = g[g.ds == ds]; d = x['e_ket_hop_ls'].values - x[f'e_{c}'].values
                 tmp.append(dict(budget=b, scen=sc, ds=ds, a='ket_hop_ls', b=c, n=len(d),
                                 ratio=x['e_ket_hop_ls'].mean() / x[f'e_{c}'].mean(), a_better=int((d < 0).sum()),
-                                a_wins=a_wins(d), p=stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0))
+                                a_wins=a_wins(d), p=stats.wilcoxon(d).pvalue if np.any(d != 0) else 1.0,
+                                flip_k=flip_k(d)[0]))
             for t, ph in zip(tmp, holm([t['p'] for t in tmp])):
                 t['p_holm'] = ph; rows.append(t)
     pd.DataFrame(rows).to_csv(f'{OUT}/e33_rul_tests.csv', index=False)

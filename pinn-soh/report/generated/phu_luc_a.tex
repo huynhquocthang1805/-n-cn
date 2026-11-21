@@ -1,1 +1,57 @@
-(Đang cập nhật.)
+\section{Dự báo kết hợp: RUL}
+
+\begin{table}[!htbp]\centering\small
+\caption[MAE của RUL dự báo, E33]{MAE của RUL (chu kỳ) trong E33, trung bình qua các gốc ở 25, 50 và 75\,\% chu kỳ cuối đời thật và qua 3 lần lặp; in đậm là thấp nhất. Hai cột cuối là của kết hợp mới: tỉ lệ dự báo trong $\pm20\,\%$ RUL thực và độ phủ của khoảng RUL 90\,\%.}\label{tab:e33rul}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrrrr}\toprule
+Bộ & \begin{tabular}[b]{@{}r@{}}RUL\\thực\end{tabular} & \begin{tabular}[b]{@{}r@{}}Giữ\\nguyên\end{tabular} & \begin{tabular}[b]{@{}r@{}}Tuyến\\tính\end{tabular} & \begin{tabular}[b]{@{}r@{}}GBDT\\(E22)\end{tabular} & \begin{tabular}[b]{@{}r@{}}GBDT\\lịch sử\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-\\dự báo\end{tabular} & \begin{tabular}[b]{@{}r@{}}Kết hợp\\E22\end{tabular} & \begin{tabular}[b]{@{}r@{}}Kết hợp\\mới\end{tabular} & \begin{tabular}[b]{@{}r@{}}Trong\\$\pm20\,\%$\end{tabular} & \begin{tabular}[b]{@{}r@{}}Độ\\phủ\end{tabular} \\\midrule
+\multicolumn{11}{@{}l}{\textit{30\,\% nhãn, lịch sử đo}} \\
+XJTU & 231 & 940 & 531 & 98 & 139 & 84 & \textbf{77} & 80 & 42\,\% & 72\,\% \\
+TJU & 131 & 966 & 51 & 19 & 19 & 18 & \textbf{16} & 16 & 74\,\% & 82\,\% \\
+MIT & 344 & 1516 & 821 & 139 & 369 & 124 & \textbf{112} & 269 & 41\,\% & 69\,\% \\
+HUST & 923 & 4585 & 1146 & 210 & 598 & \textbf{134} & 140 & 294 & 70\,\% & 74\,\% \\
+\addlinespace[3pt]
+\multicolumn{11}{@{}l}{\textit{mọi cell train, lịch sử đo}} \\
+XJTU & 231 & 940 & 531 & 110 & 96 & 70 & \textbf{66} & 68 & 50\,\% & 75\,\% \\
+TJU & 131 & 966 & 51 & 17 & 16 & 14 & 14 & \textbf{13} & 80\,\% & 82\,\% \\
+MIT & 344 & 1516 & 821 & 134 & 229 & 113 & \textbf{108} & 168 & 44\,\% & 71\,\% \\
+HUST & 923 & 4585 & 1146 & 198 & 512 & \textbf{94} & 103 & 310 & 74\,\% & 73\,\% \\
+\addlinespace[3pt]
+\multicolumn{11}{@{}l}{\textit{mọi cell train, lịch sử ước lượng}} \\
+XJTU & 231 & 940 & 527 & 112 & 96 & 81 & 75 & \textbf{74} & 43\,\% & 66\,\% \\
+TJU & 131 & 966 & 50 & 23 & 25 & 23 & \textbf{20} & 22 & 62\,\% & 70\,\% \\
+MIT & 344 & 1516 & 833 & 140 & 230 & 112 & \textbf{108} & 170 & 42\,\% & 70\,\% \\
+HUST & 923 & 4585 & 1351 & 294 & 711 & \textbf{213} & 214 & 468 & 45\,\% & 47\,\% \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\section{Bài toán cập nhật của repo G-doan}\label{sec:anchor}
+
+Repo G-doan cũng thử đặc trưng lịch sử cho bài toán cập nhật: ước lượng SOH ở các chu kỳ không đo từ lần đo dung lượng gần nhất (như E32, \Cref{sec:mo_rong}), với $L$ tính trên cell train. \Cref{tab:anchor} tính từ các tệp kết quả đã lưu trong repo đó. Mô hình chọn trên validation có MAE trung bình thấp hơn mô hình kiểu E32 trên 0/4 bộ ở lịch đo mỗi $0{,}2L$, 0/4 bộ ở mỗi $0{,}1L$, 1/4 bộ (HUST) ở mỗi $0{,}05L$ và 4/4 bộ khi biết mọi lần đo trước; mức cuối không đại diện cho đo thưa. Ở MIT, lịch đo mỗi $0{,}05L$, mô hình chọn trên validation có sai số thấp hơn ở 74/125 cell và kiểm định cho nó tốt hơn có ý nghĩa dù MAE trung bình cao hơn; bỏ 1 cell thì hiệu của hai trung bình đổi chiều. Vì vậy đồ án giữ mô hình cập nhật kiểu E32.
+
+\begin{table}[!htbp]\centering\small
+\caption[Bài toán cập nhật của G-doan]{Bài toán cập nhật trong repo G-doan: MAE theo cell ($\times10^{-3}$) của SOH ở các chu kỳ không đo, ước lượng từ lần đo dung lượng gần nhất, theo lịch đo; 30\,\% nhãn, 3 lần lặp $\times$ 5 fold; số đã lưu của G-doan, không chạy lại. $^{*}$/$^{\dagger}$: cột cuối tốt hơn/kém hơn có ý nghĩa so với mô hình kiểu E32 (Wilcoxon ghép cặp theo cell, $p<0{,}05$, không hiệu chỉnh; hướng theo tổng hạng của kiểm định, có thể ngược với hiệu của hai trung bình).}\label{tab:anchor}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule
+Bộ & \begin{tabular}[b]{@{}r@{}}Giữ\\lần đo\end{tabular} & \begin{tabular}[b]{@{}r@{}}Tuyến\\tính\end{tabular} & \begin{tabular}[b]{@{}r@{}}Kiểu\\E32\end{tabular} & \begin{tabular}[b]{@{}r@{}}Lịch sử,\\độ giảm\end{tabular} & \begin{tabular}[b]{@{}r@{}}Lịch sử,\\phần dư\end{tabular} & \begin{tabular}[b]{@{}r@{}}Chọn\\validation\end{tabular} \\\midrule
+\multicolumn{7}{@{}l}{\textit{lịch đo mỗi $0{,}2L$}} \\
+XJTU & 20{,}24 & 16{,}99 & \textbf{6{,}14} & 6{,}26 & 6{,}65 & 6{,}20\phantom{$^{*}$} \\
+TJU & 20{,}73 & 14{,}23 & \textbf{2{,}79} & 3{,}14 & 3{,}84 & 2{,}91$^{\dagger}$ \\
+MIT & 10{,}54 & 6{,}63 & 1{,}27 & \textbf{1{,}26} & 1{,}56 & 1{,}27\phantom{$^{*}$} \\
+HUST & 24{,}99 & 9{,}73 & 2{,}55 & \textbf{2{,}48} & 2{,}64 & 2{,}56\phantom{$^{*}$} \\
+\addlinespace[3pt]
+\multicolumn{7}{@{}l}{\textit{lịch đo mỗi $0{,}1L$}} \\
+XJTU & 11{,}79 & 8{,}81 & \textbf{3{,}83} & 4{,}17 & 4{,}25 & 3{,}90\phantom{$^{*}$} \\
+TJU & 12{,}66 & 8{,}12 & \textbf{1{,}86} & 2{,}08 & 2{,}20 & 2{,}12$^{\dagger}$ \\
+MIT & 6{,}46 & 3{,}23 & \textbf{0{,}91} & 0{,}92 & 0{,}97 & 0{,}95\phantom{$^{*}$} \\
+HUST & 13{,}35 & 3{,}19 & 1{,}09 & \textbf{1{,}06} & 1{,}07 & 1{,}10\phantom{$^{*}$} \\
+\addlinespace[3pt]
+\multicolumn{7}{@{}l}{\textit{lịch đo mỗi $0{,}05L$}} \\
+XJTU & 6{,}45 & 4{,}87 & \textbf{2{,}65} & 2{,}93 & 2{,}87 & 2{,}66\phantom{$^{*}$} \\
+TJU & 6{,}57 & 3{,}93 & \textbf{1{,}12} & 1{,}25 & 1{,}27 & 1{,}20$^{\dagger}$ \\
+MIT & 3{,}65 & 1{,}61 & \textbf{0{,}67} & 0{,}73 & 0{,}71 & 0{,}72$^{*}$ \\
+HUST & 6{,}93 & 1{,}05 & 0{,}55 & 0{,}55 & \textbf{0{,}52} & 0{,}53$^{*}$ \\
+\addlinespace[3pt]
+\multicolumn{7}{@{}l}{\textit{biết mọi lần đo trước}} \\
+XJTU & 1{,}74 & 1{,}55 & 1{,}32 & 1{,}42 & \textbf{1{,}25} & 1{,}27$^{*}$ \\
+TJU & 0{,}93 & 0{,}65 & 0{,}33 & 0{,}35 & \textbf{0{,}31} & 0{,}32$^{*}$ \\
+MIT & 0{,}42 & 0{,}37 & 0{,}39 & 0{,}39 & \textbf{0{,}32} & 0{,}33$^{*}$ \\
+HUST & 0{,}19 & 0{,}29 & 0{,}12 & 0{,}15 & \textbf{0{,}07} & \textbf{0{,}07}$^{*}$ \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

@@ -603,9 +603,12 @@ def e33_mae():
                        lw=0.3, ec='white', label=lab)
         ax.set_xscale('log')
         ax.set_yticks(range(len(order))); ax.set_yticklabels([A.LABEL[m] for m in order])
-        ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5, which='both')
+        lo, hi = ax.get_xlim()
+        tk = [t for t in (5, 6, 8, 10, 15, 20, 30, 40, 50, 60, 80, 100) if lo <= t <= hi]
+        ax.set_xticks(tk[::2] if len(tk) > 5 else tk); ax.set_xlim(lo, hi)
         ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}'))
-        ax.xaxis.set_minor_formatter(plt.FuncFormatter(lambda v, _: f'{v:g}' if str(int(v))[0] in '25' else ''))
+        ax.xaxis.set_minor_locator(plt.NullLocator())
+        ax.grid(False); ax.xaxis.grid(True, color=GRID, lw=.5)
         panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
     for i, ax in enumerate(axes):
         if i >= 2:
@@ -618,9 +621,12 @@ def e33_mae():
     save(fig, f'{OUT}/fig_e33_mae')
 
 
+MIN_H = 0.25                                     # E33: cell minh hoạ phải còn ít nhất 0,25L chu kỳ đo sau gốc
+
+
 def e33_traj():
-    """Một cell test mỗi bộ (mọi cell train, lịch sử đo, lần lặp 0, gốc 0,4L; cell có sai số kết hợp mới ở trung vị):
-    SOH đo, GBDT lịch sử, PINN-dự báo, kết hợp mới và khoảng 90 %."""
+    """Một cell test mỗi bộ (mọi cell train, lịch sử đo, lần lặp 0, gốc 0,4L; trong các cell còn ít nhất 0,25L chu kỳ
+    đo sau gốc, cell có sai số kết hợp mới ở trung vị): SOH đo, GBDT lịch sử, PINN-dự báo, kết hợp mới và khoảng 90 %."""
     plt = setup()
     import json as _json, glob as _glob
     from pinnsoh.forecast_combo import TCOL, ROOT as R33
@@ -634,12 +640,15 @@ def e33_traj():
             q = np.load(f); info = _json.loads(str(q['info']))
             T = pd.DataFrame(q['traj'], columns=TCOL); T = T[(T.scen == 0) & (T.origin == T.origin)]
             T['cid'] = np.asarray(info['split']['test'])[T.cell.astype(int)]; T['L'] = info['L']
+            T['w'] = info['w_combo']
             T['o_idx'] = T.groupby('cid').origin.rank(method='dense').astype(int)
             parts.append(T)
         if not parts:
             continue
         T = pd.concat(parts, ignore_index=True)
         t = T[T.o_idx == 2]
+        hmax = t.groupby('cid').h.max(); L = float(t.L.iloc[0])
+        t = t[t.cid.isin(hmax.index[hmax >= MIN_H * L])]       # bỏ cell gần hết đời ngay ở gốc: đoạn dự báo quá ngắn
         e = t.assign(e=(t.ket_hop_ls - t.y).abs()).groupby('cid').e.mean().sort_values()
         cid = e.index[(len(e) - 1) // 2]
         g = t[t.cid == cid].sort_values('h'); k0 = float(g.origin.iloc[0])
@@ -647,9 +656,9 @@ def e33_traj():
         _e22_measured(ax, cell)
         x = k0 + g.h.values
         ax.fill_between(x, g.lo_kls, g.hi_kls, color=E22C['band'], alpha=0.18, lw=0, zorder=1)
-        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.1, ls=(0, (3, 1.5)), zorder=3)
         ax.plot(x, g.pinn, color=E22C['pinn'], lw=1.1, ls=(0, (3, 1.5)), zorder=3)
         ax.plot(x, g.ket_hop_ls, color=E22C['ket_hop'], lw=1.9, zorder=4)
+        ax.plot(x, g.gbdt_ls, color='#2a78d6', lw=1.0, ls=(0, (3, 1.5)), zorder=5)   # trên cùng: thấy được khi w = 1
         ax.axhline(TAU[ds], color=E22C['tau'], lw=0.9, ls=(0, (4, 2)), zorder=1)
         ax.axvline(k0, color=E22C['org'], lw=0.9, ls=(0, (2, 2)), zorder=1)
         lo_, hi_ = min(float(cell.soh.min()), TAU[ds]), float(cell.soh.max())
@@ -657,7 +666,8 @@ def e33_traj():
         ax.locator_params(axis='x', nbins=4); ax.locator_params(axis='y', nbins=4)
         ax.grid(False); ax.yaxis.grid(True, color=GRID, lw=.5)
         panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
-        rows.append(dict(ds=ds, cid=cid, k0=k0, mae=float(e[cid]), cov=float(((g.y >= g.lo_kls) & (g.y <= g.hi_kls)).mean())))
+        rows.append(dict(ds=ds, cid=cid, k0=k0, mae=float(e[cid]), w=float(g.w.iloc[0]), h_max=float(g.h.max()), L=L,
+                         n_cand=len(e), min_h=MIN_H, cov=float(((g.y >= g.lo_kls) & (g.y <= g.hi_kls)).mean())))
     for i, ax in enumerate(axes):
         if i % 2 == 0:
             ax.set_ylabel('SOH')
