@@ -1582,12 +1582,17 @@ def e34_anchor(D34):
     text += ((f', và kém hơn có ý nghĩa trên {jv(worse3)} ở cả ba lịch đo thưa. ') if worse3 else '. ')
     text += (f'Lịch sử có lợi hơn khi đo dày: {len(low["q05"])}/4 bộ'
              + (f' ({jv(low["q05"])})' if 0 < len(low['q05']) < 4 else '') + r' ở lịch mỗi $0{,}05L$ và '
-             f'{len(low["M2"])}/4 bộ khi biết mọi lần đo trước, nhưng mức sau không phải là đo thưa.'
-             + ''.join(f' Ở {r_.ds} với lịch {tl[r_.tier]}, HiGBDT-V tốt hơn ở '
-                       f'{int(r_.better_selected)}/{int(r_.n_cell)} cell nên kiểm định nghiêng về nó, dù MAE trung bình '
-                       f'cao hơn vì {"một cell" if r_.flip_selected == 1 else "vài cell"} sai lớn.'
-                       for r_ in odd if r_.wins_selected == 1)
-             + (' Vì vậy đồ án giữ GBDT-cập nhật cho lịch đo thưa.' if keep else ''))
+             f'{len(low["M2"])}/4 bộ khi biết mọi lần đo trước, nhưng mức sau không phải là đo thưa.')
+    for ds in DS:                                  # kiểm định nghiêng về HiGBDT-V dù MAE trung bình cao hơn
+        oo = [r_ for r_ in odd if r_.ds == ds and r_.wins_selected == 1]
+        if oo:
+            one = all(r_.flip_selected == 1 for r_ in oo)
+            text += (f' Ở {ds} với lịch {jv([tl[r_.tier] for r_ in oo])}, HiGBDT-V tốt hơn ở '
+                     + jv([f'{int(r_.better_selected)}/{int(r_.n_cell)}' for r_ in oo])
+                     + f' cell nên kiểm định nghiêng về nó, dù MAE trung bình cao hơn vì '
+                     + ('một cell sai lớn.' if one else 'vài cell sai lớn.'))
+    text += (
+             ' Vì vậy đồ án giữ GBDT-cập nhật cho lịch đo thưa.' if keep else '')
     fig = ''
     if C is not None and os.path.exists(os.path.join(FIG, 'fig_e34_cost.pdf')):
         cc = lambda ds, t, col: float(C[(C.ds == ds) & (C.tier == t)][col].iloc[0])
