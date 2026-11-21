@@ -137,12 +137,11 @@ def online(bundle, z, cyc, observed, tier='q10'):
     return out
 
 
-def run_fold(ds, r, k, root=ROOT, save_models=False):
-    """Một lượt (bộ, lần lặp, fold): học ba mô hình, chọn trên validation, chấm trên cell test, lưu npz (data, info)."""
+def fit(lab, val, by, norm, L, seed, rng):
+    """Học GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R trên cell `lab` và chọn số cây cùng HiGBDT-V (mô hình, mốc, α theo từng
+    lịch đo) trên cell `val`. Trả (models, configs, choices, trace, số cặp học)."""
     from sklearn.ensemble import HistGradientBoostingRegressor as HGB
-    path = out_path(ds, r, k, root)
-    start = time.time(); by, sp, norm, L, seed = context(ds, r, k); rng = np.random.default_rng(seed)
-    tr = anchor_data(sp['labelled'], by, norm, L, rng, True); va = anchor_data(sp['val'], by, norm, L, rng)
+    tr = anchor_data(lab, by, norm, L, rng, True); va = anchor_data(val, by, norm, L, rng)
     wt = weights(tr['cell'], tr['tier']); wv = weights(va['cell'], va['tier'])
     models, configs, vp, trace = [], [], [], []
     for cfg in CONFIGS:
@@ -167,6 +166,14 @@ def run_fold(ds, r, k, root=ROOT, save_models=False):
                     opts.append(dict(model_index=mi, prior=prior, alpha=a,
                                      val_MAE=float(w @ np.abs(a * p[ix] + (1 - a) * b[ix] - va['y'][ix]))))
         choices[tier] = min(opts, key=lambda q: q['val_MAE'])
+    return models, configs, choices, trace, int(len(tr['y']))
+
+
+def run_fold(ds, r, k, root=ROOT, save_models=False):
+    """Một lượt (bộ, lần lặp, fold): học ba mô hình, chọn trên validation, chấm trên cell test, lưu npz (data, info)."""
+    path = out_path(ds, r, k, root)
+    start = time.time(); by, sp, norm, L, seed = context(ds, r, k); rng = np.random.default_rng(seed)
+    models, configs, choices, trace, n_train = fit(sp['labelled'], sp['val'], by, norm, L, seed, rng)
     te = anchor_data(sp['test'], by, norm, L, rng)
     ps = [apred(m, c, te) for m, c in zip(models, configs)]
     hold = np.clip(te['hold'], *CLIP); linear = np.clip(te['hold'] + te['linear_delta'], *CLIP); p = np.zeros(len(hold))
@@ -176,7 +183,7 @@ def run_fold(ds, r, k, root=ROOT, save_models=False):
     data = np.column_stack([te['cell'], te['tier'], te['cycle'], te['anchor_cycle'], te['y'], hold, linear, *ps, p,
                             te['n_measured']])
     info = dict(dataset=ds, repeat=r, fold=k, L_train=L, split=sp, choices=choices, configs=configs, search=trace,
-                n_train_pairs=int(len(tr['y'])), fit_seconds=time.time() - start, columns=COLUMNS)
+                n_train_pairs=n_train, fit_seconds=time.time() - start, columns=COLUMNS)
     os.makedirs(root, exist_ok=True)
     tmp = path[:-4] + f'.{os.getpid()}.tmp.npz'
     np.savez_compressed(tmp, data=data, info=np.asarray(json.dumps(info)))

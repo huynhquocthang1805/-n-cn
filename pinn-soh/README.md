@@ -340,6 +340,11 @@ python run.py demo predict --model demo/XJTU.pt --csv "..." --an-nhan   # coi nh
 # cuối đời, khoảng 90 %; bỏ --den-chu-ky để dự báo từ chu kỳ cuối cùng của file
 python run.py demo forecast --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv" --den-chu-ky 150
 python run.py demo forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 --an-nhan   # lịch sử SOH ước lượng
+
+# cập nhật: cell được đo dung lượng ở vài chu kỳ (lịch đo mỗi 0,1L, hoặc --do-chu-ky "1,60,120"); HiGBDT-V (E34)
+# ước lượng SOH ở mọi chu kỳ còn lại, mỗi chu kỳ chỉ dùng các lần đo trước nó
+python run.py demo cap-nhat --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv" --lich q10
+python run.py demo tat-ca                        # HiPINN cho một cell test của mỗi bộ, hình 2 × 2
 ```
 
 Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng HiPINN (trung vị của GBDT
@@ -347,7 +352,9 @@ lịch sử, PINN-dự báo và nhánh theo đời); lần đầu cho một bộ
 hình ước lượng (vài phút) và lưu ở `demo/<bộ>_hipinn.pkl`. `--mo-hinh e23` dùng bản có xét hồi phục của E23 (lưu ở
 `demo/<bộ>_dubao.pkl`), in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động
 đều nếu có. `tat-ca` chạy HiPINN cho một cell test của mỗi bộ (cell có số chu kỳ ở trung vị, dự báo từ 40 % số chu kỳ
-của nó) và vẽ hình 2 × 2. Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv`, `demo/hipinn_bon_bo.csv` và các hình.
+của nó) và vẽ hình 2 × 2. `cap-nhat` dùng HiGBDT-V của E34, học trên cùng fold với PINN-semi của công cụ (lưu ở
+`demo/<bộ>_capnhat.pkl`). Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv`, `demo/<cell>_capnhat.csv`,
+`demo/hipinn_bon_bo.csv` và các hình.
 
 ## 7. Nguyên tắc của repo
 

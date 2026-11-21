@@ -1891,8 +1891,8 @@ def demo_branch_txt(Dm):
     rest = [r for r in Dm.itertuples() if r.bo not in beat]
     t = ('ở ' + jv(beat) + ', HiPINN không kém nhánh tốt nhất của chính cell đó' if beat else '')
     if rest:
-        t += ('; ' if t else '') + 'ở ' + jv([f'{r.bo} nhánh tốt nhất là {lab[best[r.bo]]} '
-                                             f'({v(1e3 * getattr(r, "mae_" + best[r.bo]), 1)})' for r in rest])
+        t += ('; ' if t else '') + '; '.join(f'ở {r.bo}, nhánh tốt nhất là {lab[best[r.bo]]} '
+                                             f'({v(1e3 * getattr(r, "mae_" + best[r.bo]), 1)})' for r in rest)
     return t + '.'
 
 
@@ -1903,20 +1903,30 @@ def demo_section():
     if os.path.exists('demo/hipinn_bon_bo.pdf'):
         shutil.copy('demo/hipinn_bon_bo.pdf', os.path.join(FIG, 'fig_demo_hipinn.pdf'))
     text = (r'\section{Công cụ dự báo cho một cell}\label{sec:congcu}' '\n\n'
-            r'Công cụ dòng lệnh của đồ án gói các mô hình để dùng cho một cell bất kỳ, chỉ cần tệp đặc trưng sạc của cell '
+            r'Công cụ dòng lệnh của đồ án gói PINN-semi, HiPINN và HiGBDT-V để dùng cho một cell bất kỳ, chỉ cần tệp đặc trưng sạc của cell '
             r'đó. Lệnh thứ nhất học PINN-semi ở 30\,\% nhãn cho một bộ dữ liệu, lệnh thứ hai ước lượng SOH ở từng chu kỳ, '
             r'lệnh thứ ba dự báo SOH, dung lượng và RUL từ một chu kỳ bất kỳ bằng HiPINN (\Cref{sec:e33pp}). Lần đầu dự báo '
             r'cho một bộ, HiPINN được học trên các cell có nhãn của cùng fold với PINN-semi của công cụ, chọn cấu hình '
             r'từng nhánh trên cell validation rồi lưu lại; cell được dự báo '
             r'không tham gia khi học. Nếu cell không được đo dung lượng, lịch sử SOH lấy từ PINN-semi và khoảng '
             r'90\,\% dùng phân vị hiệu chỉnh riêng cho trường hợp này.')
+    up = keep_copy('demo/2C_battery-8_capnhat.csv', 'demo_capnhat.csv')
+    if up is not None:                             # lệnh cập nhật: ví dụ cell 2C_battery-8 của XJTU, lịch đo mỗi 0,1L
+        U = pd.read_csv(up); m = U.soh_do.notna(); ev = U.soh_cap_nhat.notna() & ~m
+        last = np.maximum.accumulate(np.where(m, np.arange(len(U)), -1)); prev = np.r_[-1, last[:-1]]
+        hold = np.where(prev >= 0, U.soh_do.values[np.maximum(prev, 0)], np.nan)
+        e_up = float((U.soh_cap_nhat - U.soh_thuc).abs()[ev].mean()); e_hold = float(np.abs(hold - U.soh_thuc)[ev].mean())
+        text += (r' Lệnh thứ tư cập nhật SOH khi cell được đo dung lượng ở vài chu kỳ: ở mỗi chu kỳ không đo, HiGBDT-V '
+                 r'(\Cref{sec:anchor}) ước lượng SOH từ lần đo gần nhất trước nó và đặc trưng sạc. Với cell 2C\_battery-8 '
+                 f'của XJTU đo {int(m.sum())} lần trên {len(U)} chu kỳ theo lịch mỗi $0{{,}}1L$, MAE ở các chu kỳ không đo là '
+                 f'{v(1e3 * e_up, 1)} ($\\times10^{{-3}}$), so với {v(1e3 * e_hold, 1)} khi giữ nguyên lần đo gần nhất.')
     if p is None or not os.path.exists(os.path.join(FIG, 'fig_demo_hipinn.pdf')):
         write('doan_cong_cu.tex', text)
         return
     Dm = pd.read_csv(p)
     jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
     name = lambda cid: tex_esc(cid.split('/')[-1])
-    text += ('\n\n' r'Lệnh thứ tư áp dụng HiPINN cho cả bốn bộ: với mỗi bộ, lấy cell test có số chu kỳ ở trung vị '
+    text += ('\n\n' r'Lệnh thứ năm áp dụng HiPINN cho cả bốn bộ: với mỗi bộ, lấy cell test có số chu kỳ ở trung vị '
              r'và dự báo từ 40\,\% số chu kỳ của nó (\Cref{fig:demo4}). MAE trên phần đời còn lại là '
              + jv([f'{v(1e3 * r.mae, 1)} ở {r.bo} (cell {name(r.cell)})' for r in Dm.itertuples()])
              + r' ($\times10^{-3}$); ' + demo_branch_txt(Dm) + r' Mô hình của công cụ học trên 30\,\% cell có nhãn, ít '

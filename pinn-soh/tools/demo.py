@@ -18,11 +18,15 @@ Demo: ước lượng SOH theo từng chu kỳ cho MỘT cell, chỉ từ 16 đ�
     # 5) HiPINN cho cả bốn bộ: một cell test mỗi bộ, dự báo từ 40 % đời, hình 2 × 2
     python tools/demo.py tat-ca
 
+    # 6) cập nhật: cell được đo dung lượng ở vài chu kỳ (giả lập lịch đo mỗi 0,1L, hoặc --do-chu-ky "1,60,120");
+    #    HiGBDT-V (E34) ước lượng SOH ở mọi chu kỳ còn lại, mỗi chu kỳ chỉ dùng các lần đo trước nó
+    python tools/demo.py cap-nhat --model demo/XJTU.pt --csv "..." --lich q10
+
 Mô hình chạy nhân quả: ước lượng ở chu kỳ N chỉ dùng đặc trưng của chu kỳ N và chỉ số N; bộ lọc
 ngoại lai chỉ dùng các chu kỳ trước N. Vì vậy cùng một mô hình dùng được trực tuyến trong BMS.
 
 Đầu ra: demo/<tên cell>_soh.csv (chu kỳ, SOH ước lượng, SOH thực đo nếu có) và .png;
-lệnh forecast ghi thêm demo/<tên cell>_dubao.csv và .png.
+lệnh forecast ghi thêm demo/<tên cell>_dubao.csv và .png, lệnh cap-nhat ghi demo/<tên cell>_capnhat.csv và .png.
 """
 from __future__ import annotations
 import os as _os, sys as _sys
@@ -296,6 +300,96 @@ def _forecast_hipinn(a, model, norm, c, split):
     print(f'đã ghi {DEMO_DIR}/{name}_dubao.csv và .png')
 
 
+UPDATE_VERSION = 1
+UPDATE_NAMES = ['GBDT-cập nhật', 'HiGBDT-Δ', 'HiGBDT-R']
+
+
+def _update_bundle(c, split):
+    """HiGBDT-V của công cụ (E34, pinnsoh/update_hist.py): học trên cell có nhãn của cùng fold với PINN-semi, chọn số
+    cây, mô hình, mốc và trọng số trên cell validation; L và chuẩn hoá từ cell train. Lưu ở demo/<bộ>_capnhat.pkl."""
+    import pickle
+    from pinnsoh.data import load_dataset
+    from pinnsoh.forecast import life_scale
+    from pinnsoh import update_hist as U
+    fpath = os.path.join(DEMO_DIR, f'{c["dataset"]}_capnhat.pkl')
+    if os.path.exists(fpath):
+        try:
+            b = pickle.load(open(fpath, 'rb'))
+            if b.get('version') == UPDATE_VERSION:
+                return b
+        except Exception:
+            pass
+    print('lần đầu: huấn luyện GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R và chọn HiGBDT-V — vài phút ...', flush=True)
+    cells = load_dataset('PINN4SOH/data', c['dataset'], clean='causal'); by = {x.cid: x for x in cells}
+    train = list(split['train'])
+    norm = Normalizer('global').fit([by[i] for i in train]); L = life_scale([by[i] for i in train])
+    seed = int(c.get('seed', 0))
+    models, configs, choices, _, n = U.fit(list(split['labelled']), list(split['val']), by, norm, L, seed,
+                                           np.random.default_rng(seed))
+    b = dict(models=models, configs=configs, choices=choices, norm=norm, L_train=L, n_train_pairs=n,
+             dataset=c['dataset'], version=UPDATE_VERSION)
+    os.makedirs(DEMO_DIR, exist_ok=True)
+    pickle.dump(b, open(fpath, 'wb'))
+    return b
+
+
+def cmd_update(a):
+    """Cập nhật SOH từ vài lần đo dung lượng: ở mỗi chu kỳ không đo, HiGBDT-V ước lượng SOH từ lần đo gần nhất trước nó
+    và đặc trưng sạc; lựa chọn của HiGBDT-V lấy theo lịch đo gần nhất với khoảng cách giữa các lần đo."""
+    from pinnsoh import update_hist as U
+    model, norm, c, split = load_model(a.model)
+    B = _update_bundle(c, split)
+    nominal = a.nominal or _nominal(c['dataset'], a.csv)
+    cell = load_cell_csv(a.csv, nominal, temp_c=a.temp)
+    if not np.isfinite(cell.soh).any():
+        sys.exit('tệp không có cột capacity: cần dung lượng đo ở ít nhất một chu kỳ')
+    cyc = cell.cycle.astype(float); L = B['L_train']
+    if a.do_chu_ky:
+        measured = np.isin(cell.cycle, [int(x) for x in a.do_chu_ky.split(',')])
+        if not measured.any():
+            sys.exit('không chu kỳ nào trong --do-chu-ky có trong tệp')
+        gap = np.median(np.diff(cyc[measured])) / L if measured.sum() > 1 else 0.2
+        tier = 'M2' if gap < 0.02 else min(['q20', 'q10', 'q05'], key=lambda t: abs(U.TIERS[t] - gap))
+    else:
+        tier = a.lich
+        measured, _ = U.schedule(cyc, U.TIERS[tier], L)
+    observed = np.where(measured & np.isfinite(cell.soh), cell.soh, np.nan)
+    est = U.online(B, B['norm'].transform(cell), cyc, observed, tier)
+    ch = B['choices'][tier]
+    name = os.path.splitext(os.path.basename(a.csv))[0]
+    prior = 'giữ lần đo' if ch['prior'] == 'hold' else 'ngoại suy tuyến tính'
+    print(f'cell {name} · {int(measured.sum())} lần đo dung lượng trên {len(cyc)} chu kỳ · lịch {tier} '
+          f'(L = {L:g} chu kỳ của cell train)')
+    print(f'HiGBDT-V: {ch["alpha"]:g} × {UPDATE_NAMES[ch["model_index"]]} + {1 - ch["alpha"]:g} × {prior} '
+          f'(chọn trên {len(split["val"])} cell validation)')
+    truth = cell.soh if np.isfinite(cell.soh).all() else None
+    ev = np.isfinite(est) & ~measured
+    if truth is not None and ev.any():
+        hold = np.full(len(cyc), np.nan)
+        last = np.maximum.accumulate(np.where(measured, np.arange(len(cyc)), -1))
+        prev = np.r_[-1, last[:-1]]; ok = prev >= 0
+        hold[ok] = observed[prev[ok]]
+        print(f'đối chiếu với thực đo ở {int(ev.sum())} chu kỳ không đo: MAE HiGBDT-V {np.abs(est - truth)[ev].mean():.4f}'
+              f' · giữ lần đo gần nhất {np.abs(hold - truth)[ev].mean():.4f}')
+    os.makedirs(DEMO_DIR, exist_ok=True)
+    pd.DataFrame(dict(chu_ky=cell.cycle, soh_do=observed, soh_cap_nhat=est,
+                      soh_thuc=cell.soh)).to_csv(os.path.join(DEMO_DIR, f'{name}_capnhat.csv'), index=False)
+    import matplotlib.pyplot as plt
+    from pinnsoh.plotstyle import apply_theme, MODEL_COLOR, save
+    apply_theme()
+    fig, ax = plt.subplots(figsize=(4.8, 2.6))
+    if truth is not None:
+        ax.plot(cell.cycle, truth, color=MODEL_COLOR['truth'], lw=1.0, label='thực đo')
+    ax.plot(cell.cycle, est, color='#d9480f', lw=1.4, label='HiGBDT-V')
+    ax.scatter(cell.cycle[measured], observed[measured], s=14, color='#2a78d6', zorder=4, label='lần đo dung lượng')
+    ax.set_xlabel('chu kỳ'); ax.set_ylabel('SOH')
+    sec = ax.secondary_yaxis('right', functions=(lambda v: v * nominal, lambda q: q / nominal)); sec.set_ylabel('Ah')
+    ax.legend(loc='lower left', fontsize=6.5, framealpha=0.9)
+    fig.tight_layout()
+    save(fig, os.path.join(DEMO_DIR, f'{name}_capnhat'), also_pdf=False, dpi=200)
+    print(f'đã ghi {DEMO_DIR}/{name}_capnhat.csv và .png')
+
+
 def cmd_all(a):
     """HiPINN cho cả bốn bộ: với mỗi bộ có mô hình demo, lấy cell test có số chu kỳ ở trung vị, dự báo từ 40 % số chu
     kỳ của nó (lịch sử đo), ghi demo/hipinn_bon_bo.csv và hình 2 × 2 demo/hipinn_bon_bo.png|pdf."""
@@ -454,5 +548,13 @@ if __name__ == '__main__':
     f.add_argument('--mo-hinh', default='hipinn', choices=['hipinn', 'e23'],
                    help='hipinn (mặc định): mô hình HiPINN; e23: bộ dự báo có xét hồi phục dung lượng')
     sp.add_parser('tat-ca', help='HiPINN cho một cell test của mỗi bộ dữ liệu, hình 2 × 2')
+    u = sp.add_parser('cap-nhat', help='cập nhật SOH từ vài lần đo dung lượng bằng HiGBDT-V')
+    u.add_argument('--model', required=True); u.add_argument('--csv', required=True)
+    u.add_argument('--lich', default='q10', choices=['q20', 'q10', 'q05'],
+                   help='lịch đo giả lập: đo ở chu kỳ đầu rồi mỗi 0,2L / 0,1L / 0,05L chu kỳ (mặc định q10)')
+    u.add_argument('--do-chu-ky', default=None, help='các chu kỳ có đo dung lượng, ví dụ "1,60,120"; thay cho --lich')
+    u.add_argument('--nominal', type=float, default=None, help='dung lượng danh định (Ah); mặc định theo bộ')
+    u.add_argument('--temp', type=float, default=25.0, help='nhiệt độ môi trường (°C)')
     a = ap.parse_args()
-    {'train': cmd_train, 'predict': cmd_predict, 'forecast': cmd_forecast, 'tat-ca': cmd_all}[a.cmd](a)
+    {'train': cmd_train, 'predict': cmd_predict, 'forecast': cmd_forecast, 'tat-ca': cmd_all,
+     'cap-nhat': cmd_update}[a.cmd](a)
