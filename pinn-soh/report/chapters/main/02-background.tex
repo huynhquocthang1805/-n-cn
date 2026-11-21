@@ -183,9 +183,6 @@ PINN4SOH~\cite{wang2024} là công trình gần nhất với đồ án: cùng b�
       cell test cố định; thêm thí nghiệm ít mẫu chỉ có $K = 1, \dots, 4$ cell có nhãn. Sai số là MAE từng cell test, lấy
       trung bình qua cell, qua 10 lần chạy và qua các nhóm.
 \end{itemize}
-Mục~\ref{sec:rerun} cho thấy trong bản mã đã sinh ra số liệu công bố, $\mathcal{L}_\text{mono} = \sum
-\operatorname{ReLU}(y_2 - y_1)$ chỉ phụ thuộc nhãn nên không có gradient; các bản sửa sau đó đổi thành
-$\sum \operatorname{ReLU}(u_2 - u_1)$ rồi $\sum \operatorname{ReLU}\big((u_2 - u_1)(y_1 - y_2)\big)$.
 
 
 \subsection{Dự báo suy giảm và tuổi thọ còn lại}

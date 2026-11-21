@@ -8,8 +8,8 @@ giá trong cùng một giao thức không rò rỉ: kiểm định chéo theo ce
 (\Cref{sec:protocol}). Mô hình đề xuất cho bài toán ước lượng là PINN bán giám sát (\Cref{sec:pinn}): loss vật lý của
 một động học suy giảm dạng xám được tính trên cả cell không có nhãn. Mô hình kết hợp PINN-lai ghép ba PINN-semi với
 GBDT rồi lọc xu thế (\Cref{sec:pinnlai}). Các mô hình đối chứng gồm Ridge, GPR, GBDT, MLP, CNN, LSTM, Transformer và các
-biến thể PINN (\Cref{sec:baselines}); mốc so sánh với công trình gốc là chính mã PINN4SOH chạy lại trên đúng cách chia
-của bài (\Cref{sec:rerun_m}). Phần mở rộng xét ba câu hỏi gần với vận hành BMS: đo dung lượng thưa trên mọi cell thay vì
+biến thể PINN (\Cref{sec:baselines}); mốc so sánh với công trình gốc là PINN4SOH trên đúng cách chia của bài
+(\Cref{ch:sosanh}). Phần mở rộng xét ba câu hỏi gần với vận hành BMS: đo dung lượng thưa trên mọi cell thay vì
 đo đầy đủ một phần cell, cập nhật ước lượng khi cell mới được đo vài lần, và dự báo SOH, dung lượng, RUL
 (\Cref{sec:mo_rong,sec:e33pp}).
 
@@ -41,16 +41,22 @@ gian đặc trưng. Bảng~\ref{tab:datastats} tóm tắt dữ liệu sau tiền
 \paragraph{Nhãn.} $y_{c,n} = Q_{c,n}/Q_\text{danh định}$. Chu kỳ thiếu dung lượng được giữ lại với nhãn trống và chỉ
 dùng cho loss vật lý.
 
-\paragraph{Lọc ngoại lai nhân quả.} Chu kỳ $n$ bị loại nếu có đặc trưng không hữu hạn, hoặc có đặc trưng lệch xa so với
-50 chu kỳ liền trước của chính cell. Với đặc trưng thứ $j$:
+\paragraph{Lọc ngoại lai nhân quả.} Dữ liệu sạc có thể có những chu kỳ bất thường (ví dụ lỗi đo hoặc lỗi ghi: một
+đặc trưng nhảy vọt rồi trở lại), cần bỏ trước khi học. Chu kỳ $n$ bị loại nếu có đặc trưng không hữu hạn, hoặc có đặc
+trưng lệch xa so với 50 chu kỳ liền trước của chính cell. Với đặc trưng thứ $j$:
 \begin{equation}
 m_{n,j} = \operatorname{median}(x_{n-50..n-1,\,j}), \quad
 s_{n,j} = \max\!\Big(\tfrac{\mathrm{IQR}(x_{n-50..n-1,\,j})}{1{,}349},\, 0{,}01\,|m_{n,j}|\Big), \quad
 z_{n,j} = \frac{|x_{n,j} - m_{n,j}|}{s_{n,j}},
 \end{equation}
-chu kỳ bị loại nếu $\max_j z_{n,j} > 5$ (cần ít nhất 10 chu kỳ lịch sử). Ngưỡng 5 được chọn trước khi huấn luyện để tỉ lệ
-chu kỳ bị loại (1,6\,\%) tương đương bộ lọc $3\sigma$ dùng cả vòng đời (2,2\,\%). Bộ lọc chỉ nhìn đặc trưng, không nhìn
-dung lượng, và chỉ nhìn quá khứ của cell.
+chu kỳ bị loại nếu $\max_j z_{n,j} > 5$. $s_{n,j}$ là độ lệch chuẩn ước lượng bền vững: với phân phối chuẩn,
+IQR$/1{,}349$ bằng đúng độ lệch chuẩn, nhưng không bị chính các chu kỳ bất thường kéo lên như độ lệch chuẩn thường; sàn
+$1\,\%\,|m_{n,j}|$ tránh chia cho số gần 0 ở đặc trưng gần như không đổi. Bộ lọc chỉ chạy khi đã có ít nhất 10 chu kỳ
+lịch sử, vì trung vị và IQR của ít điểm hơn dao động mạnh; 10 chu kỳ đầu của mỗi cell vì vậy không bị lọc. Ngưỡng là 5
+thay cho 3 quen dùng vì độ lệch chuẩn ở đây chỉ tính trên 50 chu kỳ gần nhất, nhỏ hơn nhiều độ lệch chuẩn của cả vòng
+đời, vốn bị xu thế suy giảm làm lớn lên; ngưỡng được ấn định trước khi huấn luyện để tỉ lệ chu kỳ bị loại (1{,}6\,\%)
+tương đương bộ lọc $3\sigma$ dùng cả vòng đời (2{,}2\,\%). Bộ lọc chỉ nhìn đặc trưng, không nhìn dung lượng, và chỉ nhìn
+quá khứ của cell, nên chạy được khi đang dùng và không rò rỉ. \input{generated/doan_loc}
 
 \paragraph{Chuẩn hoá.} Mỗi đặc trưng được chuẩn hoá z-score bằng trung bình và độ lệch chuẩn tính trên các cell huấn
 luyện (có nhãn và không nhãn): $\tilde{\mathbf{x}} = (\mathbf{x} - \boldsymbol\mu)/(\boldsymbol\sigma + 10^{-6})$. Biến
@@ -129,7 +135,7 @@ bằng các thí nghiệm riêng nêu ở Mục~\ref{sec:dt_bo}.
 \section{Phương pháp}\label{ch:thuchien}
 
 Mục này mô tả những gì đồ án xây dựng: giao thức đánh giá không rò rỉ, PINN-semi (PINN bán giám sát), mô hình kết hợp
-PINN-lai, các mô hình đối chứng, quy trình chạy lại mã gốc PINN4SOH và các phần mở rộng.
+PINN-lai, các mô hình đối chứng và các phần mở rộng.
 
 \subsection{Giao thức đánh giá không rò rỉ}\label{sec:protocol}
 
@@ -230,6 +236,17 @@ thế nhân quả~\cite{cleveland1979}). Bộ lọc không làm lệch một qu�
 $\sigma^2$ nó giảm phương sai còn $0{,}345\,\sigma^2$ khi $w = 10$. Thành phần và trọng số được chọn trong 9 hướng cải tiến
 chỉ bằng validation của lần lặp 0 (Mục~\ref{sec:e20res}); cấu hình được ấn định trước khi đọc dự đoán test.
 
+\paragraph{HiPINN-lai.} HiPINN-lai (History-informed PINN-lai) là PINN-lai có thêm lịch sử của cell trong đầu vào.
+Ngoài đặc trưng sạc $\mathbf{x}_n$ của chu kỳ hiện tại, mô hình nhận các đại lượng chỉ dùng chu kỳ $n$ và các chu kỳ
+trước của chính cell, nên vẫn chạy trực tuyến được: trung bình trượt mũ
+$\mathbf{z}^{(a)}_n = a\,\mathbf{x}_n + (1-a)\,\mathbf{z}^{(a)}_{n-1}$, nhớ khoảng $1/a$ chu kỳ, với
+$a \in \{0{,}3;\ 0{,}1;\ 0{,}03\}$, và độ dốc bình phương tối thiểu của từng đặc trưng trên 20 chu kỳ gần nhất. Lịch sử ở
+đây là lịch sử của đặc trưng sạc, không phải của SOH, vì cell cần ước lượng không được đo dung lượng; đây là điểm khác với
+HiGBDT và HiPINN ở bài toán dự báo (\Cref{sec:e33pp}), vốn dùng lịch sử SOH. Với mỗi bộ, dạng lịch sử được chọn trên
+validation và chỉ giữ khi giảm MAE validation ít nhất 2\,\%; ba PINN-semi và GBDT có lịch sử được ghép đúng như PINN-lai.
+HiPINN-lai dùng bản có lịch sử ở những trường hợp (bộ, mức nhãn) mà validation chọn, còn lại trùng PINN-lai. Kết quả
+của HiPINN-lai là phân tích hậu kiểm (\Cref{sec:e20res}).
+
 \subsection{Mô hình đối chứng và cấu hình huấn luyện}\label{sec:baselines}
 
 Mọi mô hình ở Bảng~\ref{tab:models} dùng cùng đầu vào, cùng cách chia, cùng tập cell có nhãn và cùng normaliser.
@@ -259,27 +276,6 @@ MLP và các biến thể PINN dùng AdamW~\cite{loshchilov2019}, tốc độ h�
 4\,000 bước, batch 512 điểm có nhãn và 512 cặp chu kỳ, cắt gradient ở chuẩn 5, dừng sớm theo MAE validation. Độ dài cửa
 sổ của CNN, LSTM và Transformer được chọn trong $\{16, 48\}$ trên validation. Trọng số vật lý được chọn trước ở một thí
 nghiệm sơ bộ và giữ cố định; không siêu tham số nào được chọn theo tập test.
-
-\subsection{Chạy lại mã gốc PINN4SOH}\label{sec:rerun_m}
-
-Để so với bài gốc trên cùng điều kiện, đồ án chạy lại chính mã của bài:
-\begin{enumerate}
-\item \emph{Dựng lại cách chia.} Nhật ký huấn luyện công bố kèm mã ghi đường dẫn dữ liệu của từng lượt; từ đó dựng lại
-      đúng 39 nhóm đánh giá: một nhóm cho mỗi batch của XJTU và TJU ở chế độ đầy đủ, một nhóm cho cả bộ MIT (23 cell test)
-      và HUST (20 cell test), và các nhóm ít mẫu $K = 1, \dots, 4$ của XJTU và HUST.
-\item \emph{Chạy nguyên trạng.} Lớp mô hình và lớp đọc dữ liệu của bài được dùng không sửa một dòng; đồ án chỉ viết phần
-      gọi chúng, đặt hạt giống và ghi dự đoán theo từng cell test.
-\item \emph{Hai bản mã.} Bản đã sinh ra số liệu công bố, với siêu tham số đọc từ nhật ký, chạy 10 lần mỗi nhóm như bài;
-      bản hiện tại của kho mã (loss đơn điệu đã sửa, trọng số $\alpha, \beta$ mặc định mới), chạy 3 lần mỗi nhóm.
-\item \emph{Đối chiếu nhật ký.} Nhật ký ghi giá trị loss đơn điệu ở mỗi epoch; đồ án tính lại biểu thức của loss này
-      trên đúng các hàng train mà lớp đọc dữ liệu của bài tạo ra từ dữ liệu ở đây, rồi so với giá trị trong nhật ký.
-\item \emph{Cùng điều kiện cho mô hình của đồ án.} PINN-lai, GBDT và PINN-semi được chạy trên đúng 39 nhóm đó với hai
-      cách tiền xử lý: bản sao tiền xử lý của bài (có rò rỉ, chỉ để so cùng điều kiện) và tiền xử lý không rò rỉ của đồ
-      án; mỗi nhóm 3 hạt giống.
-\end{enumerate}
-Mã gốc viết cho pandas 1.x; đồ án chạy nó trong một môi trường riêng có pandas 2.3, PyTorch 2 và trên CPU, trong khi bài
-gốc dùng GPU và thư viện cũ hơn. Sai số được tính đúng như bài: MAE từng cell test, trung bình qua lần chạy, qua cell, qua
-nhóm; so sánh ghép cặp theo cell bằng Wilcoxon, hiệu chỉnh Holm qua 12 tổ hợp bộ $\times$ chế độ.
 
 \subsection{Ngân sách đo và cập nhật khi dùng}\label{sec:mo_rong}
 
@@ -320,8 +316,8 @@ hình này với trọng số bằng nhau. Ba mô hình này chỉ nhìn lịch 
 $\mathbf{z}_k$, và được giữ làm mốc so sánh. Mọi mô hình học trên các mẫu (gốc, tầm) lấy từ lịch sử đo thật của cell
 train, 40 gốc và 40 tầm mỗi cell; số cây của GBDT và điểm dừng của PINN-dự báo chọn theo MAE trên cell validation.
 
-\paragraph{HiGBDT.} HiGBDT được phát triển trong kho G-doan của đồ án (\Cref{app:source-code}); nó vừa là một mô
-hình dự báo đứng riêng, vừa là một nhánh của HiPINN. Ngoài 23 đặc trưng gốc $\mathbf{z}_k$, HiGBDT nhận SOH tại $k$ và độ lệch của nó so với mức
+\paragraph{HiGBDT.} Đồ án thiết kế HiGBDT để vừa là một mô hình dự báo đứng riêng, vừa là một nhánh
+của HiPINN. Ngoài 23 đặc trưng gốc $\mathbf{z}_k$, HiGBDT nhận SOH tại $k$ và độ lệch của nó so với mức
 $\ell_k$; với các cửa sổ 5, 10, 30, 100 và 200 hàng gần nhất: trung bình trừ SOH hiện tại, độ lệch chuẩn và độ dốc; với độ
 trễ 1, 3, 7, 15, 31 và 63 hàng: thay đổi SOH và khoảng chu kỳ tương ứng. Tất cả chỉ dùng các hàng tới gốc. GBDT học độ
 giảm $\ell_k - \text{SOH}(k+h)$ theo (đặc trưng, $h$). Sáu cấu hình được thử: hàm mất mát $L_2$ hoặc $L_1$, 15 hoặc 31 lá,

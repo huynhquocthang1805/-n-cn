@@ -16,8 +16,8 @@ Nguồn số liệu, không số nào gõ tay vào bảng:
   * số lượt chạy của từng thí nghiệm: pinnsoh/experiments.py;
   * dự báo SOH, dung lượng, RUL với HiGBDT và HiPINN (E33): runs/E33 -> analysis/analyze_e33.py,
     analysis/figures_report.py; bản sao bảng ở report/generated/data/e33_*.csv, hình ở report/graphics/fig_e33_*.pdf;
-  * HiGBDT cho bài toán cập nhật (E34): runs/E34 -> analysis/analyze_e34.py (khi chưa đủ lượt, dùng kết quả đã lưu của
-    kho phát triển G-doan, biến môi trường GDOAN); bản sao bảng ở report/generated/data/e34_*.csv.
+  * HiGBDT cho bài toán cập nhật (E34): runs/E34 -> analysis/analyze_e34.py; bản sao bảng ở
+    report/generated/data/e34_*.csv.
 Các con số trong lời văn của Chương 5 (kết quả từ báo cáo đã nộp) chép từ lời văn của báo cáo đó, trừ mục dự báo
 (sinh từ E33). Mục dự báo E22 của báo cáo đã nộp không còn trong báo cáo: E33 thay nó, với PINN-GBDT của E22 học lại
 làm mốc so sánh.
@@ -105,14 +105,15 @@ def thesis_tables():
     write('bang_nguon_loi.tex', thesis_block('tab:source'))
     write('bang_mae_chinh.tex', thesis_block('tab:allmae', [(
         r'mô hình cuối là PINN-lai dùng hay không dùng lịch sử theo validation (Mục~\ref{sec:histres}).',
-        r'PINN-lai + lịch sử là PINN-lai có thêm đặc trưng lịch sử của cell ở những trường hợp validation chọn (TJU và '
-        r'HUST từ 30\,\% nhãn), các hàng khác trùng PINN-lai (Mục~\ref{sec:dt_bo}); cả hai là phân tích hậu kiểm.'),
-        ('Mô hình cuối', head2('PINN-lai', '+ lịch sử'))]))
+        r'HiPINN-lai là PINN-lai có thêm đặc trưng lịch sử của cell ở những trường hợp validation chọn (TJU và HUST từ '
+        r'30\,\% nhãn), các hàng khác trùng PINN-lai (\Cref{sec:pinnlai}); cả hai là phân tích hậu kiểm.'),
+        ('Mô hình cuối', 'HiPINN-lai')]))
     write('bang_rmse.tex', thesis_block('tab:allrm', [
         ('MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột.',
-         'MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. PINN-lai + lịch sử như ở '
+         'MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. HiPINN-lai như ở '
          'Bảng~\\ref{tab:allmae}.'),
-        ('Mô hình cuối &', 'PINN-lai + lịch sử &')]))
+        ('Mô hình cuối &', 'HiPINN-lai &')]))
+    write('bang_lich_su.tex', history_table() + '\n\n' + history_text())
     write('bang_ngan_sach.tex', thesis_block('tab:e28'))
     write('bang_du_bao_tham_so.tex', fcset_table())
 
@@ -129,36 +130,95 @@ def fcset_table():
     return out
 
 
+def history_rows():
+    """Các hàng của bảng E29 trong báo cáo đã nộp: (bộ, nhãn, PINN-semi, + lịch sử, PINN-lai, + lịch sử) dạng số."""
+    num = lambda x: None if x in ('--', '–', '—') else (x if isinstance(x, float) else
+                                            float(x.replace('*', '').replace('†', '').replace(',', '.')))
+    out, last = [], None
+    for r in table('tab:e29'):
+        ds = r[0] or last
+        last = ds
+        out.append(dict(ds=ds, lab=r[1], raw=(r[2], r[3], r[5], r[6]), semi=num(r[2]), semi_h=num(r[3]),
+                        lai=num(r[5]), lai_h=num(r[6])))
+    return out
+
+
 def history_table():
     """Đặc trưng có lịch sử (E29): bản rút gọn của bảng trong báo cáo đã nộp (PINN-semi và PINN-lai, có/không lịch sử)."""
-    rows = table('tab:e29')
     out = [r'\begin{table}[!htbp]\centering\small',
            r'\caption[Thêm lịch sử của cell vào đầu vào]{MAE theo cell ($\times10^{-3}$) trên test khi thêm lịch sử của '
            r'cell vào đầu vào, 3 lần lặp $\times$ 5 fold. Dạng lịch sử được chọn trên validation cho từng bộ và loại mô '
            r'hình; trên MIT không dạng nào giảm sai số validation đủ 2\,\% nên không có cột lịch sử. PINN-lai là bản có '
-           r'trọng số ghép và cửa sổ lọc chọn trên validation. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa '
+           r'trọng số ghép và cửa sổ lọc chọn trên validation. HiPINN-lai lấy cột PINN-lai có lịch sử ở những trường hợp '
+           r'validation chọn dùng lịch sử, còn lại lấy cột PINN-lai. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa '
            r'(Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước.}\label{tab:hist}',
            r'\begin{tabular}{llrrrr}\toprule',
-           r'Bộ & Nhãn & PINN-semi & + lịch sử & PINN-lai & + lịch sử \\\midrule']
+           r' & & \multicolumn{2}{c}{PINN-semi} & \multicolumn{2}{c}{PINN-lai} \\'
+           r'\cmidrule(lr){3-4}\cmidrule(lr){5-6}',
+           r'Bộ & Nhãn & không lịch sử & có lịch sử & không lịch sử & có lịch sử \\\midrule']
     last = None
-    for r in rows:
-        cell = lambda x: '--' if x == '--' else (v(x) if isinstance(x, float) else
+    for r in history_rows():
+        cell = lambda x: '--' if x in ('--', '–', '—') else (v(x) if isinstance(x, float) else
                                                  x.replace('*', '$^{*}$').replace('†', '$^{\\dagger}$').replace(',', '{,}'))
-        lab = r[1].replace('%', r'\,\%')
-        out.append(f'{r[0] if r[0] != last else ""} & {lab} & {cell(r[2])} & {cell(r[3])} & {cell(r[5])} & '
-                   f'{cell(r[6])} \\\\')
-        last = r[0]
+        lab = r['lab'].replace('%', r'\,\%')
+        out.append(f'{r["ds"] if r["ds"] != last else ""} & {lab} & ' + ' & '.join(cell(x) for x in r['raw']) + r' \\')
+        last = r['ds']
     out += [r'\bottomrule\end{tabular}\end{table}']
-    # hai hình của báo cáo đã nộp (E29, chỉ ba bộ có dạng lịch sử được chọn, không có NASA)
-    out += ['', r'\begin{figure}[!htbp]\centering', r'\includegraphics[width=\textwidth]{graphics/fig_e29_pinn.pdf}',
-            r'\caption[PINN-semi khi có và không có lịch sử của cell]{MAE theo cell trên test của PINN-semi không có (nét '
-            r'đứt) và có lịch sử của cell (nét liền), trên ba bộ có dạng lịch sử được chọn; trên MIT không dạng nào được '
-            r'chọn.}\label{fig:e29pinn}', r'\end{figure}', '',
-            r'\begin{figure}[!htbp]\centering', r'\includegraphics[width=\textwidth]{graphics/fig_e29_lai.pdf}',
-            r'\caption[PINN-lai khi có và không có lịch sử của cell]{MAE theo cell trên test của PINN-lai tinh chỉnh không '
-            r'có (nét đứt) và có lịch sử của cell (nét liền), cạnh GBDT có hoặc không lịch sử chọn trên validation.}'
-            r'\label{fig:e29lai}', r'\end{figure}']
     return '\n'.join(out)
+
+
+def history_text():
+    """Đoạn văn về HiPINN-lai (Chương 5), số tính từ bảng E29."""
+    R = [r for r in history_rows() if r['lai_h'] is not None]
+    pct_of = lambda r: int(r['lab'].rstrip('%'))
+    gain = [r['lai_h'] / r['lai'] for r in R if r['ds'] in ('TJU', 'HUST') and pct_of(r) >= 30]
+    xj = [r['lai_h'] / r['lai'] for r in R if r['ds'] == 'XJTU']
+    low = {r['ds']: r['lai_h'] / r['lai'] for r in R if pct_of(r) == 10}
+    assert max(gain) < 1 and min(xj) > 1, 'nhận định về lịch sử không còn đúng với bảng E29'
+    return (r'\paragraph{HiPINN-lai.} Bảng~\ref{tab:hist} cho sai số khi thêm lịch sử của cell vào đầu vào. Với PINN-lai, '
+            f'lịch sử giúp trên TJU và HUST khi có từ 30\\,\\% nhãn (MAE bằng {rng(gain)} lần bản không lịch sử) nhưng làm '
+            f'kém đi trên XJTU ({rng(xj)} lần); ở 10\\,\\% nhãn, tỉ số là '
+            + ', '.join(f'{d} {v(x)}' for d, x in low.items())
+            + r'. Trên MIT không dạng lịch sử nào được validation chọn. HiPINN-lai chỉ dùng bản có lịch sử ở những '
+            r'trường hợp validation chọn (TJU và HUST từ 30\,\% nhãn) và trùng PINN-lai ở các trường hợp còn lại '
+            r'(\Cref{tab:allmae}).')
+
+
+# --------------------------------------------------------------------------- độ nhạy của bộ lọc ngoại lai
+def filter_text():
+    """Câu về độ nhạy của bộ lọc ngoại lai nhân quả (Mục Tiền xử lý), từ results/filter_sensitivity.csv
+    (analysis/filter_sensitivity.py); bản sao ở generated/data/."""
+    p = keep_copy('results/filter_sensitivity.csv', 'filter_sensitivity.csv')
+    if p is None:
+        return ''
+    R = pd.read_csv(p)
+    drop = lambda name: [100 * float(R[(R.setting == name) & (R.ds == ds)]['drop'].iloc[0]) for ds in DS]
+    K = R[R.setting.isin(['k3', 'k4', 'k6', 'k8'])]
+    N = R[R.setting == 'none']
+    H = R[R.setting.isin(['h5', 'h20'])]
+    sig = lambda X: int((X.p_holm < 0.05).sum())
+    worse = lambda X: int(((X.p_holm < 0.05) & (X.ratio > 1)).sum())
+    pc = lambda xs: rng(xs, 1) + r'\,\%'
+
+    def updown(X, paren=False):
+        up = int(((X.p_holm < 0.05) & (X.ratio > 1)).sum()); dn = int(((X.p_holm < 0.05) & (X.ratio < 1)).sum())
+        if not (up or dn):
+            t = 'không trường hợp nào khác có ý nghĩa'
+        else:
+            t = ', '.join(([f'cao hơn có ý nghĩa ở {up} trên {len(X)} trường hợp'] if up else [])
+                          + ([f'thấp hơn có ý nghĩa ở {dn}'] if dn else ['không trường hợp nào thấp hơn có ý nghĩa']))
+        return f' ({t})' if paren else ', ' + t
+    return (r'Ở cách đặt này, tỉ lệ chu kỳ bị loại là '
+            + ', '.join(f'{v(x, 1)}' + r'\,\%' + f' ({ds})' for ds, x in zip(DS, drop('k5')))
+            + r'. Một kiểm tra sau, không dùng để chọn tham số (GBDT, 30\,\% nhãn, 3 lần lặp $\times$ 5 fold, MAE chấm '
+            r'trên cùng một tập chu kỳ test cho mọi cách đặt, Wilcoxon ghép cặp theo cell, Holm qua bốn bộ): đổi ngưỡng thành 3, 4, 6 hoặc 8 làm tỉ lệ chu kỳ bị loại '
+            r'đi từ ' + pc(drop('k3')) + r' (ngưỡng 3) tới ' + pc(drop('k8')) + r' (ngưỡng 8), còn MAE bằng '
+            + rng(list(K.ratio), 3) + ' lần cách đặt của đồ án'
+            + updown(K)
+            + r'; bỏ hẳn bước lọc cho MAE bằng ' + rng(list(N.ratio), 3) + ' lần'
+            + (f' (cao hơn có ý nghĩa ở {worse(N)} trên {len(N)} bộ)' if worse(N) else '')
+            + r'; đổi số chu kỳ lịch sử tối thiểu thành 5 hoặc 20 cho ' + rng(list(H.ratio), 3) + ' lần'
+            + updown(H, paren=True) + '.')
 
 
 # --------------------------------------------------------------------------- bảng thí nghiệm
@@ -197,12 +257,22 @@ def experiments_table(n_rerun, n_feat_jobs, n_feat_fits):
             seen |= {sig(j) for j in jobs}
         tot += n
         out.append(f'{desc} & {thou(n)} \\\\')
-    out.append(f'Chạy lại mã gốc PINN4SOH: 39 nhóm, bản công bố 10 lần và bản đã sửa 3 lần mỗi nhóm & {thou(n_rerun)} \\\\')
+    out.append(f'Mã gốc PINN4SOH trên 39 nhóm đánh giá của bài, 10 lần mỗi nhóm & {thou(n_rerun)} \\\\')
     tot += n_rerun
     if n_feat_jobs:
         out.append(f'Phân tích đặc trưng: {n_feat_jobs} fold $\\times$ {n_feat_fits // n_feat_jobs}--'
                    f'{-(-n_feat_fits // n_feat_jobs)} lần huấn luyện GBDT với các tập đầu vào khác nhau & {thou(n_feat_fits)} \\\\')
         tot += n_feat_fits
+    fs = 'results/filter_sensitivity.csv'
+    fs = fs if os.path.exists(fs) else os.path.join(DATA, 'filter_sensitivity.csv')
+    if os.path.exists(fs):
+        R = pd.read_csv(fs)
+        alt = R[R.setting != 'k5']                     # cách đặt của đồ án trùng GBDT của E16: không tính lại
+        n_fs = int(alt.n_fits.sum()) if 'n_fits' in R else 0
+        if n_fs:
+            out.append(f'Độ nhạy của bộ lọc ngoại lai: GBDT với {alt.setting.nunique()} cách đặt khác của bộ lọc, 4 bộ, '
+                       f'30\\,\\% nhãn & {thou(n_fs)} \\\\')
+            tot += n_fs
     out += [r'\midrule', f'Tổng & {thou(tot)} \\\\', r'\bottomrule\end{tabularx}\end{table}']
     write('bang_thi_nghiem.tex', '\n'.join(out))
     return tot
@@ -232,7 +302,7 @@ def leakage():
     L = dict(row=f'{v(1 / hi("row"), 1)}--{v(1 / lo("row"), 1)}', copy=f'{v(lo("noi_suy_hang"))}--{v(hi("noi_suy_hang"))}',
              minmax=m, life=rng(T['ti_so_life3s']), normtest=rng(T['ti_so_normtest']),
              minmax_rng=f'{v(m.min())}--{v(m.max())}')
-    text = (f'Bảng~\\ref{{tab:leak}} và Hình~\\ref{{fig:leak}} cho thấy mức độ của từng dạng rò rỉ khi chỉ đổi đúng một '
+    text = (f'Bảng~\\ref{{tab:leak}} cho thấy mức độ của từng dạng rò rỉ khi chỉ đổi đúng một '
             f'yếu tố so với giao thức chuẩn. Chia theo chu kỳ làm sai số thấp đi {L["row"]} lần dù mô hình và dữ liệu '
             f'không đổi. Bộ “dự đoán” không dùng đặc trưng nào, chỉ chép nhãn của chu kỳ train gần nhất, có sai số '
             f'bằng {L["copy"]} lần mô hình thật được đánh giá đúng, đúng như Mệnh đề~\\ref{{md:rowleak}}. Chuẩn hoá '
@@ -273,42 +343,6 @@ def setting(key):
     return 'đầy đủ' if key[1] == 'full' else f'$K = {key[1][1]}$'
 
 
-def bench_table(S, T):
-    mark = {}
-    for r in T[(T.a == 'paper_pinn_lai') & (T.b == 'rerun_published')].itertuples():
-        if r.p_holm < 0.05:
-            mark[(r.dataset, r.mode)] = '*' if r.ratio < 1 else r'\dagger'
-    cols = [('published_paper', None), ('rerun_published', 'sd'), ('rerun_current', 'sd'), ('paper_pinn_lai', 'mark'),
-            ('paper_gbdt', None), ('strict_pinn_lai', None)]
-    out = [r'\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}',
-           r'\caption[So với PINN4SOH trên đúng cách chia của bài]{MAE theo cell ($\times10^{-3}$) trên đúng các nhóm '
-           r'của PINN4SOH, trung bình qua cell test, lần chạy và nhóm như bài. Chạy lại: mã gốc ở bản đã sinh số công bố '
-           r'(siêu tham số theo nhật ký, 10 lần chạy mỗi nhóm) và ở bản hiện tại (loss đơn điệu đã sửa, trọng số mặc định '
-           r'mới, 3 lần chạy); $\pm$ là độ lệch chuẩn qua lần chạy. PINN-lai và GBDT: 3 hạt giống. $K$: số cell có nhãn '
-           r'trong thí nghiệm ít mẫu. $^{*}$/$^{\dagger}$: PINN-lai với tiền xử lý của bài thấp hơn/cao hơn có ý nghĩa so '
-           r'với mã gốc chạy lại bản công bố (Wilcoxon theo cell test, Holm qua 12 hàng).}\label{tab:bench}',
-           r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule',
-           r' & & \multicolumn{3}{c}{PINN4SOH} & \multicolumn{2}{c}{tiền xử lý của bài} & không rò rỉ \\'
-           r'\cmidrule(lr){3-5}\cmidrule(lr){6-7}\cmidrule(lr){8-8}',
-           r'Bộ & Chế độ & công bố & chạy lại, bản công bố & chạy lại, bản đã sửa & PINN-lai & GBDT & PINN-lai \\\midrule']
-    for key in ROWS:
-        cells = []
-        for col, extra in cols:
-            if not _have(S, key, col):
-                cells.append('--'); continue
-            x = v(1e3 * S.loc[key, col])
-            if extra == 'sd' and pd.notna(S.loc[key, f'{col}_sd']):
-                x += f' $\\pm$ {v(1e3 * S.loc[key, col + "_sd"])}'
-            if extra == 'mark' and key in mark:
-                x += f'$^{{{mark[key]}}}$'
-            cells.append(x)
-        out.append(f'{key[0] if key[1] in ("full", "n1") else ""} & {setting(key)} & ' + ' & '.join(cells) + r' \\')
-        if key in (('HUST', 'full'), ('XJTU', 'n4')):
-            out.append(r'\addlinespace')
-    out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
-    return '\n'.join(out)
-
-
 def bench_parts(S, T, L):
     full = [k for k in ROWS if k[1] == 'full']
     few = [k for k in ROWS if k[1] != 'full']
@@ -343,36 +377,7 @@ def bench_parts(S, T, L):
     B['beat_rerun'] = sum(1 for k in ROWS if have(k, 'paper_pinn_lai') and S.loc[k, 'paper_pinn_lai'] < S.loc[k, 'rerun_published'])
     B['beat_pub'] = [k for k in ROWS if S.loc[k, 'paper_pinn_lai'] < S.loc[k, 'published_paper']]
     B['lose_pub'] = [k for k in ROWS if S.loc[k, 'paper_pinn_lai'] >= S.loc[k, 'published_paper']]
-    s = []
-    s.append(r'\paragraph{Cấu hình đã sinh ra số công bố.} Nhật ký huấn luyện ghi, ở mỗi epoch, giá trị trung bình của loss '
-             r'đơn điệu. Trong bản mã tải lên cùng bài báo, loss này là $\sum \operatorname{ReLU}(y_2 - y_1)$, chỉ tính từ '
-             r'nhãn của hai chu kỳ liền nhau. ' +
-             (f'Ở cả {n_const} nhóm' if n_const == len(L) else f'Ở {n_const} trên {len(L)} nhóm') +
-             ', giá trị ghi trong nhật ký là một hằng số qua mọi epoch của cả mười lần chạy, và ' +
-             ('ở cả ' + str(n_eq) + ' nhóm' if n_eq == len(L) else f'ở {n_eq} trên {len(L)} nhóm') +
-             r' hằng số đó bằng đúng biểu thức trên tính trên các hàng train mà lớp đọc dữ liệu của bài tạo ra từ dữ liệu '
-             f'ở đây (ví dụ {v(ex["logged"][0], 6)} ở batch 2C của XJTU). Số hạng này vì vậy chỉ cộng thêm một hằng số và '
-             r'không có gradient: số liệu công bố đến từ mô hình chỉ học với loss dữ liệu và loss PDE. Sự trùng khớp này '
-             r'cũng cho thấy cách chia dựng lại và dữ liệu ở đây cho đúng các hàng train của mọi nhóm công bố. Hai bản sửa '
-             r'sau đó đổi số hạng thành $\sum \operatorname{ReLU}(u_2 - u_1)$ rồi $\sum \operatorname{ReLU}\big((u_2 - u_1)'
-             r'(y_1 - y_2)\big)$, và ghi chú mới nhất của kho mã cho biết trọng số $\alpha, \beta$ đã đổi sau khi sửa lỗi; '
-             r'trọng số mặc định trong các script hiện tại không còn khớp với nhật ký.')
-    s.append(r'\paragraph{Chạy lại.} Bảng~\ref{tab:bench} và Hình~\ref{fig:bench} cho kết quả. Bản đã sinh số công bố, '
-             f'chạy {B["runs"]} lần mỗi nhóm với siêu tham số trong nhật ký, cho sai số bằng {rng(rep_full)} lần số '
-             f'công bố ở bốn bộ đầy đủ và {rng(rep_few)} lần ở chế độ ít mẫu. So theo từng cell test, bản chạy lại cao '
-             f'hơn số công bố có ý nghĩa ở {rep_sig[1]} trên 4 bộ đầy đủ. Độ lệch chuẩn giữa các lần chạy bằng '
-             f'{rng([100 * x for x in sd_rel], 0)}\\,\\% giá trị trung bình, nên các lần chạy đơn lẻ chênh nhau cỡ khoảng '
-             'cách trên. Các hàng train trùng khớp, nên phần chênh còn lại đến từ phần cứng, phiên bản thư viện và hạt '
-             'giống; đồ án không dựng lại được môi trường gốc nên không biết yếu tố nào gây ra phần chênh có hệ thống. Vì '
-             'vậy báo cáo nêu cả số công bố lẫn số chạy lại, và dùng số chạy lại cho kiểm định ghép cặp vì có dự đoán theo '
-             'từng cell trong điều kiện đã biết. ' +
-             f'Bản hiện tại của mã ({B["runs_cur"]} lần mỗi nhóm) cho sai số bằng {rng(cur_main)} lần bản công bố ở bốn '
-             f'bộ đầy đủ và ở chế độ ít mẫu của HUST ('
-             + (f'khác có ý nghĩa ở {cur_sig_main} trên {len(cur_main)}' if cur_sig_main else
-                f'không trường hợp nào trong {len(cur_main)} khác có ý nghĩa') + '), nhưng '
-             f'{rng(cur_xjtu)} lần ở chế độ ít mẫu của XJTU với $K \\ge 2$ (cao hơn có ý nghĩa ở {cur_sig_xjtu[1]} trên '
-             f'{len(cur_xjtu)}), nơi script hiện tại vẫn đặt $\\beta = 10$ cho loss đơn điệu nay đã có tác dụng.')
-    table_text = '\n\n'.join(s)
+    table_text = ''
     return table_text, B
 
 
@@ -384,61 +389,112 @@ def _vn_ticks():
 VN_TICKS = _vn_ticks()
 
 
+BENCH_SERIES = [('published_paper', 'PINN4SOH, số công bố', '#9aa5ad', (0, (3, 1.6)), 'o'),
+                ('rerun_published', 'PINN4SOH, chạy lại', '#eb6834', '-', 's'),
+                ('paper_pinn_lai', 'PINN-lai, tiền xử lý của bài', '#2a78d6', '-', 'o'),
+                ('strict_pinn_lai', 'PINN-lai, không rò rỉ', '#0b3d73', '-', '^')]
+
+
 def fig_benchmark(S):
+    """Hình so với PINN4SOH: (a) chế độ đầy đủ, cột nhóm theo bộ trên một trục chung, ghi số trên đầu cột;
+    (b), (c) chế độ ít mẫu của XJTU và HUST theo số cell có nhãn K. Một chú giải chung ở trên cùng."""
     import matplotlib.pyplot as plt
-    from pinnsoh.plotstyle import apply_theme, save
-    apply_theme()
-    fig = plt.figure(figsize=(7.0, 4.4))
-    gs = fig.add_gridspec(2, 4, height_ratios=[1, 1.05], hspace=0.62, wspace=0.42)
-    cols = [('published_paper', 'PINN4SOH, số công bố', '#9aa5ad', '--', 'o'),
-            ('rerun_published', 'PINN4SOH chạy lại, bản công bố', '#eb6834', '-', 's'),
-            ('rerun_current', 'PINN4SOH chạy lại, bản đã sửa', '#eda100', '-', 'D'),
-            ('paper_pinn_lai', 'PINN-lai, tiền xử lý của bài', '#2a78d6', '-', 'o'),
-            ('strict_pinn_lai', 'PINN-lai, không rò rỉ', '#0b3d73', '-', '^')]
-    for i, ds in enumerate(DS):
-        ax = fig.add_subplot(gs[0, i])
-        key = (ds, 'full')
-        for j, (c, lab, color, _, _) in enumerate(cols):
-            x = 1e3 * S.loc[key, c]
-            ax.bar(j, x, color=color, width=0.72)
-            sd = S.loc[key, f'{c}_sd'] if c.startswith('rerun') else np.nan
-            if pd.notna(sd):
-                ax.errorbar(j, x, yerr=1e3 * sd, color='#1b2330', lw=0.8, capsize=2)
-        ax.set_xticks([]); ax.grid(axis='y', color='#e7ebe9', lw=0.6); ax.set_axisbelow(True)
-        ax.yaxis.set_major_formatter(VN_TICKS)
-        ax.set_title(ds, loc='left', fontweight='bold')
-        if i == 0:
-            ax.set_ylabel(r'MAE theo cell ($\times10^{-3}$)')
+    from matplotlib.ticker import FixedLocator, NullLocator
+    from pinnsoh.plotstyle import apply_theme, save, INK, INK2, GRID
+    apply_theme(base=8.5)
+    fig = plt.figure(figsize=(6.3, 4.6))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 0.95], hspace=0.55, wspace=0.22)
+    n = len(BENCH_SERIES)
+    w = 0.19
+    ax = fig.add_subplot(gs[0, :])
+    for j, (c, lab, color, _, _) in enumerate(BENCH_SERIES):
+        xs = np.arange(len(DS)) + (j - (n - 1) / 2) * (w + 0.012)
+        ys = [1e3 * S.loc[(ds, 'full'), c] for ds in DS]
+        ax.bar(xs, ys, width=w, color=color, label=lab, zorder=2, linewidth=0)
+        for x, y in zip(xs, ys):
+            ax.text(x, y + 0.18, f'{y:.1f}'.replace('.', ','), ha='center', va='bottom', fontsize=6.6, color=INK2)
+    ax.set_xticks(np.arange(len(DS)))
+    ax.set_xticklabels([f'{ds}' for ds in DS], fontweight='bold', color=INK)
+    ax.tick_params(axis='x', length=0)
+    ax.set_xlim(-0.55, len(DS) - 0.45)
+    top = max(1e3 * S.loc[(ds, 'full'), c] for ds in DS for c, *_ in BENCH_SERIES)
+    ax.set_ylim(0, top * 1.14)
+    ax.yaxis.set_major_formatter(VN_TICKS)
+    ax.grid(axis='y', color=GRID, lw=0.6); ax.grid(axis='x', visible=False); ax.set_axisbelow(True)
+    ax.set_ylabel(r'MAE theo cell ($\times10^{-3}$)')
+    ax.set_title('(a) Chế độ đầy đủ', loc='left', fontweight='bold', fontsize=9)
     for i, ds in enumerate(('XJTU', 'HUST')):
-        ax = fig.add_subplot(gs[1, 2 * i:2 * i + 2])
+        bx = fig.add_subplot(gs[1, i])
         K = [1, 2, 3, 4]
-        for c, lab, color, ls, mk in cols:
-            ax.plot(K, [1e3 * S.loc[(ds, f'n{k}'), c] for k in K], color=color, ls=ls, marker=mk, ms=3.4, lw=1.3)
-        ax.set_yscale('log'); ax.set_xticks(K)
-        lo, hi = ax.get_ylim()
-        ticks = [t for t in (3, 5, 8, 10, 15, 20, 30, 50, 80) if lo <= t <= hi]
-        ax.set_yticks(ticks); ax.set_yticklabels([f'{t:g}' for t in ticks]); ax.minorticks_off()
-        ax.grid(axis='y', color='#e7ebe9', lw=0.6)
-        ax.set_xlabel('số cell có nhãn $K$' + (' mỗi batch' if ds == 'XJTU' else ''))
-        ax.set_title(f'{ds}, ít mẫu', loc='left', fontweight='bold')
+        for c, lab, color, ls, mk in BENCH_SERIES:
+            bx.plot(K, [1e3 * S.loc[(ds, f'n{k}'), c] for k in K], color=color, ls=ls, marker=mk, ms=4, lw=1.4,
+                    markeredgecolor='white', markeredgewidth=0.6, zorder=3)
+        bx.set_yscale('log')
+        lo, hi = bx.get_ylim()
+        bx.yaxis.set_major_locator(FixedLocator([t for t in (5, 7, 10, 15, 20, 30, 50) if lo <= t <= hi]))
+        bx.yaxis.set_minor_locator(NullLocator())
+        bx.yaxis.set_major_formatter(VN_TICKS)
+        bx.set_xticks(K); bx.set_xlim(0.8, 4.2)
+        bx.grid(axis='y', color=GRID, lw=0.6); bx.grid(axis='x', visible=False)
+        bx.set_xlabel('số cell có nhãn $K$' + (' mỗi batch' if ds == 'XJTU' else ''))
+        bx.set_title(f'({"bc"[i]}) {ds}, chế độ ít mẫu', loc='left', fontweight='bold', fontsize=9)
         if i == 0:
-            ax.set_ylabel(r'MAE theo cell ($\times10^{-3}$)')
-    handles = [plt.Line2D([], [], color=c[2], ls=c[3], marker=c[4], ms=4, lw=1.3) for c in cols]
-    fig.legend(handles, [c[1] for c in cols], loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.05))
-    fig.subplots_adjust(bottom=0.18)
+            bx.set_ylabel(r'MAE theo cell ($\times10^{-3}$, thang log)')
+    h, l = ax.get_legend_handles_labels()
+    fig.legend(h, l, loc='upper center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 1.01), handlelength=1.2,
+               columnspacing=1.4, fontsize=7.8)
+    fig.subplots_adjust(top=0.86, bottom=0.1, left=0.09, right=0.99)
     save(fig, os.path.join(FIG, 'fig_benchmark'))
     plt.close(fig)
 
 
+FIG_BENCH = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_benchmark.pdf}' '\n'
+             r'\caption[So với PINN4SOH trên đúng cách chia của bài]{MAE theo cell trên đúng các nhóm đánh giá của bài '
+             r'PINN4SOH. (a) Chế độ đầy đủ, mỗi bộ bốn cột: số công bố của bài, mã gốc của bài chạy lại, PINN-lai với tiền '
+             r'xử lý của bài và PINN-lai với tiền xử lý không rò rỉ. (b), (c) Chế độ ít mẫu: MAE theo số cell có nhãn $K$.}'
+             r'\label{fig:bench}' '\n' r'\end{figure}')
+
+
 def bench_section(S, T, L):
-    text, B = bench_parts(S, T, L)
-    fig = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_benchmark.pdf}' '\n'
-           r'\caption[So với PINN4SOH trên đúng cách chia của bài]{So với PINN4SOH trên đúng cách chia của bài. Trên: chế '
-           r'độ đầy đủ, mỗi bộ năm cột (số công bố, hai bản mã gốc chạy lại với độ lệch chuẩn qua lần chạy, PINN-lai với '
-           r'tiền xử lý của bài và với tiền xử lý không rò rỉ). Dưới: chế độ ít mẫu, MAE theo số cell có nhãn (thang '
-           r'log).}\label{fig:bench}' '\n' r'\end{figure}')
-    write('doan_chay_lai.tex', text + '\n\n' + bench_table(S, T) + '\n\n' + fig)
+    """Số liệu so với PINN4SOH (dùng ở phần so sánh, kết luận, tóm tắt); hình vẽ ở fig_benchmark."""
+    _, B = bench_parts(S, T, L)
     return B
+
+
+def compare_table(S, T):
+    """Bảng so với PINN4SOH: số công bố của bài (PINN4SOH, MLP, CNN), mã gốc chạy lại, PINN-lai của đồ án với hai cách
+    tiền xử lý. In đậm: thấp nhất trong năm cột cùng điều kiện; dấu: PINN-lai (tiền xử lý của bài) so với mã gốc chạy lại."""
+    pub = {k: PAPER_MAE[k] for k in ROWS}
+    mark = {}
+    for r in T[(T.a == 'paper_pinn_lai') & (T.b == 'rerun_published')].itertuples():
+        if r.p_holm < 0.05:
+            mark[(r.dataset, r.mode)] = '*' if r.ratio < 1 else r'\dagger'
+    out = [r'\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{5pt}',
+           r'\caption[So với PINN4SOH trên đúng cách chia của bài]{MAE theo cell ($\times10^{-3}$) trên đúng 39 nhóm đánh '
+           r'giá của bài PINN4SOH, trung bình qua cell test, lần chạy và nhóm như bài; $K$ là số cell có nhãn trong thí '
+           r'nghiệm ít mẫu. Ba cột đầu là số công bố của bài cho PINN4SOH và hai mô hình đối chứng MLP, CNN của bài. Cột '
+           r'chạy lại: mã gốc của bài chạy trên đúng các nhóm đó, siêu tham số theo nhật ký của bài, 10 lần mỗi nhóm. Hai '
+           r'cột cuối: PINN-lai của đồ án (3 hạt giống) với tiền xử lý của bài, cùng điều kiện với các cột trước, và với '
+           r'tiền xử lý không rò rỉ. In đậm: thấp nhất trong năm cột cùng điều kiện. $^{*}$/$^{\dagger}$: PINN-lai với '
+           r'tiền xử lý của bài thấp hơn/cao hơn có ý nghĩa so với mã gốc chạy lại (Wilcoxon ghép cặp theo cell test, Holm '
+           r'qua 12 hàng).}\label{tab:pub}',
+           r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule',
+           r' & & \multicolumn{3}{c}{số công bố của bài} & PINN4SOH & \multicolumn{2}{c}{PINN-lai của đồ án} \\'
+           r'\cmidrule(lr){3-5}\cmidrule(lr){6-6}\cmidrule(lr){7-8}',
+           r'Bộ & Chế độ & PINN4SOH & MLP & CNN & chạy lại & tiền xử lý của bài & không rò rỉ \\\midrule']
+    for key in ROWS:
+        vals = [pub[key]['PINN4SOH'], pub[key]['MLP'], pub[key]['CNN'], S.loc[key, 'rerun_published'],
+                S.loc[key, 'paper_pinn_lai']]
+        best = int(np.nanargmin(vals))
+        cells = [(r'\textbf{%s}' if i == best else '%s') % v(1e3 * x) for i, x in enumerate(vals)]
+        if key in mark:
+            cells[-1] += f'$^{{{mark[key]}}}$'
+        cells.append(v(1e3 * S.loc[key, 'strict_pinn_lai']))
+        out.append(f'{key[0] if key[1] in ("full", "n1") else ""} & {setting(key)} & ' + ' & '.join(cells) + r' \\')
+        if key in (('HUST', 'full'), ('XJTU', 'n4')):
+            out.append(r'\addlinespace')
+    out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
+    return '\n'.join(out)
 
 
 # --------------------------------------------------------------------------- đặc trưng
@@ -548,10 +604,12 @@ def features_parts(F, L_leak):
     # ---------------- bỏ / thêm nhóm
     Ai = A.set_index(['dataset', 'frac', 'variant'])
     out = [r'\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}',
-           r'\caption[Bỏ hoặc thêm nhóm đầu vào với GBDT]{Bỏ hoặc thêm nhóm đầu vào, GBDT trên đúng các fold không rò rỉ (3 lần '
-           r'lặp $\times$ 5 fold). Hàng đầu: MAE theo cell ($\times10^{-3}$) với đủ 17 đầu vào. Các hàng sau: tỉ số MAE so '
-           r'với đủ 17 đầu vào. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, Holm qua bốn '
-           r'bộ).}\label{tab:ablation}',
+           r'\caption[Bỏ hoặc thêm nhóm đầu vào với GBDT]{Bỏ hoặc thêm nhóm đầu vào: GBDT học lại với từng tập đầu vào '
+           r'trên đúng các fold không rò rỉ (3 lần lặp $\times$ 5 fold), ở 10 và 70\,\% nhãn. Mỗi hàng là một tập đầu vào; '
+           r'các nhóm V, I, QT và $t$ như \Cref{tab:features}. Hàng đầu: MAE theo cell ($\times10^{-3}$) với đủ 17 đầu '
+           r'vào. Các hàng sau: MAE của tập đó chia cho MAE với đủ 17 đầu vào; lớn hơn 1 là kém hơn, tức phần bị bỏ có '
+           r'ích; nhỏ hơn 1 là tốt hơn. $^{*}$: thấp hơn có ý nghĩa, $^{\dagger}$: cao hơn có ý nghĩa (Wilcoxon ghép cặp '
+           r'theo cell, Holm qua bốn bộ, $p < 0{,}05$); không có dấu: khác biệt không có ý nghĩa.}\label{tab:ablation}',
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'rr' * len(DS) + r'}\toprule',
            ' & ' + ' & '.join(f'\\multicolumn{{2}}{{c}}{{{d}}}' for d in DS) + r' \\'
            + ''.join(f'\\cmidrule(lr){{{2 + 2 * i}-{3 + 2 * i}}}' for i in range(len(DS))),
@@ -565,20 +623,8 @@ def features_parts(F, L_leak):
                    + ' & ' + ' & '.join(['--'] * 2 * (len(DS) - 2)) + r' \\')
     out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
     tab_abl = '\n'.join(out)
-    # hoán vị theo nhóm
+    # hoán vị theo nhóm: tỉ số nêu trong lời văn
     Pt = P[P.part == 'test'].set_index(['dataset', 'frac', 'feature'])
-    out = [r'\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}',
-           r'\caption[Độ quan trọng hoán vị trên test]{Độ quan trọng hoán vị trên test của GBDT đủ 17 đầu vào: tỉ số MAE theo '
-           r'cell khi hoán vị cả một nhóm (hoặc một đầu vào) giữa các hàng test so với khi không hoán vị, trung bình 15 '
-           r'fold. Bằng 1: mô hình không dùng thông tin của nhóm đó.}\label{tab:perm}',
-           r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'rr' * len(DS) + r'}\toprule',
-           ' & ' + ' & '.join(f'\\multicolumn{{2}}{{c}}{{{d}}}' for d in DS) + r' \\'
-           + ''.join(f'\\cmidrule(lr){{{2 + 2 * i}-{3 + 2 * i}}}' for i in range(len(DS))),
-           'Hoán vị & ' + ' & '.join([' & '.join(f'{int(100 * f)}\\,\\%' for f in fracs)] * len(DS)) + r' \\\midrule']
-    for g, lab in [('[V]', 'nhóm V (6)'), ('[I]', 'nhóm I (6)'), ('[QT]', 'nhóm QT (4)'), ('[t]', '$t$')]:
-        out.append(lab + ' & ' + ' & '.join(v(Pt.loc[(d, f, g), 'mean']) for d in DS for f in fracs) + r' \\')
-    out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
-    tab_perm = '\n'.join(out)
     # chọn trên validation
     kept = K.groupby(['dataset', 'frac']).n_kept.median()
     drop_counts = {}
@@ -632,8 +678,9 @@ def features_parts(F, L_leak):
     same_order = pI < min(pV, pQT)
     pr_up, pr_dn = sig_('prune', +1), sig_('prune', -1)
     text_abl = (
-        'Bảng~\\ref{tab:ablation} và Hình~\\ref{fig:features} cho kết quả bỏ hoặc thêm nhóm ở 8 trường hợp (4 bộ $\\times$ 2 '
-        'mức nhãn), Bảng~\\ref{tab:perm} cho độ quan trọng hoán vị của mô hình đủ 17 đầu vào.\n\n'
+        'Bảng~\\ref{tab:ablation} cho kết quả bỏ hoặc thêm nhóm ở 8 trường hợp (4 bộ $\\times$ 2 mức nhãn). Độ quan '
+        'trọng hoán vị của mô hình đủ 17 đầu vào (tỉ số MAE khi xáo trộn một nhóm giữa các hàng test so với khi không '
+        'xáo trộn) được nêu bằng số trong các đoạn dưới.\n\n'
         '\\paragraph{Biến thời gian $t$.} ' + t_txt
         + f'Ngược lại, chỉ dùng $t$ mà bỏ hết đặc trưng sạc cho sai số gấp {rng(r_("t_only"))} lần: tuổi của cell một mình '
         'không đủ để biết SOH, vì các cell già đi với tốc độ rất khác nhau (tuổi thọ trong mỗi bộ chênh nhau nhiều lần, '
@@ -691,8 +738,8 @@ def features_parts(F, L_leak):
            r'test: ' + rng(rel) + (', cao hơn có ý nghĩa ở ' + lst(sigrel) if sigrel else '')
            + (', thấp hơn có ý nghĩa ở ' + lst(relgood) if relgood else '') + r' \\',
            r'Đặc trưng có lịch sử của cell (trung bình trượt mũ, độ dốc) & chỉ có lợi ở một số bộ khi đủ nhãn & '
-           r'Bảng~\ref{tab:hist}: PINN-lai 0{,}89--0{,}97 trên TJU, HUST từ 30\,\% nhãn; kém hơn trên XJTU (1{,}02--1{,}25) '
-           r'và ở 10\,\% nhãn \\']
+           r'Bảng~\ref{tab:hist}: PINN-lai 0{,}89--0{,}97 trên TJU, HUST từ 30\,\% nhãn; kém hơn trên XJTU (1{,}02--1{,}25); '
+           r'ở 10\,\% nhãn không giúp có ý nghĩa \\']
     if has_T:
         out.append(r'Nhiệt độ làm đầu vào của mô hình & hằng số trên XJTU, MIT, HUST; trên TJU chỉ thay đổi sai số dưới '
                    r'1\,\% & GBDT, TJU, thêm $1/T$: tỉ số ' + tT_txt + r' \\')
@@ -710,17 +757,16 @@ def features_parts(F, L_leak):
         'PINN-semi tăng (tỉ số 1,692); phép chia cho mức ban đầu của cell khuếch đại các đặc trưng có giá trị ban đầu gần '
         '0. Với GBDT, tác động của chúng trái chiều giữa các bộ'
         + (' (thấp hơn có ý nghĩa ở ' + lst(relgood) + ', cao hơn có ý nghĩa ở ' + lst(sigrel) + ')' if relgood and sigrel
-           else '') + ', nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist}, '
-        'Hình~\\ref{fig:e29pinn} và~\\ref{fig:e29lai}) '
+           else '') + ', nên không dùng làm mặc định cho mọi bộ. Đặc trưng có lịch sử (Bảng~\\ref{tab:hist} ở \\Cref{sec:e20res}) '
         'giúp trên TJU và HUST khi có từ 30\\,\\% nhãn nhưng làm kém đi trên XJTU và ở 10\\,\\% nhãn, khi số chiều đầu vào '
-        'tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy PINN-lai không dùng chúng, còn biến thể PINN-lai + '
-        'lịch sử chỉ dùng chúng ở các trường hợp validation chọn (phân tích hậu kiểm). '
+        'tăng gấp đôi tới gấp bốn mà chỉ còn vài cell có nhãn; vì vậy PINN-lai không dùng chúng, còn HiPINN-lai chỉ dùng '
+        'chúng ở các trường hợp validation chọn (\\Cref{sec:pinnlai}, phân tích hậu kiểm). '
         + ('Nhiệt độ là hằng số trên ba bộ nên không mang thông tin; trên TJU, thêm $1/T$ vào GBDT cho tỉ số '
            + tT_txt.replace('$^{*}$', ' (có ý nghĩa)').replace('$^{\\dagger}$', ' (có ý nghĩa)')
            + ', tức thay đổi dưới 1\\,\\%, nên nhiệt độ chỉ được giữ trong thừa số Arrhenius của động học. '
            if has_T else '')
         + 'Đặc trưng từ lần xả và dung lượng các chu kỳ trước bị loại khỏi bài toán ước lượng vì đó chính là nhãn.')
-    text_drop = text_drop + '\n\n' + tab_drop + '\n\n' + leak_table_cache[0] + '\n\n' + history_table()
+    text_drop = text_drop + '\n\n' + tab_drop
     # ---------------- kết luận về đầu vào
     concl = (
         r'\begin{enumerate}' '\n'
@@ -733,52 +779,10 @@ def features_parts(F, L_leak):
         r'validation chọn; nhiệt độ chỉ đi vào thừa số Arrhenius (thêm vào đầu vào thay đổi sai số dưới 1\,\%); không '
         r'dùng thông tin của lần xả khi ước lượng.' '\n'
         r'\end{enumerate}')
-    return text_rel + '\n\n' + tab_rel, text_abl + '\n\n' + tab_abl + '\n\n' + tab_perm + '\n\n' + FIG_FEAT, text_drop, concl
+    return text_rel + '\n\n' + tab_rel, text_abl + '\n\n' + tab_abl, text_drop, concl
 
 
-leak_table_cache = ['']
-FIG_FEAT = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_features.pdf}' '\n'
-            r'\caption[Bỏ hoặc thêm nhóm đầu vào: tỉ số MAE so với đủ 17 đầu vào]{Tỉ số MAE theo cell so với GBDT đủ 17 đầu '
-            r'vào, theo tập đầu vào và mức nhãn (thang log). Điểm đặc: khác có ý nghĩa (Wilcoxon theo cell, Holm qua bốn '
-            r'bộ); điểm rỗng: không có ý nghĩa. Vạch đứt: bằng bộ đầy đủ.}\label{fig:features}' '\n' r'\end{figure}')
 
-
-def fig_features(A):
-    import matplotlib.pyplot as plt
-    from pinnsoh.plotstyle import apply_theme, save
-    apply_theme()
-    fracs = sorted(A.frac.unique())
-    colors = {fracs[0]: '#eb6834', fracs[-1]: '#2a78d6'}
-    Ai = A.set_index(['dataset', 'frac', 'variant'])
-    labels = [lab.replace('$t$', 't') for _, lab in VARIANTS]
-    fig, axes = plt.subplots(1, 4, figsize=(7.0, 2.9), sharey=True)
-    for ax, ds in zip(axes, DS):
-        for j, f in enumerate(fracs):
-            for i, (var, _) in enumerate(VARIANTS):
-                r = Ai.loc[(ds, f, var)]
-                y = i + (j - 0.5) * 0.28
-                s = pd.notna(r.p_holm) and r.p_holm < 0.05
-                ax.plot(r.ratio, y, marker='o', ms=4.2, color=colors[f], mfc=colors[f] if s else 'white', mew=1.1, ls='none')
-        ax.axvline(1, color='#4a5563', ls='--', lw=0.8)
-        ax.set_xscale('log')
-        lo, hi = ax.get_xlim()
-        span = np.log10(hi) - np.log10(lo)
-        ticks = []
-        for t in (1, 2, 5, 10, 1.5, 3, 1.25, 0.8, 20):      # số tròn trước; vạch chỉ giữ khi đủ cách các vạch đã có
-            if lo <= t <= hi and all(abs(np.log10(t) - np.log10(u)) >= 0.18 * span for u in ticks):
-                ticks.append(t)
-        ticks.sort()
-        ax.set_xticks(ticks); ax.set_xticklabels([f'{t:g}'.replace('.', ',') for t in ticks]); ax.minorticks_off()
-        ax.grid(axis='x', color='#e7ebe9', lw=0.6)
-        ax.set_title(ds, loc='left', fontweight='bold')
-        ax.set_xlabel('tỉ số MAE')
-    axes[0].set_yticks(range(len(VARIANTS))); axes[0].set_yticklabels(labels); axes[0].invert_yaxis()
-    handles = [plt.Line2D([], [], color=colors[f], marker='o', ls='none', ms=4.5) for f in fracs]
-    fig.legend(handles, [f'{int(100 * f)} % nhãn' for f in fracs], loc='lower center', ncol=2, frameon=False,
-               bbox_to_anchor=(0.55, -0.06))
-    fig.tight_layout(rect=[0, 0.06, 1, 1], w_pad=0.8)
-    save(fig, os.path.join(FIG, 'fig_features'))
-    plt.close(fig)
 
 
 # --------------------------------------------------------------------------- Chương 6: đối chiếu với bài báo đã công bố
@@ -804,7 +808,7 @@ def best_rmse_table(S):
            r'chế độ đầy đủ, cùng tiền xử lý với bài. Cột thứ hai tính từ tệp kết quả công bố cùng mã nguồn của bài; cột '
            r'thứ ba là RMSE thấp nhất trong ' + ', '.join(n for _, n in PUB_CAND[:-1]) + ' và ' + PUB_CAND[-1][1]
            + r' của đồ án, cột Mô hình ghi mô hình đạt được. Cả hai cột lấy trung bình qua cell test, lần chạy và nhóm như '
-           r'Bảng~\ref{tab:bench}. In đậm: thấp hơn trong hai cột; mũi tên xuống là đồ án thấp hơn.}\label{tab:pubrmse}'
+           r'Bảng~\ref{tab:pub}. In đậm: thấp hơn trong hai cột; mũi tên xuống là đồ án thấp hơn.}\label{tab:pubrmse}'
            '\n'
            r'\begin{tabular}{lrrlr}\toprule' '\n'
            r'Bộ dữ liệu & RMSE PINN4SOH công bố & RMSE tốt nhất của đồ án & Mô hình & Chênh lệch \\\midrule' '\n'
@@ -814,29 +818,8 @@ def best_rmse_table(S):
 
 def compare_chapter(S, T, B, L_leak, E33=None):
     pub = {k: PAPER_MAE[k] for k in ROWS}
-    out = [r'\begin{table}[!htbp]\centering\small',
-           r'\caption[Đối chiếu với số liệu công bố của bài PINN4SOH]{MAE theo cell ($\times10^{-3}$) trên đúng cách chia '
-           r'của bài PINN4SOH. Ba cột đầu: số công bố của bài cho PINN4SOH và hai mô hình đối chứng MLP, CNN của bài. Hai '
-           r'cột sau: PINN-lai của đồ án với tiền xử lý của bài (cùng điều kiện với ba cột đầu) và với tiền xử lý không rò '
-           r'rỉ. In đậm: thấp nhất trong bốn cột cùng điều kiện.}\label{tab:pub}',
-           r'\begin{tabular}{llrrrrr}\toprule',
-           r' & & \multicolumn{3}{c}{số công bố của bài} & \multicolumn{2}{c}{PINN-lai của đồ án} \\'
-           r'\cmidrule(lr){3-5}\cmidrule(lr){6-7}',
-           r'Bộ & Chế độ & PINN4SOH & MLP & CNN & tiền xử lý của bài & không rò rỉ \\\midrule']
-    beat = dict(PINN4SOH=[], MLP=[], CNN=[])
-    for key in ROWS:
-        vals = [pub[key]['PINN4SOH'], pub[key]['MLP'], pub[key]['CNN'], S.loc[key, 'paper_pinn_lai']]
-        best = int(np.argmin(vals))
-        cells = [(r'\textbf{%s}' if i == best else '%s') % v(1e3 * x) for i, x in enumerate(vals)]
-        cells.append(v(1e3 * S.loc[key, 'strict_pinn_lai']))
-        for m in beat:
-            if S.loc[key, 'paper_pinn_lai'] < pub[key][m]:
-                beat[m].append(key)
-        out.append(f'{key[0] if key[1] in ("full", "n1") else ""} & {setting(key)} & ' + ' & '.join(cells) + r' \\')
-        if key in (('HUST', 'full'), ('XJTU', 'n4')):
-            out.append(r'\addlinespace')
-    out += [r'\bottomrule\end{tabular}\end{table}']
-    tab = '\n'.join(out)
+    beat = {m: [k for k in ROWS if S.loc[k, 'paper_pinn_lai'] < pub[k][m]] for m in ('PINN4SOH', 'MLP', 'CNN')}
+    tab = compare_table(S, T) + '\n\n' + FIG_BENCH
     full = [k for k in ROWS if k[1] == 'full']
     few = [k for k in ROWS if k[1] != 'full']
     name = lambda k: f'{k[0]} {"đầy đủ" if k[1] == "full" else "$K = " + k[1][1] + "$"}'
@@ -856,8 +839,12 @@ def compare_chapter(S, T, B, L_leak, E33=None):
              r'đoán tuổi thọ của cả cell từ các chu kỳ đầu, Zhu và cộng sự~\cite{zhu2022} dùng điện áp hồi phục sau sạc, '
              r'Ma và cộng sự~\cite{ma2022} dùng học chuyển giao với cách chia riêng. Vì cách chia và đầu vào khác nhau, sai '
              r'số của các bài đó không so trực tiếp được với đồ án, và báo cáo không trích chúng. Mọi so sánh dưới đây dùng '
-             r'đúng các nhóm cell test của PINN4SOH (Mục~\ref{sec:rerun_m}) và cách tính sai số của bài; Bảng~\ref{tab:pub} '
-             r'tập hợp các con số.' '\n\n' + tab)
+             r'đúng 39 nhóm đánh giá của bài, dựng lại từ nhật ký huấn luyện công bố kèm mã: một nhóm cho mỗi batch của '
+             r'XJTU và TJU ở chế độ đầy đủ, một nhóm cho MIT (23 cell test) và cho HUST (20 cell test), và các nhóm ít mẫu '
+             r'$K = 1, \dots, 4$ của XJTU và HUST. Sai số tính đúng như bài: MAE từng cell test, trung bình qua lần chạy, '
+             r'qua cell, qua nhóm. PINN-lai của đồ án chạy với hai cách tiền xử lý: bản sao tiền xử lý của bài (có rò rỉ, '
+             r'chỉ để so cùng điều kiện) và tiền xử lý không rò rỉ của đồ án. Bảng~\ref{tab:pub} và \Cref{fig:bench} tập '
+             r'hợp các con số.' '\n\n' + tab)
     rtab, rrows = best_rmse_table(S)
     lower = [r['ds'] for r in rrows if r['d'] < 0]
     higher = [r for r in rrows if r['d'] >= 0]
@@ -872,7 +859,7 @@ def compare_chapter(S, T, B, L_leak, E33=None):
         rf'Cùng cách chia và cùng tiền xử lý với bài, PINN-lai có sai số thấp hơn mã gốc PINN4SOH chạy lại ở '
         rf'{B["beat_rerun"]} trên 12 chế độ, thấp hơn có ý nghĩa ở {B["w_full"] + B["w_few"]} (tỉ số {rng(B["hyb_full"])} '
         rf'ở chế độ đầy đủ, {rng(B["hyb_few"])} ở chế độ ít mẫu) và không chế độ nào cao hơn có ý nghĩa '
-        rf'(Bảng~\ref{{tab:bench}}).',
+        rf'(Bảng~\ref{{tab:pub}}).',
         rf'So với số công bố của PINN4SOH, PINN-lai thấp hơn ở {len(beat["PINN4SOH"])} trên 12 chế độ (tỉ số '
         rf'{rng(B["hyb_pub_full"])} ở chế độ đầy đủ, {rng(B["hyb_pub_few"])} ở chế độ ít mẫu). Lợi thế lớn nhất ở chế độ '
         rf'ít mẫu, nơi cell train không nhãn đi vào loss vật lý.',
@@ -901,7 +888,8 @@ def compare_chapter(S, T, B, L_leak, E33=None):
         r'xử lý của bài có lợi nhiều nhất: khi chỉ có vài cell có nhãn, biết cell đã đi được bao nhiêu phần đời gần như là '
         r'biết SOH. Đồ án không dùng tiền xử lý đó vì nó không thực hiện được khi triển khai (Mục~\ref{sec:dt_bo}).',
         rf'Đồ án không tái lập được chính xác số công bố của PINN4SOH: mã gốc chạy lại cho sai số bằng {rng(B["rep_full"])} '
-        rf'lần ở chế độ đầy đủ, cao hơn có ý nghĩa theo cell ở {B["rep_sig"][1]} trên 4 bộ (Mục~\ref{{sec:rerun}}).',
+        rf'lần ở chế độ đầy đủ, cao hơn có ý nghĩa theo cell ở {B["rep_sig"][1]} trên 4 bộ (Bảng~\ref{{tab:pub}}); các hàng train dựng lại trùng '
+        rf'với dữ liệu của bài, nên phần chênh đến từ phần cứng và phiên bản thư viện.',
     ]
     internal = [
         r'GBDT đơn lẻ có sai số thấp hơn PINN-semi ở 14/16 trường hợp bộ $\times$ mức nhãn (10 có ý nghĩa); PINN-semi chỉ '
@@ -931,8 +919,8 @@ def compare_chapter(S, T, B, L_leak, E33=None):
              r'Trên đúng cách chia của PINN4SOH và cùng cách tính sai số, PINN-lai của đồ án có sai số thấp hơn số công bố ở '
              r'phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ. Tuy vậy, trong điều kiện có rò rỉ của bài, một '
              r'GBDT cũng đạt kết quả tương tự, còn khi bỏ rò rỉ thì hơn hay kém tuỳ bộ dữ liệu. Vì thế, phần đóng góp mà đồ án '
-             r'tin chắc hơn cả là giao thức đánh giá không rò rỉ, việc phát hiện số hạng không có gradient trong bản mã đã sinh '
-             r'số công bố, và các so sánh ghép cặp có kiểm định trong cùng một giao thức.')
+             r'tin chắc hơn cả là giao thức đánh giá không rò rỉ, các so sánh ghép cặp có kiểm định trong cùng một giao thức, '
+             r'và các mô hình có đặc trưng lịch sử HiGBDT, HiPINN cho bài toán dự báo.')
     write('doan_so_sanh.tex', '\n\n'.join(s))
     return dict(beat=beat, st_better=st_better, st_worse=st_worse, good=good, bad=bad)
 
@@ -1010,9 +998,9 @@ def reproducibility(B):
                         if e['cells_same'] else 'bảng MAE và RMSE theo cell không trùng hoàn toàn ở 6 chữ số có nghĩa đã lưu.'))
     items.append('GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\\ref{sec:dt_pp}) cho MAE theo cell trùng từng bit '
                  'với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\\,\\% nhãn, lần lặp 0, fold 0).')
-    items.append(f'Mã gốc PINN4SOH: giá trị loss đơn điệu tính lại trên các hàng train mà lớp đọc dữ liệu của bài tạo ra '
-                 f'khớp với nhật ký công bố ở cả {B["n_eq"]} nhóm, tức dữ liệu train trùng với lần chạy của bài '
-                 '(Mục~\\ref{sec:rerun}); sai số chạy lại không trùng số công bố vì khác phần cứng và thư viện.')
+    items.append(f'So với PINN4SOH trên đúng dữ liệu train của bài: một đại lượng ghi theo từng epoch trong nhật ký huấn '
+                 f'luyện công bố của bài, tính lại trên các hàng train dựng lại ở đây, khớp ở cả {B["n_eq"]} nhóm; sai số '
+                 'khi chạy lại mã gốc không trùng số công bố vì khác phần cứng và phiên bản thư viện.')
     s.append('\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}')
     s.append('Khác CPU (ví dụ AVX-512 so với AVX2) hoặc khác phiên bản PyTorch có thể làm kết quả lệch ở mức làm tròn số '
              'thực; khi đó các kết luận không đổi nhưng chữ số cuối trong bảng có thể khác.')
@@ -1033,10 +1021,8 @@ def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
         r'trường hợp.',
         r'So sánh có kiểm định với chín mô hình đối chứng, gồm bốn mô hình học sâu của đề cương (MLP, CNN, LSTM, '
         r'Transformer), bằng MAE, RMSE, MAPE và $R^2$.',
-        rf'Chạy lại mã gốc PINN4SOH trên đúng {B["n_groups"]} nhóm của bài ({thou(B["runs"] * B["n_groups"])} lần chạy bản '
-        rf'công bố, {thou(B["runs_cur"] * B["n_groups"])} lần bản đã sửa), phát hiện loss đơn điệu của bản đã sinh số công bố '
-        r'không có gradient, và so cùng điều kiện: PINN-lai thấp hơn mã gốc chạy lại ở '
-        rf'{B["beat_rerun"]}/12 chế độ, thấp hơn số công bố ở {len(B["beat_pub"])}/12.',
+        rf'So với PINN4SOH trên đúng {B["n_groups"]} nhóm đánh giá của bài, cùng tiền xử lý: PINN-lai thấp hơn số công bố '
+        rf'ở {len(B["beat_pub"])}/12 chế độ và thấp hơn mã gốc của bài chạy lại ở {B["beat_rerun"]}/12.',
         r'Đặt lại bài toán ít nhãn theo số lần đo dung lượng: đo thưa mọi cell với 1{,}2--6{,}0\,\% số chu kỳ cho sai số bằng '
         r'0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell; mở rộng sang dự báo SOH, dung lượng còn lại và RUL.',
         *([e33_item(E33)] if E33 else []),
@@ -1055,10 +1041,9 @@ def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
         rf'sai số đổi {L_leak["minmax_rng"]} lần tuỳ bộ. Trong giao thức không rò rỉ (kiểm định chéo 5 fold theo cell, lặp '
         r'lại, kiểm định ghép cặp), PINN bán giám sát có sai số bằng 0{,}39--0{,}90 lần MLP ở 10\,\% nhãn, nhưng GBDT vẫn tốt '
         r'hơn nó khi có từ 30\,\% nhãn; mô hình kết hợp PINN-lai có sai số bằng 0{,}67--0{,}95 lần PINN-semi và thấp hơn GBDT '
-        rf'ở 10/16 trường hợp. Đồ án chạy lại mã gốc PINN4SOH trên đúng {B["n_groups"]} nhóm của bài và phát hiện loss đơn '
-        r'điệu của bản đã sinh số công bố không có gradient; bản chạy lại có sai số bằng '
-        rf'{rng(B["rep_full"])} lần số công bố. Cùng cách chia và tiền xử lý của bài, PINN-lai thấp hơn mã gốc chạy lại ở '
-        rf'{B["beat_rerun"]}/12 chế độ và thấp hơn số công bố ở {len(B["beat_pub"])}/12, nhưng một GBDT cùng tiền xử lý đạt '
+        rf'ở 10/16 trường hợp. Trên đúng {B["n_groups"]} nhóm đánh giá và với tiền xử lý của bài PINN4SOH, PINN-lai thấp '
+        rf'hơn số công bố ở {len(B["beat_pub"])}/12 chế độ và thấp hơn mã gốc của bài chạy lại ở {B["beat_rerun"]}/12, nhưng '
+        r'một GBDT cùng tiền xử lý đạt '
         r'kết quả tương tự; với tiền xử lý không rò rỉ, PINN-lai thấp hơn số công bố trên '
         + ' và '.join(k[0] for k in C6['st_better']) + ', cao hơn trên ' + ' và '.join(k[0] for k in C6['st_worse'])
         + r'. Đo thưa mọi cell với 1{,}2--6{,}0\,\% số chu kỳ cho sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% '
@@ -1075,7 +1060,7 @@ def final_table(B, C6, E33=None):
          r'trung bình ba PINN-semi ghép với GBDT ($\omega = \tfrac12$), rồi lọc xu thế nhân quả 10 hàng',
          r'MAE bằng 0{,}67--0{,}95 lần PINN-semi (16/16 có ý nghĩa); thấp hơn GBDT ở 10/16 trường hợp bộ $\times$ '
          r'mức nhãn (8 có ý nghĩa), kém hơn có ý nghĩa ở 1 (TJU 70\,\%)', r'\ref{sec:e20res}'),
-        ('Như trên, khi theo dõi được đặc trưng sạc của cell qua thời gian', 'PINN-lai + lịch sử',
+        ('Như trên, khi theo dõi được đặc trưng sạc của cell qua thời gian', 'HiPINN-lai',
          r'PINN-lai tinh chỉnh có thêm trung bình trượt mũ và độ dốc của đặc trưng sạc, chỉ dùng ở các trường hợp '
          r'validation chọn (TJU và HUST từ 30\,\% nhãn)',
          r'MAE bằng 0{,}89--0{,}97 lần PINN-lai tinh chỉnh ở các trường hợp đó; phân tích hậu kiểm', r'\ref{sec:dt_bo}'),
@@ -1109,7 +1094,7 @@ def final_table(B, C6, E33=None):
                  f'MAE thấp hơn số công bố ở {len(B["beat_pub"])}/12 chế độ và thấp hơn mã gốc chạy lại ở '
                  f'{B["beat_rerun"]}/12; với tiền xử lý không rò rỉ, thấp hơn số công bố trên '
                  + jv([k[0] for k in C6['st_better']]) + ', cao hơn trên ' + jv([k[0] for k in C6['st_worse']]),
-                 r'\ref{sec:rerun}, \ref{ch:sosanh}'))
+                 r'\ref{ch:sosanh}'))
     L = lambda w: r'>{\raggedright\arraybackslash}' + w
     out = [r'\Cref{tab:final} tóm tắt mô hình cuối của đồ án cho từng bài toán và kết quả chính trên test. Các mô hình '
            r'khác trong báo cáo là mốc so sánh hoặc bước trung gian để đi tới các mô hình này.',
@@ -1158,7 +1143,7 @@ def pct_rng(vals, n=0):
 
 
 # --------------------------------------------------------------------------- E33: dự báo có đặc trưng lịch sử (HiPINN)
-E33_CSV = ['summary', 'tests', 'rul', 'rul_tests', 'choices', 'gdoan', 'gdoan_match', 'gdoan_anchor', 'traj_pick',
+E33_CSV = ['summary', 'tests', 'rul', 'rul_tests', 'choices', 'traj_pick',
            'tail', 'cal', 'val', 'val_tests']
 E33_TAB = ['gbdt', 'pinn', 'ket_hop', 'gbdt_ls', 'pinn_ls', 'doi', 'hipinn_w', 'hipinn']      # cột của bảng chính
 E33_HEAD = {'gbdt': ('GBDT', 'theo tầm'), 'pinn': ('PINN-', 'dự báo'), 'ket_hop': ('PINN-', 'GBDT'),
@@ -1335,15 +1320,15 @@ def e33_rul_table(E):
             + '\n'.join(rr[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
 
 
-E34_CSV = ['anchor', 'cost', 'repro']
+E34_CSV = ['anchor', 'cost']
 E34_RUNS = 60
 
 
 def e34_load():
-    """HiGBDT cho bài toán cập nhật. Khi runs/E34 đủ 60 lượt: tính lại bảng và hình (analysis/analyze_e34.py); nếu chưa,
-    analyze_e34 dùng kết quả đã lưu của kho G-doan. Bảng giữ bản sao ở generated/data/."""
+    """HiGBDT cho bài toán cập nhật. Khi runs/E34 đủ 60 lượt: tính lại bảng và hình (analysis/analyze_e34.py); bảng giữ
+    bản sao ở generated/data/, nên không có runs/ vẫn dựng được."""
     from pinnsoh.update_hist import ROOT as R34
-    if len(glob.glob(f'{R34}/up_*.npz')) >= E34_RUNS or not os.path.exists('results/e34_anchor.csv'):
+    if len(glob.glob(f'{R34}/up_*.npz')) >= E34_RUNS:
         import analyze_e34
         analyze_e34.main()
     if os.path.exists('results/fig_e34_cost.pdf'):
@@ -1356,9 +1341,9 @@ def e34_load():
 
 
 def e34_anchor(D34):
-    """Phụ lục: HiGBDT cho bài toán cập nhật (E34, chạy trong kho chính; hoặc kết quả đã lưu của kho G-doan)."""
-    GA, C, R = D34['anchor'], D34['cost'], D34['repro']
-    own = 'source' in GA.columns and GA.source.iloc[0] == 'E34'
+    """Phụ lục: HiGBDT cho bài toán cập nhật (E34)."""
+    GA, C = D34['anchor'], D34['cost']
+    assert 'source' not in GA.columns or GA.source.iloc[0] == 'E34', 'bảng E34 không phải của lần chạy E34'
     jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
     tiers = [('q20', r'mỗi $0{,}2L$'), ('q10', r'mỗi $0{,}1L$'), ('q05', r'mỗi $0{,}05L$'), ('M2', 'mọi lần trước')]
     am = ['hold', 'linear', 'e32_style', 'history_delta', 'history_residual', 'selected']
@@ -1377,11 +1362,10 @@ def e34_anchor(D34):
                           else r'\phantom{$^{*}$}')
             ar.append(' & '.join([ds] + cells) + r' \\')
         ar.append(r'\addlinespace[3pt]')
-    src_cap = ('E34, chạy trong kho chính' if own else 'kết quả lần chạy trước ở kho G-doan (không chạy lại)')
     tab = (r'\begin{table}[!htbp]\centering\small' '\n'
            r'\caption[HiGBDT cho bài toán cập nhật]{Cập nhật SOH ở các chu kỳ không đo từ lần đo dung lượng gần nhất, '
-           r'theo lịch đo: MAE theo cell ($\times10^{-3}$), 30\,\% nhãn, 3 lần lặp $\times$ 5 fold, ' + src_cap
-           + r'. $^{*}$/$^{\dagger}$: HiGBDT-V tốt hơn/kém hơn có ý nghĩa so với GBDT-cập nhật '
+           r'theo lịch đo: MAE theo cell ($\times10^{-3}$), 30\,\% nhãn, 3 lần lặp $\times$ 5 fold. '
+           r'$^{*}$/$^{\dagger}$: HiGBDT-V tốt hơn/kém hơn có ý nghĩa so với GBDT-cập nhật '
            r'(Wilcoxon ghép cặp theo cell, $p<0{,}05$, không hiệu chỉnh).}\label{tab:anchor}' '\n'
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(am) + r'}\toprule' '\n'
            r'Bộ & ' + ' & '.join(head2(*x) for x in alab) + r' \\\midrule' '\n' + '\n'.join(ar[:-1]) + '\n'
@@ -1394,9 +1378,8 @@ def e34_anchor(D34):
     odd = [r_ for r_ in GA.itertuples() if r_.tier != 'M2' and r_.p_selected < 0.05 and r_.flip_selected > 0]
     tl = dict(tiers)
     text = (r'Đồ án cũng thử đặc trưng lịch sử của HiGBDT cho bài toán cập nhật của \Cref{sec:mo_rong}: ước lượng SOH ở '
-            r'các chu kỳ không đo từ lần đo dung lượng gần nhất. Mã phát triển trong kho G-doan được gộp về kho chính '
-            r'thành thí nghiệm E34, cùng fold với các thí nghiệm khác, 30\,\% nhãn, $L$ và chuẩn hoá tính trên cell '
-            r'train' + ('' if own else r'; bảng dưới là kết quả lần chạy trong kho G-doan, E34 chạy lại đúng mã này') + r'. '
+            r'các chu kỳ không đo từ lần đo dung lượng gần nhất. Thí nghiệm E34 dùng cùng fold với các thí nghiệm khác, '
+            r'30\,\% nhãn, $L$ và chuẩn hoá tính trên cell train. '
             r'GBDT-cập nhật dùng các đặc trưng của E32: đặc trưng sạc hiện tại và độ đổi của chúng kể từ lần đo, '
             r'SOH ở lần đo, khoảng chu kỳ tới lần đo và độ dốc giữa hai lần đo gần nhất. Hai mô hình dùng lịch sử thêm hai '
             r'trung bình trượt mũ nhân quả của đặc trưng sạc ($\rho = 0{,}1$ và $0{,}03$), log khoảng chu kỳ và chỉ số chu '
@@ -1439,29 +1422,7 @@ def e34_anchor(D34):
                r'lần đo dung lượng trung bình mỗi cell, bốn lịch đo (mỗi $0{,}2L$, $0{,}1L$, $0{,}05L$ và biết mọi lần đo '
                r'trước), 30\,\% nhãn, trung bình qua 3 lần lặp. Đường nối chỉ để dễ so, không phải quan hệ liên tục đã '
                r'ước lượng.}\label{fig:e34cost}' '\n' r'\end{figure}')
-    if own and R is not None and len(R):
-        text += (r' So với lần chạy trước ở kho G-doan trên cùng cell và lịch đo, sai số theo cell có tương quan '
-                 + rng(list(R.corr_e32_style), 3) + ' với GBDT-cập nhật và ' + rng(list(R.corr_selected), 3)
-                 + r' với HiGBDT-V; phần chênh đến từ phiên bản thư viện, như với HiGBDT (\Cref{sec:e33repro}).')
     return text, tab + fig
-
-
-def e33_repro(E):
-    """Phụ lục: HiGBDT chạy lại trong E33 so với lần chạy trước (30 % nhãn, lịch sử đo)."""
-    G, GM = E.D['gdoan'], E.D['gdoan_match']
-    gd = lambda ds, m: float(G[G.ds == ds][m].iloc[0])
-    gm = {r.ds: r for r in GM.itertuples()}
-    ok_base = all(gm[ds].giu_equal == 1 and gm[ds].tuyen_equal == 1 for ds in DS)
-    both = lambda m, g: '; '.join(f'{ds} {m3(E.val("lab30", "do", ds, m), 2)} (trước {m3(gd(ds, g), 2)})' for ds in DS)
-    return (r'Ở ngân sách 30\,\% nhãn với lịch sử đo, E33 dùng đúng các cell có nhãn, cell test, gốc dự báo và cách '
-            r'chọn trên validation của lần chạy trước của HiGBDT'
-            + (r'; hai mô hình giữ nguyên và ngoại suy tuyến tính cho sai số theo cell trùng nhau ở hai lần chạy'
-               if ok_base else '')
-            + r'. MAE ($\times10^{-3}$) của lần này, trong ngoặc là lần trước: HiGBDT ' + both('gbdt_ls', 'selected')
-            + '; GBDT theo tầm ' + both('gbdt', 'gbdt') + '. Tương quan giữa sai số theo cell của hai lần chạy là '
-            + rng([gm[ds].corr_ls for ds in DS], 3) + ' với HiGBDT và ' + rng([gm[ds].corr_gbdt for ds in DS], 3)
-            + r' với GBDT theo tầm. Phần chênh đến từ phiên bản thư viện (scikit-learn 1.9 và NumPy 2.4 ở lần này, 1.8 và '
-              r'2.3 ở lần trước); mọi so sánh trong báo cáo dùng số của lần chạy này, mọi mô hình trong cùng một môi trường.')
 
 
 def e33_section(D):
@@ -1726,12 +1687,11 @@ def e33_section(D):
             + '\n')
     write('doan_e33.tex', body)
     # ---------------- Phụ lục A
-    D34 = e34_load() or dict(anchor=D['gdoan_anchor'], cost=None, repro=None)
-    a_text, a_tab = e34_anchor(D34)
+    D34 = e34_load()
+    a_text, a_tab = e34_anchor(D34) if D34 is not None else (r'(Chưa có kết quả E34: chạy E34 rồi dựng lại báo cáo.)', '')
     pa = (r'\section{Dự báo SOH: RUL và hai nửa validation}' '\n\n' + e33_rul_table(E) + '\n\n'
           + e33_val_table(E) + '\n\n'
-          r'\section{HiGBDT cho bài toán cập nhật}\label{sec:anchor}' '\n\n' + a_text + '\n\n' + a_tab + '\n\n'
-          r'\section{HiGBDT: lần chạy này và lần chạy trước}\label{sec:e33repro}' '\n\n' + e33_repro(E))
+          r'\section{HiGBDT cho bài toán cập nhật}\label{sec:anchor}' '\n\n' + a_text + '\n\n' + a_tab)
     write('phu_luc_a.tex', pa)
     return dict(soh=soh, rul=rul, name=name, r_hk=r_hk, r_hk_u=r_hk_u, r_hl=r_hl, r_g=r_g, r_p=r_p, best_n=best_n,
                 n_all=n_all, n_hl=n_hl, cov_h=cov_do + cov_u,
@@ -1806,8 +1766,7 @@ def figures():
     diagrams.arch('vi', os.path.join(FIG, 'fig_arch'))
     diagrams.pipeline(os.path.join(FIG, 'fig_pipeline'))
     diagrams.hipinn_arch(os.path.join(FIG, 'fig_hipinn_arch'))
-    for src, dst in [('fig_thesis_leakage', 'fig_leakage'), ('fig_thesis_curve_physics', 'fig_curve_physics'),
-                     ('fig_e28_budget', 'fig_e28_budget'), ('fig_e29_pinn', 'fig_e29_pinn'), ('fig_e29_lai', 'fig_e29_lai')]:
+    for src, dst in [('fig_e28_budget', 'fig_e28_budget')]:
         shutil.copy(os.path.join(OLD_FIG, src + '.pdf'), os.path.join(FIG, dst + '.pdf'))
 
 
@@ -1832,8 +1791,8 @@ def main():
     os.makedirs(GEN, exist_ok=True)
     thesis_tables()
     leak_tab, leak_text, L_leak = leakage()
-    leak_table_cache[0] = leak_tab
-    write('doan_ro_ri.tex', leak_text)
+    write('doan_ro_ri.tex', leak_text + '\n\n' + leak_tab)
+    write('doan_loc.tex', filter_text())
     S, T, L = bench_load()
     B = bench_section(S, T, L)
     fig_benchmark(S)
@@ -1841,7 +1800,6 @@ def main():
     n_feat_jobs = n_feat_fits = 0
     if F is not None:
         rel, abl, drop, concl = features_parts(F, L_leak)
-        fig_features(F['ablation'])
         jobs = F['prune'][['dataset', 'frac', 'repeat', 'fold']].drop_duplicates()
         n_feat_jobs = len(jobs)
         n_feat_fits = n_feat_jobs * 9 + int((jobs.dataset == 'TJU').sum())     # 9 tập đầu vào, thêm 1/T ở TJU
@@ -1849,7 +1807,7 @@ def main():
         rel = abl = drop = concl = r'(Chưa có kết quả phân tích đặc trưng: chạy \texttt{python analysis/features.py}.)'
     write('doan_lien_quan.tex', rel); write('doan_bo_nhom.tex', abl); write('doan_da_bo.tex', drop)
     write('doan_ket_luan_dt.tex', concl)
-    n_rerun = int(B['runs'] * B['n_groups'] + B['runs_cur'] * B['n_groups'])
+    n_rerun = int(B['runs'] * B['n_groups'])
     n_total = experiments_table(n_rerun, n_feat_jobs, n_feat_fits)
     demo_section()
     D33 = e33_load()

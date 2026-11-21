@@ -1,7 +1,7 @@
 \begin{table}[!htbp]\centering\footnotesize
-\caption[MAE theo cell của mọi mô hình chính]{MAE theo cell ($\times10^{-3}$) trên test của mọi mô hình chính, 3 lần lặp $\times$ 5 fold, cùng fold và cell có nhãn; in đậm là thấp nhất mỗi hàng. PINN-lai là bản tinh chỉnh trên validation; PINN-lai + lịch sử là PINN-lai có thêm đặc trưng lịch sử của cell ở những trường hợp validation chọn (TJU và HUST từ 30\,\% nhãn), các hàng khác trùng PINN-lai (Mục~\ref{sec:dt_bo}); cả hai là phân tích hậu kiểm.}\label{tab:allmae}
+\caption[MAE theo cell của mọi mô hình chính]{MAE theo cell ($\times10^{-3}$) trên test của mọi mô hình chính, 3 lần lặp $\times$ 5 fold, cùng fold và cell có nhãn; in đậm là thấp nhất mỗi hàng. PINN-lai là bản tinh chỉnh trên validation; HiPINN-lai là PINN-lai có thêm đặc trưng lịch sử của cell ở những trường hợp validation chọn (TJU và HUST từ 30\,\% nhãn), các hàng khác trùng PINN-lai (\Cref{sec:pinnlai}); cả hai là phân tích hậu kiểm.}\label{tab:allmae}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrrrr}\toprule
-Bộ & Nhãn & MLP & CNN & LSTM & Transformer & GBDT & PINN-semi & PINN-lai & \begin{tabular}[b]{@{}r@{}}PINN-lai\\+ lịch sử\end{tabular} \\\midrule
+Bộ & Nhãn & MLP & CNN & LSTM & Transformer & GBDT & PINN-semi & PINN-lai & HiPINN-lai \\\midrule
 XJTU & 10\,\% & 23{,}27 & 16{,}01 & 16{,}62 & 17{,}63 & 14{,}01 & 14{,}65 & \textbf{12{,}71} & \textbf{12{,}71} \\
  & 30\,\% & 15{,}61 & 12{,}68 & 13{,}98 & 13{,}71 & 10{,}87 & 13{,}35 & \textbf{10{,}78} & \textbf{10{,}78} \\
  & 50\,\% & 14{,}10 & 11{,}69 & 11{,}98 & 12{,}05 & 10{,}18 & 13{,}20 & \textbf{10{,}02} & \textbf{10{,}02} \\

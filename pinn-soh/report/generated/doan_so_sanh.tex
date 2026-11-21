@@ -1,31 +1,36 @@
 \subsection{Mốc so sánh}
-Trên bốn bộ dữ liệu này, công trình cùng bài toán, cùng đầu vào và có công bố sai số theo từng nhóm cell test là PINN4SOH~\cite{wang2024}; bài đó còn báo cáo hai mô hình đối chứng MLP và CNN trên cùng các nhóm. Các bài công bố bộ dữ liệu gốc giải bài toán khác hoặc dùng đầu vào khác: Severson và cộng sự~\cite{severson2019} dự đoán tuổi thọ của cả cell từ các chu kỳ đầu, Zhu và cộng sự~\cite{zhu2022} dùng điện áp hồi phục sau sạc, Ma và cộng sự~\cite{ma2022} dùng học chuyển giao với cách chia riêng. Vì cách chia và đầu vào khác nhau, sai số của các bài đó không so trực tiếp được với đồ án, và báo cáo không trích chúng. Mọi so sánh dưới đây dùng đúng các nhóm cell test của PINN4SOH (Mục~\ref{sec:rerun_m}) và cách tính sai số của bài; Bảng~\ref{tab:pub} tập hợp các con số.
+Trên bốn bộ dữ liệu này, công trình cùng bài toán, cùng đầu vào và có công bố sai số theo từng nhóm cell test là PINN4SOH~\cite{wang2024}; bài đó còn báo cáo hai mô hình đối chứng MLP và CNN trên cùng các nhóm. Các bài công bố bộ dữ liệu gốc giải bài toán khác hoặc dùng đầu vào khác: Severson và cộng sự~\cite{severson2019} dự đoán tuổi thọ của cả cell từ các chu kỳ đầu, Zhu và cộng sự~\cite{zhu2022} dùng điện áp hồi phục sau sạc, Ma và cộng sự~\cite{ma2022} dùng học chuyển giao với cách chia riêng. Vì cách chia và đầu vào khác nhau, sai số của các bài đó không so trực tiếp được với đồ án, và báo cáo không trích chúng. Mọi so sánh dưới đây dùng đúng 39 nhóm đánh giá của bài, dựng lại từ nhật ký huấn luyện công bố kèm mã: một nhóm cho mỗi batch của XJTU và TJU ở chế độ đầy đủ, một nhóm cho MIT (23 cell test) và cho HUST (20 cell test), và các nhóm ít mẫu $K = 1, \dots, 4$ của XJTU và HUST. Sai số tính đúng như bài: MAE từng cell test, trung bình qua lần chạy, qua cell, qua nhóm. PINN-lai của đồ án chạy với hai cách tiền xử lý: bản sao tiền xử lý của bài (có rò rỉ, chỉ để so cùng điều kiện) và tiền xử lý không rò rỉ của đồ án. Bảng~\ref{tab:pub} và \Cref{fig:bench} tập hợp các con số.
 
-\begin{table}[!htbp]\centering\small
-\caption[Đối chiếu với số liệu công bố của bài PINN4SOH]{MAE theo cell ($\times10^{-3}$) trên đúng cách chia của bài PINN4SOH. Ba cột đầu: số công bố của bài cho PINN4SOH và hai mô hình đối chứng MLP, CNN của bài. Hai cột sau: PINN-lai của đồ án với tiền xử lý của bài (cùng điều kiện với ba cột đầu) và với tiền xử lý không rò rỉ. In đậm: thấp nhất trong bốn cột cùng điều kiện.}\label{tab:pub}
-\begin{tabular}{llrrrrr}\toprule
- & & \multicolumn{3}{c}{số công bố của bài} & \multicolumn{2}{c}{PINN-lai của đồ án} \\\cmidrule(lr){3-5}\cmidrule(lr){6-7}
-Bộ & Chế độ & PINN4SOH & MLP & CNN & tiền xử lý của bài & không rò rỉ \\\midrule
-XJTU & đầy đủ & 7{,}85 & 21{,}02 & 21{,}19 & \textbf{6{,}62} & 7{,}81 \\
-TJU & đầy đủ & 9{,}79 & 13{,}61 & 12{,}66 & \textbf{8{,}78} & 6{,}16 \\
-MIT & đầy đủ & 6{,}18 & 7{,}45 & \textbf{6{,}15} & 6{,}80 & 1{,}43 \\
-HUST & đầy đủ & 7{,}57 & 7{,}77 & 7{,}21 & \textbf{6{,}45} & 12{,}51 \\
+\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{5pt}
+\caption[So với PINN4SOH trên đúng cách chia của bài]{MAE theo cell ($\times10^{-3}$) trên đúng 39 nhóm đánh giá của bài PINN4SOH, trung bình qua cell test, lần chạy và nhóm như bài; $K$ là số cell có nhãn trong thí nghiệm ít mẫu. Ba cột đầu là số công bố của bài cho PINN4SOH và hai mô hình đối chứng MLP, CNN của bài. Cột chạy lại: mã gốc của bài chạy trên đúng các nhóm đó, siêu tham số theo nhật ký của bài, 10 lần mỗi nhóm. Hai cột cuối: PINN-lai của đồ án (3 hạt giống) với tiền xử lý của bài, cùng điều kiện với các cột trước, và với tiền xử lý không rò rỉ. In đậm: thấp nhất trong năm cột cùng điều kiện. $^{*}$/$^{\dagger}$: PINN-lai với tiền xử lý của bài thấp hơn/cao hơn có ý nghĩa so với mã gốc chạy lại (Wilcoxon ghép cặp theo cell test, Holm qua 12 hàng).}\label{tab:pub}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
+ & & \multicolumn{3}{c}{số công bố của bài} & PINN4SOH & \multicolumn{2}{c}{PINN-lai của đồ án} \\\cmidrule(lr){3-5}\cmidrule(lr){6-6}\cmidrule(lr){7-8}
+Bộ & Chế độ & PINN4SOH & MLP & CNN & chạy lại & tiền xử lý của bài & không rò rỉ \\\midrule
+XJTU & đầy đủ & 7{,}85 & 21{,}02 & 21{,}19 & 8{,}66 & \textbf{6{,}62} & 7{,}81 \\
+TJU & đầy đủ & 9{,}79 & 13{,}61 & 12{,}66 & 11{,}21 & \textbf{8{,}78}$^{*}$ & 6{,}16 \\
+MIT & đầy đủ & 6{,}18 & 7{,}45 & \textbf{6{,}15} & 7{,}36 & 6{,}80 & 1{,}43 \\
+HUST & đầy đủ & 7{,}57 & 7{,}77 & 7{,}21 & 7{,}90 & \textbf{6{,}45}$^{*}$ & 12{,}51 \\
 \addlinespace
-XJTU & $K = 1$ & 31{,}54 & 49{,}14 & 131{,}16 & \textbf{10{,}51} & 13{,}27 \\
- & $K = 2$ & 10{,}06 & 24{,}88 & 62{,}80 & \textbf{7{,}72} & 13{,}60 \\
- & $K = 3$ & 7{,}98 & 23{,}59 & 49{,}96 & \textbf{7{,}15} & 9{,}48 \\
- & $K = 4$ & 7{,}62 & 22{,}60 & 38{,}62 & \textbf{7{,}20} & 8{,}39 \\
+XJTU & $K = 1$ & 31{,}54 & 49{,}14 & 131{,}16 & 30{,}70 & \textbf{10{,}51}$^{*}$ & 13{,}27 \\
+ & $K = 2$ & 10{,}06 & 24{,}88 & 62{,}80 & 11{,}54 & \textbf{7{,}72} & 13{,}60 \\
+ & $K = 3$ & 7{,}98 & 23{,}59 & 49{,}96 & 9{,}24 & \textbf{7{,}15} & 9{,}48 \\
+ & $K = 4$ & 7{,}62 & 22{,}60 & 38{,}62 & 9{,}17 & \textbf{7{,}20} & 8{,}39 \\
 \addlinespace
-HUST & $K = 1$ & 39{,}42 & 50{,}37 & 112{,}78 & \textbf{14{,}71} & 46{,}72 \\
- & $K = 2$ & 16{,}94 & 36{,}00 & 65{,}04 & \textbf{11{,}53} & 23{,}82 \\
- & $K = 3$ & 14{,}59 & 22{,}99 & 43{,}71 & \textbf{9{,}16} & 21{,}13 \\
- & $K = 4$ & 13{,}62 & 24{,}04 & 36{,}74 & \textbf{9{,}91} & 22{,}64 \\
-\bottomrule\end{tabular}\end{table}
+HUST & $K = 1$ & 39{,}42 & 50{,}37 & 112{,}78 & 47{,}13 & \textbf{14{,}71}$^{*}$ & 46{,}72 \\
+ & $K = 2$ & 16{,}94 & 36{,}00 & 65{,}04 & 18{,}07 & \textbf{11{,}53}$^{*}$ & 23{,}82 \\
+ & $K = 3$ & 14{,}59 & 22{,}99 & 43{,}71 & 15{,}10 & \textbf{9{,}16}$^{*}$ & 21{,}13 \\
+ & $K = 4$ & 13{,}62 & 24{,}04 & 36{,}74 & 14{,}71 & \textbf{9{,}91}$^{*}$ & 22{,}64 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=\textwidth]{graphics/fig_benchmark.pdf}
+\caption[So với PINN4SOH trên đúng cách chia của bài]{MAE theo cell trên đúng các nhóm đánh giá của bài PINN4SOH. (a) Chế độ đầy đủ, mỗi bộ bốn cột: số công bố của bài, mã gốc của bài chạy lại, PINN-lai với tiền xử lý của bài và PINN-lai với tiền xử lý không rò rỉ. (b), (c) Chế độ ít mẫu: MAE theo số cell có nhãn $K$.}\label{fig:bench}
+\end{figure}
 
 Theo RMSE, Bảng~\ref{tab:pubrmse} lấy trên mỗi bộ mô hình có sai số thấp nhất của đồ án và ghi tên mô hình đó. RMSE thấp nhất của đồ án thấp hơn số công bố ở XJTU, TJU và HUST (XJTU: PINN-lai, 22{,}2\,\%; TJU: PINN-lai, 14{,}0\,\%; HUST: PINN-lai, 16{,}3\,\%); ở MIT, GBDT cao hơn 0{,}2\,\%.
 
 \begin{table}[!htbp]\centering\small
-\caption[RMSE tốt nhất của đồ án so với PINN4SOH]{RMSE ($\times10^{-3}$) trên đúng cách chia của bài PINN4SOH, chế độ đầy đủ, cùng tiền xử lý với bài. Cột thứ hai tính từ tệp kết quả công bố cùng mã nguồn của bài; cột thứ ba là RMSE thấp nhất trong PINN-lai, GBDT và PINN-semi của đồ án, cột Mô hình ghi mô hình đạt được. Cả hai cột lấy trung bình qua cell test, lần chạy và nhóm như Bảng~\ref{tab:bench}. In đậm: thấp hơn trong hai cột; mũi tên xuống là đồ án thấp hơn.}\label{tab:pubrmse}
+\caption[RMSE tốt nhất của đồ án so với PINN4SOH]{RMSE ($\times10^{-3}$) trên đúng cách chia của bài PINN4SOH, chế độ đầy đủ, cùng tiền xử lý với bài. Cột thứ hai tính từ tệp kết quả công bố cùng mã nguồn của bài; cột thứ ba là RMSE thấp nhất trong PINN-lai, GBDT và PINN-semi của đồ án, cột Mô hình ghi mô hình đạt được. Cả hai cột lấy trung bình qua cell test, lần chạy và nhóm như Bảng~\ref{tab:pub}. In đậm: thấp hơn trong hai cột; mũi tên xuống là đồ án thấp hơn.}\label{tab:pubrmse}
 \begin{tabular}{lrrlr}\toprule
 Bộ dữ liệu & RMSE PINN4SOH công bố & RMSE tốt nhất của đồ án & Mô hình & Chênh lệch \\\midrule
 XJTU & 10{,}88 & \textbf{8{,}47} & PINN-lai & $\downarrow$\,22{,}2\,\% \\
@@ -36,7 +41,7 @@ HUST & 8{,}69 & \textbf{7{,}27} & PINN-lai & $\downarrow$\,16{,}3\,\% \\
 
 \subsection{Các chỉ số tốt hơn các bài báo đã công bố}
 \begin{enumerate}
-\item Cùng cách chia và cùng tiền xử lý với bài, PINN-lai có sai số thấp hơn mã gốc PINN4SOH chạy lại ở 12 trên 12 chế độ, thấp hơn có ý nghĩa ở 7 (tỉ số 0{,}76--0{,}92 ở chế độ đầy đủ, 0{,}31--0{,}79 ở chế độ ít mẫu) và không chế độ nào cao hơn có ý nghĩa (Bảng~\ref{tab:bench}).
+\item Cùng cách chia và cùng tiền xử lý với bài, PINN-lai có sai số thấp hơn mã gốc PINN4SOH chạy lại ở 12 trên 12 chế độ, thấp hơn có ý nghĩa ở 7 (tỉ số 0{,}76--0{,}92 ở chế độ đầy đủ, 0{,}31--0{,}79 ở chế độ ít mẫu) và không chế độ nào cao hơn có ý nghĩa (Bảng~\ref{tab:pub}).
 \item So với số công bố của PINN4SOH, PINN-lai thấp hơn ở 11 trên 12 chế độ (tỉ số 0{,}84--1{,}10 ở chế độ đầy đủ, 0{,}33--0{,}94 ở chế độ ít mẫu). Lợi thế lớn nhất ở chế độ ít mẫu, nơi cell train không nhãn đi vào loss vật lý.
 \item So với MLP và CNN mà bài PINN4SOH báo cáo, PINN-lai thấp hơn MLP ở 12 trên 12 chế độ và thấp hơn CNN ở 11 trên 12.
 \item Với tiền xử lý không rò rỉ, PINN-lai vẫn thấp hơn số công bố của PINN4SOH trên TJU (tỉ số 0{,}63), MIT (tỉ số 0{,}23), thấp hơn có ý nghĩa theo cell ở 2 trên 4 bộ đầy đủ, và ở XJTU $K = 1$ (tỉ số 0{,}42).
@@ -48,7 +53,7 @@ HUST & 8{,}69 & \textbf{7{,}27} & PINN-lai & $\downarrow$\,16{,}3\,\% \\
 \item Cùng điều kiện với bài, PINN-lai chưa thấp hơn số công bố của PINN4SOH ở MIT đầy đủ (6{,}80 so với 6{,}18), và chưa thấp hơn CNN của bài ở MIT đầy đủ (6{,}15).
 \item Một GBDT đơn giản với cùng tiền xử lý rò rỉ tốt ngang PINN-lai: tỉ số GBDT/PINN-lai 0{,}69--1{,}06, GBDT thấp hơn có ý nghĩa ở 2 chế độ (HUST $K = 1$, HUST $K = 2$) và không chế độ nào cao hơn. Với min--max theo cell, chỉ số chu kỳ đã chuẩn hoá là phần đời đã qua và mô hình cây khai thác thẳng thông tin này, nên lợi thế so với mã gốc trong điều kiện đó không thể quy cho phần vật lý.
 \item Với tiền xử lý không rò rỉ, PINN-lai cao hơn số công bố trên HUST (tỉ số 1{,}65), ngang trên XJTU (0{,}99), cao hơn có ý nghĩa theo cell ở 1 trên 4 bộ đầy đủ; ở chế độ ít mẫu cao hơn ở 7 trên 8 (tỉ số 1{,}10--1{,}66). Đây là các chế độ mà tiền xử lý của bài có lợi nhiều nhất: khi chỉ có vài cell có nhãn, biết cell đã đi được bao nhiêu phần đời gần như là biết SOH. Đồ án không dùng tiền xử lý đó vì nó không thực hiện được khi triển khai (Mục~\ref{sec:dt_bo}).
-\item Đồ án không tái lập được chính xác số công bố của PINN4SOH: mã gốc chạy lại cho sai số bằng 1{,}04--1{,}19 lần ở chế độ đầy đủ, cao hơn có ý nghĩa theo cell ở 2 trên 4 bộ (Mục~\ref{sec:rerun}).
+\item Đồ án không tái lập được chính xác số công bố của PINN4SOH: mã gốc chạy lại cho sai số bằng 1{,}04--1{,}19 lần ở chế độ đầy đủ, cao hơn có ý nghĩa theo cell ở 2 trên 4 bộ (Bảng~\ref{tab:pub}); các hàng train dựng lại trùng với dữ liệu của bài, nên phần chênh đến từ phần cứng và phiên bản thư viện.
 \end{enumerate}
 \paragraph{Các chỉ số của chính đồ án chưa đạt.}
 \begin{enumerate}
@@ -61,4 +66,4 @@ HUST & 8{,}69 & \textbf{7{,}27} & PINN-lai & $\downarrow$\,16{,}3\,\% \\
 \end{enumerate}
 
 \subsection{Nhận xét}
-Trên đúng cách chia của PINN4SOH và cùng cách tính sai số, PINN-lai của đồ án có sai số thấp hơn số công bố ở phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ. Tuy vậy, trong điều kiện có rò rỉ của bài, một GBDT cũng đạt kết quả tương tự, còn khi bỏ rò rỉ thì hơn hay kém tuỳ bộ dữ liệu. Vì thế, phần đóng góp mà đồ án tin chắc hơn cả là giao thức đánh giá không rò rỉ, việc phát hiện số hạng không có gradient trong bản mã đã sinh số công bố, và các so sánh ghép cặp có kiểm định trong cùng một giao thức.
+Trên đúng cách chia của PINN4SOH và cùng cách tính sai số, PINN-lai của đồ án có sai số thấp hơn số công bố ở phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ. Tuy vậy, trong điều kiện có rò rỉ của bài, một GBDT cũng đạt kết quả tương tự, còn khi bỏ rò rỉ thì hơn hay kém tuỳ bộ dữ liệu. Vì thế, phần đóng góp mà đồ án tin chắc hơn cả là giao thức đánh giá không rò rỉ, các so sánh ghép cặp có kiểm định trong cùng một giao thức, và các mô hình có đặc trưng lịch sử HiGBDT, HiPINN cho bài toán dự báo.

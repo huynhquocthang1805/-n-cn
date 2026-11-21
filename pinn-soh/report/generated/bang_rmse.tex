@@ -1,5 +1,5 @@
 \begin{table}[!htbp]\centering\footnotesize
-\caption[RMSE và MAPE của mọi mô hình chính ở 30\,\% nhãn]{Ở 30\,\% nhãn: RMSE theo cell ($\times10^{-3}$) và MAPE (\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. PINN-lai + lịch sử như ở Bảng~\ref{tab:allmae}.}\label{tab:allrm}
+\caption[RMSE và MAPE của mọi mô hình chính ở 30\,\% nhãn]{Ở 30\,\% nhãn: RMSE theo cell ($\times10^{-3}$) và MAPE (\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. HiPINN-lai như ở Bảng~\ref{tab:allmae}.}\label{tab:allrm}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
 Mô hình & XJTU RMSE & MAPE & TJU RMSE & MAPE & MIT RMSE & MAPE & HUST RMSE & MAPE \\\midrule
 MLP & 23{,}10 & 1{,}47 & 13{,}94 & 1{,}20 & 4{,}65 & 0{,}41 & 26{,}07 & 2{,}12 \\
@@ -9,5 +9,5 @@ Transformer & 17{,}39 & 1{,}37 & 11{,}72 & 1{,}04 & 3{,}72 & 0{,}29 & 23{,}17 & 
 GBDT & \textbf{14{,}37} & 1{,}19 & 9{,}74 & 0{,}90 & 2{,}93 & 0{,}21 & 25{,}98 & 2{,}04 \\
 PINN-semi & 19{,}42 & 1{,}32 & 13{,}54 & 1{,}16 & 3{,}34 & 0{,}28 & 22{,}84 & 1{,}83 \\
 PINN-lai & 14{,}37 & \textbf{1{,}16} & 9{,}54 & 0{,}87 & \textbf{2{,}47} & \textbf{0{,}18} & \textbf{21{,}86} & 1{,}72 \\
-PINN-lai + lịch sử & 14{,}37 & 1{,}16 & \textbf{9{,}22} & \textbf{0{,}85} & 2{,}47 & 0{,}18 & 22{,}38 & \textbf{1{,}65} \\
+HiPINN-lai & 14{,}37 & 1{,}16 & \textbf{9{,}22} & \textbf{0{,}85} & 2{,}47 & 0{,}18 & 22{,}38 & \textbf{1{,}65} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}

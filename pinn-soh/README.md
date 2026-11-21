@@ -27,7 +27,7 @@ TJU, MIT, HUST:
 | E29 | thêm lịch sử của cell vào đầu vào |
 | E30 | CNN, LSTM, Transformer trên cửa sổ nhân quả các chu kỳ gần nhất |
 | E33 | đưa lịch sử của cell vào dự báo: HiGBDT (GBDT có đặc trưng lịch sử), PINN-dự báo có lịch sử, nhánh theo đời và HiPINN lấy trung vị của ba nhánh, so với PINN-GBDT của E22, trong giao thức đã sửa các điểm rò rỉ còn lại của E22 |
-| E34 | HiGBDT cho bài toán cập nhật từ lần đo dung lượng gần nhất (mã gộp từ kho G-doan): GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R, HiGBDT-V trên bốn lịch đo |
+| E34 | HiGBDT cho bài toán cập nhật từ lần đo dung lượng gần nhất: GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R, HiGBDT-V trên bốn lịch đo |
 | benchmark | chạy lại mã gốc của PINN4SOH trên cách chia của bài, so với số công bố và với E27 |
 | features | đặc trưng đầu vào: dùng gì, bỏ gì (tương quan hạng, bỏ từng nhóm, hoán vị, chọn trên validation) |
 
@@ -151,11 +151,11 @@ pinn-soh/
 │   ├── paper.py            cách chia của PINN4SOH, GBDT trên cách chia đó (E27)
 │   ├── budget.py           ngân sách đo dung lượng (E28)
 │   ├── update.py           mô hình học cập nhật từ lần đo dung lượng gần nhất (E32)
-│   ├── forecast_hist.py    GBDT có đặc trưng lịch sử SOH (E33; bản phát triển ở kho G-doan của đồ án)
+│   ├── forecast_hist.py    HiGBDT: GBDT có đặc trưng lịch sử SOH (E33)
 │   ├── forecast_life.py    nhánh dự báo theo đời: đời còn lại dự đoán + khuôn quỹ đạo của cell train (E33)
 │   ├── forecast_combo.py   mô hình HiPINN và các nhánh, giao thức E33
 │   ├── hipinn.py           HiPINN học một lần rồi dự báo cho một cell bất kỳ (dùng trong tools/demo.py)
-│   ├── update_hist.py      HiGBDT cho bài toán cập nhật từ lần đo gần nhất (E34, gộp từ kho G-doan)
+│   ├── update_hist.py      HiGBDT cho bài toán cập nhật từ lần đo gần nhất (E34)
 │   ├── pinn4soh_splits.json, pinn4soh_reported.csv   cách chia và số công bố của PINN4SOH
 │   ├── experiments.py      định nghĩa E13–E33 thành danh sách lượt chạy
 │   ├── runner.py           chạy song song, bỏ qua lượt đã xong, ước lượng thời gian
@@ -224,7 +224,7 @@ có pandas 2.3.3 (dùng chung các gói khác) khi cần. Kết quả, nhỏ nê
 `analysis/features.py` kiểm tra vì sao mọi mô hình dùng 16 đặc trưng đoạn sạc cùng chỉ số chu kỳ `t = n/1000`: GBDT
 (cùng cấu hình E16, trùng từng bit với E16 khi dùng đủ đầu vào) được huấn luyện lại với từng tập đầu vào trên đúng các
 fold không rò rỉ (4 bộ × 2 mức nhãn 10 và 70 % × 3 lần lặp × 5 fold), cộng tương quan hạng Spearman, trùng lặp, độ quan
-trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`results/features_*.csv`, Chương 2 của báo cáo):
+trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`results/features_*.csv`, Mục 3.2 của báo cáo):
 
 * Bỏ `t`, bỏ một trong ba nhóm (điện áp pha CC, dòng pha CV, điện lượng và thời gian), hay chỉ giữ một phần: cả 6 tập
   rút gọn đều kém bộ đầy đủ có ý nghĩa ở ít nhất một trường hợp; chỉ dùng `t` kém 1,2–12 lần.
@@ -234,6 +234,15 @@ trọng hoán vị và chọn đặc trưng trên validation. Kết quả (`resu
   TJU ở 70 % nhãn nhưng có hại trên MIT; thêm nhiệt độ trên TJU thay đổi sai số dưới 1 %.
 * Chuẩn hoá theo cả vòng đời cell, lọc ngoại lai dùng cả vòng đời và fit normaliser trên cell test bị loại vì là rò rỉ
   (kiểm toán E15).
+
+Độ nhạy của bộ lọc ngoại lai nhân quả (ngưỡng 5 lần độ lệch chuẩn bền vững, cần ít nhất 10 chu kỳ lịch sử, cửa sổ 50 chu
+kỳ; ấn định trước khi huấn luyện): `python analysis/filter_sensitivity.py` (GBDT, 30 % nhãn, 8 cách đặt × 4 bộ × 3 lần
+lặp × 5 fold, khoảng 15 phút với 3 lõi) -> `results/filter_sensitivity.csv`. MAE chấm trên cùng tập chu kỳ test cho mọi
+cách đặt:
+
+* Ngưỡng 3, 4, 6, 8: tỉ lệ chu kỳ bị loại 5,7–18,5 % (ngưỡng 3) tới 0,0–1,1 % (ngưỡng 8); MAE bằng 0,993–1,035 lần
+  ngưỡng 5, cao hơn có ý nghĩa ở 4/16 trường hợp (TJU ngưỡng 3, 6, 8; MIT ngưỡng 3), không trường hợp nào thấp hơn.
+* Bỏ hẳn bước lọc: 0,998–1,045 lần, cao hơn có ý nghĩa trên MIT. Số chu kỳ lịch sử tối thiểu 5 hoặc 20: 0,993–1,021 lần.
 
 ### Dự báo so với SOH đo được (E22, không còn trong báo cáo)
 
@@ -260,7 +269,7 @@ python analysis/figures_report.py e22_traj     # và e22_cells, e22_origins, e22
 
 Hai mô hình dự báo có đặc trưng lịch sử của đồ án: HiGBDT, và HiPINN lấy trung vị của ba nhánh tại từng (gốc, tầm):
 
-* HiGBDT (`pinnsoh/forecast_hist.py`, phát triển trong kho G-doan của đồ án): GBDT dự báo độ giảm SOH với đặc
+* HiGBDT (`pinnsoh/forecast_hist.py`, mô hình do đồ án thiết kế): GBDT dự báo độ giảm SOH với đặc
   trưng gốc và đặc trưng lịch sử SOH (trung bình, độ lệch chuẩn, độ dốc trên nhiều cửa sổ; thay đổi theo độ trễ);
 * PINN-dự báo của E22 (23 đặc trưng gốc, nghiệm đóng của đường suy giảm);
 * nhánh theo đời (`pinnsoh/forecast_life.py`): GBDT dự đoán đời còn lại, rồi đặt khuôn quỹ đạo của K cell train gần nhất
@@ -284,16 +293,16 @@ python run.py data                      # tải dữ liệu nếu chưa có
 python run.py E20 --nhan 0.7            # E33 chỉ cần E20 ở 70 % nhãn (360 lượt, khoảng 2 giờ CPU)
 python run.py E33                       # 120 lượt, khoảng 8 giờ CPU (2 giờ với 4 lõi)
 python run.py demo tat-ca               # HiPINN cho một cell test của mỗi bộ -> demo/hipinn_bon_bo.*
-GDOAN=<thư mục kho G-doan> python run.py report   # runs/E33 đủ 120 lượt thì tính lại bảng và hình
+python run.py report                    # runs/E33 đủ 120 lượt thì tính lại bảng và hình
 ```
 
 Kết quả của mỗi lượt E33 nặng 4–7 MB (cả thí nghiệm khoảng 600 MB) nên không đưa lên git; `report/generated/data/`
 giữ các bảng đã tổng hợp, đủ để dựng báo cáo mà không cần `runs/`.
 
-Kết quả (Mục 5.2.10 và Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
+Kết quả (mục dự báo ở Chương 5 và Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
 
-* HiGBDT chạy lại ở 30 % nhãn với lịch sử đo: XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; lần chạy trước ở kho G-doan
-  là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy). Đặc trưng
+* HiGBDT chạy lại ở 30 % nhãn với lịch sử đo: XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; lần chạy đầu (thư mục kết quả
+  đặt bằng biến môi trường GDOAN) là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy). Đặc trưng
   lịch sử giúp GBDT ở mọi trường hợp: HiGBDT bằng 0,85–0,94 lần GBDT theo tầm khi lịch sử đo.
 * HiPINN có MAE thấp nhất trong tám mô hình của bảng ở 11/12 trường hợp (bộ × thiết lập). So với HiGBDT, mô hình
   đứng riêng tốt nhất: 0,86–1,01 lần, tốt hơn có ý nghĩa ở 10/12 trường hợp, 62–82 % số cell có sai số thấp hơn. So với
@@ -312,7 +321,7 @@ Kết quả (Mục 5.2.10 và Phụ lục A của báo cáo; MAE theo cell, ×10
 
 ### HiGBDT cho bài toán cập nhật (E34)
 
-`pinnsoh/update_hist.py` (gộp từ kho G-doan): ở chu kỳ không đo, ước lượng SOH từ lần đo dung lượng gần nhất trước nó.
+`pinnsoh/update_hist.py`: ở chu kỳ không đo, ước lượng SOH từ lần đo dung lượng gần nhất trước nó.
 GBDT-cập nhật dùng đặc trưng của E32; HiGBDT-Δ và HiGBDT-R thêm hai trung bình trượt mũ nhân quả của đặc trưng sạc,
 học độ giảm SOH hoặc phần dư so với ngoại suy tuyến tính; HiGBDT-V chọn trên validation, theo từng lịch đo, một trong ba
 mô hình và trọng số trộn với giữ lần đo hoặc ngoại suy. Lịch đo: chu kỳ đầu rồi mỗi 0,2L / 0,1L / 0,05L (q20, q10,
@@ -331,7 +340,7 @@ Kết quả (Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
   TJU ở cả ba lịch đo thưa; chỉ thấp hơn trên cả bốn bộ khi biết mọi lần đo trước (M2). Vì vậy giữ GBDT-cập nhật.
 * GBDT-cập nhật ở lịch q20 (5,6–6,6 lần đo mỗi cell) có MAE thấp hơn giữ lần đo ở lịch q05 (21–25 lần đo) trên cả bốn
   bộ, tức đo ít hơn 3,7–3,8 lần.
-* So với lần chạy trước ở kho G-doan trên cùng cell và lịch đo: tương quan sai số theo cell 0,992–0,999
+* So với lần chạy đầu trên cùng cell và lịch đo: tương quan sai số theo cell 0,992–0,999
   (GBDT-cập nhật) và 0,945–0,993 (HiGBDT-V); phần chênh do phiên bản thư viện.
 
 ## 5. Tối ưu và tái lập

@@ -36,7 +36,7 @@ hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán t
   \item Đề xuất mô hình PINN bán giám sát tận dụng cell không có nhãn, và mô hình kết hợp PINN-lai.
   \item So sánh có kiểm định với các mô hình đối chứng, gồm bốn mô hình học sâu của đề cương (MLP, CNN, LSTM,
         Transformer) và GBDT.
-  \item Chạy lại mã gốc PINN4SOH trên đúng cách chia của bài để so sánh trong cùng điều kiện.
+  \item So sánh với PINN4SOH trên đúng cách chia của bài, trong cùng điều kiện.
   \item Kiểm tra bằng số liệu vì sao dùng các đặc trưng đầu vào hiện có và vì sao bỏ các cách biến đổi khác.
   \item Mở rộng sang ngân sách đo dung lượng, cập nhật ước lượng khi dùng, dự báo SOH và RUL.
   \item Tổ chức mã nguồn sao cho mọi bảng, hình trong báo cáo sinh tự động từ kết quả và chạy lại cho kết quả trùng
@@ -57,8 +57,8 @@ thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU
         \Cref{sec:leakres}).
   \item PINN bán giám sát với động học suy giảm dạng xám luôn không âm, và mô hình kết hợp PINN-lai
         (\Cref{sec:pinn,sec:pinnlai}), đánh giá ở bốn mức nhãn với chín mô hình đối chứng.
-  \item Chạy lại mã gốc PINN4SOH trên đúng 39 nhóm của bài; phát hiện số hạng đơn điệu của bản mã đã sinh số công bố
-        không có gradient (\Cref{sec:rerun}).
+  \item So sánh với PINN4SOH trên đúng 39 nhóm đánh giá của bài, cùng cách chia và cách tính sai số
+        (\Cref{ch:sosanh}).
   \item Phân tích đặc trưng đầu vào bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên validation
         (\Cref{ch:dactrung}).
   \item Đo dung lượng thưa trên mọi cell và cập nhật ước lượng khi cell mới được đo vài lần (\Cref{sec:mo_rong}).
@@ -73,7 +73,7 @@ thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU
 Phần còn lại của báo cáo được tổ chức như sau. \Cref{chap:background} trình bày cơ sở lý thuyết và các nghiên cứu liên
 quan. \Cref{chap:methodology} mô tả dữ liệu, đặc trưng đầu vào cùng số liệu chứng minh lựa chọn, giao thức đánh giá và
 các mô hình. \Cref{chap:implementation} mô tả thiết kế và hiện thực hệ thống. \Cref{chap:evaluation} trình bày thiết
-lập thực nghiệm, kết quả chạy lại PINN4SOH, kết quả của đồ án và đối chiếu với các bài báo đã công bố, gồm cả các chỉ
+lập thực nghiệm, kết quả của đồ án và đối chiếu với các bài báo đã công bố, gồm cả các chỉ
 số tốt hơn và các chỉ số chưa tốt. \Cref{chap:conclusion} kết luận. \Cref{app:additional} cho kết quả bổ sung;
 \Cref{app:source-code} cho mã nguồn và các kiểm tra tái lập. Mọi con số trong bảng được sinh tự động từ tệp kết quả
 của các lượt chạy.
