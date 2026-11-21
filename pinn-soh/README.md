@@ -338,10 +338,12 @@ python run.py demo forecast --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/
 python run.py demo forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 --an-nhan   # lịch sử SOH ước lượng
 ```
 
-Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng bản có xét hồi phục (E23)
-và in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động đều nếu có. Lần đầu
-chạy `forecast`, bộ dự báo được huấn luyện trên các cell có nhãn của cùng fold với mô hình ước lượng (vài phút) và lưu ở
-`demo/<bộ>_dubao.pkl`. Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv` và các hình `.png`.
+Ước lượng ở chu kỳ N chỉ dùng dữ liệu tới chu kỳ N nên chạy trực tuyến được. `forecast` dùng HiPINN (trung vị của GBDT
+lịch sử, PINN-dự báo và nhánh theo đời); lần đầu cho một bộ, HiPINN được học trên các cell có nhãn của cùng fold với mô
+hình ước lượng (vài phút) và lưu ở `demo/<bộ>_hipinn.pkl`. `--mo-hinh e23` dùng bản có xét hồi phục của E23 (lưu ở
+`demo/<bộ>_dubao.pkl`), in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động
+đều nếu có. `tat-ca` chạy HiPINN cho một cell test của mỗi bộ (cell có số chu kỳ ở trung vị, dự báo từ 40 % số chu kỳ
+của nó) và vẽ hình 2 × 2. Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv`, `demo/hipinn_bon_bo.csv` và các hình.
 
 ## 7. Nguyên tắc của repo
 
