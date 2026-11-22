@@ -24,24 +24,23 @@ thức không rò rỉ.
 
 Bài toán thứ nhất là ước lượng: cho 16 đặc trưng đoạn sạc và chỉ số chu kỳ của mọi chu kỳ, trong đó chỉ một phần các
 cell huấn luyện có nhãn SOH, học một mô hình cho sai số nhỏ nhất trên các cell chưa từng xuất hiện khi huấn luyện; mô
-hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, biết lịch sử SOH (đo
-được hoặc ước lượng) tới $k$, dự báo SOH ở các chu kỳ sau đó, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối
+hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, biết SOH đo được của
+cell tới $k$, dự báo SOH ở các chu kỳ sau đó, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối
 đời (RUL). Phát biểu hình thức ở \Cref{sec:bai_toan}.
 
 \section{Mục tiêu}
 
-\begin{itemize}
-  \item Xây dựng giao thức đánh giá không rò rỉ (chia theo cell, lặp lại, so ghép cặp có kiểm định) và đo tác động của
-        các dạng rò rỉ thường gặp.
-  \item Đề xuất mô hình PINN bán giám sát tận dụng cell không có nhãn, và mô hình kết hợp PINN-lai.
-  \item So sánh có kiểm định với các mô hình đối chứng, gồm bốn mô hình học sâu của đề cương (MLP, CNN, LSTM,
-        Transformer) và GBDT.
-  \item So sánh với PINN4SOH trên đúng cách chia của bài, trong cùng điều kiện.
-  \item Kiểm tra bằng số liệu vì sao dùng các đặc trưng đầu vào hiện có và vì sao bỏ các cách biến đổi khác.
-  \item Mở rộng sang ngân sách đo dung lượng, cập nhật ước lượng khi dùng, dự báo SOH và RUL.
-  \item Tổ chức mã nguồn sao cho mọi bảng, hình trong báo cáo sinh tự động từ kết quả và chạy lại cho kết quả trùng
-        từng bit.
-\end{itemize}
+Mục tiêu chính của đồ án là xây dựng một mô hình ước lượng SOH dùng được khi chỉ một phần nhỏ cell có nhãn, và
+đánh giá mô hình đó một cách đáng tin cậy. Để đánh giá đáng tin cậy, đồ án xây dựng giao thức không rò rỉ (chia theo
+cell, lặp lại, so ghép cặp có kiểm định) và đo tác động của các dạng rò rỉ thường gặp. Về mô hình, đồ án đề xuất PINN
+bán giám sát tận dụng cell không có nhãn cùng mô hình kết hợp PINN-lai, so sánh có kiểm định với các mô hình đối chứng,
+gồm bốn mô hình học sâu của đề cương (MLP, CNN, LSTM, Transformer) và GBDT, và so với PINN4SOH trên đúng cách chia của
+bài, trong cùng điều kiện. Đầu vào của các mô hình cũng được kiểm tra bằng số liệu: vì sao dùng các đặc trưng hiện có,
+vì sao bỏ các cách biến đổi khác.
+
+Ngoài bài toán ước lượng, đồ án mở rộng sang ba câu hỏi gần với vận hành BMS: đo dung lượng thưa thay vì đo đầy đủ một
+phần cell, cập nhật ước lượng khi cell được đo vài lần, và dự báo SOH, RUL. Cuối cùng, mã nguồn được tổ chức sao cho mọi
+bảng, hình trong báo cáo sinh tự động từ kết quả và chạy lại cho kết quả trùng từng bit.
 
 \section{Phạm vi}
 
@@ -52,21 +51,18 @@ thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU
 
 \section{Đóng góp}
 
-\begin{itemize}
-  \item Giao thức đánh giá không rò rỉ cùng kiểm toán định lượng tác động của bốn dạng rò rỉ (\Cref{sec:protocol},
-        \Cref{sec:leakres}).
-  \item PINN bán giám sát với động học suy giảm dạng xám luôn không âm, và mô hình kết hợp PINN-lai
-        (\Cref{sec:pinn,sec:pinnlai}), đánh giá ở bốn mức nhãn với chín mô hình đối chứng.
-  \item So sánh với PINN4SOH trên đúng 39 nhóm đánh giá của bài, cùng cách chia và cách tính sai số
-        (\Cref{ch:sosanh}).
-  \item Phân tích đặc trưng đầu vào bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên validation
-        (\Cref{ch:dactrung}).
-  \item Đo dung lượng thưa trên mọi cell và cập nhật ước lượng khi cell mới được đo vài lần (\Cref{sec:mo_rong}).
-  \item Dự báo SOH, dung lượng và RUL với hai mô hình có đặc trưng lịch sử: HiGBDT và HiPINN, trung vị của HiGBDT,
-        PINN-dự báo và nhánh theo đời dựa trên đời còn lại dự đoán; thang đời, bộ chuẩn hoá và mọi lựa chọn chỉ dựa
-        vào cell train và validation (\Cref{sec:e33pp}).
-  \item Mã nguồn chạy được từ dữ liệu tới báo cáo bằng một lệnh, kiểm tra tái lập từng bit (\Cref{app:source-code}).
-\end{itemize}
+Đóng góp đầu tiên của đồ án là giao thức đánh giá không rò rỉ cùng kiểm toán định lượng tác động của bốn dạng rò rỉ
+(\Cref{sec:protocol,sec:leakres}). Trong giao thức đó, đồ án đề xuất PINN bán giám sát với động học suy giảm dạng xám
+luôn không âm và mô hình kết hợp PINN-lai (\Cref{sec:pinn,sec:pinnlai}), đánh giá chúng ở bốn mức nhãn với chín mô hình
+đối chứng, và so với PINN4SOH trên đúng 39 nhóm đánh giá của bài, cùng cách chia và cách tính sai số
+(\Cref{ch:sosanh}). Đầu vào của các mô hình được phân tích bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên
+validation (\Cref{ch:dactrung}).
+
+Ở phần mở rộng, đồ án xét việc đo dung lượng thưa trên mọi cell và cập nhật ước lượng khi cell mới được đo vài lần
+(\Cref{sec:mo_rong}), rồi thiết kế hai mô hình dự báo SOH, dung lượng và RUL có đặc trưng lịch sử SOH đo: HiGBDT, và
+HiPINN lấy trung vị của HiGBDT, PINN-dự báo và một nhánh dựa trên đời còn lại dự đoán; thang đời, bộ chuẩn hoá và mọi
+lựa chọn chỉ dựa vào cell train và validation (\Cref{sec:e33pp}). Toàn bộ mã nguồn chạy được từ dữ liệu tới báo cáo bằng
+một lệnh và đã được kiểm tra tái lập từng bit (\Cref{app:source-code}).
 
 \section{Cấu trúc báo cáo}
 

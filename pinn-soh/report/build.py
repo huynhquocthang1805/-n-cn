@@ -769,16 +769,14 @@ def features_parts(F, L_leak):
     text_drop = text_drop + '\n\n' + tab_drop
     # ---------------- kết luận về đầu vào
     concl = (
-        r'\begin{enumerate}' '\n'
-        r'\item Dùng đủ 16 đặc trưng đoạn sạc và $t = n/1000$: cả 17 tính được ở mọi chu kỳ từ dữ liệu sạc; '
-        f'{len(always_hurt)} trên {len(reduced)} tập rút gọn kém hơn có ý nghĩa ở ít nhất một trường hợp, không tập nào '
-        f'tốt hơn ở mọi bộ, và chọn bớt đặc trưng trên validation cho tỉ số {rng(r_("prune"))}.' '\n'
-        r'\item Không chuẩn hoá theo cả vòng đời cell, không lọc ngoại lai bằng tương lai của cell, không fit normaliser trên '
-        r'cell test: đây là rò rỉ, và tác động của chúng lên sai số lên tới ' + L_leak['minmax_rng'] + r' lần tuỳ bộ.' '\n'
-        r'\item Không dùng đặc trưng tương đối (tác động trái chiều giữa các bộ); đặc trưng có lịch sử chỉ dùng khi '
-        r'validation chọn; nhiệt độ chỉ đi vào thừa số Arrhenius (thêm vào đầu vào thay đổi sai số dưới 1\,\%); không '
-        r'dùng thông tin của lần xả khi ước lượng.' '\n'
-        r'\end{enumerate}')
+        r'Từ các kết quả trên, đồ án dùng đủ 16 đặc trưng đoạn sạc và $t = n/1000$: cả 17 tính được ở mọi chu kỳ từ dữ liệu '
+        f'sạc, {len(always_hurt)} trên {len(reduced)} tập rút gọn kém hơn có ý nghĩa ở ít nhất một trường hợp, không tập '
+        f'nào tốt hơn ở mọi bộ, và chọn bớt đặc trưng trên validation cho tỉ số {rng(r_("prune"))}. Đồ án không chuẩn hoá '
+        r'theo cả vòng đời cell, không lọc ngoại lai bằng tương lai của cell và không fit normaliser trên cell test, vì đây '
+        r'là rò rỉ và tác động của chúng lên sai số lên tới ' + L_leak['minmax_rng'] + r' lần tuỳ bộ. Đặc trưng tương '
+        r'đối không được dùng vì tác động trái chiều giữa các bộ; đặc trưng có lịch sử chỉ dùng khi validation chọn; nhiệt '
+        r'độ chỉ đi vào thừa số Arrhenius, vì thêm vào đầu vào chỉ thay đổi sai số dưới 1\,\%; thông tin của lần xả không '
+        r'được dùng khi ước lượng.')
     return text_rel + '\n\n' + tab_rel, text_abl + '\n\n' + tab_abl, text_drop, concl
 
 
@@ -911,10 +909,10 @@ def compare_chapter(S, T, B, L_leak, E33=None):
                         + pct_rng(E33['cov_rul']) + r'; tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật là '
                         + pct_rng(E33['in20']) + r'. Ở 10\,\% đời cuối của ' + E33['worst']
                         + r', MAE của HiPINN vẫn là ' + v(E33['tail_h'], 1) + r' ($\times10^{-3}$).')
-    item = lambda xs: '\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in xs) + '\n\\end{enumerate}'
-    s.append(r'\subsection{Các chỉ số tốt hơn các bài báo đã công bố}' '\n' + item(good))
-    s.append(r'\subsection{Các chỉ số chưa tốt}' '\n' r'\paragraph{So với các bài báo đã công bố.}' '\n' + item(bad) + '\n'
-             r'\paragraph{Các chỉ số của chính đồ án chưa đạt.}' '\n' + item(internal))
+    para = lambda xs: ' '.join(xs)
+    s.append(r'\subsection{Các chỉ số tốt hơn các bài báo đã công bố}' '\n' + para(good))
+    s.append(r'\subsection{Các chỉ số chưa tốt}' '\n' r'\paragraph{So với các bài báo đã công bố.} ' + para(bad) + '\n\n'
+             r'\paragraph{Các chỉ số của chính đồ án chưa đạt.} ' + para(internal))
     s.append(r'\subsection{Nhận xét}' '\n'
              r'Trên đúng cách chia của PINN4SOH và cùng cách tính sai số, PINN-lai của đồ án có sai số thấp hơn số công bố ở '
              r'phần lớn các chế độ và thấp hơn mã gốc chạy lại ở mọi chế độ. Tuy vậy, trong điều kiện có rò rỉ của bài, một '
@@ -975,7 +973,7 @@ def reproducibility(B):
     os.makedirs(DATA, exist_ok=True)
     json.dump(rec, open(path, 'w'), ensure_ascii=False, indent=1)
     s = [r'Mọi lượt chạy dùng một luồng và hạt giống cố định, nên trên cùng loại CPU và cùng phiên bản thư viện, chạy lại '
-         r'phải cho dự đoán trùng từng bit. Các kiểm tra đã làm:']
+         r'phải cho dự đoán trùng từng bit; các kiểm tra dưới đây xác nhận điều đó.']
     items = []
     if 'sample' in rec:
         items.append(f'Hai mươi lượt mẫu phủ mọi loại thí nghiệm chính (MLP, PINN-semi, PINN-sup, PINN hộp đen, Ridge, GPR, '
@@ -1001,7 +999,7 @@ def reproducibility(B):
     items.append(f'So với PINN4SOH trên đúng dữ liệu train của bài: một đại lượng ghi theo từng epoch trong nhật ký huấn '
                  f'luyện công bố của bài, tính lại trên các hàng train dựng lại ở đây, khớp ở cả {B["n_eq"]} nhóm; sai số '
                  'khi chạy lại mã gốc không trùng số công bố vì khác phần cứng và phiên bản thư viện.')
-    s.append('\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}')
+    s.append(' '.join(items))
     s.append('Khác CPU (ví dụ AVX-512 so với AVX2) hoặc khác phiên bản PyTorch có thể làm kết quả lệch ở mức làm tròn số '
              'thực; khi đó các kết luận không đổi nhưng chữ số cuối trong bảng có thể khác.')
     write('doan_tai_lap.tex', '\n\n'.join(s))
@@ -1010,28 +1008,24 @@ def reproducibility(B):
 
 # --------------------------------------------------------------------------- kết luận và tóm tắt
 def conclusion(B, L_leak, C6, F_ok, n_total, E33=None):
-    items = [
-        r'Xây dựng đường ống dữ liệu cho bốn bộ dữ liệu công khai (387 cell, 305.802 chu kỳ sau lọc) với bộ lọc ngoại lai '
-        r'nhân quả, và kiểm tra bằng số liệu vì sao dùng 16 đặc trưng sạc cùng chỉ số chu kỳ, vì sao bỏ các cách biến đổi '
-        r'khác (Mục~\ref{ch:dactrung}).',
-        rf'Thiết kế giao thức đánh giá không rò rỉ và đo tác động của các dạng rò rỉ: chia theo chu kỳ làm sai số thấp đi '
-        rf'{L_leak["row"]} lần, chuẩn hoá theo cả vòng đời cell làm sai số đổi {L_leak["minmax_rng"]} lần tuỳ bộ.',
-        r'Đề xuất PINN bán giám sát với động học xám luôn không âm: ở 10\,\% nhãn sai số bằng 0{,}39--0{,}90 lần MLP, tiết '
-        r'kiệm 1{,}7--4{,}5 lần số nhãn; và mô hình kết hợp PINN-lai: 0{,}67--0{,}95 lần PINN-semi, thấp hơn GBDT ở 10/16 '
-        r'trường hợp.',
-        r'So sánh có kiểm định với chín mô hình đối chứng, gồm bốn mô hình học sâu của đề cương (MLP, CNN, LSTM, '
-        r'Transformer), bằng MAE, RMSE, MAPE và $R^2$.',
-        rf'So với PINN4SOH trên đúng {B["n_groups"]} nhóm đánh giá của bài, cùng tiền xử lý: PINN-lai thấp hơn số công bố '
-        rf'ở {len(B["beat_pub"])}/12 chế độ và thấp hơn mã gốc của bài chạy lại ở {B["beat_rerun"]}/12.',
-        r'Đặt lại bài toán ít nhãn theo số lần đo dung lượng: đo thưa mọi cell với 1{,}2--6{,}0\,\% số chu kỳ cho sai số bằng '
-        r'0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell; mở rộng sang dự báo SOH, dung lượng còn lại và RUL.',
-        *([e33_item(E33)] if E33 else []),
-        rf'Tổ chức lại mã nguồn thành các khối dữ liệu, mô hình, thí nghiệm, phân tích, so sánh với PINN4SOH, bản thảo bài '
-        rf'báo và báo cáo; {thou(n_total)} lượt huấn luyện có kết quả trong báo cáo, mọi bảng sinh tự động từ kết quả, chạy '
-        r'lại cho kết quả trùng từng bit (Mục~\ref{sec:tailap}).',
-    ]
-    write('doan_ket_luan.tex', '\\begin{enumerate}\n' + '\n'.join(r'\item ' + x for x in items) + '\n\\end{enumerate}'
-          + '\n\n' + final_table(B, C6, E33))
+    p1 = (r'Đồ án đã xây dựng đường ống dữ liệu cho bốn bộ dữ liệu công khai (387 cell, 305.802 chu kỳ sau lọc) với bộ lọc '
+          r'ngoại lai nhân quả, và kiểm tra bằng số liệu vì sao dùng 16 đặc trưng sạc cùng chỉ số chu kỳ, vì sao bỏ các cách '
+          r'biến đổi khác (Mục~\ref{ch:dactrung}). Giao thức đánh giá không rò rỉ cho thấy rò rỉ làm lệch kết quả đáng kể: '
+          rf'chia theo chu kỳ làm sai số thấp đi {L_leak["row"]} lần, còn chuẩn hoá theo cả vòng đời cell làm sai số đổi '
+          rf'{L_leak["minmax_rng"]} lần tuỳ bộ. Trong giao thức đó, PINN bán giám sát với động học xám luôn không âm có sai '
+          r'số bằng 0{,}39--0{,}90 lần MLP ở 10\,\% nhãn, tức tiết kiệm 1{,}7--4{,}5 lần số nhãn, và mô hình kết hợp PINN-lai '
+          r'có sai số bằng 0{,}67--0{,}95 lần PINN-semi, thấp hơn GBDT ở 10/16 trường hợp. Các phép so đều được kiểm định '
+          r'thống kê, với chín mô hình đối chứng, trong đó có bốn mô hình học sâu của đề cương (MLP, CNN, LSTM, '
+          r'Transformer), và bốn độ đo MAE, RMSE, MAPE, $R^2$. So với PINN4SOH trên đúng '
+          rf'{B["n_groups"]} nhóm đánh giá của bài và cùng tiền xử lý, PINN-lai thấp hơn số công bố ở '
+          rf'{len(B["beat_pub"])}/12 chế độ và thấp hơn mã gốc của bài chạy lại ở {B["beat_rerun"]}/12.')
+    p2 = (r'Ở phần mở rộng, đồ án đặt lại bài toán ít nhãn theo số lần đo dung lượng: đo thưa mọi cell với '
+          r'1{,}2--6{,}0\,\% số chu kỳ cho sai số bằng 0{,}85--0{,}93 lần gắn nhãn đầy đủ cho 30\,\% số cell. '
+          + (e33_item(E33) if E33 else ''))
+    p3 = (rf'Mã nguồn được tổ chức thành các khối dữ liệu, mô hình, thí nghiệm, phân tích, so sánh với PINN4SOH, bản thảo '
+          rf'bài báo và báo cáo; {thou(n_total)} lượt huấn luyện có kết quả trong báo cáo, mọi bảng sinh tự động từ kết quả '
+          r'và chạy lại cho kết quả trùng từng bit (Mục~\ref{sec:tailap}).')
+    write('doan_ket_luan.tex', p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + final_table(B, C6, E33))
     tomtat = (
         r'Đồ án ước lượng trạng thái sức khoẻ (SOH) của cell lithium-ion từ 16 đặc trưng đoạn sạc khi chỉ một phần nhỏ cell '
         r'được đo dung lượng, trên bốn bộ dữ liệu công khai (387 cell). Phân tích đặc trưng bằng tương quan hạng, bỏ từng '
@@ -1110,17 +1104,17 @@ def final_table(B, C6, E33=None):
 
 
 def e33_item(E):
-    """Một ý của phần kết luận về E33."""
-    t = (r'Đưa lịch sử của cell vào dự báo với hai mô hình: HiGBDT (GBDT có đặc trưng lịch sử SOH) và HiPINN, trung vị '
-         r'của HiGBDT, PINN-dự báo và nhánh theo đời (\Cref{sec:e33pp,sec:e33res}). HiPINN có MAE thấp nhất trong tám mô hình ở '
-         f'{E["best_n"]}/{E["n_all"]} trường hợp, bằng {rng(E["r_hl"])} lần HiGBDT ở ba thiết lập và '
-         f'{rng(E["r_hk"])} lần PINN-GBDT khi có lịch sử đo. Đặc trưng lịch sử giúp GBDT ở mọi trường hợp '
-         f'({rng(E["r_g"])} lần) '
+    """Đoạn kết luận về bài toán dự báo (HiGBDT, HiPINN)."""
+    t = (r'Với bài toán dự báo, đồ án thiết kế hai mô hình dùng lịch sử SOH đo của cell: HiGBDT, một GBDT có đặc trưng '
+         r'lịch sử SOH, và HiPINN, trung vị của HiGBDT, PINN-dự báo và nhánh theo đời (\Cref{sec:e33pp,sec:e33res}). '
+         f'HiPINN có MAE thấp nhất trong tám mô hình ở {E["best_n"]}/{E["n_all"]} trường hợp, bằng {rng(E["r_hl"])} lần '
+         f'HiGBDT và {rng(E["r_hk"])} lần PINN-GBDT, mô hình dự báo không có đặc trưng lịch sử. Đặc trưng lịch sử giúp '
+         f'GBDT ở mọi trường hợp ({rng(E["r_g"])} lần) '
          + (f'nhưng giúp PINN-dự báo không đều ({rng(E["r_p"])} lần).' if max(E['r_p']) >= 1 else
             f'và cũng giúp PINN-dự báo ({rng(E["r_p"])} lần).'))
     if E['mit_h'] < E['mit_k']:
-        t += (f' Ở 10\\,\\% đời cuối của MIT, MAE giảm từ {v(E["mit_k"], 1)} (PINN-GBDT) xuống '
-              f'{v(E["mit_h"], 1)} ($\\times10^{{-3}}$).')
+        t += (f' Ở 10\\,\\% đời cuối của MIT, MAE giảm từ {v(E["mit_k"], 1)} với PINN-GBDT xuống {v(E["mit_h"], 1)} với '
+              f'HiPINN ($\\times10^{{-3}}$).')
     return t
 
 

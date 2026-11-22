@@ -166,23 +166,20 @@ dùng để kiểm tra thêm~\cite{dietterich1998}.
 
 \subsection{Mô hình PINN4SOH của bài gốc}\label{sec:lt_pinn4soh}
 
-PINN4SOH~\cite{wang2024} là công trình gần nhất với đồ án: cùng bốn bộ dữ liệu, cùng 16 đặc trưng. Theo mã nguồn công bố:
-\begin{itemize}
-\item Mạng nghiệm $u = F(\mathbf{x}, t)$ nhận 16 đặc trưng và chỉ số chu kỳ, gồm một mạng mã hoá 17--60--60--32 với hàm
-      kích hoạt sin và một đầu ra 32--32--1.
-\item Mạng động học $G$ nhận $(\mathbf{x}, t, u, u_\mathbf{x}, u_t)$, 35 đầu vào, ba lớp 60 nút; phần dư là
-      $f = u_t - G$.
-\item Mỗi mẫu huấn luyện là một cặp chu kỳ liền nhau $(1, 2)$ của cùng cell. Hàm mất mát
-      $\mathcal{L} = \mathcal{L}_\text{data} + \alpha\,\mathcal{L}_\text{PDE} + \beta\,\mathcal{L}_\text{mono}$, với
-      $\mathcal{L}_\text{data}$ là sai số bình phương trên hai chu kỳ, $\mathcal{L}_\text{PDE}$ là trung bình $f^2$, và
-      $\mathcal{L}_\text{mono}$ phạt SOH tăng giữa hai chu kỳ.
-\item Tiền xử lý: lọc ngoại lai $3\sigma$ theo trung bình và độ lệch chuẩn của cả vòng đời cell, trên mọi cột kể cả
-      dung lượng và chỉ số chu kỳ; chuẩn hoá min--max về $[-1, 1]$ 16 đặc trưng và chỉ số chu kỳ theo cả vòng đời của
-      từng cell, kể cả cell test. Validation là 20\,\% số hàng chọn ngẫu nhiên của các cell huấn luyện.
-\item Đánh giá: XJTU và TJU học một mô hình cho mỗi nhóm điều kiện (batch), MIT và HUST một mô hình cho cả bộ với một tập
-      cell test cố định; thêm thí nghiệm ít mẫu chỉ có $K = 1, \dots, 4$ cell có nhãn. Sai số là MAE từng cell test, lấy
-      trung bình qua cell, qua 10 lần chạy và qua các nhóm.
-\end{itemize}
+PINN4SOH~\cite{wang2024} là công trình gần nhất với đồ án: cùng bốn bộ dữ liệu, cùng 16 đặc trưng. Theo mã nguồn công
+bố, mạng nghiệm $u = F(\mathbf{x}, t)$ nhận 16 đặc trưng và chỉ số chu kỳ, gồm một mạng mã hoá 17--60--60--32 với hàm
+kích hoạt sin và một đầu ra 32--32--1; mạng động học $G$ nhận $(\mathbf{x}, t, u, u_\mathbf{x}, u_t)$, tức 35 đầu vào,
+qua ba lớp 60 nút, và phần dư là $f = u_t - G$. Mỗi mẫu huấn luyện là một cặp chu kỳ liền nhau của cùng cell, với hàm
+mất mát $\mathcal{L} = \mathcal{L}_\text{data} + \alpha\,\mathcal{L}_\text{PDE} + \beta\,\mathcal{L}_\text{mono}$,
+trong đó $\mathcal{L}_\text{data}$ là sai số bình phương trên hai chu kỳ, $\mathcal{L}_\text{PDE}$ là trung bình $f^2$
+và $\mathcal{L}_\text{mono}$ phạt SOH tăng giữa hai chu kỳ.
+
+Về tiền xử lý, bài lọc ngoại lai $3\sigma$ theo trung bình và độ lệch chuẩn của cả vòng đời cell, trên mọi cột kể cả
+dung lượng và chỉ số chu kỳ, rồi chuẩn hoá min--max về $[-1, 1]$ 16 đặc trưng và chỉ số chu kỳ theo cả vòng đời của từng
+cell, kể cả cell test; validation là 20\,\% số hàng chọn ngẫu nhiên của các cell huấn luyện. Về đánh giá, XJTU và TJU
+học một mô hình cho mỗi nhóm điều kiện (batch), MIT và HUST một mô hình cho cả bộ với một tập cell test cố định; bài
+còn có thí nghiệm ít mẫu chỉ với $K = 1, \dots, 4$ cell có nhãn. Sai số là MAE từng cell test, lấy trung bình qua cell,
+qua 10 lần chạy và qua các nhóm.
 
 
 \subsection{Dự báo suy giảm và tuổi thọ còn lại}
