@@ -3,31 +3,26 @@
 
 \section{Yêu cầu hệ thống}\label{sec:yeucau}
 
-\paragraph{Yêu cầu chức năng.}
-\begin{enumerate}
-\item Đọc bốn bộ dữ liệu, lọc ngoại lai nhân quả, chuẩn hoá, chia theo cell; có bộ nhớ đệm để không đọc lại dữ liệu.
-\item Định nghĩa mỗi thí nghiệm thành một danh sách lượt chạy; chạy song song, chạy tiếp được sau khi dừng.
-\item Phân tích kết quả: chỉ số theo cell, kiểm định ghép cặp, bảng và hình.
-\item Sinh báo cáo này và bản thảo bài báo trực tiếp từ kết quả phân tích.
-\item Công cụ dòng lệnh ước lượng và dự báo SOH cho một cell từ tệp dữ liệu sạc.
-\end{enumerate}
+Về chức năng, hệ thống phải đọc được bốn bộ dữ liệu, lọc ngoại lai nhân quả, chuẩn hoá và chia dữ liệu theo cell, với bộ
+nhớ đệm để không phải đọc lại dữ liệu mỗi lần chạy. Mỗi thí nghiệm được định nghĩa thành một danh sách lượt huấn luyện,
+chạy song song và chạy tiếp được sau khi dừng giữa chừng. Khối phân tích tính chỉ số theo cell, chạy kiểm định ghép cặp
+và vẽ bảng, hình. Báo cáo này và bản thảo bài báo được sinh trực tiếp từ kết quả phân tích. Cuối cùng, hệ thống có một
+công cụ dòng lệnh để ước lượng, dự báo và cập nhật SOH cho một cell từ tệp dữ liệu sạc của nó.
 
-\paragraph{Yêu cầu phi chức năng.}
-\begin{enumerate}
-\item Không rò rỉ: bốn quy tắc ở \Cref{sec:protocol} được áp dụng trong mã, không phụ thuộc người chạy.
-\item Tái lập: cùng phiên bản thư viện và cùng loại CPU thì chạy lại cho kết quả trùng từng bit.
-\item Chạy được trên máy tính cá nhân, không cần GPU.
-\item Truy vết được: mỗi lượt chạy ghi đủ cấu hình, chỉ số và dự đoán vào một tệp riêng.
-\end{enumerate}
+Về phi chức năng, có bốn yêu cầu. Bốn quy tắc chống rò rỉ ở \Cref{sec:protocol} phải được cài sẵn trong mã, không phụ
+thuộc người chạy. Kết quả phải tái lập được: cùng phiên bản thư viện và cùng loại CPU thì chạy lại cho kết quả giống hệt.
+Toàn bộ phải chạy được trên máy tính cá nhân, không cần GPU. Mỗi lượt chạy phải ghi đủ cấu hình, chỉ số và dự đoán vào
+một tệp riêng để truy vết được.
 
 \section{Kiến trúc hệ thống}\label{sec:kientruc}
 
-Hệ thống được hiện thực bằng Python thành một đường ống năm bước: dữ liệu, tiền xử lý, thí nghiệm,
-phân tích và báo cáo (Hình~\ref{fig:pipeline}), chạy được từ dữ liệu tới báo cáo bằng một lệnh. Mỗi lượt huấn luyện là một tệp kết quả độc lập ghi đủ cấu hình, chỉ số, dự đoán validation và test;
-bộ lập lịch chạy song song nhiều tiến trình một luồng, bỏ qua lượt đã có kết quả nên chạy tiếp được sau khi dừng. Khối
-phân tích chỉ đọc các tệp kết quả, không huấn luyện lại. Báo cáo này và bản thảo bài báo được sinh từ kết quả phân tích,
-nên mọi bảng đều khớp với dữ liệu. Mọi lượt chạy trên CPU với một luồng và hạt giống cố định, nên chạy lại cho kết quả
-trùng từng bit (Mục~\ref{sec:tailap}). Bảng~\ref{tab:exps} liệt kê các thí nghiệm.
+Hệ thống được hiện thực bằng Python thành một đường ống năm bước: dữ liệu, tiền xử lý, thí nghiệm, phân tích và báo cáo
+(Hình~\ref{fig:pipeline}). Toàn bộ đường ống chạy được từ dữ liệu tới báo cáo bằng một lệnh. Mỗi lượt huấn luyện là một
+tệp kết quả độc lập, ghi đủ cấu hình, chỉ số, dự đoán trên tập xác thực và tập kiểm tra. Bộ lập lịch chạy song song nhiều
+tiến trình một luồng và bỏ qua lượt đã có kết quả, nên chạy tiếp được sau khi dừng. Khối phân tích chỉ đọc các tệp kết
+quả, không huấn luyện lại. Báo cáo này và bản thảo bài báo được sinh từ kết quả phân tích, nên mọi bảng đều khớp với dữ
+liệu. Mọi lượt chạy trên CPU với một luồng và hạt giống cố định, nên chạy lại cho kết quả giống hệt
+(Mục~\ref{sec:tailap}).
 
 \begin{figure}[!htbp]\centering
 \includegraphics[width=\textwidth]{graphics/fig_quy_trinh.png}
@@ -37,24 +32,89 @@ dành 70\,\% số cell để huấn luyện (học tham số và thống kê chu
 kiểm tra (chấm trên cell mới).}\label{fig:pipeline}
 \end{figure}
 
+\Cref{fig:modules} cho các khối mã nguồn và luồng dữ liệu giữa chúng. Thư viện lõi chứa mọi thứ cần để học và dự đoán:
+đọc dữ liệu và chia theo cell, các mô hình ước lượng, các mô hình đối chứng, mô hình cập nhật và mô hình dự báo, cùng định
+nghĩa thí nghiệm và bộ chạy song song. Kết quả mỗi lượt được ghi vào thư mục kết quả lượt chạy. Khối phân tích đọc thư mục
+này, tính chỉ số theo cell và kiểm định, rồi ghi bảng và hình. Khối báo cáo đọc các bảng đó để sinh các đoạn văn có số,
+các bảng \LaTeX{} và dựng PDF. Công cụ dòng lệnh dùng lại đúng các mô hình của thư viện lõi, còn khối so sánh chạy lại mã
+gốc PINN4SOH trên cách chia của bài. Bảng~\ref{tab:exps} liệt kê các thí nghiệm có kết quả trong báo cáo.
+
+\begin{figure}[!htbp]\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw=black!55, rounded corners=2pt, fill=black!4, align=left, inner sep=4pt, text width=#1},
+  box/.default=4.6cm,
+  lib/.style={box=4.6cm, fill=blue!5, draw=blue!45!black},
+  arr/.style={-{Stealth[length=2mm]}, draw=black!65, line width=0.6pt},
+  node distance=3mm and 6mm]
+\node[box=3.3cm] (data) {\textbf{Dữ liệu}\\ \texttt{PINN4SOH/data}: 16 đặc trưng sạc và dung lượng của 387 cell};
+\node[lib, right=8mm of data, yshift=24mm] (d) {\texttt{data.py}: đọc, lọc ngoại lai nhân quả, chuẩn hoá, chia fold theo cell, đặc trưng lịch sử};
+\node[lib, below=of d] (m) {\texttt{models.py}, \texttt{train.py}: PINN-semi, MLP, PINN hộp đen; huấn luyện, dừng sớm};
+\node[lib, below=of m] (b) {\texttt{baselines.py}, \texttt{seqmodels.py}: Ridge, GPR, GBDT, CNN, LSTM, Transformer};
+\node[lib, below=of b] (u) {\texttt{update.py}, \texttt{update\_hist.py}: GBDT-cập nhật, HiGBDT-$\Delta$, -R, -V};
+\node[lib, below=of u] (f) {\texttt{forecast*.py}, \texttt{hipinn.py}: HiGBDT, PINN-dự báo, nhánh theo đời, HiPINN};
+\node[lib, below=of f] (e) {\texttt{experiments.py}, \texttt{runner.py}: định nghĩa lượt chạy, chạy song song, chạy tiếp};
+\begin{scope}[on background layer]
+\node[draw=blue!45!black, dashed, rounded corners=3pt, inner sep=3pt, fit=(d)(e),
+      label={[font=\footnotesize\bfseries, anchor=south]north:thư viện lõi \texttt{pinnsoh/}}] (core) {};
+\end{scope}
+\node[box=3.6cm, right=8mm of m] (runs) {\textbf{Kết quả lượt chạy}\\ \texttt{runs/}: một tệp JSON hoặc NPZ mỗi lượt (cấu hình, chỉ số, dự đoán)};
+\node[box=3.6cm, below=5mm of runs] (an) {\textbf{Phân tích}\\ \texttt{analysis/}: MAE theo cell, kiểm định Wilcoxon--Holm, bảng CSV, hình};
+\node[box=3.6cm, below=5mm of an] (rep) {\textbf{Báo cáo}\\ \texttt{report/build.py}: đoạn văn có số, bảng \LaTeX, PDF};
+\node[box=3.6cm, below=5mm of rep] (tool) {\textbf{Công cụ dòng lệnh}\\ \texttt{tools/demo.py}: \texttt{train}, \texttt{predict}, \texttt{forecast}, \texttt{cap-nhat}};
+\node[box=3.3cm, below=6mm of data] (run) {\textbf{Điều phối}\\ \texttt{run.py}: một lệnh cho mọi bước};
+\node[box=3.3cm, below=4mm of run] (bench) {\textbf{So sánh}\\ \texttt{benchmark/}: mã gốc PINN4SOH trên cách chia của bài};
+\draw[arr] (data.east) -- (core.west |- data.east);
+\draw[arr] (core.east |- runs.west) -- (runs.west);
+\draw[arr] (runs) -- (an);
+\draw[arr] (an) -- (rep);
+\draw[arr] (core.east |- tool.west) -- (tool.west);
+\draw[arr] (run.east) -- (core.west |- run.east);
+\draw[arr] (bench.east) -- (core.west |- bench.east);
+\end{tikzpicture}
+\caption[Các khối mã nguồn và luồng dữ liệu]{Các khối mã nguồn và luồng dữ liệu. Thư viện lõi chứa mọi mô hình và bộ
+chạy thí nghiệm; mỗi lượt chạy ghi một tệp kết quả; khối phân tích chỉ đọc các tệp này; khối báo cáo sinh bảng và lời văn
+có số từ kết quả phân tích; công cụ dòng lệnh dùng lại các mô hình của thư viện lõi.}\label{fig:modules}
+\end{figure}
+
 \input{generated/bang_thi_nghiem}
 
 \section{Hiện thực}\label{sec:hienthuc}
 
-Hệ thống viết bằng Python 3.11 với PyTorch 2.14 (mạng nơ-ron), scikit-learn 1.9 (Ridge, GPR, GBDT), NumPy, pandas, SciPy
-(kiểm định) và Matplotlib (hình); báo cáo dựng bằng \LaTeX. Mã nguồn chia thành các khối:
-\begin{itemize}
-\item \texttt{pinnsoh/}: thư viện: đọc dữ liệu và chia theo cell, mô hình và hàm mất mát, huấn luyện, mô hình đối chứng,
-      mô hình chuỗi, dự báo, cập nhật, định nghĩa thí nghiệm và bộ chạy song song.
-\item \texttt{analysis/}: một script phân tích cho mỗi thí nghiệm, đọc tệp kết quả và ghi bảng, hình.
-\item \texttt{benchmark/}: so sánh với PINN4SOH trên đúng cách chia của bài.
-\item \texttt{report/}, \texttt{paper/}: dựng báo cáo và bản thảo bài báo từ kết quả.
-\item \texttt{tools/}: tải dữ liệu, kiểm tra tái lập, công cụ minh hoạ.
-\end{itemize}
-Lệnh \texttt{python run.py} gọi mọi bước: tải dữ liệu, chạy một hoặc mọi thí nghiệm, phân tích, dựng báo cáo, kiểm tra tái
-lập. Để chạy hơn mười nghìn lượt huấn luyện trên CPU mà không đổi kết quả, hệ thống dùng: bộ nhớ đệm dữ liệu đã lọc
-(nạp bốn bộ dữ liệu từ 10,8\,s còn 0,02\,s), tensor dựng một lần cho cả lượt, dừng sớm chỉ tính MAE validation, các lượt
-dài chạy trước và mỗi tiến trình một luồng, ghi kết quả nguyên tử để dừng giữa chừng không để lại tệp dở. Hình và PDF
-không ghi thời điểm tạo, nên dựng lại từ cùng dữ liệu cho tệp giống từng byte.
+Hệ thống viết bằng Python 3.11 với PyTorch 2.14 cho mạng nơ-ron, scikit-learn 1.9 cho Ridge, GPR và GBDT, cùng NumPy,
+pandas, SciPy (kiểm định) và Matplotlib (hình). Báo cáo dựng bằng \LaTeX. Lệnh \texttt{python run.py} gọi mọi bước: tải dữ
+liệu, chạy một hoặc mọi thí nghiệm, phân tích, dựng báo cáo và kiểm tra tái lập. Để chạy hơn mười nghìn lượt huấn luyện
+trên CPU mà không đổi kết quả, hệ thống dùng năm kỹ thuật. Dữ liệu đã lọc được lưu vào bộ nhớ đệm, nên thời gian nạp bốn
+bộ dữ liệu giảm từ 10,8\,s còn 0,02\,s. Tensor được dựng một lần cho cả lượt chạy. Việc dừng sớm chỉ tính MAE trên tập xác
+thực. Các lượt dài được chạy trước và mỗi tiến trình dùng một luồng. Kết quả được ghi ra một tệp tạm rồi mới đổi tên thành
+tệp chính thức, nên dừng giữa chừng không để lại tệp dở. Hình và PDF không ghi thời điểm tạo, nên dựng lại từ cùng dữ liệu
+cho tệp giống hệt.
 
 \input{generated/doan_cong_cu}
+
+Bảng~\ref{tab:cli} cho cú pháp các lệnh của công cụ. Tệp đầu vào là một tệp CSV với mỗi hàng là một chu kỳ, gồm 16 cột
+đặc trưng sạc theo đúng tên trong bản dữ liệu của PINN4SOH và, nếu có, một cột \texttt{capacity} chứa dung lượng đo (Ah).
+Mỗi lệnh ghi kết quả vào thư mục \texttt{demo/} dưới dạng một tệp CSV và một hình.
+
+\begin{table}[!htbp]\centering\small
+\caption[Cú pháp các lệnh của công cụ dòng lệnh]{Cú pháp các lệnh của công cụ dòng lệnh (\texttt{python tools/demo.py}
+\textit{lệnh} \textit{tham số}). Tham số trong ngoặc vuông là không bắt buộc.}\label{tab:cli}
+\begin{tabularx}{\textwidth}{>{\raggedright}p{6.4cm}>{\raggedright\arraybackslash}X}
+\toprule
+Lệnh và tham số & Chức năng \\
+\midrule
+\texttt{train --dataset XJTU} & học PINN-semi ở 30\,\% nhãn trên một fold của bộ dữ liệu, lưu \texttt{demo/XJTU.pt} \\
+\texttt{predict --model demo/XJTU.pt --csv} \textit{tệp} \texttt{[--nominal} \textit{Ah}\texttt{] [--temp} \textit{°C}\texttt{]
+[--an-nhan]} & ước lượng SOH ở từng chu kỳ; \texttt{--an-nhan} bỏ cột dung lượng để giả lập cell chưa đo \\
+\texttt{forecast --model demo/XJTU.pt --csv} \textit{tệp} \texttt{[--den-chu-ky} \textit{k}\texttt{]} & dự báo SOH, dung lượng
+và RUL bằng HiPINN từ chu kỳ gốc $k$ (mặc định chu kỳ cuối của tệp); cần dung lượng đo tới $k$ \\
+\texttt{cap-nhat --model demo/XJTU.pt --csv} \textit{tệp} \texttt{[--lich q20|q10|q05]} \texttt{[--do-chu-ky "1,60,120"]} &
+cập nhật SOH ở các chu kỳ không đo từ lần đo gần nhất bằng GBDT-cập nhật; lịch đo giả lập hoặc danh sách chu kỳ có đo \\
+\texttt{tat-ca} & áp dụng HiPINN cho một cell kiểm tra của mỗi bộ, hình $2 \times 2$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Chi phí tính toán khi triển khai}\label{sec:chiphi}
+
+\input{generated/doan_chi_phi}

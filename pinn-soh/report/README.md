@@ -45,13 +45,17 @@ Không số nào gõ tay vào bảng.
 | Phụ lục A: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27` so với `generated/data/e27_lan_dau.json` (kết quả của lần chạy E27 đầu tiên, lấy từ `benchmark/results` ở commit `e174340`); tóm tắt ở `generated/data/tai_lap.json` |
 | Chương 3, 5: dự báo SOH, dung lượng, RUL với HiGBDT và HiPINN (E33; báo cáo chỉ dùng lịch sử SOH đo) | `runs/E33`: `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`); sơ đồ `graphics/fig_hipinn_arch.pdf` từ `analysis/diagrams.py` |
 | Chương 5: HiGBDT cho bài toán cập nhật (E34) | `runs/E34`: `analysis/analyze_e34.py` (bảng `results/e34_*.csv`, bản sao ở `generated/data/`, hình `graphics/fig_e34_cost.pdf`) |
+| Chương 5: PINN-lai cố định, PINN-lai tinh chỉnh theo từng fold, HiPINN-lai (bảng MAE chính, RMSE và MAPE, bảng lịch sử, các đoạn văn về PINN-lai; bảng mô hình cuối ở Chương 6) | `runs/E20`, `runs/E29`: `analysis/analyze_e20_folds.py` (`results/e20f_*.csv`, bản sao ở `generated/data/`); cột GBDT và PINN-semi của bảng MAE chính được kiểm là trùng bảng của báo cáo đã nộp |
+| Chương 5: cập nhật bằng bộ lọc Kalman và GBDT-cập nhật, cột cuối của bảng ngân sách đo | `runs/E32`: `analysis/analyze_e32.py` (`results/e32_tiers.csv`, thang đời $L$ lấy trên cell huấn luyện của fold) |
+| Chương 3: ngưỡng cuối đời $\tau$; Chương 5: các dải song song ở hình dự báo XJTU; mục vai trò của phần vật lý | dữ liệu (`generated/data/tau.csv`, `xjtu_bands.json`), $\lambda$ và $E_a$ của mọi PINN-semi trong `runs/E20` (`generated/data/physics_params.csv`) |
+| Chương 4: chi phí tính toán | `analysis/compute_cost.py` (`results/compute_cost.csv`) |
 | Chương 5: các bảng còn lại | bảng của báo cáo đã nộp (`archive/thesis/do-an/main.tex`), đọc bằng `paper/thesis_tables.py` |
 
 Khi `runs/E33` đủ 120 lượt (hoặc `runs/E34` đủ 60 lượt), `build.py` tính lại bảng và vẽ lại các hình tương ứng; không có thì dùng bản đã lưu ở `generated/data/` và `graphics/`. Chỉ chạy lại phần dự báo: `python run.py E20` (E33 chỉ cần các lượt PINN-semi và GBDT ở 70 % nhãn, cho kịch bản lịch sử ước lượng), `python run.py E33`, `python run.py E34`.
 
 Mục dự báo E22 của báo cáo đã nộp không còn trong báo cáo: E33 thay nó trên cùng fold, với PINN-GBDT của E22 học lại làm mốc so sánh. Mã của E22 (`pinnsoh/forecast.py`, `analysis/analyze_e22.py`) vẫn giữ vì E33 dùng các khối của nó.
 
-Trừ mục dự báo (sinh từ E33), các con số trong lời văn của Chương 5 chép từ lời văn của
+Trừ mục dự báo (sinh từ E33) và các phần ở bảng trên, các con số trong lời văn của Chương 5 chép từ lời văn của
 báo cáo đã nộp; báo cáo đó sinh từ `results/` của lần chạy ở commit `2d66f75`, thư mục `runs/` của lần chạy đó không
 còn. Mọi phần nói tới bộ NASA đã bỏ; các khoảng số trong báo cáo đã nộp có gộp NASA (ví dụ đo cell mới một lần lúc nhận
 pin) không được dùng.

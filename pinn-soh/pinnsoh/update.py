@@ -6,7 +6,8 @@ hàng n là
 
     ŷ_n = y_m + f(z_n, z_n − z_m, y_m, (c_n − c_m)/L, độ dốc của hai lần đo gần nhất),
 
-với m là hàng được đo gần nhất trước n, z là đặc trưng đã chuẩn hoá, c là chỉ số chu kỳ, L là trung vị số chu kỳ của bộ
+với m là hàng được đo gần nhất trước n, z là đặc trưng đã chuẩn hoá, c là chỉ số chu kỳ, L là trung vị số chu kỳ của các
+cell huấn luyện của fold
 và f là GBDT học trên cell train có nhãn. Cặp (n, m) để học lấy theo đúng các lịch đo của phần đánh giá (đo ở chu kỳ
 đầu và sau mỗi qL chu kỳ, q = 0,2; 0,1; 0,05, với pha 0 và hai pha ngẫu nhiên; và đo mọi chu kỳ trước), một mô hình
 chung cho mọi lịch; số cây chọn theo MAE trên cặp của cell validation. Trên cell test, lịch đo có pha 0 nên hàng đánh
@@ -120,7 +121,7 @@ def _run(cells, tr_ids, va_ids, te_ids, norm_ids, seed, cfg, path):
     from .train import write_json
     t0 = time.time()
     by = {c.cid: c for c in cells}
-    L = life_scale(cells)                        # mọi cell, kể cả test (giữ để tái lập); G-doan tính trên cell train
+    L = life_scale([by[i] for i in norm_ids])    # chỉ cell huấn luyện của fold (có nhãn và không nhãn)
     norm = Normalizer('global').fit([by[i] for i in norm_ids])
     rng = np.random.default_rng(seed)
     F, t = train_set([by[i] for i in tr_ids], norm, L, rng)

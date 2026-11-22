@@ -7,24 +7,23 @@
 
 \section{Hạn chế}
 
-Hạn chế lớn nhất là một mô hình cây đơn giản (GBDT) vẫn là đối thủ khó nhất: PINN-semi đơn lẻ chưa vượt được nó khi có
-từ 30\,\% nhãn, và chỉ khi ghép với GBDT (PINN-lai) mới thấp hơn ở phần lớn trường hợp; ràng buộc vật lý chưa được đưa
-vào chính mô hình cây. Đồ án cũng không tái lập được chính xác số công bố của PINN4SOH vì không dựng lại được môi trường
+Hạn chế lớn nhất là một mô hình cây đơn giản (GBDT) vẫn là đối thủ khó nhất. PINN-semi đơn lẻ chưa vượt được nó khi có
+từ 30\,\% nhãn, và chỉ khi ghép với GBDT thành PINN-lai mới thấp hơn GBDT ở phần lớn trường hợp. Ràng buộc vật lý chưa
+được đưa vào chính mô hình cây. Phần vật lý cũng đóng góp chủ yếu qua tiên nghiệm đơn điệu và miền giá trị: các tham số
+hoá lý $\lambda, E_a$ không được dữ liệu xác định, và tốc độ $r$ của dạng đạo hàm riêng không phải tốc độ suy giảm thật
+của cell (\Cref{sec:vatly}). Đồ án không tái lập được chính xác số công bố của PINN4SOH vì không dựng lại được môi trường
 gốc (GPU, phiên bản thư viện), nên báo cáo nêu cả số công bố lẫn số chạy lại. Khoảng dự đoán 90\,\% chưa đạt độ phủ danh
-nghĩa; tham số vật lý $\lambda, E_a$ không được dữ liệu xác định, và tốc độ $r$ của dạng đạo hàm riêng không phải tốc độ
-suy giảm thật của cell.
+nghĩa ở mọi bộ.
 
-Một số lựa chọn được đưa ra sau khi đã có kết quả test (tinh chỉnh trọng số ghép, chọn có hay không lịch sử, nhánh theo
-đời và dạng trung vị của HiPINN) và chưa được kiểm chứng trên dữ liệu mới; PINN-lai và các thí nghiệm về sau dùng 3 thay
-vì 5 lần lặp. Một số thí nghiệm ước lượng còn dùng thông tin của cell test ở mức nhỏ: thí nghiệm ngân sách đo tính
-thang đời $L$ trên mọi cell, kể cả cell test, để đặt lịch đo; chuẩn hoá tương đối (biến thể có đặc trưng tương đối trong
-thí nghiệm lịch sử và trong phân tích đặc trưng) lấy trung bình 3 chu kỳ đầu làm mốc, nên ở 2 chu kỳ đầu của mỗi cell
-nhìn trước tối đa 2 chu kỳ; PINN-lai tinh chỉnh chọn trọng số ghép và cửa sổ lọc trên cell validation gộp qua mọi fold,
-nên cell test của một fold có thể nằm trong tập dùng để chọn hai tham số này. Mã của đồ án đã có cách chọn riêng cho từng
-fold, nhưng các số trong báo cáo vẫn theo cách gộp fold; phần dự báo (\Cref{sec:e33pp}) và phần cập nhật có lịch sử
-(\Cref{sec:anchor}) tính $L$ trên cell train. Cuối cùng, đồ án chưa xử lý dữ liệu thô của từng bộ nên chưa thử được các
-đặc trưng cần đường cong đầy đủ, và chưa có dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều cell ghép song
-song (giai đoạn 2 của đề cương).
+Một số lựa chọn được đưa ra sau khi đã có kết quả trên tập kiểm tra: bản tinh chỉnh của PINN-lai, việc thêm đặc trưng
+lịch sử trong HiPINN-lai, nhánh theo đời và dạng trung vị của HiPINN, và quy tắc chọn mô hình dự báo. Các kết quả này được
+ghi rõ là phân tích hậu kiểm và chưa được kiểm chứng trên dữ liệu mới. Các lựa chọn rời rạc ở giai đoạn phát triển (thành
+phần của PINN-lai, dạng đặc trưng lịch sử, độ dài cửa sổ của mô hình chuỗi) được chốt trên tập xác thực của lần lặp 0 gộp
+qua 5 fold. Mỗi cell vì vậy có thể đã góp vào các lựa chọn đó khi nó là cell xác thực ở một fold khác, dù các lựa chọn
+được chốt trước khi đọc dự đoán trên tập kiểm tra. Mọi tham số liên tục và mọi lựa chọn ở bước đánh giá đều làm riêng trong
+từng fold. PINN-lai và các thí nghiệm về sau dùng 3 thay vì 5 lần lặp. Cuối cùng, đồ án chưa xử lý dữ liệu thô của từng bộ
+nên chưa thử được các đặc trưng cần đường cong đầy đủ, và chưa có dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều
+cell ghép song song (giai đoạn 2 của đề cương).
 
 \section{Hướng phát triển}
 

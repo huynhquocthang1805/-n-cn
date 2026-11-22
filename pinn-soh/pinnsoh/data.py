@@ -347,7 +347,11 @@ class Normalizer:
         self.mu = None; self.sd = None
 
     def _rel(self, c: Cell) -> np.ndarray:
-        ref = c.X[:self.ref_cycles].mean(axis=0, keepdims=True)
+        """Đặc trưng tương đối so với trung bình các chu kỳ đầu của cell (tối đa ref_cycles chu kỳ). Mốc ở hàng n chỉ dùng
+        các hàng 0..min(n, ref_cycles − 1), nên ở các chu kỳ đầu mốc là trung bình những chu kỳ đã có, không nhìn trước."""
+        k = min(self.ref_cycles, len(c.X))
+        head = np.cumsum(c.X[:k], axis=0) / np.arange(1, k + 1)[:, None]
+        ref = np.vstack([head, np.repeat(head[-1:], len(c.X) - k, axis=0)])
         return (c.X - ref) / (np.abs(ref) + 1e-6)
 
     def _raw(self, c: Cell) -> np.ndarray:
@@ -357,7 +361,7 @@ class Normalizer:
             return causal_ema(c.X, float(self.mode[3:] or EMA_ALPHA))
         if self.mode == 'first_cycle':
             return self._rel(c)
-        if self.mode == 'both':                 # đặc trưng tuyệt đối + tương đối so với 3 chu kỳ đầu (E20)
+        if self.mode == 'both':                 # đặc trưng tuyệt đối + tương đối so với các chu kỳ đầu đã có (E20)
             return np.hstack([c.X, self._rel(c)])
         if self.mode == 'per_cell_minmax':      # PINN4SOH replica (leaky, audit only)
             mn, mx = c.X.min(0, keepdims=True), c.X.max(0, keepdims=True)

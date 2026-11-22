@@ -20,7 +20,8 @@ Demo: ước lượng SOH theo từng chu kỳ cho MỘT cell, chỉ từ 16 đ�
     python tools/demo.py tat-ca
 
     # 6) cập nhật: cell được đo dung lượng ở vài chu kỳ (giả lập lịch đo mỗi 0,1L, hoặc --do-chu-ky "1,60,120");
-    #    HiGBDT-V (E34) ước lượng SOH ở mọi chu kỳ còn lại, mỗi chu kỳ chỉ dùng các lần đo trước nó
+    #    GBDT-cập nhật ước lượng SOH ở mọi chu kỳ còn lại từ lần đo gần nhất trước nó (lịch đo thưa, như kết luận
+    #    của báo cáo); khi các lần đo dày tới mức coi như biết mọi lần đo trước, dùng HiGBDT-R
     python tools/demo.py cap-nhat --model demo/XJTU.pt --csv "..." --lich q10
 
 Mô hình chạy nhân quả: ước lượng ở chu kỳ N chỉ dùng đặc trưng của chu kỳ N và chỉ số N; bộ lọc
@@ -304,8 +305,9 @@ UPDATE_NAMES = ['GBDT-cập nhật', 'HiGBDT-Δ', 'HiGBDT-R']
 
 
 def _update_bundle(c, split):
-    """HiGBDT-V của công cụ (E34, pinnsoh/update_hist.py): học trên cell có nhãn của cùng fold với PINN-semi, chọn số
-    cây, mô hình, mốc và trọng số trên cell validation; L và chuẩn hoá từ cell train. Lưu ở demo/<bộ>_capnhat.pkl."""
+    """Các mô hình cập nhật của công cụ (pinnsoh/update_hist.py): GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R học trên cell có nhãn
+    của cùng fold với PINN-semi, số cây chọn trên cell xác thực; L và chuẩn hoá từ cell huấn luyện. Lưu ở
+    demo/<bộ>_capnhat.pkl."""
     import pickle
     from pinnsoh.data import load_dataset
     from pinnsoh.forecast import life_scale
@@ -318,7 +320,7 @@ def _update_bundle(c, split):
                 return b
         except Exception:
             pass
-    print('lần đầu: huấn luyện GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R và chọn HiGBDT-V — vài phút ...', flush=True)
+    print('lần đầu: huấn luyện GBDT-cập nhật, HiGBDT-Δ, HiGBDT-R — vài phút ...', flush=True)
     cells = load_dataset('PINN4SOH/data', c['dataset'], clean='causal'); by = {x.cid: x for x in cells}
     train = list(split['train'])
     norm = Normalizer('global').fit([by[i] for i in train]); L = life_scale([by[i] for i in train])
@@ -332,9 +334,22 @@ def _update_bundle(c, split):
     return b
 
 
+def _update_estimate(B, z, cyc, observed, tier):
+    """Ước lượng ở các chu kỳ không đo. Lịch đo thưa (q20, q10, q05): GBDT-cập nhật, mô hình mà báo cáo giữ cho lịch đo
+    thưa vì đặc trưng lịch sử không giúp ở đó; biết mọi lần đo trước (M2): HiGBDT-R, bản có lịch sử tốt nhất khi đo dày.
+    Trả (ước lượng, tên mô hình)."""
+    from pinnsoh import update_hist as U
+    mi = 2 if tier == 'M2' else 0
+    d = U.inputs(z, cyc, observed, B['L_train'])
+    out = np.full(len(cyc), np.nan)
+    if len(d['rows']):
+        out[d['rows']] = U.apred(B['models'][mi], B['configs'][mi], d)
+    return out, UPDATE_NAMES[mi]
+
+
 def cmd_update(a):
-    """Cập nhật SOH từ vài lần đo dung lượng: ở mỗi chu kỳ không đo, HiGBDT-V ước lượng SOH từ lần đo gần nhất trước nó
-    và đặc trưng sạc; lựa chọn của HiGBDT-V lấy theo lịch đo gần nhất với khoảng cách giữa các lần đo."""
+    """Cập nhật SOH từ vài lần đo dung lượng: ở mỗi chu kỳ không đo, GBDT-cập nhật ước lượng SOH từ lần đo gần nhất
+    trước nó và đặc trưng sạc (HiGBDT-R khi các lần đo dày tới mức coi như đo mọi chu kỳ trước)."""
     from pinnsoh import update_hist as U
     model, norm, c, split = load_model(a.model)
     B = _update_bundle(c, split)
@@ -353,14 +368,10 @@ def cmd_update(a):
         tier = a.lich
         measured, _ = U.schedule(cyc, U.TIERS[tier], L)
     observed = np.where(measured & np.isfinite(cell.soh), cell.soh, np.nan)
-    est = U.online(B, B['norm'].transform(cell), cyc, observed, tier)
-    ch = B['choices'][tier]
+    est, used = _update_estimate(B, B['norm'].transform(cell), cyc, observed, tier)
     name = os.path.splitext(os.path.basename(a.csv))[0]
-    prior = 'giữ lần đo' if ch['prior'] == 'hold' else 'ngoại suy tuyến tính'
     print(f'cell {name} · {int(measured.sum())} lần đo dung lượng trên {len(cyc)} chu kỳ · lịch {tier} '
-          f'(L = {L:g} chu kỳ của cell train)')
-    print(f'HiGBDT-V: {ch["alpha"]:g} × {UPDATE_NAMES[ch["model_index"]]} + {1 - ch["alpha"]:g} × {prior} '
-          f'(chọn trên {len(split["val"])} cell validation)')
+          f'(L = {L:g} chu kỳ của cell huấn luyện) · mô hình {used}')
     truth = cell.soh if np.isfinite(cell.soh).all() else None
     ev = np.isfinite(est) & ~measured
     if truth is not None and ev.any():
@@ -368,7 +379,7 @@ def cmd_update(a):
         last = np.maximum.accumulate(np.where(measured, np.arange(len(cyc)), -1))
         prev = np.r_[-1, last[:-1]]; ok = prev >= 0
         hold[ok] = observed[prev[ok]]
-        print(f'đối chiếu với thực đo ở {int(ev.sum())} chu kỳ không đo: MAE HiGBDT-V {np.abs(est - truth)[ev].mean():.4f}'
+        print(f'đối chiếu với thực đo ở {int(ev.sum())} chu kỳ không đo: MAE {used} {np.abs(est - truth)[ev].mean():.4f}'
               f' · giữ lần đo gần nhất {np.abs(hold - truth)[ev].mean():.4f}')
     os.makedirs(DEMO_DIR, exist_ok=True)
     pd.DataFrame(dict(chu_ky=cell.cycle, soh_do=observed, soh_cap_nhat=est,
@@ -379,7 +390,7 @@ def cmd_update(a):
     fig, ax = plt.subplots(figsize=(4.8, 2.6))
     if truth is not None:
         ax.plot(cell.cycle, truth, color=MODEL_COLOR['truth'], lw=1.0, label='thực đo')
-    ax.plot(cell.cycle, est, color='#d9480f', lw=1.4, label='HiGBDT-V')
+    ax.plot(cell.cycle, est, color='#d9480f', lw=1.4, label=used)
     ax.scatter(cell.cycle[measured], observed[measured], s=14, color='#2a78d6', zorder=4, label='lần đo dung lượng')
     ax.set_xlabel('chu kỳ'); ax.set_ylabel('SOH')
     sec = ax.secondary_yaxis('right', functions=(lambda v: v * nominal, lambda q: q / nominal)); sec.set_ylabel('Ah')
@@ -547,7 +558,7 @@ if __name__ == '__main__':
     f.add_argument('--mo-hinh', default='hipinn', choices=['hipinn', 'e23'],
                    help='hipinn (mặc định): mô hình HiPINN; e23: bộ dự báo có xét hồi phục dung lượng')
     sp.add_parser('tat-ca', help='HiPINN cho một cell test của mỗi bộ dữ liệu, hình 2 × 2')
-    u = sp.add_parser('cap-nhat', help='cập nhật SOH từ vài lần đo dung lượng bằng HiGBDT-V')
+    u = sp.add_parser('cap-nhat', help='cập nhật SOH từ vài lần đo dung lượng bằng GBDT-cập nhật')
     u.add_argument('--model', required=True); u.add_argument('--csv', required=True)
     u.add_argument('--lich', default='q10', choices=['q20', 'q10', 'q05'],
                    help='lịch đo giả lập: đo ở chu kỳ đầu rồi mỗi 0,2L / 0,1L / 0,05L chu kỳ (mặc định q10)')

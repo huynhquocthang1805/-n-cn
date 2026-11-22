@@ -60,7 +60,7 @@ Mọi bước đều qua một lệnh `python run.py <lệnh>`, chạy từ thư
 ```bash
 python run.py check          # kiểm tra Python, thư viện, dữ liệu, pdfLaTeX, số lõi CPU
 python run.py data           # tải 387 file CSV (~94 MB) từ repo gốc và dựng bộ nhớ đệm
-python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so từng bit với kết quả công bố
+python run.py reproduce      # ~2–5 phút: chạy lại 20 lượt mẫu, so với kết quả đã lưu (phải giống hệt)
 python -m unittest discover -s tests   # vài giây: đặc trưng chỉ dùng quá khứ của cell, lịch đo, HiPINN
 python run.py bench          # đo tốc độ máy để ước lượng thời gian chính xác hơn
 python run.py all --dry-run  # xem còn bao nhiêu lượt và mất bao lâu, không chạy gì
@@ -81,7 +81,7 @@ python run.py paper                    # -> paper/manuscript.pdf
 python run.py report                   # -> report/bao-cao-do-an.pdf
 ```
 
-* **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/`, ghi nguyên tử; chạy lại
+* **Dừng lúc nào cũng được** (Ctrl+C, tắt máy). Mỗi lượt ghi một file JSON trong `runs/` (ghi vào tệp tạm rồi đổi tên); chạy lại
   đúng lệnh cũ sẽ bỏ qua lượt đã xong và chạy tiếp.
 * `--workers N`: mặc định bằng số lõi CPU. Mỗi tiến trình dùng 1 luồng — với mạng nhỏ thế này, N tiến trình × 1 luồng
   nhanh hơn nhiều so với 1 tiến trình × N luồng.
@@ -345,6 +345,38 @@ Kết quả (mục ngân sách đo và cập nhật ở Chương 5 của báo c�
 * So với lần chạy đầu trên cùng cell và lịch đo: tương quan sai số theo cell 0,992–0,999
   (GBDT-cập nhật) và 0,945–0,993 (HiGBDT-V); phần chênh do phiên bản thư viện.
 
+### Mọi lựa chọn trong fold: PINN-lai cố định, PINN-lai tinh chỉnh, HiPINN-lai, cập nhật
+
+Sau góp ý về rò rỉ, mọi lựa chọn rời rạc của các kết quả chính được làm lại riêng trong từng fold, chỉ bằng cell xác
+thực của fold đó:
+
+* `pinnsoh/data.py`: 16 đặc trưng tương đối (`Normalizer('both')`, `first_cycle`) dùng mốc nhân quả: mốc ở chu kỳ n là
+  trung bình các chu kỳ 0..min(n, 2) của cell, không nhìn trước. `python analysis/features.py --refit-rel` tính lại
+  riêng biến thể `rel` của phân tích đặc trưng; E20dev (thẻ `REL`) chạy lại.
+* `pinnsoh/update.py`: thang đời L của lịch đo trong E32 lấy trên cell huấn luyện của fold (trước đây trên mọi cell).
+  `analysis/analyze_e32.py` dùng cùng L cho bộ lọc Kalman và PINN-lai cố định (ω = ½, w = 10), không tinh chỉnh gộp.
+* `analysis/analyze_e20_folds.py` (cần E20 ở bốn mức nhãn và E29): PINN-lai cố định, PINN-lai tinh chỉnh với (ω, w)
+  chọn riêng mỗi fold trên lưới ω ∈ {0,3; …; 0,7}, w ∈ {5, 10, 20, 40}, và HiPINN-lai dùng bản có lịch sử ở fold mà MAE
+  trên cell xác thực của fold giảm ít nhất 2 %. Kết quả `results/e20f_{summary,tests,choices,units}.csv` (bản sao ở
+  `report/generated/data/`): MAE, RMSE theo cell, MAPE, R² và Wilcoxon ghép cặp theo cell, Holm qua bốn bộ.
+* `analysis/compute_cost.py`: số tham số, dung lượng lưu và độ trễ trên CPU một luồng của PINN-lai và HiPINN trong công
+  cụ dòng lệnh -> `results/compute_cost.csv`. Chạy khi máy rảnh để độ trễ không bị các tiến trình khác làm lệch.
+
+```bash
+python run.py E20 && python run.py E29 && python run.py E32
+rm -f runs/E20dev/REL_* runs/E20dev/gbdt-both_*   # lượt dùng đặc trưng tương đối cũ
+python run.py E20dev                       # chạy lại các lượt đó, bỏ qua lượt đã có
+python analysis/features.py --refit-rel    # biến thể 'rel' của phân tích đặc trưng
+python analysis/analyze_e20_folds.py
+python analysis/analyze_e32.py
+python analysis/compute_cost.py
+python run.py report
+```
+
+Các lựa chọn của giai đoạn phát triển (hướng cải tiến của PINN-lai, dạng đặc trưng lịch sử, độ dài cửa sổ của mô hình
+chuỗi) vẫn được chốt trên tập xác thực của lần lặp 0 gộp qua 5 fold, trước khi đọc tập kiểm tra; báo cáo nêu rõ ngoại lệ
+này (Mục 3.3 và 6.2).
+
 ## 5. Tối ưu và tái lập
 
 Code được tối ưu mà **không đổi một bit kết quả nào** — `python run.py reproduce` kiểm đúng điều đó:
@@ -356,7 +388,7 @@ Code được tối ưu mà **không đổi một bit kết quả nào** — `py
 | Dừng sớm chỉ tính MAE validation (chỉ số đầy đủ tính một lần ở cuối) | bỏ phần tính theo cell/EOL 40 lần mỗi lượt |
 | AdamW và cắt gradient dạng `foreach` | gộp phép tính trên các tensor tham số |
 | Lượt dài chạy trước, mỗi tiến trình 1 luồng | các tiến trình kết thúc gần cùng lúc |
-| Ghi kết quả nguyên tử | dừng giữa chừng không để lại file dở |
+| Ghi kết quả vào tệp tạm rồi đổi tên | dừng giữa chừng không để lại file dở |
 | Phân tích chỉ đọc file JSON mới hoặc đã đổi | `analyze` lần hai ~1 phút thay vì ~2 phút |
 | Hình và PDF không ghi thời điểm tạo | dựng lại cho file giống từng byte, git không báo đổi |
 
@@ -378,8 +410,8 @@ python run.py demo predict --model demo/XJTU.pt --csv "..." --an-nhan   # coi nh
 # đo của chính cell (cột capacity); cell chưa đo dung lượng thì chỉ ước lượng được SOH hiện tại (lệnh predict)
 python run.py demo forecast --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv" --den-chu-ky 150
 
-# cập nhật: cell được đo dung lượng ở vài chu kỳ (lịch đo mỗi 0,1L, hoặc --do-chu-ky "1,60,120"); HiGBDT-V (E34)
-# ước lượng SOH ở mọi chu kỳ còn lại, mỗi chu kỳ chỉ dùng các lần đo trước nó
+# cập nhật: cell được đo dung lượng ở vài chu kỳ (lịch đo mỗi 0,1L, hoặc --do-chu-ky "1,60,120"); GBDT-cập nhật
+# ước lượng SOH ở mọi chu kỳ còn lại, mỗi chu kỳ chỉ dùng các lần đo trước nó (HiGBDT-R khi mọi chu kỳ trước đều đo)
 python run.py demo cap-nhat --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv" --lich q10
 python run.py demo tat-ca                        # HiPINN cho một cell test của mỗi bộ, hình 2 × 2
 ```
@@ -389,8 +421,9 @@ lịch sử, PINN-dự báo và nhánh theo đời); lần đầu cho một bộ
 hình ước lượng (vài phút) và lưu ở `demo/<bộ>_hipinn.pkl`. `--mo-hinh e23` dùng bản có xét hồi phục của E23 (lưu ở
 `demo/<bộ>_dubao.pkl`), in thêm phần hồi phục hiện tại, tỉ lệ được giữ lại, thời gian tắt của phần còn lại và dao động
 đều nếu có. `tat-ca` chạy HiPINN cho một cell test của mỗi bộ (cell có số chu kỳ ở trung vị, dự báo từ 40 % số chu kỳ
-của nó) và vẽ hình 2 × 2. `cap-nhat` dùng HiGBDT-V của E34, học trên cùng fold với PINN-semi của công cụ (lưu ở
-`demo/<bộ>_capnhat.pkl`). Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv`, `demo/<cell>_capnhat.csv`,
+của nó) và vẽ hình 2 × 2. `cap-nhat` dùng GBDT-cập nhật, mô hình mà E34 cho thấy tốt nhất khi đo thưa (đặc trưng lịch sử
+không giúp ở đó); chỉ khi khoảng đo dưới 0,02L, tức gần như đo mọi chu kỳ, nó dùng HiGBDT-R. Các mô hình học trên cùng
+fold với PINN-semi của công cụ (lưu ở `demo/<bộ>_capnhat.pkl`). Đầu ra: `demo/<cell>_soh.csv`, `demo/<cell>_dubao.csv`, `demo/<cell>_capnhat.csv`,
 `demo/hipinn_bon_bo.csv` và các hình.
 
 ## 7. Nguyên tắc của repo

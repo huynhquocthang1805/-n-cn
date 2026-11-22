@@ -9,22 +9,21 @@ của báo cáo.}
 
 Dung lượng của cell lithium-ion giảm dần trong quá trình sử dụng. Hệ thống quản lý pin (BMS) cần biết trạng thái sức
 khoẻ (SOH) để ước tính quãng đường còn lại, điều chỉnh chiến lược sạc và cảnh báo thời điểm thay pin. Muốn biết chính
-xác dung lượng phải xả đầy cell theo một quy trình chuẩn, mất nhiều giờ và phải dừng vận hành; ngược lại, điện áp và dòng
-điện lúc sạc được ghi ở mọi chu kỳ của mọi cell. Vì vậy dữ liệu đầu vào thì nhiều, còn nhãn SOH thì ít.
+xác dung lượng phải xả đầy cell theo một quy trình chuẩn, việc này mất nhiều giờ và buộc pin dừng vận hành. Ngược lại,
+điện áp và dòng điện lúc sạc được ghi ở mọi chu kỳ của mọi cell. Vì vậy dữ liệu đầu vào thì nhiều, còn nhãn SOH thì ít.
 
-Mạng nơ-ron có thông tin vật lý (PINN) là một cách tận dụng dữ liệu không nhãn: ràng buộc vật lý tính được chỉ từ dữ
+Mạng nơ-ron có thông tin vật lý (PINN) là một cách tận dụng dữ liệu không nhãn, vì ràng buộc vật lý tính được chỉ từ dữ
 liệu sạc. PINN4SOH~\cite{wang2024} áp dụng hướng này trên bốn bộ dữ liệu công khai và công bố mã nguồn. Tuy nhiên, khi
-lọc ngoại lai và chuẩn hoá, bài dùng thống kê của cả vòng đời từng cell, kể cả cell test: đây là một dạng rò rỉ dữ liệu
-đã biết~\cite{kapoor2023}, làm sai số đo được không phản ánh sai số khi triển khai; mức độ tái lập của số công bố cũng
-chưa được kiểm tra. Đồ án
-chọn đề tài này để xây dựng một mô hình ước lượng SOH khi ít nhãn và đánh giá nó, cùng các mô hình khác, trong một giao
+lọc ngoại lai và chuẩn hoá, bài dùng thống kê của cả vòng đời từng cell, kể cả cell kiểm tra. Đây là một dạng rò rỉ dữ
+liệu đã biết~\cite{kapoor2023}, làm sai số đo được không phản ánh sai số khi triển khai. Mức độ tái lập của số công bố
+cũng chưa được kiểm tra. Đồ án chọn đề tài này để xây dựng một mô hình ước lượng SOH khi ít nhãn và đánh giá nó, cùng các mô hình khác, trong một giao
 thức không rò rỉ.
 
 \section{Phát biểu bài toán}
 
 Bài toán thứ nhất là ước lượng: cho 16 đặc trưng đoạn sạc và chỉ số chu kỳ của mọi chu kỳ, trong đó chỉ một phần các
-cell huấn luyện có nhãn SOH, học một mô hình cho sai số nhỏ nhất trên các cell chưa từng xuất hiện khi huấn luyện; mô
-hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, biết SOH đo được của
+cell huấn luyện có nhãn SOH, cần học một mô hình cho sai số nhỏ nhất trên các cell chưa từng xuất hiện khi huấn luyện.
+Mô hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, biết SOH đo được của
 cell tới $k$, dự báo SOH ở các chu kỳ sau đó, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối
 đời (RUL). Phát biểu hình thức ở \Cref{sec:bai_toan}.
 
@@ -40,13 +39,13 @@ vì sao bỏ các cách biến đổi khác.
 
 Ngoài bài toán ước lượng, đồ án mở rộng sang ba câu hỏi gần với vận hành BMS: đo dung lượng thưa thay vì đo đầy đủ một
 phần cell, cập nhật ước lượng khi cell được đo vài lần, và dự báo SOH, RUL. Cuối cùng, mã nguồn được tổ chức sao cho mọi
-bảng, hình trong báo cáo sinh tự động từ kết quả và chạy lại cho kết quả trùng từng bit.
+bảng, hình trong báo cáo sinh tự động từ kết quả và chạy lại cho kết quả giống hệt.
 
 \section{Phạm vi}
 
 Đồ án dùng bốn bộ dữ liệu công khai XJTU, TJU, MIT và HUST (387 cell, cell hình trụ 18650 sạc--xả trong phòng thí
 nghiệm), ở bản đã trích 16 đặc trưng công bố kèm PINN4SOH. Đồ án không trích lại đặc trưng từ tín hiệu điện áp, dòng
-điện gốc, không dùng dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều cell ghép song song; các nội dung đó
+điện gốc, không dùng dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều cell ghép song song. Các nội dung đó
 thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU.
 
 \section{Đóng góp}
@@ -55,14 +54,14 @@ thuộc giai đoạn 2 của đề cương. Mọi thí nghiệm chạy trên CPU
 (\Cref{sec:protocol,sec:leakres}). Trong giao thức đó, đồ án đề xuất PINN bán giám sát với động học suy giảm dạng xám
 luôn không âm và mô hình kết hợp PINN-lai (\Cref{sec:pinn,sec:pinnlai}), đánh giá chúng ở bốn mức nhãn với chín mô hình
 đối chứng, và so với PINN4SOH trên đúng 39 nhóm đánh giá của bài, cùng cách chia và cách tính sai số
-(\Cref{ch:sosanh}). Đầu vào của các mô hình được phân tích bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên
-validation (\Cref{ch:dactrung}).
+(\Cref{ch:sosanh}). Đầu vào của các mô hình được phân tích bằng tương quan hạng, bỏ nhóm, hoán vị và chọn trên tập xác
+thực (\Cref{ch:dactrung}).
 
 Ở phần mở rộng, đồ án xét việc đo dung lượng thưa trên mọi cell và cập nhật ước lượng khi cell mới được đo vài lần
 (\Cref{sec:mo_rong}), rồi thiết kế hai mô hình dự báo SOH, dung lượng và RUL có đặc trưng lịch sử SOH đo: HiGBDT, và
-HiPINN lấy trung vị của HiGBDT, PINN-dự báo và một nhánh dựa trên đời còn lại dự đoán; thang đời, bộ chuẩn hoá và mọi
-lựa chọn chỉ dựa vào cell train và validation (\Cref{sec:e33pp}). Toàn bộ mã nguồn chạy được từ dữ liệu tới báo cáo bằng
-một lệnh và đã được kiểm tra tái lập từng bit (\Cref{app:source-code}).
+HiPINN lấy trung vị của HiGBDT, PINN-dự báo và một nhánh dựa trên đời còn lại dự đoán. Thang đời, bộ chuẩn hoá và mọi
+lựa chọn của hai mô hình này chỉ dựa vào cell huấn luyện và cell xác thực (\Cref{sec:e33pp}). Toàn bộ mã nguồn chạy được
+từ dữ liệu tới báo cáo bằng một lệnh, và chạy lại cho kết quả giống hệt (\Cref{app:source-code}).
 
 \section{Cấu trúc báo cáo}
 

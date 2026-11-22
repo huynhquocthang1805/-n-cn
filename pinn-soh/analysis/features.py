@@ -3,6 +3,7 @@ Thí nghiệm F — đặc trưng đầu vào: dùng đặc trưng nào, bỏ đ
 
     python analysis/features.py [--workers 2]      # 120 lượt (4 bộ × 2 mức nhãn × 3 lần lặp × 5 fold), ~2 giờ CPU
     python analysis/features.py --analyze-only      # chỉ tổng hợp lại từ runs/F
+    python analysis/features.py --refit-rel         # chỉ tính lại biến thể 'rel' (mốc nhân quả) trong runs/F, rồi tổng hợp
 
 Mọi lượt dùng đúng giao thức không rò rỉ của các thí nghiệm chính (E16): chia 5 fold theo cell, phân tầng theo chế độ
 thí nghiệm, lần lặp 0–2, cùng tập cell có nhãn (hạt giống 100·r + k), normaliser fit trên đặc trưng của cell train, GBDT
@@ -17,7 +18,8 @@ Phần 2, bỏ hoặc thêm đặc trưng, mỗi biến thể huấn luyện l�
     no_t     bỏ t                                  t_only   chỉ t
     no_V     bỏ 6 thống kê điện áp pha CC          no_I     bỏ 6 thống kê dòng điện pha CV
     no_QT    bỏ điện lượng và thời gian hai pha    QT_t     chỉ điện lượng, thời gian hai pha và t
-    rel      thêm 16 đặc trưng tương đối so với 3 chu kỳ đầu của cell (ứng viên của E20)
+    rel      thêm 16 đặc trưng tương đối so với trung bình các chu kỳ đầu đã có của cell (tối đa 3 chu kỳ; mốc ở chu kỳ n
+             chỉ dùng các chu kỳ <= n), ứng viên của E20
     prune    bỏ các đặc trưng mà hoán vị trên VALIDATION làm MAE tăng dưới 1 % (chọn đặc trưng kiểu wrapper)
     with_T   thêm 1/T (chỉ TJU, bộ duy nhất có nhiều mức nhiệt độ)
 Phần 3: độ quan trọng hoán vị trên test của mô hình 'all': hoán vị một đặc trưng, hoặc cả một nhóm, giữa các hàng test;
@@ -91,13 +93,9 @@ def job_path(ds, frac, r, k):
     return f'{RUN}/{ds}_f{frac}_cv{r}-{k}.json'
 
 
-def run_job(args):
+def _fold(ds, frac, r, k):
+    """Cell của một lượt: chia fold, cell có nhãn, cell test, và hàm dựng mảng (X, y, chỉ số cell) theo cách chuẩn hoá."""
     from pinnsoh.baselines import cells_of
-    from pinnsoh.train import write_json
-    ds, frac, r, k = args
-    path = job_path(ds, frac, r, k)
-    if os.path.exists(path):
-        return path
     cells = cells_of(ds); by = {c.cid: c for c in cells}
     sp = cv_split(cells, k, r, 5, 0.10)
     seed = 100 * r + k
@@ -112,6 +110,34 @@ def run_job(args):
             S = make_pointset(group, norm, 'global', labelled_only=True)
             out.append((np.hstack([S.X, S.T, S.invT]), S.Y.ravel(), S.cell))
         return out
+    return seed, te, arrays
+
+
+def refit_rel(path):
+    """Tính lại riêng biến thể 'rel' của một lượt đã lưu, với đặc trưng tương đối có mốc nhân quả; các biến thể khác giữ
+    nguyên (chúng không dùng đặc trưng tương đối)."""
+    from pinnsoh.train import write_json
+    d = json.load(open(path))
+    if d['variants']['rel'].get('ref') == 'causal':
+        return path
+    seed, te, arrays = _fold(d['dataset'], d['frac'], d['repeat'], d['fold'])
+    assert seed == d['seed']
+    (a, ya, _), (b, yb, _), (c, yc, cc) = arrays('both')
+    cols = list(range(33))
+    f, it = gbdt(a[:, cols], ya, b[:, cols], yb, seed)
+    d['variants']['rel'] = dict(mae={te[i].cid: v for i, v in per_cell(f(c[:, cols]), yc, cc).items()},
+                                n_trees=it, cols=cols, ref='causal')
+    write_json(d, path)
+    return path
+
+
+def run_job(args):
+    from pinnsoh.train import write_json
+    ds, frac, r, k = args
+    path = job_path(ds, frac, r, k)
+    if os.path.exists(path):
+        return path
+    seed, te, arrays = _fold(ds, frac, r, k)
 
     (Xtr, ytr, _), (Xva, yva, _), (Xte, yte, cte) = arrays('global')
     res = dict(dataset=ds, frac=frac, repeat=r, fold=k, seed=seed, variants={}, perm_test={}, perm_val={})
@@ -141,6 +167,7 @@ def run_job(args):
     keep = sorted([j for j in order if res['perm_val'][NAMES[j]] >= PRUNE_MIN] or order[:2])
     fit('prune', keep)
     fit('rel', list(range(33)), arrays('both'))                  # 16 tuyệt đối + 16 tương đối + t
+    res['variants']['rel']['ref'] = 'causal'
     if ds == 'TJU':
         fit('with_T', ALL + [17])
     write_json(res, path)
@@ -229,9 +256,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--workers', type=int, default=2)
     ap.add_argument('--analyze-only', action='store_true')
+    ap.add_argument('--refit-rel', action='store_true')
     a = ap.parse_args()
     os.makedirs(RUN, exist_ok=True); os.makedirs(OUT, exist_ok=True)
-    if not a.analyze_only:
+    if a.refit_rel:
+        paths = sorted(glob.glob(f'{RUN}/*.json'))
+        with get_context('spawn').Pool(a.workers) as pool:
+            for i, p in enumerate(pool.imap_unordered(refit_rel, paths), 1):
+                print(f'[{i}/{len(paths)}] rel {p}', flush=True)
+    elif not a.analyze_only:
         jobs = [(ds, f, r, k) for f in FRACS for ds in ('HUST', 'MIT', 'TJU', 'XJTU') for r in REPEATS for k in range(5)]
         todo = [j for j in jobs if not os.path.exists(job_path(*j))]
         print(f'{len(jobs)} lượt, cần chạy {len(todo)}', flush=True)

@@ -1,10 +1,11 @@
 \chapter{Cơ sở lý thuyết và các nghiên cứu liên quan}
 \label{chap:background}\label{ch:lythuyet}
 
-Chương này trình bày các kiến thức mà đồ án dựa vào: bài toán ước lượng SOH, cơ chế suy giảm dung lượng, ý nghĩa của
-đặc trưng đoạn sạc, các mô hình được so sánh, mạng nơ-ron có thông tin vật lý cùng mô hình PINN4SOH của bài gốc, học
-bán giám sát, kết hợp mô hình, dự báo tuổi thọ còn lại, cách chọn đặc trưng và cách đánh giá mô hình khi dữ liệu có cấu
-trúc nhóm.
+Chương này trình bày các kiến thức mà đồ án dựa vào và đặt đồ án vào bối cảnh các nghiên cứu đã có. Phần đầu nói về bài
+toán ước lượng SOH, cơ chế suy giảm dung lượng và ý nghĩa của đặc trưng đoạn sạc. Tiếp theo là các mô hình được so sánh,
+mạng nơ-ron có thông tin vật lý, học bán giám sát, kết hợp mô hình, bộ lọc Kalman, cách chọn đặc trưng và cách đánh giá mô
+hình khi dữ liệu có cấu trúc nhóm. Phần sau tổng quan các hướng nghiên cứu về ước lượng SOH, mạng có thông tin vật lý cho
+pin, dự báo tuổi thọ còn lại và vấn đề rò rỉ dữ liệu khi đánh giá.
 
 \section{Cơ sở lý thuyết}\label{sec:coso}
 
@@ -16,55 +17,66 @@ giữa dung lượng hiện tại và dung lượng danh định:
 \mathrm{SOH}_n = \frac{Q_n}{Q_\text{danh định}},
 \end{equation}
 với $Q_n$ là dung lượng đo được ở chu kỳ thứ $n$. Hệ thống quản lý pin (BMS) cần SOH để ước tính quãng đường còn lại,
-điều chỉnh chiến lược sạc và cảnh báo thời điểm thay pin; với pin xe điện, mốc cuối đời thường chọn ở SOH khoảng 0,8.
+điều chỉnh chiến lược sạc và cảnh báo thời điểm thay pin. Với pin xe điện, mốc cuối đời thường chọn ở SOH khoảng 0,8.
+Trong dữ liệu phòng thí nghiệm, nhiều cell được dừng thử trước khi chạm mốc này, nên đồ án đặt ngưỡng cuối đời riêng cho
+từng bộ dữ liệu theo một quy tắc nêu ở \Cref{sec:e33pp}.
 
-Muốn biết chính xác $Q_n$ phải xả đầy cell theo một quy trình chuẩn, mất nhiều giờ và phải dừng vận hành. Ngược lại,
-điện áp và dòng điện lúc sạc được BMS ghi lại ở mọi chu kỳ của mọi cell. Bài toán vì vậy có dạng học ít nhãn: nhiều dữ
-liệu đầu vào nhưng chỉ một phần nhỏ có nhãn.
+Muốn biết chính xác $Q_n$ phải xả đầy cell theo một quy trình chuẩn. Việc này mất nhiều giờ và buộc pin dừng vận hành.
+Ngược lại, điện áp và dòng điện lúc sạc được BMS ghi lại ở mọi chu kỳ của mọi cell. Bài toán vì vậy có dạng học ít nhãn:
+dữ liệu đầu vào thì nhiều, nhưng chỉ một phần nhỏ có nhãn.
 
-Xét tập cell $\mathcal{C}$. Mỗi cell $c$ có chuỗi chu kỳ $n = 0, 1, \dots, L_c$; ở mỗi chu kỳ, từ đoạn sạc ta có vector
-đặc trưng $\mathbf{x}_{c,n} \in \R^{16}$. Nhãn $y_{c,n} = \mathrm{SOH}_{c,n}$ chỉ được biết trên tập con các cell huấn
-luyện $\mathcal{C}_L \subset \mathcal{C}_\text{train}$; các cell còn lại $\mathcal{C}_U = \mathcal{C}_\text{train}
+Xét tập cell $\mathcal{C}$. Mỗi cell $c$ có chuỗi chu kỳ $n = 0, 1, \dots, L_c$, và ở mỗi chu kỳ, từ đoạn sạc ta có
+vector đặc trưng $\mathbf{x}_{c,n} \in \R^{16}$. Nhãn $y_{c,n} = \mathrm{SOH}_{c,n}$ chỉ được biết trên một tập con
+$\mathcal{C}_L$ của các cell huấn luyện $\mathcal{C}_\text{hl}$. Các cell còn lại $\mathcal{C}_U = \mathcal{C}_\text{hl}
 \setminus \mathcal{C}_L$ chỉ có đặc trưng sạc. Mục tiêu là học hàm $\hat y = F(\mathbf{x}_{c,n}, n)$ sao cho sai số trên
 các cell chưa từng xuất hiện khi huấn luyện là nhỏ nhất. Mô hình chỉ được dùng dữ liệu tới chu kỳ hiện tại, để chạy được
 trực tuyến trong BMS. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, dự báo SOH ở các chu kỳ $k + h$ và số chu kỳ còn lại
-trước khi SOH xuống dưới ngưỡng cuối đời $\tau$ (RUL).
+trước khi SOH xuống dưới ngưỡng cuối đời $\tau$, gọi là tuổi thọ còn lại (RUL).
 
 \subsection{Suy giảm dung lượng của pin lithium-ion}
 
-Dung lượng của cell giảm theo hai nhóm cơ chế chính~\cite{birkl2017}: mất lithium khả dụng (LLI), chủ yếu do lớp SEI
-phát triển trên bề mặt anode, và mất vật liệu hoạt động (LAM) do nứt hạt, bong tách hoặc hoà tan kim loại chuyển tiếp.
-Giai đoạn đầu dung lượng thường giảm chậm và gần tuyến tính; về sau nhiều cell đi vào vùng ``đầu gối'', nơi tốc độ suy
-giảm tăng nhanh~\cite{attia2022knee}. Các phản ứng phụ phụ thuộc nhiệt độ theo quy luật dạng Arrhenius: nhiệt độ cao làm
-SEI phát triển nhanh hơn~\cite{waldmann2014}. Khi lớp SEI dày lên và bị giới hạn bởi khuếch tán, lượng lithium mất đi tỉ
-lệ với căn bậc hai của thời gian~\cite{broussely2001,pinson2013}. Các mô hình thực nghiệm khớp mất mát dung lượng bằng
-hàm luỹ thừa của điện lượng trao đổi nhân thừa số Arrhenius~\cite{wang2011lfp,schmalstieg2014}; chúng gọn nhưng cần bộ hệ
-số riêng cho mỗi hệ hoá học và không mô tả được đoạn đầu gối~\cite{fermin2020}. Ba quan sát định tính được đồ án dùng làm
-ràng buộc: dung lượng không tự tăng theo thời gian vận hành, suy giảm nhanh dần khi pin già, và nhanh hơn khi nhiệt độ cao.
+Dung lượng của cell giảm theo hai nhóm cơ chế chính~\cite{birkl2017}. Nhóm thứ nhất là mất lithium khả dụng (LLI), chủ
+yếu do lớp SEI phát triển trên bề mặt anode. Nhóm thứ hai là mất vật liệu hoạt động (LAM) do nứt hạt, bong tách hoặc hoà
+tan kim loại chuyển tiếp. Giai đoạn đầu, dung lượng thường giảm chậm và gần tuyến tính. Về sau, nhiều cell đi vào vùng
+``đầu gối'', nơi tốc độ suy giảm tăng nhanh~\cite{attia2022knee}. Các phản ứng phụ phụ thuộc nhiệt độ theo quy luật dạng
+Arrhenius: nhiệt độ cao làm SEI phát triển nhanh hơn~\cite{waldmann2014}. Khi lớp SEI dày lên và bị giới hạn bởi khuếch
+tán, lượng lithium mất đi tỉ lệ với căn bậc hai của thời gian~\cite{broussely2001,pinson2013}. Các mô hình thực nghiệm
+khớp mất mát dung lượng bằng hàm luỹ thừa của điện lượng trao đổi nhân với thừa số
+Arrhenius~\cite{wang2011lfp,schmalstieg2014}. Các mô hình này gọn, nhưng cần bộ hệ số riêng cho mỗi hệ hoá học và không
+mô tả được đoạn đầu gối~\cite{fermin2020}. Từ đó, đồ án dùng ba quan sát định tính làm ràng buộc: dung lượng không tự
+tăng theo thời gian vận hành, suy giảm nhanh dần khi pin già, và suy giảm nhanh hơn khi nhiệt độ cao.
 
 \subsection{Đặc trưng của đoạn sạc CC--CV}\label{sec:lt_dactrung}
 
 Các cell trong dữ liệu được sạc theo quy trình CC--CV: sạc dòng không đổi tới điện áp cắt trên, rồi giữ điện áp không
-đổi cho tới khi dòng giảm xuống ngưỡng cắt. Khi cell già, dung lượng giảm và điện trở trong tăng~\cite{birkl2017}, nên
-với cùng quy trình sạc, điện lượng, thời gian và hình dạng đường điện áp, dòng điện của từng pha thay đổi theo; chiều
-thay đổi cụ thể phụ thuộc hệ hoá học và quy trình sạc (Mục~\ref{sec:dt_lienquan}). PINN4SOH~\cite{wang2024} tóm mỗi lần sạc thành 16 đặc trưng thống kê lấy trên
-một cửa sổ điện áp của pha CC và một cửa sổ dòng điện của pha CV, cùng điện lượng và thời gian của hai pha
-(Bảng~\ref{tab:features}). Các đặc trưng này tính được ở mọi chu kỳ chỉ từ dữ liệu BMS ghi lúc sạc. Nhãn SOH thì đến từ
-lần xả đầy; vì vậy đặc trưng lấy từ lần xả không được dùng làm đầu vào của bài toán ước lượng (Mục~\ref{sec:dt_bo}).
+đổi cho tới khi dòng giảm xuống ngưỡng cắt. Khi cell già, dung lượng giảm và điện trở trong tăng~\cite{birkl2017}. Vì
+vậy, với cùng quy trình sạc, điện lượng, thời gian và hình dạng đường điện áp, dòng điện của từng pha thay đổi theo.
+Chiều thay đổi cụ thể phụ thuộc hệ hoá học và quy trình sạc (Mục~\ref{sec:dt_lienquan}). PINN4SOH~\cite{wang2024} tóm
+mỗi lần sạc thành 16 đặc trưng thống kê, lấy trên một cửa sổ điện áp của pha CC và một cửa sổ dòng điện của pha CV, cùng
+điện lượng và thời gian của hai pha (Bảng~\ref{tab:features}). Các đặc trưng này tính được ở mọi chu kỳ chỉ từ dữ liệu BMS
+ghi lúc sạc.
+
+Một hướng khác dùng đường cong dung lượng gia tăng $\mathrm{d}Q/\mathrm{d}V$: các đỉnh của đường cong này dịch chuyển và
+thấp dần theo các cơ chế LLI, LAM, nên vị trí và độ cao đỉnh là đặc trưng tốt cho SOH~\cite{dubarry2012,weng2013}. Cách
+này cần đường cong điện áp có độ phân giải cao và bước làm trơn cẩn thận, còn bản dữ liệu đồ án dùng chỉ có 16 đặc trưng
+đã trích sẵn. Nhãn SOH thì đến từ lần xả đầy, nên đặc trưng lấy từ lần xả không được dùng làm đầu vào của bài toán ước
+lượng (Mục~\ref{sec:dt_bo}).
 
 \subsection{Các mô hình học có nhãn cho dữ liệu dạng bảng}\label{sec:lt_bang}
 
-Mỗi chu kỳ sau khi trích đặc trưng là một hàng của một bảng: 16 cột đặc trưng, một cột thời gian và một cột nhãn.
+Mỗi chu kỳ sau khi trích đặc trưng là một hàng của một bảng gồm 16 cột đặc trưng, một cột thời gian và một cột nhãn. Ba
+mô hình học có nhãn cổ điển được dùng làm mốc so sánh trên bảng này.
 
-\paragraph{Hồi quy Ridge.} Tìm $\mathbf{w}$ cực tiểu $\|\mathbf{y} - X\mathbf{w}\|^2 + \alpha\|\mathbf{w}\|^2$; số hạng
-chuẩn hoá $L_2$ làm mô hình tuyến tính ổn định khi các cột tương quan mạnh với nhau.
+Hồi quy Ridge tìm vector trọng số $\mathbf{w}$ cực tiểu $\|\mathbf{y} - X\mathbf{w}\|^2 + \alpha\|\mathbf{w}\|^2$. Số
+hạng chuẩn hoá $L_2$ giữ cho mô hình tuyến tính ổn định khi các cột tương quan mạnh với nhau, điều thường gặp ở các đặc
+trưng đoạn sạc.
 
-\paragraph{Hồi quy quá trình Gauss (GPR).} Đặt tiên nghiệm $f \sim \mathcal{GP}(0, k)$ với nhân RBF cộng nhiễu trắng; dự
-đoán là kỳ vọng hậu nghiệm, kèm phương sai~\cite{rasmussen2006}. Chi phí $O(n^3)$ theo số điểm huấn luyện nên chỉ dùng
-được với vài nghìn điểm.
+Hồi quy quá trình Gauss (GPR) đặt tiên nghiệm $f \sim \mathcal{GP}(0, k)$ lên hàm cần học, với nhân RBF cộng nhiễu trắng.
+Dự đoán là kỳ vọng hậu nghiệm, kèm theo phương sai cho biết độ bất định~\cite{rasmussen2006}. Chi phí tính toán tăng theo
+$O(n^3)$ với số điểm huấn luyện, nên GPR chỉ dùng được với vài nghìn điểm.
 
-\paragraph{Cây quyết định tăng cường gradient (GBDT).} Mô hình là tổng $F_M(\mathbf{x}) = \sum_{m=1}^{M} \eta\, h_m(\mathbf{x})$
-của các cây hồi quy nhỏ; cây thứ $m$ được khớp với gradient âm của hàm mất mát tại $F_{m-1}$, với sai số bình phương
+Cây quyết định tăng cường gradient (GBDT) là tổng $F_M(\mathbf{x}) = \sum_{m=1}^{M} \eta\, h_m(\mathbf{x})$ của các cây
+hồi quy nhỏ. Cây thứ $m$ được khớp với gradient âm của hàm mất mát tại $F_{m-1}$. Với sai số bình phương, gradient âm
 chính là phần dư~\cite{friedman2001}. Dạng histogram chia giá trị mỗi cột thành các ngăn để tìm điểm cắt
 nhanh~\cite{ke2017}. Trên dữ liệu bảng cỡ vừa, mô hình cây thường vượt mạng nơ-ron vì học tốt các hàm không trơn và ít
 bị ảnh hưởng bởi cột không mang thông tin~\cite{grinsztajn2022}.
@@ -73,131 +85,184 @@ bị ảnh hưởng bởi cột không mang thông tin~\cite{grinsztajn2022}.
 
 Dữ liệu lão hoá là chuỗi thời gian theo hai trục: trong một chu kỳ (điện áp, dòng điện theo thời gian) và qua các chu kỳ
 (các đại lượng tóm tắt trôi dần khi cell già). Đồ án làm việc trên trục chu kỳ: mô hình ước lượng SOH ở chu kỳ $n$ từ
-đặc trưng của chu kỳ đó, hoặc của cửa sổ $L$ chu kỳ gần nhất $\mathbf{x}_{n-L+1}, \dots, \mathbf{x}_n$.
+đặc trưng của chính chu kỳ đó, hoặc từ cửa sổ $L$ chu kỳ gần nhất $\mathbf{x}_{n-L+1}, \dots, \mathbf{x}_n$.
 
-\paragraph{MLP.} Mạng truyền thẳng $\hat y = f_K \circ \dots \circ f_1(\mathbf{x}_n)$, $f_k(\mathbf{h}) = \sigma(W_k
-\mathbf{h} + \mathbf{b}_k)$, chỉ nhìn một chu kỳ.
-
-\paragraph{CNN.} Tích chập một chiều dọc trục chu kỳ, $h_n = \sigma\bigl(\sum_{j=0}^{k-1} W_j \mathbf{x}_{n - j\delta} +
-\mathbf{b}\bigr)$ với kích thước $k$ và độ giãn $\delta$; khi bộ lọc chỉ nhìn các chu kỳ trước, đầu ra không dùng dữ liệu
-tương lai~\cite{bai2018tcn}.
-
-\paragraph{LSTM.} Mạng hồi quy giữ trạng thái nhớ $\mathbf{c}_n = \mathbf{f}_n \odot \mathbf{c}_{n-1} + \mathbf{i}_n
-\odot \tanh(W_c[\mathbf{h}_{n-1}, \mathbf{x}_n] + \mathbf{b}_c)$, đầu ra $\mathbf{h}_n = \mathbf{o}_n \odot
-\tanh(\mathbf{c}_n)$; các cổng quên, vào, ra có dạng $\sigma(W[\mathbf{h}_{n-1}, \mathbf{x}_n] + \mathbf{b})$ và cho phép
-giữ thông tin qua nhiều bước~\cite{hochreiter1997}.
-
-\paragraph{Transformer.} Tầng tự chú ý tính $\mathrm{softmax}(QK^\top / \sqrt{d})\,V$ trên mọi cặp vị trí trong cửa
-sổ~\cite{vaswani2017}; vì phép tính này không phân biệt thứ tự, một mã hoá vị trí hình sin được cộng vào đầu vào.
+Mạng truyền thẳng nhiều lớp (MLP) tính $\hat y = f_K \circ \dots \circ f_1(\mathbf{x}_n)$ với $f_k(\mathbf{h}) =
+\sigma(W_k \mathbf{h} + \mathbf{b}_k)$ và chỉ nhìn một chu kỳ. Ba mô hình còn lại nhìn cả cửa sổ. Mạng tích chập một chiều
+(CNN) trượt bộ lọc dọc trục chu kỳ, $h_n = \sigma\bigl(\sum_{j=0}^{k-1} W_j \mathbf{x}_{n - j\delta} + \mathbf{b}\bigr)$
+với kích thước $k$ và độ giãn $\delta$. Khi bộ lọc chỉ nhìn các chu kỳ trước, đầu ra không dùng dữ liệu tương
+lai~\cite{bai2018tcn}. LSTM là mạng hồi quy giữ một trạng thái nhớ $\mathbf{c}_n = \mathbf{f}_n \odot \mathbf{c}_{n-1} +
+\mathbf{i}_n \odot \tanh(W_c[\mathbf{h}_{n-1}, \mathbf{x}_n] + \mathbf{b}_c)$ và cho đầu ra $\mathbf{h}_n = \mathbf{o}_n
+\odot \tanh(\mathbf{c}_n)$. Các cổng quên, vào và ra có dạng $\sigma(W[\mathbf{h}_{n-1}, \mathbf{x}_n] + \mathbf{b})$,
+nhờ đó thông tin được giữ qua nhiều bước~\cite{hochreiter1997}. Transformer dùng tầng tự chú ý, tính
+$\mathrm{softmax}(QK^\top / \sqrt{d})\,V$ trên mọi cặp vị trí trong cửa sổ~\cite{vaswani2017}. Phép tính này không phân
+biệt thứ tự, nên một mã hoá vị trí hình sin được cộng vào đầu vào.
 
 \subsection{Mạng nơ-ron có thông tin vật lý}\label{sec:lt_pinn}
 
-Xét phương trình $\mathcal{N}[u] = 0$ với nghiệm $u(\mathbf{z})$. PINN~\cite{raissi2019} xấp xỉ $u$ bằng mạng $u_\varphi$ và
-cực tiểu
+Xét phương trình $\mathcal{N}[u] = 0$ với nghiệm $u(\mathbf{z})$. PINN~\cite{raissi2019} xấp xỉ $u$ bằng mạng $u_\varphi$
+và cực tiểu
 \begin{equation}
 \mathcal{L}(\varphi) = \frac{1}{|D|}\sum_{(\mathbf{z}, y) \in D}\big(u_\varphi(\mathbf{z}) - y\big)^2
  + \lambda \frac{1}{|P|}\sum_{\mathbf{z} \in P}\big(\mathcal{N}[u_\varphi](\mathbf{z})\big)^2,
 \end{equation}
-trong đó $D$ là tập điểm có nhãn và $P$ là tập điểm collocation chỉ cần đầu vào~\cite{karniadakis2021}. Số hạng thứ hai là
-tín hiệu học không cần nhãn. Với pin, phương trình suy giảm không được biết chính xác nên một phần của $\mathcal{N}$ phải
-học từ dữ liệu: động học hộp đen học toàn bộ, động học xám giữ cấu trúc vật lý và chỉ học phần chưa biết. Huấn luyện PINN
-khó hơn mạng thường: gradient của các số hạng có thể chênh nhau nhiều bậc~\cite{wang2021grad}, và ràng buộc mềm làm mặt
-mất mát khó tối ưu khi hệ số của phương trình lớn~\cite{krishnapriyan2021}.
-
+trong đó $D$ là tập điểm có nhãn và $P$ là tập điểm kiểm tra phương trình (collocation), chỉ cần đầu
+vào~\cite{karniadakis2021}. Số hạng thứ hai là tín hiệu học không cần nhãn. Với pin, phương trình suy giảm không được biết
+chính xác, nên một phần của $\mathcal{N}$ phải học từ dữ liệu. Động học hộp đen học toàn bộ phương trình, còn động học xám
+giữ cấu trúc vật lý đã biết và chỉ học phần chưa biết. Huấn luyện PINN khó hơn mạng thường: gradient của các số hạng có
+thể chênh nhau nhiều bậc~\cite{wang2021grad}, và khi hệ số của phương trình lớn, ràng buộc mềm làm bề mặt hàm mất mát khó
+tối ưu~\cite{krishnapriyan2021}.
 
 \subsection{Học bán giám sát}
 
-Học bán giám sát tận dụng dữ liệu không nhãn qua một giả định về cấu trúc của dữ liệu. Các họ phổ biến dựa trên chính dự
-đoán của mô hình: gán nhãn giả~\cite{lee2013}, chưng cất tri thức~\cite{hinton2015}, Mean Teacher~\cite{tarvainen2017}.
-Đồ án dùng giả định vật lý: quỹ đạo SOH của mọi cell, kể cả cell chưa đo dung lượng, phải thoả phương trình suy giảm,
-không tăng theo thời gian và nằm trong miền giá trị hợp lý. Các ràng buộc này tính được chỉ từ đặc trưng sạc, nên mỗi cell
-không nhãn đều đóng góp gradient. Nhãn giả chỉ tốt bằng mô hình sinh ra nó; ràng buộc vật lý không phụ thuộc mô hình,
-nhưng chỉ cho biết dạng của quỹ đạo, không cho biết mức SOH.
+Học bán giám sát tận dụng dữ liệu không nhãn thông qua một giả định về cấu trúc của dữ liệu. Các họ phương pháp phổ biến
+dựa trên chính dự đoán của mô hình, như gán nhãn giả~\cite{lee2013}, chưng cất tri thức~\cite{hinton2015} hay Mean
+Teacher~\cite{tarvainen2017}. Đồ án dùng một giả định vật lý: quỹ đạo SOH của mọi cell, kể cả cell chưa đo dung lượng,
+phải thoả phương trình suy giảm, không tăng theo thời gian và nằm trong miền giá trị hợp lý. Các ràng buộc này tính được
+chỉ từ đặc trưng sạc, nên mỗi cell không nhãn đều đóng góp gradient. Nhãn giả chỉ tốt bằng mô hình sinh ra nó, còn ràng
+buộc vật lý không phụ thuộc mô hình. Đổi lại, ràng buộc vật lý chỉ cho biết dạng của quỹ đạo, không cho biết mức SOH.
 
 \subsection{Kết hợp mô hình và khoảng dự đoán}
 
-Trung bình dự đoán của nhiều mô hình là cách đơn giản nhất để giảm phương sai: bagging~\cite{breiman1996}, stacking~\cite{wolpert1992},
-hay vài mạng giống nhau với khởi tạo khác nhau~\cite{lakshminarayanan2017}. Dự đoán phù hợp (conformal
-prediction)~\cite{vovk2005,lei2018} cho khoảng dự đoán không cần giả định phân phối: trên một tập hiệu chỉnh tách riêng,
-lấy phân vị phù hợp của phần dư làm nửa độ rộng khoảng; nếu mẫu hiệu chỉnh và mẫu mới hoán đổi được cho nhau, độ phủ ít
-nhất bằng mức đặt ra~\cite{angelopoulos2023}. Quyết định thay pin cần biết độ tin cậy của dự đoán, không chỉ một con
-số~\cite{thelen2024}.
+Trung bình dự đoán của nhiều mô hình là cách đơn giản nhất để giảm phương sai, dưới dạng bagging~\cite{breiman1996},
+stacking~\cite{wolpert1992} hay vài mạng giống nhau với khởi tạo khác nhau~\cite{lakshminarayanan2017}. Phương pháp
+conformal (conformal prediction)~\cite{vovk2005,lei2018} cho khoảng dự đoán mà không cần giả định phân phối: trên một tập
+hiệu chỉnh tách riêng, lấy một phân vị của phần dư làm nửa độ rộng khoảng. Nếu mẫu hiệu chỉnh và mẫu mới hoán đổi được cho
+nhau, độ phủ ít nhất bằng mức đặt ra~\cite{angelopoulos2023}. Quyết định thay pin cần biết độ tin cậy của dự đoán, không
+chỉ một con số~\cite{thelen2024}.
 
+\subsection{Bộ lọc Kalman cho độ lệch theo cell}\label{sec:lt_kalman}
+
+Khi cell đang dùng được đo dung lượng ở một vài chu kỳ, có thể sửa ước lượng của mô hình bằng chính các lần đo đó. Bộ lọc
+Kalman~\cite{kalman1960} ước lượng một trạng thái ẩn từ các quan sát có nhiễu, mỗi lần có quan sát mới thì cập nhật kỳ
+vọng và phương sai của trạng thái. Trong BMS, bộ lọc Kalman mở rộng trên mô hình mạch tương đương là cách kinh điển để
+ước lượng trạng thái và tham số của pin~\cite{plett2004}. Đồ án dùng dạng đơn giản nhất: trạng thái ẩn là độ lệch giữa
+SOH thật và SOH do mô hình ước lượng của từng cell. Độ lệch này được mô hình hoá là một quá trình
+Ornstein--Uhlenbeck~\cite{uhlenbeck1930}, trôi chậm và có xu hướng quay về trung bình của tổng thể. Nhờ vậy, thông tin
+của một lần đo phai dần theo khoảng cách chu kỳ, và khoảng dự đoán không rộng vô hạn giữa hai lần đo.
 
 \subsection{Chọn đặc trưng}\label{sec:lt_chon}
 
-Chọn đặc trưng nhằm bỏ các cột không mang thông tin, trùng thông tin hoặc không dùng được lúc triển khai. Có ba nhóm
-phương pháp~\cite{guyon2003}. Nhóm lọc đánh giá từng cột độc lập với mô hình, ví dụ hệ số tương quan hạng Spearman
-$\rho$ giữa cột và nhãn; $\rho$ đo quan hệ đơn điệu, không đòi hỏi tuyến tính. Nhóm bao (wrapper) đánh giá cả tập cột
-bằng sai số của mô hình trên dữ liệu không dùng để huấn luyện~\cite{kohavi1997}: bỏ hoặc thêm một nhóm cột, huấn luyện
-lại và so sai số. Nhóm nhúng dùng thông tin bên trong mô hình. Độ quan trọng hoán vị~\cite{breiman2001rf} xáo trộn giá
-trị một cột giữa các mẫu để cắt liên hệ của nó với nhãn, rồi đo sai số tăng bao nhiêu; khi các cột tương quan mạnh, hoán
-vị từng cột đánh giá thấp tầm quan trọng của cả nhóm vì mô hình lấy được thông tin từ cột còn lại~\cite{strobl2008}, nên
-cần hoán vị theo nhóm. Ngoài sức dự đoán, một đặc trưng chỉ được dùng nếu tính được tại thời điểm dự đoán: đặc trưng có
-dùng thông tin tương lai của cell hay thông tin của nhãn là rò rỉ, dù làm sai số trông thấp hơn.
+Chọn đặc trưng nhằm bỏ các cột không mang thông tin, trùng thông tin, hoặc không dùng được lúc triển khai. Có ba nhóm
+phương pháp~\cite{guyon2003}. Nhóm lọc đánh giá từng cột độc lập với mô hình, ví dụ bằng hệ số tương quan hạng Spearman
+$\rho$ giữa cột và nhãn~\cite{spearman1904}. Hệ số này là tương quan Pearson tính trên thứ hạng của dữ liệu, nên đo quan
+hệ đơn điệu mà không đòi hỏi tuyến tính và ít bị ảnh hưởng bởi điểm ngoại lai. Nhóm bao đánh giá cả tập cột bằng sai số
+của mô hình trên dữ liệu không dùng để huấn luyện~\cite{kohavi1997}: bỏ hoặc thêm một nhóm cột, huấn luyện lại và so sai
+số. Nhóm nhúng dùng thông tin bên trong mô hình. Độ quan trọng hoán vị~\cite{breiman2001rf} xáo trộn giá trị một cột
+giữa các mẫu để cắt liên hệ của nó với nhãn, rồi đo sai số tăng bao nhiêu. Khi các cột tương quan mạnh, hoán vị từng cột
+đánh giá thấp tầm quan trọng của cả nhóm, vì mô hình lấy được thông tin từ cột còn lại~\cite{strobl2008}. Do đó cần hoán
+vị theo nhóm. Ngoài sức dự đoán, một đặc trưng chỉ được dùng nếu tính được tại thời điểm dự đoán. Đặc trưng dùng thông
+tin tương lai của cell hay thông tin của nhãn là rò rỉ, dù làm sai số trông thấp hơn.
 
 \subsection{Đánh giá mô hình, rò rỉ dữ liệu và kiểm định}\label{sec:lt_danhgia}
 
-Kiểm định chéo là cách chuẩn để ước lượng sai số tổng quát~\cite{arlot2010}. Khi dữ liệu có cấu trúc nhóm, ở đây là các
-chu kỳ của cùng một cell, việc chia phải theo nhóm; nếu không, các mẫu gần như trùng nhau nằm ở cả hai phía train và test.
-Rò rỉ dữ liệu là một nguyên nhân phổ biến khiến kết quả học máy trong khoa học không tái lập được; các dạng thường gặp gồm
-chia sai đơn vị, tiền xử lý dùng thống kê của tập test và chọn mô hình trên tập test~\cite{kapoor2023,varma2006}.
+Kiểm định chéo là cách chuẩn để ước lượng sai số tổng quát~\cite{arlot2010}. Trong kiểm định chéo $K$ phần, dữ liệu được
+chia thành $K$ phần. Mỗi lần chia, một phần làm tập kiểm tra, phần còn lại dùng để huấn luyện và xác thực. Mỗi lần chia
+như vậy gọi là một fold. Khi dữ liệu có cấu trúc nhóm, ở đây là các chu kỳ của cùng một cell, việc chia phải theo nhóm.
+Nếu không, các mẫu gần như trùng nhau nằm ở cả hai phía huấn luyện và kiểm tra. Rò rỉ dữ liệu, tức thông tin của tập kiểm
+tra lọt vào quá trình huấn luyện hay lựa chọn mô hình~\cite{kaufman2012}, là một nguyên nhân phổ biến khiến kết quả học
+máy trong khoa học không tái lập được. Các dạng thường gặp gồm chia sai đơn vị, tiền xử lý dùng thống kê của tập kiểm tra
+và chọn mô hình trên tập kiểm tra~\cite{kapoor2023,varma2006}.
 
-\paragraph{Chỉ số.} Với $y_i$ là SOH đo và $\hat y_i$ là SOH dự đoán:
+Với $y_i$ là SOH đo và $\hat y_i$ là SOH dự đoán, các chỉ số được dùng là
 \begin{gather}
 \mathrm{MAE} = \tfrac{1}{N}\textstyle\sum|\hat y_i - y_i|, \quad
 \mathrm{RMSE} = \sqrt{\tfrac{1}{N}\textstyle\sum(\hat y_i - y_i)^2}, \quad
 \mathrm{MAPE} = \tfrac{100\,\%}{N}\textstyle\sum\big|\tfrac{\hat y_i - y_i}{y_i}\big|, \\
 R^2 = 1 - \frac{\sum(\hat y_i - y_i)^2}{\sum(y_i - \bar y)^2}, \qquad
-\mathrm{MAE}_\text{cell} = \frac{1}{|\mathcal{C}_\text{test}|}\sum_{c}\frac{1}{n_c}\sum_{n}|\hat y_{c,n} - y_{c,n}|.
+\mathrm{MAE}_\text{cell} = \frac{1}{|\mathcal{C}_\text{kt}|}\sum_{c}\frac{1}{n_c}\sum_{n}|\hat y_{c,n} - y_{c,n}|,
 \end{gather}
-Chỉ số chính là $\mathrm{MAE}_\text{cell}$: mỗi cell có một phiếu, nên cell có tuổi thọ dài không lấn át kết quả. Đây
-cũng là cách PINN4SOH tính sai số.
+với $\mathcal{C}_\text{kt}$ là tập cell kiểm tra. Chỉ số chính là $\mathrm{MAE}_\text{cell}$: mỗi cell được tính với trọng
+số như nhau, nên cell có tuổi thọ dài không lấn át kết quả. Đây cũng là cách PINN4SOH tính sai số.
 
-\paragraph{Kiểm định.} So hai mô hình trên cùng các cell test bằng kiểm định dấu--hạng Wilcoxon ghép
-cặp~\cite{wilcoxon1945} trên hiệu sai số của từng cell; khi so trên nhiều bộ dữ liệu, $p$ được hiệu chỉnh bằng phương
-pháp Holm~\cite{holm1979} để kiểm soát xác suất mắc ít nhất một sai lầm loại I. Khoảng tin cậy của tỉ số sai số dùng
-bootstrap phân vị~\cite{efron1993}, lấy lại mẫu theo cell. Vì các tập train của các fold chồng lấp nhau, MAE của các fold
-không độc lập; phép $t$ hiệu chỉnh của Nadeau và Bengio~\cite{nadeau2003,bouckaert2004} là kiểm định bảo thủ ở mức fold
-dùng để kiểm tra thêm~\cite{dietterich1998}.
-
+Hai mô hình được so trên cùng các cell kiểm tra bằng kiểm định dấu--hạng Wilcoxon ghép cặp~\cite{wilcoxon1945} trên hiệu
+sai số của từng cell. Một khác biệt được gọi là có ý nghĩa thống kê khi giá trị $p$ nhỏ hơn 0,05. Khi cùng một phép so
+được lặp trên nhiều bộ dữ liệu, $p$ được hiệu chỉnh bằng phương pháp Holm~\cite{holm1979} để kiểm soát xác suất mắc ít
+nhất một sai lầm loại I. Khoảng tin cậy của tỉ số sai số dùng bootstrap phân vị~\cite{efron1993}, lấy lại mẫu theo cell.
+Vì các tập huấn luyện của các fold chồng lấp nhau, MAE của các fold không độc lập. Phép $t$ hiệu chỉnh của Nadeau và
+Bengio~\cite{nadeau2003,bouckaert2004} là kiểm định bảo thủ ở mức fold, được dùng để kiểm tra thêm~\cite{dietterich1998}.
 
 \section{Các nghiên cứu liên quan}\label{sec:lienquan}
 
+\subsection{Ước lượng SOH dựa trên mô hình}
+
+Hướng truyền thống mô tả cell bằng một mô hình mạch tương đương hoặc một mô hình điện hoá, rồi ước lượng dung lượng và
+điện trở như các tham số biến đổi chậm. Bộ lọc Kalman mở rộng trên mô hình mạch tương đương ước lượng đồng thời trạng
+thái nạp và các tham số này trong BMS~\cite{plett2004}. Ưu điểm của hướng này là có ý nghĩa vật lý rõ và chạy được trực
+tuyến. Hạn chế là cần đường cong điện áp mạch hở và các tham số riêng cho từng hệ hoá học, và độ chính xác phụ thuộc mô
+hình mạch có mô tả đủ quá trình lão hoá hay không. Các phương pháp phân tích dung lượng gia tăng tách được từng cơ chế
+suy giảm~\cite{dubarry2012}, nhưng cần dữ liệu sạc chậm hoặc độ phân giải cao.
+
+\subsection{Ước lượng SOH dựa trên dữ liệu}
+
+Hướng dựa trên dữ liệu học thẳng ánh xạ từ tín hiệu đo được tới SOH. Weng và cộng sự trích đỉnh của đường cong dung
+lượng gia tăng rồi dùng hồi quy véc-tơ hỗ trợ để theo dõi SOH trên xe~\cite{weng2013}. Richardson và cộng sự dùng GPR với
+các nhân ghép để dự báo SOH kèm độ bất định~\cite{richardson2017}. Roman và cộng sự đề xuất một quy trình học máy cho ước
+lượng SOH, gồm trích đặc trưng, chọn mô hình và ước lượng độ bất định~\cite{roman2021}.
+Ba bộ dữ liệu đồ án dùng cùng ra đời với các nghiên cứu theo hướng này. Severson và cộng sự dự đoán tuổi thọ từ đường
+cong điện áp xả của 100 chu kỳ đầu trên bộ MIT~\cite{severson2019}, và Attia và cộng sự dùng chính dự đoán sớm đó để tối
+ưu giao thức sạc nhanh~\cite{attia2020}. Zhu và cộng sự ước lượng dung lượng từ đoạn điện áp hồi phục sau sạc trên bộ
+TJU~\cite{zhu2022}. Ma và cộng sự dùng học chuyển giao để dự báo sức khoẻ cá nhân hoá cho từng cell trên bộ
+HUST~\cite{ma2022}. Các nghiên cứu này thường giả định có đủ nhãn cho các cell huấn luyện, dùng đặc trưng hoặc cách chia
+dữ liệu riêng cho từng bộ, và hiếm khi so các mô hình bằng kiểm định ghép cặp trên cùng một giao thức chia theo cell. Đồ
+án dùng một bộ đặc trưng chung cho cả bốn bộ và đặt trọng tâm vào trường hợp chỉ một phần cell có nhãn.
+
+\subsection{Học máy có thông tin vật lý cho pin}
+
+Học máy có thông tin vật lý kết hợp hiểu biết về hệ thống với dữ liệu~\cite{karniadakis2021}. Với pin, Nascimento và cộng
+sự ghép một mô hình rút gọn có cơ sở điện hoá với các tầng mạng nơ-ron học phần suy giảm chưa mô hình hoá được, để mô phỏng
+và dự báo lão hoá~\cite{nascimento2021}. PINN4SOH~\cite{wang2024} đi theo hướng PINN: một mạng ước lượng SOH, một mạng học
+động học suy giảm, và một phần dư phương trình được đưa vào hàm mất mát. Đây là công trình gần nhất với đồ án nên được
+trình bày chi tiết ở mục sau.
+
 \subsection{Mô hình PINN4SOH của bài gốc}\label{sec:lt_pinn4soh}
 
-PINN4SOH~\cite{wang2024} là công trình gần nhất với đồ án: cùng bốn bộ dữ liệu, cùng 16 đặc trưng. Theo mã nguồn công
-bố, mạng nghiệm $u = F(\mathbf{x}, t)$ nhận 16 đặc trưng và chỉ số chu kỳ, gồm một mạng mã hoá 17--60--60--32 với hàm
-kích hoạt sin và một đầu ra 32--32--1; mạng động học $G$ nhận $(\mathbf{x}, t, u, u_\mathbf{x}, u_t)$, tức 35 đầu vào,
-qua ba lớp 60 nút, và phần dư là $f = u_t - G$. Mỗi mẫu huấn luyện là một cặp chu kỳ liền nhau của cùng cell, với hàm
-mất mát $\mathcal{L} = \mathcal{L}_\text{data} + \alpha\,\mathcal{L}_\text{PDE} + \beta\,\mathcal{L}_\text{mono}$,
-trong đó $\mathcal{L}_\text{data}$ là sai số bình phương trên hai chu kỳ, $\mathcal{L}_\text{PDE}$ là trung bình $f^2$
-và $\mathcal{L}_\text{mono}$ phạt SOH tăng giữa hai chu kỳ.
+PINN4SOH dùng cùng bốn bộ dữ liệu và cùng 16 đặc trưng với đồ án. Theo mã nguồn công bố, mạng nghiệm $u = F(\mathbf{x},
+t)$ nhận 16 đặc trưng và chỉ số chu kỳ, gồm một mạng mã hoá 17--60--60--32 với hàm kích hoạt sin và một đầu ra
+32--32--1. Mạng động học $G$ nhận $(\mathbf{x}, t, u, u_\mathbf{x}, u_t)$, tức 35 đầu vào, qua ba lớp 60 nút, và phần dư
+là $f = u_t - G$. Mỗi mẫu huấn luyện là một cặp chu kỳ liền nhau của cùng cell. Hàm mất mát là $\mathcal{L} =
+\mathcal{L}_\text{data} + \alpha\,\mathcal{L}_\text{PDE} + \beta\,\mathcal{L}_\text{mono}$, trong đó
+$\mathcal{L}_\text{data}$ là sai số bình phương trên hai chu kỳ, $\mathcal{L}_\text{PDE}$ là trung bình $f^2$, và
+$\mathcal{L}_\text{mono}$ phạt SOH tăng giữa hai chu kỳ.
 
-Về tiền xử lý, bài lọc ngoại lai $3\sigma$ theo trung bình và độ lệch chuẩn của cả vòng đời cell, trên mọi cột kể cả
-dung lượng và chỉ số chu kỳ, rồi chuẩn hoá min--max về $[-1, 1]$ 16 đặc trưng và chỉ số chu kỳ theo cả vòng đời của từng
-cell, kể cả cell test; validation là 20\,\% số hàng chọn ngẫu nhiên của các cell huấn luyện. Về đánh giá, XJTU và TJU
-học một mô hình cho mỗi nhóm điều kiện (batch), MIT và HUST một mô hình cho cả bộ với một tập cell test cố định; bài
-còn có thí nghiệm ít mẫu chỉ với $K = 1, \dots, 4$ cell có nhãn. Sai số là MAE từng cell test, lấy trung bình qua cell,
-qua 10 lần chạy và qua các nhóm.
-
+Về tiền xử lý, bài lọc ngoại lai $3\sigma$ theo trung bình và độ lệch chuẩn của cả vòng đời cell, trên mọi cột kể cả dung
+lượng và chỉ số chu kỳ. Sau đó 16 đặc trưng và chỉ số chu kỳ được chuẩn hoá min--max về $[-1, 1]$ theo cả vòng đời của
+từng cell, kể cả cell kiểm tra. Tập xác thực là 20\,\% số hàng chọn ngẫu nhiên của các cell huấn luyện. Về đánh giá, với
+XJTU và TJU bài học một mô hình cho mỗi nhóm điều kiện thí nghiệm, còn với MIT và HUST học một mô hình cho cả bộ với một
+tập cell kiểm tra cố định. Bài còn có thí nghiệm ít mẫu, chỉ với $K = 1, \dots, 4$ cell có nhãn. Sai số là MAE từng cell
+kiểm tra, lấy trung bình qua cell, qua 10 lần chạy và qua các nhóm. Hai điểm của quy trình này được đồ án xem xét lại. Thứ
+nhất, chuẩn hoá theo cả vòng đời cell dùng thông tin mà cell đang vận hành chưa có. Thứ hai, mạng $G$ nhận cả $u_t$ nên có
+thể học $G \approx u_t$, khi đó phần dư bằng 0 mà không ràng buộc gì mạng nghiệm.
 
 \subsection{Dự báo suy giảm và tuổi thọ còn lại}
 
-Các cách dự báo dung lượng và RUL chia làm ba nhóm~\cite{hu2020joule}: khớp một hàm thực nghiệm lên lịch sử của chính cell
-rồi ngoại suy, có thể kèm bộ lọc Bayes~\cite{he2011}; học từ nhiều cell một ánh xạ từ lịch sử tới dung lượng tương lai
-hay tới RUL~\cite{zhang2018lstm,severson2019}; và ghép hai nhóm trên, lấy dạng hàm từ cơ chế suy giảm còn tham số học từ
-dữ liệu. Nhóm thứ nhất rất nhạy với nhiễu và độ dài lịch sử, nhất là trước điểm đầu gối~\cite{attia2022knee}. Đánh giá RUL
-thường dùng thêm tỉ lệ dự báo rơi trong một dải sai số tương đối quanh RUL thật~\cite{saxena2008}.
+Các cách dự báo dung lượng và RUL chia làm ba nhóm~\cite{hu2020joule}. Nhóm thứ nhất khớp một hàm thực nghiệm lên lịch sử
+của chính cell rồi ngoại suy, có thể kèm bộ lọc Bayes~\cite{he2011}. Nhóm thứ hai học từ nhiều cell một ánh xạ từ lịch sử
+tới dung lượng tương lai hay tới RUL~\cite{zhang2018lstm,severson2019}. Nhóm thứ ba ghép hai nhóm trên: lấy dạng hàm từ cơ
+chế suy giảm, còn tham số thì học từ dữ liệu. Nhóm thứ nhất rất nhạy với nhiễu và độ dài lịch sử, nhất là trước điểm đầu
+gối~\cite{attia2022knee,fermin2020}. Đánh giá RUL thường dùng thêm tỉ lệ dự báo rơi trong một dải sai số tương đối quanh
+RUL thật~\cite{saxena2008}. Phần lớn các kết quả này đến từ dữ liệu phòng thí nghiệm với điều kiện được kiểm soát. Dự báo
+trên dữ liệu vận hành thực còn nhiều thách thức hơn, vì tải và nhiệt độ thay đổi và hiếm khi có phép đo dung lượng
+chuẩn~\cite{sulzer2021}.
 
+\subsection{Rò rỉ dữ liệu khi đánh giá mô hình pin}
+
+Dữ liệu lão hoá pin đặc biệt dễ rò rỉ vì hai lý do. Các chu kỳ liền nhau của một cell gần như giống nhau, nên chia ngẫu
+nhiên theo chu kỳ đặt những mẫu gần trùng nhau vào cả tập huấn luyện và tập kiểm tra. Ngoài ra, nhiều bước tiền xử lý quen
+thuộc, như chuẩn hoá theo cả vòng đời hay lọc ngoại lai bằng thống kê của toàn bộ chuỗi, ngầm dùng tương lai của cell.
+Kaufman và cộng sự định nghĩa rò rỉ là việc đưa vào quá trình học những thông tin không có tại thời điểm dự
+đoán~\cite{kaufman2012}. Kapoor và Narayanan chỉ ra rằng rò rỉ là nguyên nhân chung của nhiều kết quả không tái lập được
+trong các ngành ứng dụng học máy~\cite{kapoor2023}. Chọn siêu tham số hay chọn mô hình bằng chính dữ liệu dùng để báo cáo
+sai số cũng làm sai số bị đánh giá thấp~\cite{varma2006}. Đồ án đo trực tiếp tác động của từng dạng rò rỉ trên bốn bộ dữ
+liệu (\Cref{sec:leakres}) và xây giao thức đánh giá để tránh chúng (\Cref{sec:protocol}).
 
 \section{Tổng kết}\label{sec:tongket_lt}
 
-Các mục trên cho thấy bốn điểm mà đồ án hướng tới. Thứ nhất, dữ liệu lão hoá có cấu trúc nhóm theo cell: chia theo chu
-kỳ, hay chuẩn hoá và lọc bằng thống kê của cả vòng đời cell, đều là rò rỉ (\Cref{sec:lt_danhgia}), mà quy trình của
-PINN4SOH có dạng thứ hai (\Cref{sec:lt_pinn4soh}); cần một giao thức chia theo cell và đo được tác động của từng dạng rò
-rỉ. Thứ hai, nhãn SOH đắt còn dữ liệu sạc thì có ở mọi chu kỳ, nên học bán giám sát với ràng buộc vật lý là hướng tự
-nhiên; nhưng PINN khó huấn luyện, và động học hộp đen nhận cả đạo hàm theo thời gian có thể thoả phần dư một cách tầm
+Các mục trên cho thấy bốn điểm mà đồ án hướng tới. Thứ nhất, dữ liệu lão hoá có cấu trúc nhóm theo cell. Chia theo chu
+kỳ, hay chuẩn hoá và lọc bằng thống kê của cả vòng đời cell, đều là rò rỉ (\Cref{sec:lt_danhgia}), và quy trình của
+PINN4SOH có dạng thứ hai (\Cref{sec:lt_pinn4soh}). Vì vậy cần một giao thức chia theo cell và đo được tác động của từng
+dạng rò rỉ. Thứ hai, nhãn SOH đắt còn dữ liệu sạc có ở mọi chu kỳ, nên học bán giám sát với ràng buộc vật lý là hướng tự
+nhiên. Tuy vậy PINN khó huấn luyện, và động học hộp đen nhận cả đạo hàm theo thời gian có thể thoả phần dư một cách tầm
 thường. Thứ ba, trên dữ liệu bảng cỡ vừa, mô hình cây thường vượt mạng nơ-ron~\cite{grinsztajn2022}, nên mọi đề xuất phải
-được so có kiểm định với GBDT trên cùng các cell. Thứ tư, BMS cần cả dự báo SOH và RUL; cách chỉ dựa vào lịch sử của
-chính cell nhạy với nhiễu trước điểm đầu gối, gợi ý ghép phần học từ nhiều cell với một dạng hàm có cơ sở vật lý.
+được so với GBDT bằng kiểm định trên cùng các cell. Thứ tư, BMS cần cả dự báo SOH lẫn RUL. Cách chỉ dựa vào lịch sử của
+chính cell nhạy với nhiễu trước điểm đầu gối, nên đồ án ghép phần học từ nhiều cell với một dạng hàm có cơ sở vật lý.

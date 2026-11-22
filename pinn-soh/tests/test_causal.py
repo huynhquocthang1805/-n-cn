@@ -58,6 +58,18 @@ class Causal(unittest.TestCase):
             np.testing.assert_allclose(causal_trend(self.soh[:n], self.cyc[:n], 20), lev[:n], atol=1e-12)
             np.testing.assert_allclose(causal_slope(self.soh[:n], self.cyc[:n], 30), sl[:n], atol=1e-12)
 
+    def test_relative_features_prefix(self):
+        """Đặc trưng tương đối (chuẩn hoá 'both' và 'first_cycle'): mốc ở hàng n chỉ dùng các hàng <= n, nên tính trên cả
+        cell hay trên một đoạn đầu phải trùng nhau ở đoạn đầu đó, kể cả ở ba chu kỳ đầu."""
+        from pinnsoh.data import Normalizer
+        cell = lambda n: NS(X=self.x[:n] + 5.0)
+        for mode in ('both', 'first_cycle'):
+            N = Normalizer(mode)
+            full = N._raw(cell(60))
+            for n in PREFIX:
+                np.testing.assert_allclose(N._raw(cell(n)), full[:n], atol=1e-12, err_msg=f'{mode} n={n}')
+            np.testing.assert_allclose(full[0, -16:], 0.0, atol=1e-12)      # hàng đầu: mốc là chính nó
+
     def test_macro_weights(self):
         """Mỗi cell có tổng trọng số như nhau, chia đều cho các gốc của nó (như G-doan)."""
         np.testing.assert_allclose(H.weights(np.array([0, 0, 0, 1]), np.array([0, 0, 1, 0])), [.125, .125, .25, .5])

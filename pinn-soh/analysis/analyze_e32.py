@@ -2,12 +2,13 @@
 E25 + E32: cập nhật ước lượng khi có vài lần đo dung lượng của chính cell, theo lượng thông tin đo được
 (docs/de-cuong-E32.md).
 
-    python analysis/analyze_e32.py    # -> results/e32_tuned.csv, e32_params.csv, e32_tiers.csv, e32_cells.csv,
+    python analysis/analyze_e32.py    # -> results/e32_params.csv, e32_tiers.csv, e32_cells.csv,
                                       #    results/fig_e32_tiers.png|pdf
 
 Ba mức thông tin về cell cần ước lượng:
-    M0   không đo cell: PINN-lai tinh chỉnh, (ω, w) chọn trên validation như analysis/analyze_tuning.py
-    M1   đo dung lượng ở chu kỳ đầu và mỗi qL chu kỳ (q20, q10, q05: q = 0,2; 0,1; 0,05; L = trung vị số chu kỳ của bộ);
+    M0   không đo cell: PINN-lai cố định (ω = ½, w = 10), cấu hình chốt trước khi đọc tập kiểm tra
+    M1   đo dung lượng ở chu kỳ đầu và mỗi qL chu kỳ (q20, q10, q05: q = 0,2; 0,1; 0,05; L = trung vị số chu kỳ của các
+         cell huấn luyện của fold, như pinnsoh/update.py);
          sai số tính trên các chu kỳ không được đo
     M2   đo mọi chu kỳ trước (dự báo một bước); sai số tính trên mọi chu kỳ trừ chu kỳ đầu
 Ở M1, M2:
@@ -18,7 +19,7 @@ Ba mức thông tin về cell cần ước lượng:
     capnhat     mô hình học cập nhật từ lần đo gần nhất (E32, pinnsoh/update.py)
     gan_nhat    dịch dự đoán theo sai số của lần đo gần nhất
     giu_nguyen  lấy đúng SOH của lần đo gần nhất, không dùng mô hình
-Dự đoán lấy từ lượt E20 với (ω, w) của results/e20_tuned.csv. So sánh ghép cặp theo cell (trung bình qua lần lặp),
+Dự đoán lấy từ lượt E20 với PINN-lai cố định. So sánh ghép cặp theo cell (trung bình qua lần lặp),
 Wilcoxon, p hiệu chỉnh Holm qua bốn bộ.
 """
 from __future__ import annotations
@@ -40,7 +41,6 @@ MAIN = ['XJTU', 'TJU', 'MIT', 'HUST']
 SRC = 'runs/E20'
 FRACS = (0.1, 0.3, 0.5, 0.7)
 REPEATS = (0, 1, 2)
-OMEGAS, WINDOWS = (0.3, 0.4, 0.5, 0.6, 0.7), (5, 10, 20, 40)
 SCHED = {'q20': 0.2, 'q10': 0.1, 'q05': 0.05, 'M2': None}        # M1: ba lịch đo thưa; M2: đo mọi chu kỳ trước
 TIERS = ['M0'] + list(SCHED)
 ELL_GRID = np.array([0.05, 0.1, 0.25, 0.5, 1.0, 3.0, np.inf])  # như E25, theo đơn vị L
@@ -95,31 +95,7 @@ def build():
     return recs
 
 
-# --------------------------------------------------------------------------- PINN-lai tinh chỉnh
-def _cell_mae(y, p, cell):
-    return [float(np.abs(p[cell == c] - y[cell == c]).mean()) for c in np.unique(cell)]
-
-
-def tune(recs):
-    """(ω, w) cho mỗi (bộ, mức nhãn): MAE theo cell trung bình trên validation của mọi lần lặp × fold; phải trùng
-    kết quả đã chốt ở results/e20_tuned.csv."""
-    acc = {}
-    for (ds, f, r, k), rec in recs.items():
-        v = rec['val']
-        for om in OMEGAS:
-            raw = om * v['p3'] + (1 - om) * v['g']
-            for w in WINDOWS:
-                acc.setdefault((ds, f, om, w), []).extend(_cell_mae(v['y'], by_cell(causal_trend, raw, v['cell'],
-                                                                                    v['cyc'], w=w), v['cell']))
-    V = pd.DataFrame([dict(ds=ds, f=f, omega=om, w=w, val=np.mean(e)) for (ds, f, om, w), e in acc.items()])
-    best = V.loc[V.groupby(['ds', 'f']).val.idxmin()].reset_index(drop=True)
-    old = pd.read_csv(f'{OUT}/e20_tuned.csv').set_index(['ds', 'f'])
-    for _, b in best.iterrows():
-        o = old.loc[(b.ds, b.f)]
-        assert np.isclose(o.omega, b.omega) and int(o.w) == int(b.w), (b.ds, b.f)
-    return best
-
-
+# --------------------------------------------------------------------------- PINN-lai
 def lai(t, om, w):
     return by_cell(causal_trend, om * t['p3'] + (1 - om) * t['g'], t['cell'], t['cyc'], w=int(w))
 
@@ -275,14 +251,23 @@ def split_cells(t, p):
     return out
 
 
-def run_tiers(recs, best):
-    Lof = {ds: life_scale(load_dataset('PINN4SOH/data', ds, clean='causal')) for ds in MAIN}
-    bt = best.set_index(['ds', 'f'])
+def train_L(ds, r, k, _cache={}):
+    """Thang đời L của một fold: trung vị số chu kỳ của các cell huấn luyện (như pinnsoh/update.py)."""
+    from pinnsoh.data import cv_split
+    if ds not in _cache:
+        _cache[ds] = load_dataset('PINN4SOH/data', ds, clean='causal')
+    cells = _cache[ds]; by = {c.cid: c for c in cells}
+    sp = cv_split(cells, k, r, 5, 0.10)
+    return life_scale([by[i] for i in sp['train']])
+
+
+def run_tiers(recs):
+    """PINN-lai cố định (ω = ½, w = 10) cho mọi (bộ, mức nhãn); thang đời L của lịch đo lấy trên cell huấn luyện."""
     rows, params = [], []
+    om, w = 0.5, 10
     for key, rec in recs.items():
         ds, f, r, k = key
-        om, w = bt.loc[(ds, f), ['omega', 'w']]
-        L = Lof[ds]
+        L = train_L(ds, r, k)
         th = fit_params(split_cells(rec['val'], lai(rec['val'], om, w)), L)
         params.append(dict(ds=ds, f=f, r=r, k=k, L=L, **th))
         for row in tiers(split_cells(rec['test'], lai(rec['test'], om, w)), th, L, load_update(*key)):
@@ -353,15 +338,15 @@ def figure(S=None, f=0.7):
 def main():
     os.makedirs(OUT, exist_ok=True)
     recs = build()
-    best = tune(recs)
-    best.to_csv(f'{OUT}/e32_tuned.csv', index=False)
-    T, params = run_tiers(recs, best)
+    T, params = run_tiers(recs)
     params.to_csv(f'{OUT}/e32_params.csv', index=False)
     S, pc = summarize(T)
     S.to_csv(f'{OUT}/e32_tiers.csv', index=False)
     pc.to_csv(f'{OUT}/e32_cells.csv', index=False)
+    import shutil
+    os.makedirs('report/generated/data', exist_ok=True)
+    shutil.copy(f'{OUT}/e32_tiers.csv', 'report/generated/data/e32_tiers.csv')    # bản sao cho báo cáo
     with pd.option_context('display.width', 230, 'display.max_rows', 500, 'display.max_columns', 40):
-        print(best.round(4).to_string(index=False))
         V = S.copy()
         for c in ['goc'] + METHODS:
             V[c] = (100 * V[c]).round(3)
