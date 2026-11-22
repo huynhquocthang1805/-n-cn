@@ -241,7 +241,9 @@ def physics_params():
 def physics_section(P):
     """Mục Thảo luận: vì sao phần vật lý đóng góp chủ yếu qua ràng buộc đơn điệu, và λ, Eₐ không định danh được."""
     g = lambda ds, c: float(P[P.ds == ds][c].iloc[0])
-    lam = rng([g(d, 'lam_min') for d in DS] + [g(d, 'lam_max') for d in DS])
+    jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    lam = jv([f"{rng([g(d, 'lam_min'), g(d, 'lam_max')])} ở {d}" for d in DS])
+    far = max(DS, key=lambda d: max(abs(g(d, 'lam_min') - 1), abs(g(d, 'lam_max') - 1)))
     ea_x = rng([g('XJTU', 'Ea_min'), g('XJTU', 'Ea_max')], 1)
     shift = max(max(abs(30 - g(d, 'Ea_min')), abs(30 - g(d, 'Ea_max'))) for d in ('TJU', 'MIT', 'HUST'))
     return (
@@ -249,9 +251,9 @@ def physics_section(P):
         'Đề tài nhấn mạnh sự hỗ trợ của thông tin hoá lý, nên cần nói rõ phần vật lý trong PINN-semi thực sự đóng góp gì. '
         'Ba quan sát ở các mục trước cho thấy đóng góp này hẹp hơn tên gọi. Thứ nhất, chỉ riêng ràng buộc đơn điệu đã '
         r'mang lại 62--95\,\% mức giảm sai số của PINN-semi so với MLP ở 30\,\% nhãn, còn bỏ phần dư động học và ràng buộc '
-        r'miền chỉ làm MAE tăng 1--11\,\% (\Cref{sec:source}). Thứ hai, các tham số hoá lý gần như không dịch chuyển: '
-        f'$\\lambda$ của mọi PINN-semi nằm trong khoảng {lam} (khởi tạo bằng 1), còn $E_a$ khởi tạo ở 30\\,kJ/mol thì '
-        f'dịch không quá {v(shift, 1)}\\,kJ/mol. Thứ ba, tốc độ $r$ học được trung bình chỉ 0{{,}}001--0{{,}}063, trong khi '
+        r'miền chỉ làm MAE tăng 1--11\,\% (\Cref{sec:source}). Thứ hai, các tham số hoá lý dịch chuyển ít so với giá trị '
+        f'khởi tạo: $\\lambda$ (khởi tạo bằng 1) của các PINN-semi nằm trong khoảng {lam}, còn $E_a$ khởi tạo ở '
+        f'30\\,kJ/mol thì dịch không quá {v(shift, 1)}\\,kJ/mol. Thứ ba, tốc độ $r$ học được trung bình chỉ 0{{,}}001--0{{,}}063, trong khi '
         'tốc độ suy giảm thực đo là 0{,}137--0{,}356 SOH trên 1\\,000 chu kỳ. Cả ba có nguyên nhân trong cách đặt bài toán, '
         'không phải do tối ưu chưa hội tụ.\n\n'
         r'Phần dư động học ràng buộc đạo hàm riêng $\partial u/\partial t$ khi giữ nguyên đặc trưng sạc. Trên quỹ đạo thật '
@@ -262,8 +264,8 @@ def physics_section(P):
         'tiếp hơn.\n\n'
         r'Hệ số $\lambda$ khó xác định vì thừa số $g(u) = e^{\lambda(1-u)}$ chỉ thay đổi khoảng 22\,\% khi SOH đi từ 1 xuống '
         r'0,8 với $\lambda \approx 1$. Sự phụ thuộc vào mức suy giảm này đã có sẵn trong $k(\tilde{\mathbf{x}})$, vốn nhận '
-        'các đặc trưng sạc biến thiên theo tuổi. Hai thừa số thay thế được cho nhau, nên dữ liệu gần như không có gradient '
-        r'để kéo $\lambda$ khỏi giá trị khởi tạo.' '\n\n'
+        'các đặc trưng sạc biến thiên theo tuổi. Hai thừa số thay thế được cho nhau, nên dữ liệu chỉ kéo $\\lambda$ đi '
+        f'một đoạn ngắn khỏi giá trị khởi tạo, xa nhất ở {far}.' '\n\n'
         r'Năng lượng hoạt hoá $E_a$ thì không định danh được về mặt toán học trên ba bộ. Thừa số Arrhenius '
         r'$A(T) = \exp[-(E_a/R_g)(1/T - 1/T_\text{ref})]$ chỉ khác 1 khi nhiệt độ khác $T_\text{ref}$. Ở XJTU, mọi cell '
         r'chạy ở 298{,}15\,K, đúng bằng $T_\text{ref}$, nên $1/T - 1/T_\text{ref} = 0$, $A \equiv 1$ và gradient của hàm mất '
@@ -613,6 +615,9 @@ def pinn_lai_text(F, rel):
     all10 = all(t.ratio < 1 and t.p_holm < 0.05 for t in g10)
     tt = [ftest(F, 'pinn_lai_tc', 'pinn_lai', ds, f) for ds, f in cases]
     up_t = sum(t.ratio < 1 and t.p_holm < 0.05 for t in tt); dn_t = sum(t.ratio > 1 and t.p_holm < 0.05 for t in tt)
+    tcg = [ftest(F, 'pinn_lai_tc', 'gbdt', ds, f) for ds, f in cases]
+    tcg_lo = sum(t.ratio < 1 for t in tcg); tcg_up = sum(t.ratio < 1 and t.p_holm < 0.05 for t in tcg)
+    tcg_dn = sum(t.ratio > 1 and t.p_holm < 0.05 for t in tcg)
     nval = F['units'].groupby('ds').n_val
     lo_v, hi_v = int(nval.min().min()), int(nval.max().max())
     nv = f'{lo_v}' if lo_v == hi_v else f'{lo_v}--{hi_v}'
@@ -625,14 +630,16 @@ def pinn_lai_text(F, rel):
                     'nhưng không có trong cấu hình đã chốt')
     SQ = seq_mae()
     beat = {(ds, f, m): 1e3 * fval(F, ds, f, 'pinn_lai') < SQ[(ds, f)][m] for ds, f in cases for m in SQ[(ds, f)]}
-    lose = {}
-    for (ds, f, m), b in beat.items():
-        if not b:
-            lose.setdefault(m, {}).setdefault(ds, []).append(f'{int(100 * f)}')
-    lose_txt = jv([f'{m} ở ' + jv([f'{ds} ({jv(fs)}\\,\\%)' for ds, fs in by.items()]) for m, by in lose.items()])
+    lose = {}                                     # (bộ, các mức nhãn) -> các mô hình chuỗi thấp hơn PINN-lai
+    for ds in DS:
+        for m in ('CNN', 'LSTM', 'Transformer'):
+            fs = tuple(f'{int(100 * f)}' for f in FR if not beat[(ds, f, m)])
+            if fs:
+                lose.setdefault((ds, fs), []).append(m)
+    lose_txt = jv([f'{jv(ms)} ở {ds} {jv(list(fs))}\\,\\%' for (ds, fs), ms in lose.items()])
     seq_txt = (f'Tính theo MAE trung bình ở \\Cref{{tab:allmae}}, PINN-lai thấp hơn cả ba mô hình chuỗi ở '
                f'{sum(beat.values())}/{len(beat)} phép so'
-               + (f'. Mô hình chuỗi chỉ thấp hơn PINN-lai ở các trường hợp sau: {lose_txt}. ' if lose else '. '))
+               + (f'. Các trường hợp mô hình chuỗi thấp hơn PINN-lai chỉ gồm {lose_txt}. ' if lose else '. '))
     geo = lambda xs: float(np.exp(np.mean(np.log(xs))))
     dev_test = geo([fval(F, ds, f, 'pinn_lai') / fval(F, ds, f, 'pinn') for ds in DS for f in (0.1, 0.5)])
     return (
@@ -659,8 +666,11 @@ def pinn_lai_text(F, rel):
         'Sau khi có kết quả của bản cố định, đồ án thử thêm PINN-lai tinh chỉnh, chọn $(\\omega, w)$ riêng trong từng fold '
         'chỉ bằng cell xác thực của fold đó (\\Cref{sec:pinnlai}). Bản tinh chỉnh có MAE bằng '
         f'{rng([t.ratio for t in tt])} lần bản cố định, thấp hơn có ý nghĩa thống kê ở {up_t}/16 và cao hơn có ý nghĩa '
-        f'thống kê ở {dn_t}/16 trường hợp. Mỗi fold chỉ có {nv} cell xác thực nên cặp $(\\omega, w)$ chọn được dao động '
-        'giữa các fold. Bản tinh chỉnh là phân tích hậu kiểm và không được dùng ở các phần sau.')
+        f'thống kê ở {dn_t}/16 trường hợp. So với GBDT, bản tinh chỉnh thấp hơn ở {tcg_lo}/16 trường hợp ({tcg_up} có ý '
+        'nghĩa thống kê)' + (f' và cao hơn có ý nghĩa thống kê ở {tcg_dn}. ' if tcg_dn else
+                              ' và không cao hơn có ý nghĩa thống kê ở trường hợp nào. ')
+        + f'Mỗi fold chỉ có {nv} cell xác thực nên cặp $(\\omega, w)$ chọn được dao động giữa các fold. Bản tinh chỉnh là '
+        'phân tích hậu kiểm và không được dùng ở các phần sau.')
 
 
 def rel_dev():
