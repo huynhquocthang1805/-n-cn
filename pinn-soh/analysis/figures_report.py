@@ -263,8 +263,12 @@ def pred_traj():
     import analyze_predictions as AP
     from pinnsoh.plotstyle import panel_title, save, GRID, MODEL_COLOR
     df = AP.load(); r0 = df[df.repeat == 0]
-    lv = AP.load_levels()
+    lv = AP.load_levels(lai=True)
+    # PINN-lai: hổ phách, đạt ngưỡng phân biệt (ΔE OKLab ×100 >= 9,1 với mù màu, >= 22,9 với mắt thường) so với ba đường
+    # còn lại; xanh đậm của PINN-lai ở các hình khác quá gần đường SOH đo xám đậm
+    color = dict(MODEL_COLOR, pinn_lai='#eda100')
     fig, axes = plt.subplots(4, 3, figsize=(TW, 6.6), sharey='row')
+    rows = []
     for i, ds in enumerate(DS):
         cid = AP.pick_cell(r0, ds)
         for j, frac in enumerate((0.1, 0.3, 0.7)):
@@ -272,9 +276,12 @@ def pred_traj():
             h = lv[(lv.dataset == ds) & (lv.frac == frac) & (lv.cell == cid)]
             t = h[h.model == 'mlp'].sort_values('cycle')
             ax.plot(t.cycle, t.y, color=MODEL_COLOR['truth'], lw=2.0, zorder=2)
-            for m in ('mlp', 'pinn_semi'):
+            for m in ('mlp', 'pinn_semi', 'pinn_lai'):
                 q = h[h.model == m].sort_values('cycle')
-                ax.plot(q.cycle, q.p, color=MODEL_COLOR[m], lw=1.0, alpha=0.8 if m == 'mlp' else 0.95, zorder=3)
+                ax.plot(q.cycle, q.p, color=color[m], lw=1.25 if m == 'pinn_lai' else 1.0,
+                        alpha=0.8 if m == 'mlp' else 0.95, zorder=4 if m == 'pinn_lai' else 3)
+                rows.append(dict(ds=ds, cell=cid, frac=frac, model=m, n=len(q), mae=float(np.abs(q.p - q.y).mean()),
+                                 tv=float(np.abs(np.diff(q.p.values)).mean())))    # dao động giữa hai chu kỳ liền nhau
             panel_title(ax, f'{ds}, {int(round(100 * frac))} % nhãn', pad=3)
             lo, hi = t.y.min(), t.y.max(); pad = max(0.03, 0.25 * (hi - lo))
             ax.set_ylim(lo - pad, hi + pad)
@@ -286,10 +293,12 @@ def pred_traj():
                 ax.set_xlabel('chu kỳ')
     fig.legend(handles=[plt.Line2D([], [], color=MODEL_COLOR['truth'], lw=2, label='SOH đo được'),
                         plt.Line2D([], [], color=MODEL_COLOR['mlp'], lw=1.6, label='MLP'),
-                        plt.Line2D([], [], color=MODEL_COLOR['pinn_semi'], lw=1.6, label='PINN-semi')],
-               loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0))
+                        plt.Line2D([], [], color=MODEL_COLOR['pinn_semi'], lw=1.6, label='PINN-semi'),
+                        plt.Line2D([], [], color=color['pinn_lai'], lw=1.6, label='PINN-lai')],
+               loc='lower center', ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=[0, 0.035, 1, 1], h_pad=0.9, w_pad=0.8)
     save(fig, f'{OUT}/fig_pred_traj')
+    pd.DataFrame(rows).to_csv(f'{OUT}/pred_traj_cells.csv', index=False)      # MAE của từng ô, cho lời văn
 
 
 # ─────────────────────────────────────────────────────────── E22: dự báo SOH so với SOH đo được

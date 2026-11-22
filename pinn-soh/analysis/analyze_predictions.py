@@ -43,17 +43,44 @@ def pick_cell(r0, ds):
     return err.index[(len(err) - 1) // 2]
 
 
-def load_levels():
-    """Dự đoán test lần lặp 0 của MLP và PINN-semi ở 10, 30, 70 % nhãn (cho hình quỹ đạo)."""
+def load_levels(lai=False):
+    """Dự đoán test lần lặp 0 của MLP và PINN-semi ở 10, 30, 70 % nhãn (cho hình quỹ đạo). PINN-semi lấy từ E13; nếu
+    không có thì lấy thành viên 0 của E20 (cùng cấu hình, cùng fold, dự đoán giống hệt E13). lai=True: thêm PINN-lai cố
+    định (1/2 trung bình ba PINN-semi + 1/2 GBDT của E20, lọc xu thế nhân quả w = 10)."""
     pref = {('mlp', 0.1): 'L', ('pinn_semi', 0.1): 'L', ('mlp', 0.3): 'A', ('pinn_semi', 0.3): 'C',
             ('mlp', 0.7): 'F', ('pinn_semi', 0.7): 'G'}
     rows = []
     for (model, frac), arm in pref.items():
-        for f in sorted(glob.glob(f'{RUNS}/{arm}_*_{model}_f{frac}_*cv0-*.json')):
+        files = sorted(glob.glob(f'{RUNS}/{arm}_*_{model}_f{frac}_*cv0-*.json'))
+        for f in files:
             r = json.load(open(f)); c = r['config']; tp = r['test_predictions']; ids = tp['cell_ids']
             rows.append(pd.DataFrame(dict(model=model, frac=frac, dataset=c['dataset'], cell=[ids[k] for k in tp['cell']],
                                           cycle=tp['cycle'], y=tp['y'], p=tp['p'])))
+        if not files and model == 'pinn_semi':
+            rows += _e20_levels(frac, members=False)
+    if lai:
+        for frac in (0.1, 0.3, 0.7):
+            rows += _e20_levels(frac, members=True)
     return pd.concat(rows, ignore_index=True)
+
+
+def _e20_levels(frac, members):
+    """Lần lặp 0 của E20 ở mức nhãn frac: PINN-semi thành viên 0 (members=False) hoặc PINN-lai cố định (members=True)."""
+    import analyze_e20_folds as A
+    out = []
+    for (ds, f, r, k), u in sorted(A.units().items()):
+        if r != 0 or not np.isclose(f, frac) or ds not in DATASETS:
+            continue
+        P = [A._read(u['P'][m])['test'] for m in (0, 1, 2)] if members else [A._read(u['P'][0])['test']]
+        T = P[0]
+        if members:
+            G = A._read(u['G'])['test']
+            p = A.lai(T, np.mean([m['p'] for m in P], axis=0), G['p'])
+            model = 'pinn_lai'
+        else:
+            p, model = T['p'], 'pinn_semi'
+        out.append(pd.DataFrame(dict(model=model, frac=frac, dataset=ds, cell=T['cell'], cycle=T['cyc'], y=T['y'], p=p)))
+    return out
 
 
 def metrics(y, p):

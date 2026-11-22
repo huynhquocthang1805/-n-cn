@@ -60,15 +60,17 @@ gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT 0{,}95--1{,}10), 
 
 \subsection{Quỹ đạo dự đoán theo lượng nhãn}\label{sec:traj}
 
-\Cref{fig:traj} đặt cạnh nhau dự đoán cho cùng một cell khi lượng nhãn tăng từ 10 lên 30 và 70\,\%. Khi ít nhãn, cả hai
-mô hình bám được hình dạng của quỹ đạo nhưng lệch mức, rõ nhất ở TJU và HUST. Thêm nhãn chủ yếu làm giảm phần lệch mức
+\Cref{fig:traj} đặt cạnh nhau dự đoán cho cùng một cell khi lượng nhãn tăng từ 10 lên 30 và 70\,\%. Khi ít nhãn, cả MLP
+và PINN-semi bám được hình dạng của quỹ đạo nhưng lệch mức, rõ nhất ở TJU và HUST. Thêm nhãn chủ yếu làm giảm phần lệch mức
 này chứ không làm thay đổi hình dạng. Ở 10\,\% nhãn, dự đoán của MLP dao động mạnh hơn và có những đoạn đi lên, còn
 PINN-semi giữ được xu hướng giảm. Khoảng cách giữa hai mô hình thu hẹp dần khi nhãn tăng.
+\input{generated/doan_quy_dao}
 
 \begin{figure}[!htbp]\centering
 \includegraphics[width=0.92\textwidth]{graphics/fig_pred_traj.pdf}
 \caption[Quỹ đạo SOH của cùng một cell kiểm tra mỗi bộ khi có 10, 30 và 70\,\% số cell mang nhãn]{Quỹ đạo SOH của cùng
-một cell kiểm tra mỗi bộ khi có 10, 30 và 70\,\% số cell mang nhãn (lần lặp 0). Cell được chọn là cell có sai số MLP ở
+một cell kiểm tra mỗi bộ khi có 10, 30 và 70\,\% số cell mang nhãn (lần lặp 0), dự đoán bởi MLP, PINN-semi và PINN-lai
+(cấu hình cố định). Cell được chọn là cell có sai số MLP ở
 trung vị của bộ tại 30\,\% nhãn, bỏ qua các cell có nhãn nhảy bất thường giữa hai chu kỳ; trục dọc theo dải SOH thực đo
 nên vài chu kỳ đầu của XJTU vượt khỏi khung.}\label{fig:traj}
 \end{figure}

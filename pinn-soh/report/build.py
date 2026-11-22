@@ -2443,6 +2443,38 @@ def demo_section():
     write('doan_cong_cu.tex', text)
 
 
+def pred_traj_text():
+    """Vẽ lại hình quỹ đạo dự đoán (MLP, PINN-semi, PINN-lai; analysis/figures_report.py) khi có đủ lượt chạy, rồi viết
+    câu về sai số của ba mô hình trên chính các cell trong hình; bản sao bảng ở generated/data/pred_traj_cells.csv."""
+    try:
+        import figures_report as FR
+        FR.FIGS['pred_traj']()
+        shutil.copy('results/fig_pred_traj.pdf', os.path.join(FIG, 'fig_pred_traj.pdf'))
+    except Exception as e:                                       # thiếu lượt chạy: dùng hình và bảng đã lưu
+        print('pred_traj: dùng hình đã lưu', type(e).__name__, e)
+    p = keep_copy('results/pred_traj_cells.csv', 'pred_traj_cells.csv')
+    if p is None:
+        return ''
+    C = pd.read_csv(p)
+    m = C.groupby(['model', 'frac']).mae.mean()
+    best = C.loc[C.groupby(['ds', 'frac']).mae.idxmin()].model
+    n_lai, n = int((best == 'pinn_lai').sum()), len(best)
+    smooth = C.loc[C.groupby(['ds', 'frac']).tv.idxmin()].model
+    n_sm = int((smooth == 'pinn_lai').sum())
+    tv = C.groupby('model').tv.mean()
+    fr = sorted(C.frac.unique())
+    jv = lambda xs: ', '.join(xs[:-1]) + ' và ' + xs[-1]
+    vals = lambda mod: jv([v(1e3 * m[(mod, f)]) for f in fr])
+    words = {1: 'một', 2: 'hai', 3: 'ba', 4: 'bốn'}
+    return (f'Hình cũng vẽ PINN-lai, mô hình cuối của bài toán ước lượng. Trên {words.get(C.ds.nunique(), C.ds.nunique())} cell của hình, MAE trung '
+            f'bình của PINN-lai ở {jv([str(int(round(100 * f))) for f in fr])}\\,\\% nhãn là {vals("pinn_lai")} '
+            f'($\\times10^{{-3}}$), so với {vals("pinn_semi")} của PINN-semi và {vals("mlp")} của MLP. PINN-lai có MAE '
+            f'thấp nhất trong ba mô hình ở {n_lai}/{n} ô của hình. Đường của PINN-lai dao động ít nhất ở {n_sm}/{n} ô: '
+            f'chênh lệch trung bình giữa hai chu kỳ liền nhau là {v(1e3 * tv["pinn_lai"])}, so với '
+            f'{v(1e3 * tv["pinn_semi"])} của PINN-semi và {v(1e3 * tv["mlp"])} của MLP ($\\times10^{{-3}}$), nhờ trung '
+            'bình ba mạng với GBDT và bộ lọc xu thế.')
+
+
 def figures():
     import diagrams
     os.makedirs(FIG, exist_ok=True)
@@ -2475,6 +2507,7 @@ def main():
     assert F20 is not None and K32 is not None, 'thiếu analysis/analyze_e20_folds.py hoặc analysis/analyze_e32.py'
     thesis_tables(F20, K32)
     REL = rel_dev()
+    write('doan_quy_dao.tex', pred_traj_text())
     write('doan_pinn_lai.tex', pinn_lai_text(F20, REL['geo'] if REL else None))
     k_txt, KS = kalman_text(K32, F20)
     write('doan_kalman.tex', k_txt)
