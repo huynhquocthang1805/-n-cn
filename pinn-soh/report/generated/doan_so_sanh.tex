@@ -60,7 +60,7 @@ HUST & 8{,}69 & \textbf{7{,}27} & PINN-lai & $\downarrow$\,16{,}3\,\% \\
 \item GBDT đơn lẻ có sai số thấp hơn PINN-semi ở 14/16 trường hợp bộ $\times$ mức nhãn (10 có ý nghĩa); PINN-semi chỉ vượt GBDT có ý nghĩa ở HUST 30\,\% nhãn (Mục~\ref{sec:labels}). PINN-lai cố định vẫn kém GBDT có ý nghĩa ở TJU 70\,\%.
 \item Ở 70\,\% nhãn, PINN-semi kém MLP có ý nghĩa trên TJU (tỉ số 1{,}09); với kiểm định bảo thủ ở mức fold, lợi ích ở 30\,\% nhãn chỉ đứng vững trên MIT.
 \item Khoảng dự đoán 90\,\% của ước lượng SOH có độ phủ thực tế 84{,}9--92{,}6\,\% (trung bình 88{,}8\,\%), 14--25\,\% số cell có độ phủ dưới 80\,\%.
-\item Với HiPINN (\Cref{sec:e33res}), khoảng SOH 90\,\% theo dự đoán phù hợp phủ 69--93\,\% tuỳ bộ và thiết lập, khoảng RUL 90\,\% phủ 60--87\,\%; tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật khi lịch sử là ước lượng là 41--66\,\%. Ở 10\,\% đời cuối của XJTU, MAE của HiPINN vẫn là 30{,}0 ($\times10^{-3}$).
+\item Với HiPINN (\Cref{sec:e33res}), khoảng SOH 90\,\% theo dự đoán phù hợp phủ 89--93\,\% tuỳ bộ và ngân sách, khoảng RUL 90\,\% phủ 68--87\,\%; tỉ lệ dự báo RUL nằm trong $\pm 20\,\%$ RUL thật là 53--84\,\%. Ở 10\,\% đời cuối của XJTU, MAE của HiPINN vẫn là 30{,}0 ($\times10^{-3}$).
 \item Tham số vật lý không được dữ liệu xác định: $\lambda$ ở mức 0{,}96--0{,}97 trên mọi bộ (khởi tạo 1), $E_a$ dịch không quá 1{,}1\,kJ/mol; tốc độ $r$ học được trung bình 0{,}001--0{,}063 trong khi tốc độ suy giảm thực đo là 0{,}137--0{,}356 SOH trên 1\,000 chu kỳ.
 \item Bộ lọc xu thế không bảo đảm SOH dự đoán không tăng (đầu ra tăng ở 28--44\,\% số bước); ép không tăng làm sai số trên XJTU tăng 1{,}76--1{,}94 lần vì dung lượng đo được của XJTU tăng ở đầu đời.
 \end{enumerate}

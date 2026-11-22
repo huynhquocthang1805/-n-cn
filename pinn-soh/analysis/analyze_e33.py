@@ -25,8 +25,8 @@ from pinnsoh.forecast_combo import TCOL, RCOL, VCOL, MODELS, SCEN, ROOT
 OUT = 'results'
 DS = ['XJTU', 'TJU', 'MIT', 'HUST']
 GDOAN = os.environ.get('GDOAN', '/home/user/huynhquocthang1805/g-doan')
-LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT theo tầm (E22)', 'gbdt_ls': 'HiGBDT',
-         'pinn': 'PINN-dự báo', 'pinn_ls': 'PINN-dự báo có lịch sử', 'ket_hop': 'PINN-GBDT (E22)',
+LABEL = {'giu': 'Giữ nguyên', 'tuyen': 'Tuyến tính', 'gbdt': 'GBDT theo tầm', 'gbdt_ls': 'HiGBDT',
+         'pinn': 'PINN-dự báo', 'pinn_ls': 'PINN-dự báo có lịch sử', 'ket_hop': 'PINN-GBDT',
          'ket_hop_ls': 'HiGBDT và PINN, trọng số chọn', 'doi': 'Nhánh theo đời', 'tb3': 'HiPINN-tb',
          'hipinn_w': 'HiPINN-w', 'hipinn': 'HiPINN'}
 FOCUS = 'hipinn'                      # mô hình của đồ án

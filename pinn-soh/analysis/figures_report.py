@@ -580,15 +580,14 @@ def e22_rul():
 
 
 # ─────────────────────────────────────────────────────────── E33: dự báo có đặc trưng lịch sử (HiPINN)
-E33_SET = [('lab30', 'do', '30 % nhãn, lịch sử đo', '#9cc3e6', 'o'), ('all', 'do', 'mọi cell train, lịch sử đo', '#2a78d6', 's'),
-           ('all', 'uoc', 'mọi cell train, lịch sử ước lượng', '#0b3d73', 'D')]
+E33_SET = [('lab30', 'do', '30 % nhãn', '#86b6ef', 'o'), ('all', 'do', 'mọi cell train', '#0b3d73', 's')]   # lịch sử đo
 
 
 E33_FIG_MODELS = ['giu', 'tuyen', 'gbdt', 'pinn', 'ket_hop', 'gbdt_ls', 'pinn_ls', 'doi', 'hipinn_w', 'hipinn']
 
 
 def e33_mae():
-    """MAE theo cell (trung bình qua 3 lần lặp) của các mô hình, ba thiết lập, mỗi bộ một panel."""
+    """MAE theo cell (trung bình qua 3 lần lặp) của các mô hình, hai ngân sách nhãn, lịch sử SOH đo; mỗi bộ một panel."""
     plt = setup()
     from pinnsoh.plotstyle import panel_title, save, CHEM, GRID
     import analyze_e33 as A
@@ -600,7 +599,7 @@ def e33_mae():
             r = S[(S.budget == b) & (S.scen == sc) & (S.ds == ds)]
             if r.empty:
                 continue
-            y = np.arange(len(order)) + (j - 1) * 0.22
+            y = np.arange(len(order)) + (j - (len(E33_SET) - 1) / 2) * 0.24
             ax.scatter([1e3 * float(r[m].iloc[0]) for m in order], y, s=22, color=col, marker=mk, zorder=3,
                        lw=0.3, ec='white', label=lab)
         ax.set_xscale('log')
@@ -618,7 +617,7 @@ def e33_mae():
         if i % 2 == 1:
             ax.set_yticklabels([])
     h, l = axes[0].get_legend_handles_labels()
-    fig.legend(h, l, loc='lower center', ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.0))
+    fig.legend(h, l, loc='lower center', ncol=len(E33_SET), frameon=False, bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=[0, 0.06, 1, 1], h_pad=1.2, w_pad=1.0)
     save(fig, f'{OUT}/fig_e33_mae')
 

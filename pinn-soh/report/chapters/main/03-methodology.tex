@@ -242,7 +242,7 @@ trước của chính cell, nên vẫn chạy trực tuyến được: trung bì
 $\mathbf{z}^{(a)}_n = a\,\mathbf{x}_n + (1-a)\,\mathbf{z}^{(a)}_{n-1}$, nhớ khoảng $1/a$ chu kỳ, với
 $a \in \{0{,}3;\ 0{,}1;\ 0{,}03\}$, và độ dốc bình phương tối thiểu của từng đặc trưng trên 20 chu kỳ gần nhất. Lịch sử ở
 đây là lịch sử của đặc trưng sạc, không phải của SOH, vì cell cần ước lượng không được đo dung lượng; đây là điểm khác với
-HiGBDT và HiPINN ở bài toán dự báo (\Cref{sec:e33pp}), vốn dùng lịch sử SOH. Với mỗi bộ, dạng lịch sử được chọn trên
+HiGBDT và HiPINN ở bài toán dự báo (\Cref{sec:e33pp}), vốn dùng lịch sử SOH đo. Với mỗi bộ, dạng lịch sử được chọn trên
 validation và chỉ giữ khi giảm MAE validation ít nhất 2\,\%; ba PINN-semi và GBDT có lịch sử được ghép đúng như PINN-lai.
 HiPINN-lai dùng bản có lịch sử ở những trường hợp (bộ, mức nhãn) mà validation chọn, còn lại trùng PINN-lai. Kết quả
 của HiPINN-lai là phân tích hậu kiểm (\Cref{sec:e20res}).
@@ -292,8 +292,8 @@ nhật: GBDT học thẳng SOH đã đổi bao nhiêu kể từ lần đo gần 
 
 \subsection{Dự báo SOH, dung lượng và RUL: HiGBDT và HiPINN}\label{sec:e33pp}
 
-\paragraph{Bài toán.} Đứng ở chu kỳ gốc $k$ của một cell, biết đặc trưng sạc của mọi chu kỳ tới $k$ và một chuỗi SOH
-lịch sử tới $k$, cần dự báo SOH ở mọi chu kỳ $k+h$ sau đó; dung lượng là SOH nhân dung lượng danh định, RUL là số chu kỳ
+\paragraph{Bài toán.} Đứng ở chu kỳ gốc $k$ của một cell, biết đặc trưng sạc của mọi chu kỳ tới $k$ và SOH đo được
+tới $k$ (dung lượng đo chia dung lượng danh định), cần dự báo SOH ở mọi chu kỳ $k+h$ sau đó; dung lượng là SOH nhân dung lượng danh định, RUL là số chu kỳ
 tới khi SOH xuống dưới ngưỡng cuối đời $\tau$ của bộ (\Cref{tab:fcset}). Đồ án xây dựng hai mô hình có đặc trưng lịch
 sử: HiGBDT (History-informed GBDT), một GBDT có đặc trưng lịch sử SOH, và HiPINN (History-informed PINN), trung vị của
 ba nhánh (\Cref{fig:hipinn}). Phần dưới mô tả trước các khối dùng chung, rồi tới hai mô hình này.
@@ -379,9 +379,8 @@ hiệu chỉnh khoảng và để so các mô hình trên cell không dùng khi 
 và bộ chuẩn hoá chỉ tính trên cell train. Gốc dự báo SOH đặt ở các chu kỳ $0{,}2L$, $0{,}4L$ và $0{,}6L$, không phụ
 thuộc đời thật của cell test; sai số của một cell là trung bình qua các gốc của MAE trên mọi chu kỳ đo được sau gốc. Có
 hai ngân sách nhãn cho dữ liệu học của bộ dự báo: chỉ các cell train có nhãn, bằng 30\,\% tổng số cell, và mọi cell
-train. Lịch sử SOH của cell test tới gốc có hai kịch bản: dung lượng đo thật (BMS đo định kỳ tới $k$), hoặc, với ngân
-sách mọi cell train, ước lượng PINN-lai ở 70\,\% nhãn, ngoài fold, khi cell test không được đo lần nào. Trong cả hai,
-SOH đo được sau gốc chỉ dùng để chấm. Gốc dự báo RUL đặt ở 25, 50 và 75\,\% của chu kỳ cuối đời thật, là chu kỳ đầu
+train. Lịch sử SOH của cell test tới gốc là dung lượng đo thật của chính cell; SOH đo được sau gốc chỉ dùng để
+chấm. Gốc dự báo RUL đặt ở 25, 50 và 75\,\% của chu kỳ cuối đời thật, là chu kỳ đầu
 tiên mà trung vị trượt 9 chu kỳ của SOH đo xuống dưới $\tau$; RUL dự báo là tầm đầu tiên mà SOH dự báo xuống dưới
 $\tau$, tìm trong $3L$ chu kỳ (không chạm ngưỡng thì ghi là $3L$). Ngoài các nhánh và HiPINN, các mô hình được so gồm hai mô hình chỉ dựa vào chính cell
 (giữ nguyên mức hiện tại và ngoại suy tuyến tính theo độ dốc 100 hàng gần nhất), GBDT theo tầm, PINN-dự báo và

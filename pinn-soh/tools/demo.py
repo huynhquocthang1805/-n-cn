@@ -11,8 +11,9 @@ Demo: ước lượng SOH theo từng chu kỳ cho MỘT cell, chỉ từ 16 đ�
     python tools/demo.py predict --model demo/XJTU.pt --csv "..." --an-nhan
 
     # 4) dự báo SOH tương lai, dung lượng còn lại (Ah) và số chu kỳ còn lại tới ngưỡng cuối đời bằng HiPINN,
-    #    đứng ở chu kỳ 150 (bỏ --den-chu-ky để đứng ở chu kỳ cuối cùng của file)
-    python tools/demo.py forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 [--an-nhan]
+    #    đứng ở chu kỳ 150 (bỏ --den-chu-ky để đứng ở chu kỳ cuối cùng của file). Lịch sử SOH tới gốc là dung lượng
+    #    đo của chính cell (cột capacity); cell chưa đo dung lượng thì chỉ ước lượng được SOH hiện tại (bước 2, 3)
+    python tools/demo.py forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150
     #    --mo-hinh e23: dùng bộ dự báo có xét hồi phục dung lượng của E23 thay cho HiPINN
 
     # 5) HiPINN cho cả bốn bộ: một cell test mỗi bộ, dự báo từ 40 % đời, hình 2 × 2
@@ -159,7 +160,7 @@ FORECAST_VERSION = 2          # 2: phần hồi phục = phần giữ lại rho 
 
 def _forecaster(path, model, norm, c, split):
     """Bộ dự báo của demo: học trên cell CÓ NHÃN của cùng fold với mô hình ước lượng (cell test không bao giờ được
-    dùng), hiệu chỉnh khoảng 90 % trên cell validation cho cả hai kịch bản lịch sử; lưu ở demo/<bộ>_dubao.pkl.
+    dùng), hiệu chỉnh khoảng 90 % trên cell validation với lịch sử dung lượng đo; lưu ở demo/<bộ>_dubao.pkl.
     Dùng bản có xét hồi phục dung lượng (E23): xu thế bền + phần hồi phục (giữ lại / mất ngay) + dao động đều.
     File lưu kèm số phiên bản; khác phiên bản (đổi cách mô hình hoá) thì học lại."""
     import pickle
@@ -182,12 +183,12 @@ def _forecaster(path, model, norm, c, split):
     Xn = {x.cid: fnorm.transform(x) for x in cells}
     fcm = RC.ForecasterR.fit(lab, va, Xn, seed=0)
     L = FC.life_scale(cells)
-    resid = {'do': [], 'uoc': []}
+    resid = {'do': []}
     for x in va:
         n = len(x.soh)
         if n < 8:
             continue
-        hist = {'do': x.soh.astype(float), 'uoc': _estimate(model, norm, x, filt=False)}
+        hist = {'do': x.soh.astype(float)}
         for sc, sh in hist.items():
             for q in FC.ORIGINS:
                 i = max(5, int(round(q * (n - 1))))
@@ -208,8 +209,7 @@ HIPINN_VERSION = 2
 
 def _hipinn(model, norm, c, split):
     """HiPINN của demo: học trên cell có nhãn của cùng fold với mô hình ước lượng, chọn và hiệu chỉnh trên cell
-    validation; khoảng 90 % hiệu chỉnh riêng cho hai kịch bản lịch sử (đo, ước lượng bằng mô hình demo). Lưu ở
-    demo/<bộ>_hipinn.pkl."""
+    validation; khoảng 90 % hiệu chỉnh trên lịch sử dung lượng đo của các cell hiệu chỉnh. Lưu ở demo/<bộ>_hipinn.pkl."""
     import pickle
     from pinnsoh.data import load_dataset
     from pinnsoh.hipinn import HiPINN
@@ -224,8 +224,6 @@ def _hipinn(model, norm, c, split):
     print('lần đầu: huấn luyện HiPINN (HiGBDT, PINN-dự báo, nhánh theo đời) — vài phút ...', flush=True)
     torch.set_num_threads(1)
     m = HiPINN.fit(c['dataset'], list(split['labelled']), list(split['val']), list(split['train']), seed=0)
-    by = {x.cid: x for x in load_dataset('PINN4SOH/data', c['dataset'], clean='causal')}
-    m.q['uoc'] = m.calibrate([by[i] for i in m.info['cal']], soh_of=lambda x: _estimate(model, norm, x, filt=True))
     m.demo_version = HIPINN_VERSION
     os.makedirs(DEMO_DIR, exist_ok=True)
     pickle.dump(m, open(fpath, 'wb'))
@@ -237,23 +235,24 @@ def _forecast_hipinn(a, model, norm, c, split):
     M = _hipinn(model, norm, c, split)
     nominal = a.nominal or _nominal(c['dataset'], a.csv)
     cell = load_cell_csv(a.csv, nominal, temp_c=a.temp)
-    measured = np.isfinite(cell.soh).all() and not a.an_nhan
-    sc = 'do' if measured else 'uoc'
-    hist = cell.soh.astype(float) if measured else _estimate(model, norm, cell, filt=True)
     k = cell.cycle[-1] if a.den_chu_ky is None else a.den_chu_ky
     i = int(np.searchsorted(cell.cycle, k, side='right') - 1)
     if i < 5:
         sys.exit('cần ít nhất 6 chu kỳ lịch sử trước gốc dự báo')
+    if not np.isfinite(cell.soh[:i + 1]).all():
+        sys.exit('dự báo cần dung lượng đo của cell tới chu kỳ gốc (cột capacity); cell chưa đo dung lượng thì chỉ ước lượng '
+                 'được SOH hiện tại (lệnh predict)')
     L, tau = M.L, M.tau
     step = max(1, int(round(L / 200)))
     hh = np.arange(step, int(3 * L) + step, step, dtype=float)
-    R = M.forecast(cell, i, hh, soh=None if measured else hist, scen=sc)
+    hist = cell.soh.astype(float)                             # lịch sử dùng để dự báo: dung lượng đo
+    R = M.forecast(cell, i, hh, scen='do')
     p, plo, phi = R['hipinn'], R['lo'], R['hi']
     k0 = int(cell.cycle[i])
     name = os.path.splitext(os.path.basename(a.csv))[0]
     print(f'cell {name} · gốc dự báo: chu kỳ {k0} · danh định {nominal} Ah · ngưỡng cuối đời SOH {tau:.2f} '
           f'({tau * nominal:.3f} Ah)')
-    print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
+    print('lịch sử SOH: dung lượng đo')
     print('HiPINN: trung vị của HiGBDT, PINN-dự báo và nhánh theo đời')
     print(f'hiện tại: SOH {R["level"]:.3f} · dung lượng {R["level"] * nominal:.3f} Ah')
     for hr in FC.H_REL:
@@ -455,13 +454,14 @@ def cmd_forecast(a):
     F = _forecaster(a.model, model, norm, c, split)
     nominal = a.nominal or _nominal(c['dataset'], a.csv)
     cell = load_cell_csv(a.csv, nominal, temp_c=a.temp)
-    measured = np.isfinite(cell.soh).all() and not a.an_nhan
-    sc = 'do' if measured else 'uoc'
-    hist = cell.soh.astype(float) if measured else _estimate(model, norm, cell, filt=False)
     k = cell.cycle[-1] if a.den_chu_ky is None else a.den_chu_ky
     i = int(np.searchsorted(cell.cycle, k, side='right') - 1)
     if i < 5:
         sys.exit('cần ít nhất 6 chu kỳ lịch sử trước gốc dự báo')
+    if not np.isfinite(cell.soh[:i + 1]).all():
+        sys.exit('dự báo cần dung lượng đo của cell tới chu kỳ gốc (cột capacity); cell chưa đo dung lượng thì chỉ ước lượng '
+                 'được SOH hiện tại (lệnh predict)')
+    sc, hist = 'do', cell.soh.astype(float)
     L, tau = F['L'], F['tau']
     step = max(1, int(round(L / 200)))
     hh = np.arange(1, int(3 * L) + 1, step, dtype=float)
@@ -482,7 +482,7 @@ def cmd_forecast(a):
     name = os.path.splitext(os.path.basename(a.csv))[0]
     print(f'cell {name} · gốc dự báo: chu kỳ {k0} · danh định {nominal} Ah · ngưỡng cuối đời SOH {tau:.2f} '
           f'({tau * nominal:.3f} Ah)')
-    print(f'lịch sử SOH: {"dung lượng đo" if measured else "ước lượng từ đặc trưng sạc (không đo dung lượng)"}')
+    print('lịch sử SOH: dung lượng đo')
     print(f'hiện tại: SOH {lev[i]:.3f} · dung lượng {lev[i] * nominal:.3f} Ah · '
           f'suy giảm hiện tại {10 * a_:.2f} % SOH mỗi 100 chu kỳ · hệ số gãy λ = {lam:.1f}')
     rho, tau_r = F['fc'].rec
@@ -544,7 +544,6 @@ if __name__ == '__main__':
     f.add_argument('--den-chu-ky', type=int, default=None, help='chu kỳ hiện tại (gốc dự báo); mặc định chu kỳ cuối của file')
     f.add_argument('--nominal', type=float, default=None, help='dung lượng danh định (Ah); mặc định theo bộ')
     f.add_argument('--temp', type=float, default=25.0, help='nhiệt độ môi trường (°C)')
-    f.add_argument('--an-nhan', action='store_true', help='không dùng dung lượng đo: lịch sử SOH lấy từ mô hình ước lượng')
     f.add_argument('--mo-hinh', default='hipinn', choices=['hipinn', 'e23'],
                    help='hipinn (mặc định): mô hình HiPINN; e23: bộ dự báo có xét hồi phục dung lượng')
     sp.add_parser('tat-ca', help='HiPINN cho một cell test của mỗi bộ dữ liệu, hình 2 × 2')

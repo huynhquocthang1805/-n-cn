@@ -285,8 +285,9 @@ cell trên hai nửa validation (mảng `vcell`) để đối chiếu. Mô hình
 Giao thức (`pinnsoh/forecast_combo.py`): cùng fold với E22; cell validation chia đôi theo tên, một nửa để chọn cấu hình
 từng nhánh, nửa còn lại để hiệu chỉnh khoảng 90 % và so các mô hình trên dữ liệu không thuộc test. Thang đời L và chuẩn
 hoá chỉ tính trên cell train, gốc dự báo ở 0,2L, 0,4L, 0,6L (E22 tính L trên mọi cell và đặt gốc theo số hàng của cell
-test). Hai ngân sách nhãn: 30 % số cell và mọi cell train; lịch sử SOH tới gốc là dung lượng đo, hoặc ước lượng PINN-lai
-như E22.
+test). Hai ngân sách nhãn: 30 % số cell và mọi cell train; lịch sử SOH tới gốc là dung lượng đo của chính cell. Mã còn
+lưu thêm một biến thể lịch sử ước lượng bằng PINN-lai (vì vậy cần E20 ở 70 % nhãn), nhưng báo cáo và công cụ minh hoạ
+không dùng biến thể này: lịch sử dùng để dự báo luôn là số đo thực tế.
 
 ```bash
 python run.py data                      # tải dữ liệu nếu chưa có
@@ -304,20 +305,21 @@ Kết quả (mục dự báo ở Chương 5 và Phụ lục A của báo cáo; M
 * HiGBDT chạy lại ở 30 % nhãn với lịch sử đo: XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; lần chạy đầu (thư mục kết quả
   đặt bằng biến môi trường GDOAN) là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy). Đặc trưng
   lịch sử giúp GBDT ở mọi trường hợp: HiGBDT bằng 0,85–0,94 lần GBDT theo tầm khi lịch sử đo.
-* HiPINN có MAE thấp nhất trong tám mô hình của bảng ở 11/12 trường hợp (bộ × thiết lập). So với HiGBDT, mô hình
-  đứng riêng tốt nhất: 0,86–1,01 lần, tốt hơn có ý nghĩa ở 10/12 trường hợp, 62–82 % số cell có sai số thấp hơn. So với
-  PINN-GBDT của E22 khi lịch sử đo: 0,62–0,91 lần, tốt hơn có ý nghĩa ở 8/8.
+* HiPINN có MAE thấp nhất trong tám mô hình của bảng ở 7/8 trường hợp (bộ × ngân sách). So với HiGBDT, mô hình
+  đứng riêng tốt nhất: 0,86–1,01 lần, tốt hơn có ý nghĩa ở 6/8 trường hợp, không trường hợp nào kém hơn có ý nghĩa,
+  62–82 % số cell có sai số thấp hơn. So với PINN-GBDT của E22: 0,62–0,91 lần, tốt hơn có ý nghĩa ở 8/8.
 * HiPINN-w (trọng số chọn trên 3–7 cell validation) có MAE cao hơn HiGBDT ở 7/8 trường hợp lịch sử đo; HiPINN thấp hơn
-  HiPINN-w và HiPINN-tb (trung bình ba nhánh) ở 12/12. Dạng trung vị được chọn sau khi xem kết quả test của HiPINN-w.
+  HiPINN-w và HiPINN-tb (trung bình ba nhánh) ở 8/8. Dạng trung vị được chọn sau khi xem kết quả test của HiPINN-w.
 * Kiểm tra trên nửa hiệu chỉnh (không thuộc test, chưa xem khi chọn trung vị): HiPINN thấp hơn HiPINN-w ở 7/8 trường hợp;
   thấp hơn HiGBDT ở 4/4 bộ khi học trên mọi cell train (3 có ý nghĩa) nhưng chỉ 2/4 bộ với 30 % nhãn.
 * Phần cuối đời (10 % đời cuối, MIT, mọi cell train, lịch sử đo): PINN-GBDT 26,2, HiPINN 20,6, HiGBDT 20,8, GBDT theo
   tầm 19,2 (thấp nhất); dự báo vẫn cao hơn thực tế ở đoạn này (độ lệch +12,7 với HiPINN, +15,3 với HiGBDT).
 * PINN-dự báo có lịch sử bằng 0,87–1,11 lần bản không lịch sử, chỉ tốt hơn có ý nghĩa trên HUST, nên HiPINN giữ
   PINN-dự báo của E22.
-* RUL (mọi cell train): HiPINN bằng 0,90–1,70 lần PINN-GBDT khi lịch sử đo (thấp hơn có ý nghĩa trên TJU và MIT; trên
-  HUST cao hơn, không có ý nghĩa) và 0,34–0,80 lần HiGBDT, vốn dự báo RUL dài hơn thực tế trên MIT và HUST.
-* Khoảng SOH 90 % của HiPINN phủ 89–93 % khi lịch sử đo, 69–90 % khi lịch sử ước lượng.
+* RUL (mọi cell train): HiPINN bằng 0,90–1,70 lần PINN-GBDT (thấp hơn có ý nghĩa trên TJU và MIT; trên HUST cao hơn,
+  không có ý nghĩa) và 0,34–0,80 lần HiGBDT, vốn dự báo RUL dài hơn thực tế trên MIT và HUST; RUL dự báo nằm trong
+  ±20 % RUL thực ở 53–84 % số gốc.
+* Khoảng SOH 90 % của HiPINN phủ 89–93 %, khoảng RUL 90 % phủ 68–87 % tuỳ bộ.
 
 ### HiGBDT cho bài toán cập nhật (E34)
 
@@ -372,9 +374,9 @@ python run.py demo predict --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2
 python run.py demo predict --model demo/XJTU.pt --csv "..." --an-nhan   # coi như cell chưa đo dung lượng
 
 # dự báo từ chu kỳ 150: SOH và dung lượng (Ah) sau 0,1L / 0,25L / 0,5L chu kỳ, số chu kỳ còn lại tới ngưỡng
-# cuối đời, khoảng 90 %; bỏ --den-chu-ky để dự báo từ chu kỳ cuối cùng của file
+# cuối đời, khoảng 90 %; bỏ --den-chu-ky để dự báo từ chu kỳ cuối cùng của file. Lịch sử SOH tới gốc là dung lượng
+# đo của chính cell (cột capacity); cell chưa đo dung lượng thì chỉ ước lượng được SOH hiện tại (lệnh predict)
 python run.py demo forecast --model demo/XJTU.pt --csv "PINN4SOH/data/XJTU data/2C_battery-8.csv" --den-chu-ky 150
-python run.py demo forecast --model demo/XJTU.pt --csv "..." --den-chu-ky 150 --an-nhan   # lịch sử SOH ước lượng
 
 # cập nhật: cell được đo dung lượng ở vài chu kỳ (lịch đo mỗi 0,1L, hoặc --do-chu-ky "1,60,120"); HiGBDT-V (E34)
 # ước lượng SOH ở mọi chu kỳ còn lại, mỗi chu kỳ chỉ dùng các lần đo trước nó

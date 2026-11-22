@@ -4,23 +4,17 @@
 \caption[MAE của RUL dự báo, E33]{MAE của RUL (chu kỳ), trung bình qua các gốc ở 25, 50 và 75\,\% chu kỳ cuối đời thật và qua 3 lần lặp; in đậm là thấp nhất. Hai cột cuối là của HiPINN: tỉ lệ dự báo nằm trong $\pm20\,\%$ RUL thực và độ phủ của khoảng RUL 90\,\%.}\label{tab:e33rul}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrrrrr}\toprule
 Bộ & \begin{tabular}[b]{@{}r@{}}RUL\\thực\end{tabular} & \begin{tabular}[b]{@{}r@{}}GBDT\\theo tầm\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-\\dự báo\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-\\GBDT\end{tabular} & \begin{tabular}[b]{@{}r@{}}\\HiGBDT\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN có\\lịch sử\end{tabular} & \begin{tabular}[b]{@{}r@{}}Theo\\đời\end{tabular} & \begin{tabular}[b]{@{}r@{}}\\HiPINN-w\end{tabular} & \begin{tabular}[b]{@{}r@{}}\\HiPINN\end{tabular} & \begin{tabular}[b]{@{}r@{}}Trong\\$\pm20\,\%$\end{tabular} & \begin{tabular}[b]{@{}r@{}}Độ\\phủ\end{tabular} \\\midrule
-\multicolumn{12}{@{}l}{\textit{30\,\% nhãn, lịch sử đo}} \\
+\multicolumn{12}{@{}l}{\textit{30\,\% nhãn}} \\
 XJTU & 231 & 98 & 84 & 77 & 139 & 75 & \textbf{67} & 72 & 74 & 42\,\% & 77\,\% \\
 TJU & 131 & 19 & 18 & 16 & 19 & 18 & 18 & \textbf{15} & 15 & 74\,\% & 83\,\% \\
 MIT & 344 & 139 & 124 & 112 & 369 & 108 & \textbf{83} & 164 & 115 & 49\,\% & 73\,\% \\
 HUST & 923 & 210 & 134 & 140 & 598 & \textbf{129} & 832 & 291 & 211 & 77\,\% & 77\,\% \\
 \addlinespace[3pt]
-\multicolumn{12}{@{}l}{\textit{mọi cell train, lịch sử đo}} \\
+\multicolumn{12}{@{}l}{\textit{mọi cell train}} \\
 XJTU & 231 & 110 & 70 & 66 & 96 & 64 & \textbf{53} & 59 & 61 & 53\,\% & 75\,\% \\
 TJU & 131 & 17 & 14 & 14 & 16 & 13 & 14 & 12 & \textbf{12} & 82\,\% & 87\,\% \\
 MIT & 344 & 134 & 113 & 108 & 229 & 103 & \textbf{76} & 126 & 97 & 53\,\% & 68\,\% \\
 HUST & 923 & 198 & 94 & 103 & 512 & \textbf{92} & 676 & 137 & 176 & 84\,\% & 79\,\% \\
-\addlinespace[3pt]
-\multicolumn{12}{@{}l}{\textit{mọi cell train, lịch sử ước lượng}} \\
-XJTU & 231 & 112 & 81 & 75 & 96 & 67 & \textbf{64} & 64 & 69 & 41\,\% & 66\,\% \\
-TJU & 131 & 23 & 23 & 20 & 25 & 27 & 20 & 22 & \textbf{19} & 66\,\% & 79\,\% \\
-MIT & 344 & 140 & 112 & 108 & 230 & 103 & \textbf{70} & 126 & 97 & 52\,\% & 66\,\% \\
-HUST & 923 & 294 & \textbf{213} & 214 & 711 & 226 & 1203 & 319 & 292 & 55\,\% & 60\,\% \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
 
 \begin{table}[!htbp]\centering\small
