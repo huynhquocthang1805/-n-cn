@@ -16,12 +16,12 @@ suy giảm thật của cell.
 
 Một số lựa chọn được đưa ra sau khi đã có kết quả test (tinh chỉnh trọng số ghép, chọn có hay không lịch sử, nhánh theo
 đời và dạng trung vị của HiPINN) và chưa được kiểm chứng trên dữ liệu mới; PINN-lai và các thí nghiệm về sau dùng 3 thay
-vì 5 lần lặp. Một số thí nghiệm lấy từ báo cáo đã nộp còn dùng thông tin của cell test ở mức nhỏ và được giữ nguyên để
-tái lập số đã nộp: E32 tính thang đời $L$ trên mọi cell, kể cả cell test, để đặt lịch đo; chuẩn hoá tương đối (biến thể
-có đặc trưng tương đối của E20 và của phân tích đặc trưng) lấy trung bình 3 chu kỳ đầu làm mốc, nên ở 2 chu kỳ đầu của
-mỗi cell nhìn trước tối đa 2 chu kỳ; PINN-lai tinh chỉnh chọn trọng số ghép và cửa sổ lọc trên cell validation gộp qua
-mọi fold, nên cell test của một fold có thể nằm trong tập dùng để chọn hai tham số này. Mã của đồ án đã có cách chọn
-riêng cho từng fold, nhưng các bảng lấy từ báo cáo đã nộp vẫn giữ cách gộp fold; phần dự báo (\Cref{sec:e33pp}) và E34
+vì 5 lần lặp. Một số thí nghiệm ước lượng còn dùng thông tin của cell test ở mức nhỏ: thí nghiệm ngân sách đo tính
+thang đời $L$ trên mọi cell, kể cả cell test, để đặt lịch đo; chuẩn hoá tương đối (biến thể có đặc trưng tương đối trong
+thí nghiệm lịch sử và trong phân tích đặc trưng) lấy trung bình 3 chu kỳ đầu làm mốc, nên ở 2 chu kỳ đầu của mỗi cell
+nhìn trước tối đa 2 chu kỳ; PINN-lai tinh chỉnh chọn trọng số ghép và cửa sổ lọc trên cell validation gộp qua mọi fold,
+nên cell test của một fold có thể nằm trong tập dùng để chọn hai tham số này. Mã của đồ án đã có cách chọn riêng cho từng
+fold, nhưng các số trong báo cáo vẫn theo cách gộp fold; phần dự báo (\Cref{sec:e33pp}) và phần cập nhật có lịch sử
 (\Cref{sec:anchor}) tính $L$ trên cell train. Cuối cùng, đồ án chưa xử lý dữ liệu thô của từng bộ nên chưa thử được các
 đặc trưng cần đường cong đầy đủ, và chưa có dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều cell ghép song
 song (giai đoạn 2 của đề cương).

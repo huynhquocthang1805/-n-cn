@@ -13,6 +13,8 @@ Biên dịch bằng pdfLaTeX và BibTeX như mẫu (`latexmk -pdf main.tex`), c�
 `apt-get install latexmk texlive-latex-extra texlive-lang-other`). `generated/` và `graphics/` được đưa lên git, nên có
 thể tải nguyên thư mục `report/` lên Overleaf (trình biên dịch pdfLaTeX) mà không chạy gì thêm.
 
+Quy ước bảng số liệu: mỗi bảng có một hàng nêu độ đo (MAE, RMSE, MAPE, tỉ số MAE, tỉ lệ cell tốt hơn, hệ số Spearman); mũi tên $\downarrow$ là thấp hơn tốt hơn, $\uparrow$ là cao hơn tốt hơn, và số tốt nhất được in đậm (phạm vi so ghi ở chú thích bảng). Bảng kiểm toán rò rỉ đo độ lệch của đánh giá chứ không so mô hình nên không có mũi tên hay chữ đậm. Các bảng sinh trong `build.py` dùng chung hàm `metric_row` và `bold_best`.
+
 ## Cấu trúc
 
 | Tệp | Nội dung |
@@ -28,7 +30,7 @@ thể tải nguyên thư mục `report/` lên Overleaf (trình biên dịch pdfL
 | `chapters/back/appendix-a.tex`, `appendix-b.tex` | kết quả bổ sung; mã nguồn và các kiểm tra tái lập |
 | `refs/references.bib` | tài liệu tham khảo (BibTeX, kiểu `plain`) |
 | `generated/` | bảng và đoạn văn có số, sinh bởi `build.py`; `generated/data/` giữ bản sao các bảng kết quả nhỏ |
-| `graphics/` | hình, sinh bởi `build.py` hoặc chép từ báo cáo đã nộp |
+| `graphics/` | hình, sinh bởi `build.py` hoặc chép từ báo cáo đã nộp; bốn sơ đồ do tác giả vẽ: kiến trúc PINN-semi (`fig_pinn_semi.png`), PINN-lai và HiPINN-lai (`fig_pinn_lai.png`), tổng quan HiPINN (`fig_hipinn_tongquan.png`), quy trình thực nghiệm (`fig_quy_trinh.png`) |
 
 ## Số liệu lấy từ đâu
 

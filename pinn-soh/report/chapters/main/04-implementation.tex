@@ -22,16 +22,19 @@
 
 \section{Kiến trúc hệ thống}\label{sec:kientruc}
 
-Hệ thống được hiện thực bằng Python thành một đường ống năm khối (Hình~\ref{fig:pipeline}), chạy được từ dữ liệu tới báo
-cáo bằng một lệnh. Mỗi lượt huấn luyện là một tệp kết quả độc lập ghi đủ cấu hình, chỉ số, dự đoán validation và test;
+Hệ thống được hiện thực bằng Python thành một đường ống năm bước: dữ liệu, tiền xử lý, thí nghiệm,
+phân tích và báo cáo (Hình~\ref{fig:pipeline}), chạy được từ dữ liệu tới báo cáo bằng một lệnh. Mỗi lượt huấn luyện là một tệp kết quả độc lập ghi đủ cấu hình, chỉ số, dự đoán validation và test;
 bộ lập lịch chạy song song nhiều tiến trình một luồng, bỏ qua lượt đã có kết quả nên chạy tiếp được sau khi dừng. Khối
 phân tích chỉ đọc các tệp kết quả, không huấn luyện lại. Báo cáo này và bản thảo bài báo được sinh từ kết quả phân tích,
 nên mọi bảng đều khớp với dữ liệu. Mọi lượt chạy trên CPU với một luồng và hạt giống cố định, nên chạy lại cho kết quả
 trùng từng bit (Mục~\ref{sec:tailap}). Bảng~\ref{tab:exps} liệt kê các thí nghiệm.
 
 \begin{figure}[!htbp]\centering
-\includegraphics[width=\textwidth]{graphics/fig_pipeline.pdf}
-\caption{Kiến trúc hiện thực: năm khối của hệ thống, từ dữ liệu tới báo cáo và công cụ minh hoạ.}\label{fig:pipeline}
+\includegraphics[width=\textwidth]{graphics/fig_quy_trinh.png}
+\caption[Quy trình thực nghiệm và cách chia cell]{Quy trình thực nghiệm và cách chia cell: dữ liệu 387 cell của bốn bộ, tiền
+xử lý với bộ lọc nhân quả, các thí nghiệm PINN và GBDT, phân tích sai số theo cell, rồi bảng và hình của báo cáo. Mỗi fold
+dành 70\,\% số cell để huấn luyện (học tham số và thống kê chuẩn hoá), 10\,\% để xác thực (chọn cấu hình) và 20\,\% để
+kiểm tra (chấm trên cell mới).}\label{fig:pipeline}
 \end{figure}
 
 \input{generated/bang_thi_nghiem}

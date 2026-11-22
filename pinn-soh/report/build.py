@@ -98,23 +98,123 @@ def thesis_block(label, edits=()):
     return blk + '\n'
 
 
+# --------------------------------------------------------------------------- độ đo, mũi tên, in đậm số tốt nhất
+UP, DN = r'$\uparrow$', r'$\downarrow$'
+_NUM = r'([−-]?\d+(?:\{,\}\d+)?)'
+
+
+def _num(cell):
+    """Số đứng đầu một ô bảng ('6{,}10$^{*}$' -> 6.10; '−0{,}99' -> -0.99); None nếu ô không bắt đầu bằng số."""
+    m = re.match(r'\s*(?:\\textbf\{)?' + _NUM, cell)
+    return float(m.group(1).replace('{,}', '.').replace('−', '-')) if m else None
+
+
+def metric_row(blk, anchor, row):
+    """Chèn hàng nêu độ đo (kèm mũi tên) ngay trên dòng tiêu đề cột bắt đầu bằng `anchor`."""
+    assert blk.count(anchor) == 1, anchor
+    i = blk.index(anchor)
+    return blk[:i] + row + '\n' + blk[i:]
+
+
+def bold_best(blk, cols, best=min, by='col', groups=False, skip=0, drop_last=0, key=None):
+    """In đậm số tốt nhất trong các cột `cols` (chỉ số từ 0). by='col': theo từng cột, trong mỗi nhóm hàng nếu groups=True
+    (nhóm mới bắt đầu ở hàng có ô đầu khác rỗng); by='row': theo từng hàng. skip/drop_last: bỏ qua bao nhiêu hàng dữ liệu
+    đầu/cuối. best chọn giá trị tốt nhất (min hoặc max) sau khi áp `key` (vd. abs). Chỉ in đậm khi có ít nhất hai số để
+    so; số bằng nhau ở độ chính xác hiển thị cùng được in đậm. Ô đã in đậm giữ nguyên."""
+    key = key or (lambda x: x)
+    head, rest = blk.split('\\midrule', 1)
+    body, tail = rest.split('\\bottomrule', 1)
+    lines = body.split('\n')
+    data = [i for i, ln in enumerate(lines) if ' & ' in ln and ln.rstrip().endswith('\\\\')]
+    data = data[skip:len(data) - drop_last]
+    cells = {i: lines[i].rstrip()[:-2].rstrip().split(' & ') for i in data}
+
+    def mark(i, c):
+        if '\\textbf' not in cells[i][c]:
+            cells[i][c] = re.sub(r'^(\s*)([−-]?\d+(?:\{,\}\d+)?(?:\\,\\%)?)', r'\1\\textbf{\2}', cells[i][c], count=1)
+
+    def pick(pairs):
+        pairs = [(k, key(x)) for k, x in pairs if x is not None]
+        if len(pairs) >= 2:
+            b = best([x for _, x in pairs])
+            for k, x in pairs:
+                if x == b:
+                    yield k
+    if by == 'row':
+        for i in data:
+            for c in list(pick([(c, _num(cells[i][c])) for c in cols if c < len(cells[i])])):
+                mark(i, c)
+    else:
+        grp, cur = [], []
+        for i in data:
+            if groups and cells[i][0].strip() and cur:
+                grp.append(cur); cur = []
+            cur.append(i)
+        grp.append(cur)
+        for g in grp:
+            for c in cols:
+                for i in list(pick([(i, _num(cells[i][c])) for i in g if c < len(cells[i])])):
+                    mark(i, c)
+    for i in data:
+        lines[i] = ' & '.join(cells[i]) + ' \\\\'
+    return head + '\\midrule' + '\n'.join(lines) + '\\bottomrule' + tail
+
+
 def thesis_tables():
+    MAE3 = r'MAE theo cell ($\times10^{-3}$) ' + DN
     write('bang_du_lieu.tex', thesis_block('tab:datastats'))
-    write('bang_nhan.tex', thesis_block('tab:big'))
-    write('bang_ti_so.tex', thesis_block('tab:cmp'))
-    write('bang_nguon_loi.tex', thesis_block('tab:source'))
-    write('bang_mae_chinh.tex', thesis_block('tab:allmae', [(
+    # MAE của mọi mô hình theo lượng nhãn: in đậm sẵn (thấp nhất trong cột của mỗi bộ)
+    big = thesis_block('tab:big')
+    write('bang_nhan.tex', metric_row(big, 'Bộ & Mô hình &',
+                                      r' & & \multicolumn{4}{c}{' + MAE3 + r'} \\\cmidrule(lr){3-6}'))
+    # tỉ số PINN-semi so với MLP và GBDT: tỉ số thấp và tỉ lệ cell tốt hơn cao là tốt cho PINN-semi
+    cmp_ = thesis_block('tab:cmp', [
+        ('(nhỏ hơn 1: PINN-semi tốt hơn).',
+         '(nhỏ hơn 1: PINN-semi tốt hơn); “cell tốt hơn” là tỉ lệ cell test mà PINN-semi có sai số thấp hơn. In đậm: '
+         'tốt nhất trong mỗi bộ (tỉ số thấp nhất, tỉ lệ cell tốt hơn cao nhất).'),
+        (r'Bộ & Nhãn & so với MLP: tỉ số [KTC] & cell tốt hơn & $p_\text{Holm}$ & so với GBDT: tỉ số [KTC] & cell tốt '
+         r'hơn & $p_\text{Holm}$ \\',
+         r' & & \multicolumn{3}{c}{PINN-semi so với MLP} & \multicolumn{3}{c}{PINN-semi so với GBDT} \\'
+         r'\cmidrule(lr){3-5}\cmidrule(lr){6-8}' '\n'
+         r'Bộ & Nhãn & tỉ số MAE [KTC] ' + DN + r' & cell tốt hơn ' + UP + r' & $p_\text{Holm}$ & tỉ số MAE [KTC] ' + DN
+         + r' & cell tốt hơn ' + UP + r' & $p_\text{Holm}$ \\')])
+    cmp_ = bold_best(cmp_, [2, 5], best=min, groups=True)
+    write('bang_ti_so.tex', bold_best(cmp_, [3, 6], best=max, groups=True))
+    # tách nguồn lợi ích: thấp nhất mỗi cột
+    src = thesis_block('tab:source', [('trong ngoặc là tỉ số so với MLP.',
+                                       'trong ngoặc là tỉ số so với MLP; in đậm là thấp nhất mỗi cột.')])
+    src = metric_row(src, 'Mô hình (30', r' & \multicolumn{4}{c}{' + MAE3 + r' (tỉ số so với MLP)} \\'
+                                          r'\cmidrule(lr){2-5}')
+    write('bang_nguon_loi.tex', bold_best(src, [1, 2, 3, 4]))
+    write('bang_mae_chinh.tex', metric_row(thesis_block('tab:allmae', [(
         r'mô hình cuối là PINN-lai dùng hay không dùng lịch sử theo validation (Mục~\ref{sec:histres}).',
         r'HiPINN-lai là PINN-lai có thêm đặc trưng lịch sử của cell ở những trường hợp validation chọn (TJU và HUST từ '
         r'30\,\% nhãn), các hàng khác trùng PINN-lai (\Cref{sec:pinnlai}); cả hai là phân tích hậu kiểm.'),
-        ('Mô hình cuối', 'HiPINN-lai')]))
+        ('Mô hình cuối', 'HiPINN-lai')]), 'Bộ & Nhãn & MLP',
+        r' & & \multicolumn{8}{c}{' + MAE3 + r'} \\\cmidrule(lr){3-10}'))
+    head = (' & ' + ' & '.join(f'\\multicolumn{{2}}{{c}}{{{d}}}' for d in DS) + r' \\'
+            + ''.join(f'\\cmidrule(lr){{{2 + 2 * i}-{3 + 2 * i}}}' for i in range(len(DS))) + '\n'
+            + 'Mô hình & ' + ' & '.join([f'RMSE {DN} & MAPE {DN}'] * len(DS)) + r' \\')
     write('bang_rmse.tex', thesis_block('tab:allrm', [
         ('MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột.',
-         'MAPE (\\%, gộp mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. HiPINN-lai như ở '
+         'MAPE (\\%, tính chung mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. HiPINN-lai như ở '
          'Bảng~\\ref{tab:allmae}.'),
-        ('Mô hình cuối &', 'HiPINN-lai &')]))
+        ('Mô hình cuối &', 'HiPINN-lai &'),
+        (r'Mô hình & XJTU RMSE & MAPE & TJU RMSE & MAPE & MIT RMSE & MAPE & HUST RMSE & MAPE \\', head)]))
     write('bang_lich_su.tex', history_table() + '\n\n' + history_text())
-    write('bang_ngan_sach.tex', thesis_block('tab:e28'))
+    # ngân sách đo: so năm cột ước lượng; cột cuối có đo thêm cell test nên không so cùng
+    e28 = thesis_block('tab:e28', [('sai số trên các chu kỳ không được đo.',
+                                    'sai số trên các chu kỳ không được đo. In đậm là thấp nhất trong năm cột đầu của mỗi '
+                                    'hàng; cột cuối có đo thêm cell test nên không so cùng.'),
+                                   (r'Bộ & PINN-lai, 30\,\% cell & PINN-lai, 70\,\% cell & GBDT, 70\,\% cell & PINN-lai, '
+                                    r'đo mỗi $0{,}1L$ & PINN-lai, đo mỗi $0{,}05L$ & đo cả cell mới mỗi $0{,}1L$ \\',
+                                    'Bộ & ' + ' & '.join(head2(a, b) for a, b in [
+                                        ('PINN-lai,', r'30\,\% cell'), ('PINN-lai,', r'70\,\% cell'),
+                                        ('GBDT,', r'70\,\% cell'), ('PINN-lai, đo', r'mỗi $0{,}1L$'),
+                                        ('PINN-lai, đo', r'mỗi $0{,}05L$'), ('đo cả cell mới', r'mỗi $0{,}1L$')])
+                                    + r' \\')])
+    e28 = metric_row(e28, r'Bộ & \begin{tabular}', r' & \multicolumn{6}{c}{' + MAE3 + r'} \\\cmidrule(lr){2-7}')
+    write('bang_ngan_sach.tex', bold_best(e28, [1, 2, 3, 4, 5], by='row'))
     write('bang_du_bao_tham_so.tex', fcset_table())
 
 
@@ -151,8 +251,10 @@ def history_table():
            r'hình; trên MIT không dạng nào giảm sai số validation đủ 2\,\% nên không có cột lịch sử. PINN-lai là bản có '
            r'trọng số ghép và cửa sổ lọc chọn trên validation. HiPINN-lai lấy cột PINN-lai có lịch sử ở những trường hợp '
            r'validation chọn dùng lịch sử, còn lại lấy cột PINN-lai. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa '
-           r'(Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước.}\label{tab:hist}',
+           r'(Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước. In đậm là thấp hơn trong '
+           r'mỗi cặp không/có lịch sử.}\label{tab:hist}',
            r'\begin{tabular}{llrrrr}\toprule',
+           r' & & \multicolumn{4}{c}{MAE theo cell ($\times10^{-3}$) ' + DN + r'} \\\cmidrule(lr){3-6}',
            r' & & \multicolumn{2}{c}{PINN-semi} & \multicolumn{2}{c}{PINN-lai} \\'
            r'\cmidrule(lr){3-4}\cmidrule(lr){5-6}',
            r'Bộ & Nhãn & không lịch sử & có lịch sử & không lịch sử & có lịch sử \\\midrule']
@@ -164,7 +266,7 @@ def history_table():
         out.append(f'{r["ds"] if r["ds"] != last else ""} & {lab} & ' + ' & '.join(cell(x) for x in r['raw']) + r' \\')
         last = r['ds']
     out += [r'\bottomrule\end{tabular}\end{table}']
-    return '\n'.join(out)
+    return bold_best(bold_best('\n'.join(out), [2, 3], by='row'), [4, 5], by='row')
 
 
 def history_text():
@@ -281,6 +383,8 @@ def experiments_table(n_rerun, n_feat_jobs, n_feat_fits):
 # --------------------------------------------------------------------------- kiểm toán rò rỉ
 LEAK = [('row', 'chia theo chu kỳ'), ('minmax', 'min--max theo cell'), ('life3s', 'lọc dùng cả vòng đời'),
         ('normtest', 'chuẩn hoá gồm cả test')]
+LEAK_HEAD = {'row': ('chia theo', 'chu kỳ'), 'minmax': ('min--max', 'theo cell'), 'life3s': ('lọc dùng cả', 'vòng đời'),
+             'normtest': ('chuẩn hoá', 'gồm cả test')}
 
 
 def leakage():
@@ -290,9 +394,12 @@ def leakage():
            r'\caption[Kiểm toán rò rỉ]{Kiểm toán rò rỉ: MAE theo cell của cùng một MLP (70\,\% nhãn, 2 lần lặp $\times$ 5 '
            r'fold) theo giao thức không rò rỉ, và tỉ số giữa MAE dưới mỗi cách làm sai với MAE đó (nhỏ hơn 1: sai số trông '
            r'thấp hơn thực tế). Cột cuối: chia theo chu kỳ rồi chép nhãn của chu kỳ train gần nhất trong cùng cell, không '
-           r'dùng đặc trưng nào.}\label{tab:leak}',
+           r'dùng đặc trưng nào. Bảng đo độ lệch của đánh giá chứ không so mô hình, nên không có chiều tốt hơn và không '
+           r'in đậm: tỉ số càng xa 1, cách làm sai càng làm lệch con số báo cáo.}\label{tab:leak}',
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule',
-           r'Bộ & MAE ($\times10^{-3}$) & ' + ' & '.join(l for _, l in LEAK) + r' & chép nhãn \\\midrule']
+           r' & & \multicolumn{5}{c}{tỉ số MAE dưới cách làm sai so với MAE không rò rỉ} \\\cmidrule(lr){3-7}',
+           r'Bộ & ' + head2('MAE không', r'rò rỉ ($\times10^{-3}$)') + ' & '
+           + ' & '.join(head2(*LEAK_HEAD[k]) for k, _ in LEAK) + ' & ' + head2('chép', 'nhãn') + r' \\\midrule']
     for ds, r in T.iterrows():
         out.append(f'{ds} & {v(1e3 * r.chuan)} & ' + ' & '.join(v(r[f"ti_so_{s}"]) for s, _ in LEAK)
                    + f' & {v(r.ti_so_noi_suy_hang)} \\\\')
@@ -479,6 +586,7 @@ def compare_table(S, T):
            r'tiền xử lý của bài thấp hơn/cao hơn có ý nghĩa so với mã gốc chạy lại (Wilcoxon ghép cặp theo cell test, Holm '
            r'qua 12 hàng).}\label{tab:pub}',
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule',
+           r' & & \multicolumn{6}{c}{MAE theo cell ($\times10^{-3}$) ' + DN + r'} \\\cmidrule(lr){3-8}',
            r' & & \multicolumn{3}{c}{số công bố của bài} & PINN4SOH & \multicolumn{2}{c}{PINN-lai của đồ án} \\'
            r'\cmidrule(lr){3-5}\cmidrule(lr){6-6}\cmidrule(lr){7-8}',
            r'Bộ & Chế độ & PINN4SOH & MLP & CNN & chạy lại & tiền xử lý của bài & không rò rỉ \\\midrule']
@@ -542,8 +650,11 @@ def features_parts(F, L_leak):
     out = [r'\begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}',
            r'\caption[Tương quan hạng giữa từng đầu vào và SOH]{Hệ số Spearman $\rho$ giữa từng đầu vào và SOH: trung vị '
            r'qua các cell của $\rho$ tính trong từng cell (cột “trong cell”), và $\rho$ trên mọi chu kỳ của bộ (cột '
-           r'“gộp”). Dấu âm: đầu vào giảm khi SOH tăng.}\label{tab:relevance}',
+           r'“gộp”). Dấu âm: đầu vào giảm khi SOH tăng. $|\rho|$ càng lớn, đầu vào càng biến thiên chặt theo SOH; in '
+           r'đậm là $|\rho|$ lớn nhất trong 16 đặc trưng sạc ở mỗi cột.}\label{tab:relevance}',
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'rr' * len(DS) + r'}\toprule',
+           r' & \multicolumn{' + str(2 * len(DS)) + r'}{c}{hệ số Spearman $\rho$ với SOH, $|\rho|$ ' + UP + r'} \\'
+           r'\cmidrule(lr){2-' + str(1 + 2 * len(DS)) + '}',
            ' & ' + ' & '.join(f'\\multicolumn{{2}}{{c}}{{{d}}}' for d in DS) + r' \\'
            + ''.join(f'\\cmidrule(lr){{{2 + 2 * i}-{3 + 2 * i}}}' for i in range(len(DS))),
            'Đầu vào & ' + ' & '.join(['trong cell & gộp'] * len(DS)) + r' \\\midrule']
@@ -556,7 +667,8 @@ def features_parts(F, L_leak):
                                                     for d in DS) + r' \\')
         prev = f
     out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
-    tab_rel = '\n'.join(out)
+    tab_rel = bold_best('\n'.join(out), list(range(1, 1 + 2 * len(DS))), best=max, key=abs,
+                        drop_last=len(ORDER) - 16)                     # hàng t không tính
     q = {f: {d: Rg.loc[(d, f), 'rho_within'] for d in DS} for f in ORDER}
     top = lambda d: sorted(ORDER[:16], key=lambda f: -abs(q[f][d]))[:3]
     n90 = {d: sum(abs(q[f][d]) >= 0.9 for f in ORDER[:16]) for d in DS}
@@ -609,20 +721,23 @@ def features_parts(F, L_leak):
            r'các nhóm V, I, QT và $t$ như \Cref{tab:features}. Hàng đầu: MAE theo cell ($\times10^{-3}$) với đủ 17 đầu '
            r'vào. Các hàng sau: MAE của tập đó chia cho MAE với đủ 17 đầu vào; lớn hơn 1 là kém hơn, tức phần bị bỏ có '
            r'ích; nhỏ hơn 1 là tốt hơn. $^{*}$: thấp hơn có ý nghĩa, $^{\dagger}$: cao hơn có ý nghĩa (Wilcoxon ghép cặp '
-           r'theo cell, Holm qua bốn bộ, $p < 0{,}05$); không có dấu: khác biệt không có ý nghĩa.}\label{tab:ablation}',
+           r'theo cell, Holm qua bốn bộ, $p < 0{,}05$); không có dấu: khác biệt không có ý nghĩa. In đậm là tỉ số thấp '
+           r'nhất mỗi cột, tức tập đầu vào tốt nhất ở trường hợp đó.}\label{tab:ablation}',
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'rr' * len(DS) + r'}\toprule',
            ' & ' + ' & '.join(f'\\multicolumn{{2}}{{c}}{{{d}}}' for d in DS) + r' \\'
            + ''.join(f'\\cmidrule(lr){{{2 + 2 * i}-{3 + 2 * i}}}' for i in range(len(DS))),
            'Tập đầu vào & ' + ' & '.join([' & '.join(f'{int(100 * f)}\\,\\%' for f in fracs)] * len(DS)) + r' \\\midrule',
-           'đủ 17 đầu vào (MAE) & ' + ' & '.join(v(1e3 * Ai.loc[(d, f, 'all'), 'mae']) for d in DS for f in fracs) + r' \\',
-           r'\addlinespace[2pt]']
+           group_row(r'MAE theo cell ($\times10^{-3}$) ' + DN, 1 + len(fracs) * len(DS)),
+           'đủ 17 đầu vào & ' + ' & '.join(v(1e3 * Ai.loc[(d, f, 'all'), 'mae']) for d in DS for f in fracs) + r' \\',
+           r'\addlinespace[2pt]',
+           group_row('tỉ số MAE so với đủ 17 đầu vào ' + DN, 1 + len(fracs) * len(DS))]
     for var, lab in VARIANTS:
         out.append(lab + ' & ' + ' & '.join(_ratio_cell(Ai.loc[(d, f, var)]) for d in DS for f in fracs) + r' \\')
     if ('TJU', fracs[0], 'with_T') in Ai.index:
         out.append(r'thêm $1/T$ (chỉ TJU) & -- & -- & ' + ' & '.join(_ratio_cell(Ai.loc[('TJU', f, 'with_T')]) for f in fracs)
                    + ' & ' + ' & '.join(['--'] * 2 * (len(DS) - 2)) + r' \\')
     out += [r'\bottomrule\end{tabular}\end{adjustbox}\end{table}']
-    tab_abl = '\n'.join(out)
+    tab_abl = bold_best('\n'.join(out), list(range(1, 1 + len(fracs) * len(DS))), skip=1)
     # hoán vị theo nhóm: tỉ số nêu trong lời văn
     Pt = P[P.part == 'test'].set_index(['dataset', 'frac', 'feature'])
     # chọn trên validation
@@ -798,18 +913,19 @@ def best_rmse_table(S):
         best = float(S.loc[k, f'{col}_rmse'])
         d = best / pub - 1
         cells = [(r'\textbf{' + v(1e3 * x) + '}') if x == min(pub, best) else v(1e3 * x) for x in (pub, best)]
-        out.append(f'{ds} & {cells[0]} & {cells[1]} & {name} & '
-                   + (r'$\downarrow$\,' if d < 0 else r'$\uparrow$\,') + pct(abs(d), 1) + r' \\')
+        out.append(f'{ds} & {cells[0]} & {cells[1]} & {name} & ' + (r'$-$' if d < 0 else r'$+$') + pct(abs(d), 1) + r' \\')
         rows.append(dict(ds=ds, model=name, d=d))
     tab = (r'\begin{table}[!htbp]\centering\small' '\n'
            r'\caption[RMSE tốt nhất của đồ án so với PINN4SOH]{RMSE ($\times10^{-3}$) trên đúng cách chia của bài PINN4SOH, '
            r'chế độ đầy đủ, cùng tiền xử lý với bài. Cột thứ hai tính từ tệp kết quả công bố cùng mã nguồn của bài; cột '
            r'thứ ba là RMSE thấp nhất trong ' + ', '.join(n for _, n in PUB_CAND[:-1]) + ' và ' + PUB_CAND[-1][1]
            + r' của đồ án, cột Mô hình ghi mô hình đạt được. Cả hai cột lấy trung bình qua cell test, lần chạy và nhóm như '
-           r'Bảng~\ref{tab:pub}. In đậm: thấp hơn trong hai cột; mũi tên xuống là đồ án thấp hơn.}\label{tab:pubrmse}'
+           r'Bảng~\ref{tab:pub}. In đậm: thấp hơn trong hai cột. Chênh lệch là RMSE của đồ án so với số công bố, âm là '
+           r'đồ án thấp hơn.}\label{tab:pubrmse}'
            '\n'
            r'\begin{tabular}{lrrlr}\toprule' '\n'
-           r'Bộ dữ liệu & RMSE PINN4SOH công bố & RMSE tốt nhất của đồ án & Mô hình & Chênh lệch \\\midrule' '\n'
+           r'Bộ dữ liệu & RMSE PINN4SOH công bố ' + DN + r' & RMSE tốt nhất của đồ án ' + DN + r' & Mô hình & '
+           r'Chênh lệch ' + DN + r' \\\midrule' '\n'
            + '\n'.join(out) + '\n' r'\bottomrule\end{tabular}\end{table}')
     return tab, rows
 
@@ -1094,8 +1210,8 @@ def final_table(B, C6, E33=None):
            r'khác trong báo cáo là mốc so sánh hoặc bước trung gian để đi tới các mô hình này.',
            r'\begin{table}[!htbp]\centering\footnotesize',
            r'\caption[Mô hình cuối của đồ án cho từng bài toán]{Mô hình cuối của đồ án cho từng bài toán. Tỉ số là MAE '
-           r'theo cell trên test của mô hình cuối chia cho mô hình được so; ý nghĩa theo kiểm định Wilcoxon ghép cặp '
-           r'theo cell.}\label{tab:final}',
+           r'theo cell trên test của mô hình cuối chia cho mô hình được so (nhỏ hơn 1: mô hình cuối tốt hơn); ý nghĩa '
+           r'theo kiểm định Wilcoxon ghép cặp theo cell.}\label{tab:final}',
            r'\begin{tabularx}{\textwidth}{' + L('p{2.3cm}') + L('p{1.9cm}') + L('X') + L('X') + r'l}\toprule',
            r'Bài toán & Mô hình cuối & Cách làm & Kết quả chính trên test & Mục \\\midrule']
     out += [' & '.join(r) + r' \\' + (r'\addlinespace' if i < len(rows) - 1 else '') for i, r in enumerate(rows)]
@@ -1253,6 +1369,8 @@ def e33_table(E):
             r'$^{*}$/$^{\dagger}$: HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT theo kiểm định Wilcoxon ghép '
             r'cặp theo cell (Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33}' '\n'
             r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(E33_TAB) + r'}\toprule' '\n'
+            r' & \multicolumn{' + str(len(E33_TAB)) + r'}{c}{MAE của SOH dự báo ($\times10^{-3}$) ' + DN + r'} \\'
+            r'\cmidrule(lr){2-' + str(1 + len(E33_TAB)) + '}\n'
             r' & \multicolumn{3}{c}{chỉ đặc trưng gốc} & \multicolumn{5}{c}{có đặc trưng lịch sử} \\'
             r'\cmidrule(lr){2-4}\cmidrule(lr){5-9}' '\n'
             'Bộ & ' + ' & '.join(head2(*E33_HEAD[m]) for m in E33_TAB) + r' \\\midrule' '\n'
@@ -1272,12 +1390,50 @@ def e33_rul_table(E):
         rr.append(r'\addlinespace[3pt]')
     return (r'\begin{table}[!htbp]\centering\small' '\n'
             r'\caption[MAE của RUL dự báo theo mô hình]{MAE của RUL (chu kỳ), trung bình qua các gốc ở 25, 50 và 75\,\% chu kỳ '
-            r'cuối đời thật và qua 3 lần lặp; in đậm là thấp nhất. Hai cột cuối là của HiPINN: tỉ lệ dự báo nằm trong '
-            r'$\pm20\,\%$ RUL thực và độ phủ của khoảng RUL 90\,\%.}\label{tab:e33rul}' '\n'
+            r'cuối đời thật và qua 3 lần lặp; in đậm là thấp nhất mỗi hàng. Cột RUL thực là RUL thật trung bình, để đối '
+            r'chiếu cỡ sai số. Hai cột cuối là của HiPINN: tỉ lệ RUL dự báo nằm trong $\pm20\,\%$ RUL thực (cao hơn là tốt '
+            r'hơn) và độ phủ của khoảng RUL 90\,\% (tốt nhất là gần 90\,\%).}\label{tab:e33rul}' '\n'
             r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * (3 + len(E33_TAB)) + r'}\toprule' '\n'
+            r' & & \multicolumn{' + str(len(E33_TAB)) + r'}{c}{MAE của RUL (chu kỳ) ' + DN + r'} & '
+            r'\multicolumn{2}{c}{HiPINN} \\\cmidrule(lr){3-' + str(2 + len(E33_TAB)) + r'}\cmidrule(lr){'
+            + str(3 + len(E33_TAB)) + '-' + str(4 + len(E33_TAB)) + '}\n'
             r'Bộ & ' + head2('RUL', 'thực') + ' & ' + ' & '.join(head2(*E33_HEAD[m]) for m in E33_TAB)
-            + ' & ' + head2('Trong', r'$\pm20\,\%$') + ' & ' + head2('Độ', 'phủ') + r' \\\midrule' '\n'
+            + ' & ' + head2('Trong', r'$\pm20\,\%$ ' + UP) + ' & ' + head2('Độ phủ', r'(90\,\%)') + r' \\\midrule' '\n'
             + '\n'.join(rr[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
+
+
+E33_VAL = [('chon', ['gbdt_ls', 'hipinn_w', 'hipinn']), ('hieu_chinh', ['gbdt_ls', 'hipinn_w', 'tb3', 'hipinn'])]
+
+
+def e33_val_table(E):
+    """MAE trên hai nửa cell validation (mỗi cell lấy trung bình qua các lượt nó thuộc nửa đó)."""
+    cols = [(part, m) for part, ms in E33_VAL for m in ms]
+    rows = []
+    for b, sc, lab in E33_SET:
+        rows.append(group_row(lab, 1 + len(cols)))
+        for ds in DS:
+            cells = []
+            for part, ms in E33_VAL:
+                vals = [E.half(b, ds, part, m) for m in ms]
+                cells += [(r'\textbf{' + m3(x, 2) + '}') if x == min(vals) else m3(x, 2) for x in vals]
+            p, hw, _, _ = E.half_test(b, ds, 'hieu_chinh', 'gbdt_ls')
+            cells[-1] += (r'$^{*}$' if hw else r'$^{\dagger}$') if p < 0.05 else r'\phantom{$^{*}$}'
+            rows.append(' & '.join([ds] + cells) + r' \\')
+        rows.append(r'\addlinespace[3pt]')
+    n1, n2 = len(E33_VAL[0][1]), len(E33_VAL[1][1])
+    return (r'\begin{table}[!htbp]\centering\small' '\n'
+            r'\caption[MAE của SOH dự báo trên hai nửa validation]{MAE theo cell ($\times10^{-3}$) của SOH dự báo trên '
+            r'hai nửa cell validation; mỗi cell lấy trung bình qua các lượt mà nó thuộc nửa đó. Nửa chọn là nơi chọn trọng '
+            r'số của HiPINN-w; nửa hiệu chỉnh không dùng để chọn gì cho các mô hình trong bảng. In đậm là thấp nhất trong '
+            r'mỗi nửa. $^{*}$/$^{\dagger}$: trên nửa hiệu chỉnh, HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT (Wilcoxon '
+            r'ghép cặp theo cell, Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33val}' '\n'
+            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(cols) + r'}\toprule' '\n'
+            r' & \multicolumn{' + str(len(cols)) + r'}{c}{MAE theo cell ($\times10^{-3}$) ' + DN + r'} \\'
+            r'\cmidrule(lr){2-' + str(1 + len(cols)) + '}\n'
+            r' & \multicolumn{' + str(n1) + r'}{c}{nửa chọn} & \multicolumn{' + str(n2) + r'}{c}{nửa hiệu chỉnh} \\'
+            r'\cmidrule(lr){2-' + str(1 + n1) + r'}\cmidrule(lr){' + str(2 + n1) + '-' + str(1 + n1 + n2) + '}\n'
+            'Bộ & ' + ' & '.join(head2(*E33_HEAD[m]) for _, m in cols) + r' \\\midrule' '\n'
+            + '\n'.join(rows[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
 
 
 E34_CSV = ['anchor', 'cost']
@@ -1328,6 +1484,8 @@ def e34_anchor(D34):
            r'$^{*}$/$^{\dagger}$: HiGBDT-V tốt hơn/kém hơn có ý nghĩa so với GBDT-cập nhật '
            r'(Wilcoxon ghép cặp theo cell, $p<0{,}05$, không hiệu chỉnh).}\label{tab:anchor}' '\n'
            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(am) + r'}\toprule' '\n'
+           r' & \multicolumn{' + str(len(am)) + r'}{c}{MAE của SOH cập nhật ($\times10^{-3}$) ' + DN + r'} \\'
+           r'\cmidrule(lr){2-' + str(1 + len(am)) + '}\n'
            r'Bộ & ' + ' & '.join(head2(*x) for x in alab) + r' \\\midrule' '\n' + '\n'.join(ar[:-1]) + '\n'
            r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
     low = {t: [ds for ds in DS if ga(ds, t, 'selected') < ga(ds, t, 'e32_style')] for t, _ in tiers}
@@ -1337,17 +1495,21 @@ def e34_anchor(D34):
     keep = len(low['q10']) < 3 and len(low['q20']) < 3
     odd = [r_ for r_ in GA.itertuples() if r_.tier != 'M2' and r_.p_selected < 0.05 and r_.flip_selected > 0]
     tl = dict(tiers)
-    text = (r'Đồ án cũng thử đặc trưng lịch sử của HiGBDT cho bài toán cập nhật của \Cref{sec:mo_rong}: ước lượng SOH ở '
-            r'các chu kỳ không đo từ lần đo dung lượng gần nhất. Thí nghiệm E34 dùng cùng fold với các thí nghiệm khác, '
-            r'30\,\% nhãn, $L$ và chuẩn hoá tính trên cell train. '
-            r'GBDT-cập nhật dùng các đặc trưng của E32: đặc trưng sạc hiện tại và độ đổi của chúng kể từ lần đo, '
+    q20 = [ga(ds, 'q20', 'e32_style') for ds in DS]
+    q20_hold = [ga(ds, 'q20', 'e32_style') / ga(ds, 'q20', 'hold') for ds in DS]
+    m2_r = [ga(ds, 'M2', 'history_residual') / ga(ds, 'M2', 'e32_style') for ds in DS]
+    text = (r'Đồ án đưa đặc trưng lịch sử của HiGBDT vào bài toán cập nhật của \Cref{sec:mo_rong}: ước lượng SOH ở các '
+            r'chu kỳ không đo từ lần đo dung lượng gần nhất, trên cùng fold với các thí nghiệm khác, 30\,\% nhãn, $L$ và '
+            r'chuẩn hoá tính trên cell train. GBDT-cập nhật dùng đặc trưng sạc hiện tại và độ đổi của chúng kể từ lần đo, '
             r'SOH ở lần đo, khoảng chu kỳ tới lần đo và độ dốc giữa hai lần đo gần nhất. Hai mô hình dùng lịch sử thêm hai '
             r'trung bình trượt mũ nhân quả của đặc trưng sạc ($\rho = 0{,}1$ và $0{,}03$), log khoảng chu kỳ và chỉ số chu '
             r'kỳ: HiGBDT-$\Delta$ học độ giảm SOH kể từ lần đo, HiGBDT-R học phần dư so với ngoại suy tuyến tính từ hai lần '
             r'đo gần nhất. HiGBDT-V chọn trên validation, theo từng lịch đo, một trong ba mô hình đó và trọng số trộn nó '
             r'với giữ lần đo hoặc ngoại suy tuyến tính. Mỗi mô hình học trên tối đa khoảng 60 nghìn cặp (chu kỳ, lần đo), '
             r'cân theo cell và lịch đo, có thêm hai pha đo ngẫu nhiên cho mỗi lịch thưa; số cây chọn trên validation. '
-            r'\Cref{tab:anchor} cho kết quả. ')
+            r'\Cref{tab:anchor} cho kết quả. Chỉ với một lần đo mỗi $0{,}2L$ chu kỳ, GBDT-cập nhật đạt MAE '
+            + rng([1e3 * x for x in q20]) + r' ($\times10^{-3}$), bằng ' + rng(q20_hold) + r' lần việc giữ nguyên giá trị '
+            r'đo gần nhất. Khi biết mọi lần đo trước, HiGBDT-R có MAE bằng ' + rng(m2_r) + ' lần GBDT-cập nhật. ')
     if sparse_no:
         text += (r'Khi đo thưa, lịch sử không giúp: HiGBDT-V chỉ có MAE trung bình thấp hơn GBDT-cập nhật ở '
                  f'{len(low["q20"])}/4 bộ với lịch đo mỗi $0{{,}}2L$ và {len(low["q10"])}/4 bộ với lịch mỗi $0{{,}}1L$')
@@ -1450,7 +1612,8 @@ def e33_section(D):
     lost = np.mean(r_cal) >= 1 or k_wt > len(do) * len(DS) / 2
     p2 = (r'\paragraph{HiPINN-w.} HiPINN-w, phương án đầu của HiPINN, chọn trọng số của ba nhánh và nhánh PINN trên nửa '
           f'validation dùng để chọn; nửa này chỉ có {int(CH.n_sel.min())}--{int(CH.n_sel.max())} cell mỗi lượt. Trên '
-          f'chính nửa đó, HiPINN-w có MAE bằng {rng(r_sel)} lần HiGBDT; trên nửa hiệu chỉnh, tỉ số này là '
+          f'chính nửa đó (\\Cref{{tab:e33val}}), HiPINN-w có MAE bằng {rng(r_sel)} lần HiGBDT; trên nửa hiệu chỉnh, '
+          f'tỉ số này là '
           f'{rng(r_cal)}, và trên cell test là '
           f'{rng(r_wt)}, cao hơn HiGBDT ở {k_wt}/{len(do) * len(DS)} trường hợp. Trọng số chọn trên vài cell phản '
           'ánh chính các cell đó nhiều hơn là quy luật chung, nên '
@@ -1496,7 +1659,8 @@ def e33_section(D):
            'HiPINN-w, nên cần một kiểm tra không dùng cell test. Nửa hiệu chỉnh không dùng để chọn gì cho các '
            'mô hình HiGBDT, HiPINN-w, HiPINN-tb và HiPINN, và sai số của trung vị trên nửa này chưa được xem khi quyết '
            'định. Trên '
-           f'nửa này, HiPINN có MAE thấp hơn HiPINN-w ở {c_w}/{len(halves)} trường hợp; so với HiGBDT, HiPINN thấp hơn ở '
+           f'nửa này (\\Cref{{tab:e33val}}), HiPINN có MAE thấp hơn HiPINN-w ở {c_w}/{len(halves)} trường hợp; so với '
+           'HiGBDT, HiPINN thấp hơn ở '
            + ' và '.join(part_b) + '. ')
     if not weak:
         p3b += 'Kết quả trên hai phần dữ liệu cùng chiều, nên ưu thế của trung vị không chỉ do cách chọn trên test.'
@@ -1627,7 +1791,8 @@ def e33_section(D):
                 r'của HiPINN ở trung vị. Khoảng 90\,\% theo dự đoán phù hợp. PINN-dự báo, nhánh thứ ba của HiPINN, không '
                 r'vẽ để hình dễ đọc.}\label{fig:e33traj}' '\n' r'\end{figure}')
     body = ('\\FloatBarrier\n\\subsection{Dự báo SOH, dung lượng và RUL: HiGBDT và HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
-            + e33_table(E) + '\n\n' + p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + p3b + '\n\n' + figs + '\n\n'
+            + e33_table(E) + '\n\n' + p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + p3b + '\n\n' + e33_val_table(E)
+            + '\n\n' + figs + '\n\n'
             + p4 + '\n\n'
             + fig_tail + '\n\n' + p5 + '\n\n' + fig_traj + '\n\n' + (p6 + '\n\n' if p6 else '') + p7 + '\n\n'
             + e33_rul_table(E) + '\n\n' + p8 + '\n')
@@ -1690,7 +1855,7 @@ def demo_section():
              r'và dự báo từ 40\,\% số chu kỳ của nó (\Cref{fig:demo4}). MAE trên phần đời còn lại là '
              + jv([f'{v(1e3 * r.mae, 1)} ở {r.bo} (cell {name(r.cell)})' for r in Dm.itertuples()])
              + r' ($\times10^{-3}$); ' + demo_branch_txt(Dm) + r' Mô hình của công cụ học trên 30\,\% cell có nhãn, ít '
-               r'hơn thí nghiệm E33 với mọi cell train, và mỗi bộ chỉ có một cell, nên đây là minh hoạ chứ không phải số '
+               r'hơn mức mọi cell train ở \Cref{sec:e33res}, và mỗi bộ chỉ có một cell, nên đây là minh hoạ chứ không phải số '
                r'đánh giá.' '\n\n'
              r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_demo_hipinn.pdf}' '\n'
              r'\caption[HiPINN cho một cell test của mỗi bộ dữ liệu]{HiPINN áp dụng cho bốn bộ dữ liệu qua công cụ dòng '
@@ -1704,8 +1869,7 @@ def demo_section():
 def figures():
     import diagrams
     os.makedirs(FIG, exist_ok=True)
-    diagrams.arch('vi', os.path.join(FIG, 'fig_arch'))
-    diagrams.pipeline(os.path.join(FIG, 'fig_pipeline'))
+    # kiến trúc PINN-semi, PINN-lai, tổng quan HiPINN và quy trình thực nghiệm: hình do người dùng vẽ, lưu sẵn ở graphics/
     diagrams.hipinn_arch(os.path.join(FIG, 'fig_hipinn_arch'))
     for src, dst in [('fig_e28_budget', 'fig_e28_budget')]:
         shutil.copy(os.path.join(OLD_FIG, src + '.pdf'), os.path.join(FIG, dst + '.pdf'))

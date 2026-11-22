@@ -1,11 +1,12 @@
 \begin{table}[!htbp]\centering\small
-\caption[Tách nguồn gốc lợi ích ở 30\,\% nhãn]{Tách nguồn gốc lợi ích ở 30\,\% nhãn: MAE theo cell (×$10^{-3}$), trong ngoặc là tỉ số so với MLP.}\label{tab:source}
+\caption[Tách nguồn gốc lợi ích ở 30\,\% nhãn]{Tách nguồn gốc lợi ích ở 30\,\% nhãn: MAE theo cell (×$10^{-3}$), trong ngoặc là tỉ số so với MLP; in đậm là thấp nhất mỗi cột.}\label{tab:source}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrr}\toprule
+ & \multicolumn{4}{c}{MAE theo cell ($\times10^{-3}$) $\downarrow$ (tỉ số so với MLP)} \\\cmidrule(lr){2-5}
 Mô hình (30\,\% nhãn) & XJTU & TJU & MIT & HUST \\\midrule
 MLP & 15{,}95 & 11{,}33 & 3{,}40 & 19{,}80 \\
-PINN-sup & 14{,}54 (0{,}91) & 10{,}67 (0{,}94) & 2{,}69 (0{,}79) & 17{,}82 (0{,}90) \\
+PINN-sup & 14{,}54 (0{,}91) & \textbf{10{,}67} (0{,}94) & 2{,}69 (0{,}79) & 17{,}82 (0{,}90) \\
 chỉ đơn điệu & 14{,}13 (0{,}89) & 11{,}00 (0{,}97) & 2{,}86 (0{,}84) & 17{,}41 (0{,}88) \\
-PINN-semi (Euler) & 13{,}37 (0{,}84) & 11{,}31 (1{,}00) & 3{,}01 (0{,}89) & 17{,}49 (0{,}88) \\
+PINN-semi (Euler) & \textbf{13{,}37} (0{,}84) & 11{,}31 (1{,}00) & 3{,}01 (0{,}89) & 17{,}49 (0{,}88) \\
 PINN hộp đen & 14{,}15 (0{,}89) & 10{,}91 (0{,}96) & 2{,}80 (0{,}83) & 17{,}49 (0{,}88) \\
-PINN-semi & 13{,}44 (0{,}84) & 10{,}85 (0{,}96) & 2{,}58 (0{,}76) & 17{,}30 (0{,}87) \\
+PINN-semi & 13{,}44 (0{,}84) & 10{,}85 (0{,}96) & \textbf{2{,}58} (0{,}76) & \textbf{17{,}30} (0{,}87) \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}

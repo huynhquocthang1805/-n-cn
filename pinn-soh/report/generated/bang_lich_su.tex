@@ -1,24 +1,25 @@
 \begin{table}[!htbp]\centering\small
-\caption[Thêm lịch sử của cell vào đầu vào]{MAE theo cell ($\times10^{-3}$) trên test khi thêm lịch sử của cell vào đầu vào, 3 lần lặp $\times$ 5 fold. Dạng lịch sử được chọn trên validation cho từng bộ và loại mô hình; trên MIT không dạng nào giảm sai số validation đủ 2\,\% nên không có cột lịch sử. PINN-lai là bản có trọng số ghép và cửa sổ lọc chọn trên validation. HiPINN-lai lấy cột PINN-lai có lịch sử ở những trường hợp validation chọn dùng lịch sử, còn lại lấy cột PINN-lai. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước.}\label{tab:hist}
+\caption[Thêm lịch sử của cell vào đầu vào]{MAE theo cell ($\times10^{-3}$) trên test khi thêm lịch sử của cell vào đầu vào, 3 lần lặp $\times$ 5 fold. Dạng lịch sử được chọn trên validation cho từng bộ và loại mô hình; trên MIT không dạng nào giảm sai số validation đủ 2\,\% nên không có cột lịch sử. PINN-lai là bản có trọng số ghép và cửa sổ lọc chọn trên validation. HiPINN-lai lấy cột PINN-lai có lịch sử ở những trường hợp validation chọn dùng lịch sử, còn lại lấy cột PINN-lai. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước. In đậm là thấp hơn trong mỗi cặp không/có lịch sử.}\label{tab:hist}
 \begin{tabular}{llrrrr}\toprule
+ & & \multicolumn{4}{c}{MAE theo cell ($\times10^{-3}$) $\downarrow$} \\\cmidrule(lr){3-6}
  & & \multicolumn{2}{c}{PINN-semi} & \multicolumn{2}{c}{PINN-lai} \\\cmidrule(lr){3-4}\cmidrule(lr){5-6}
 Bộ & Nhãn & không lịch sử & có lịch sử & không lịch sử & có lịch sử \\\midrule
-XJTU & 10\,\% & 14{,}65 & 20{,}79$^{\dagger}$ & 12{,}71 & 15{,}95$^{\dagger}$ \\
- & 30\,\% & 13{,}35 & 15{,}34 & 10{,}78 & 11{,}25 \\
- & 50\,\% & 13{,}20 & 15{,}12 & 10{,}02 & 10{,}21 \\
- & 70\,\% & 12{,}53 & 13{,}17 & 9{,}50 & 9{,}73 \\
-TJU & 10\,\% & 14{,}01 & 15{,}88$^{\dagger}$ & 11{,}70 & 11{,}83 \\
- & 30\,\% & 11{,}39 & 10{,}51$^{*}$ & 8{,}00 & 7{,}78$^{*}$ \\
- & 50\,\% & 10{,}74 & 9{,}43$^{*}$ & 7{,}23 & 6{,}92$^{*}$ \\
- & 70\,\% & 10{,}80 & 9{,}57$^{*}$ & 7{,}11 & 6{,}82$^{*}$ \\
+XJTU & 10\,\% & \textbf{14{,}65} & 20{,}79$^{\dagger}$ & \textbf{12{,}71} & 15{,}95$^{\dagger}$ \\
+ & 30\,\% & \textbf{13{,}35} & 15{,}34 & \textbf{10{,}78} & 11{,}25 \\
+ & 50\,\% & \textbf{13{,}20} & 15{,}12 & \textbf{10{,}02} & 10{,}21 \\
+ & 70\,\% & \textbf{12{,}53} & 13{,}17 & \textbf{9{,}50} & 9{,}73 \\
+TJU & 10\,\% & \textbf{14{,}01} & 15{,}88$^{\dagger}$ & \textbf{11{,}70} & 11{,}83 \\
+ & 30\,\% & 11{,}39 & \textbf{10{,}51}$^{*}$ & 8{,}00 & \textbf{7{,}78}$^{*}$ \\
+ & 50\,\% & 10{,}74 & \textbf{9{,}43}$^{*}$ & 7{,}23 & \textbf{6{,}92}$^{*}$ \\
+ & 70\,\% & 10{,}80 & \textbf{9{,}57}$^{*}$ & 7{,}11 & \textbf{6{,}82}$^{*}$ \\
 MIT & 10\,\% & 3{,}29 & -- & 2{,}52 & -- \\
  & 30\,\% & 2{,}50 & -- & 1{,}75 & -- \\
  & 50\,\% & 2{,}45 & -- & 1{,}59 & -- \\
  & 70\,\% & 2{,}38 & -- & 1{,}48 & -- \\
-HUST & 10\,\% & 22{,}76 & 23{,}63 & 20{,}36 & 20{,}15 \\
- & 30\,\% & 17{,}10 & 17{,}11 & 15{,}99 & 15{,}34$^{*}$ \\
- & 50\,\% & 16{,}42 & 14{,}81$^{*}$ & 14{,}26 & 13{,}17$^{*}$ \\
- & 70\,\% & 16{,}38 & 13{,}71$^{*}$ & 13{,}76 & 12{,}24$^{*}$ \\
+HUST & 10\,\% & \textbf{22{,}76} & 23{,}63 & 20{,}36 & \textbf{20{,}15} \\
+ & 30\,\% & \textbf{17{,}10} & 17{,}11 & 15{,}99 & \textbf{15{,}34}$^{*}$ \\
+ & 50\,\% & 16{,}42 & \textbf{14{,}81}$^{*}$ & 14{,}26 & \textbf{13{,}17}$^{*}$ \\
+ & 70\,\% & 16{,}38 & \textbf{13{,}71}$^{*}$ & 13{,}76 & \textbf{12{,}24}$^{*}$ \\
 \bottomrule\end{tabular}\end{table}
 
 \paragraph{HiPINN-lai.} Bảng~\ref{tab:hist} cho sai số khi thêm lịch sử của cell vào đầu vào. Với PINN-lai, lịch sử giúp trên TJU và HUST khi có từ 30\,\% nhãn (MAE bằng 0{,}89--0{,}97 lần bản không lịch sử) nhưng làm kém đi trên XJTU (1{,}02--1{,}25 lần); ở 10\,\% nhãn, tỉ số là XJTU 1{,}25, TJU 1{,}01, HUST 0{,}99. Trên MIT không dạng lịch sử nào được validation chọn. HiPINN-lai chỉ dùng bản có lịch sử ở những trường hợp validation chọn (TJU và HUST từ 30\,\% nhãn) và trùng PINN-lai ở các trường hợp còn lại (\Cref{tab:allmae}).

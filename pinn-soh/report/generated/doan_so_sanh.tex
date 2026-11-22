@@ -4,6 +4,7 @@ Trên bốn bộ dữ liệu này, công trình cùng bài toán, cùng đầu v
 \begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{5pt}
 \caption[So với PINN4SOH trên đúng cách chia của bài]{MAE theo cell ($\times10^{-3}$) trên đúng 39 nhóm đánh giá của bài PINN4SOH, trung bình qua cell test, lần chạy và nhóm như bài; $K$ là số cell có nhãn trong thí nghiệm ít mẫu. Ba cột đầu là số công bố của bài cho PINN4SOH và hai mô hình đối chứng MLP, CNN của bài. Cột chạy lại: mã gốc của bài chạy trên đúng các nhóm đó, siêu tham số theo nhật ký của bài, 10 lần mỗi nhóm. Hai cột cuối: PINN-lai của đồ án (3 hạt giống) với tiền xử lý của bài, cùng điều kiện với các cột trước, và với tiền xử lý không rò rỉ. In đậm: thấp nhất trong năm cột cùng điều kiện. $^{*}$/$^{\dagger}$: PINN-lai với tiền xử lý của bài thấp hơn/cao hơn có ý nghĩa so với mã gốc chạy lại (Wilcoxon ghép cặp theo cell test, Holm qua 12 hàng).}\label{tab:pub}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
+ & & \multicolumn{6}{c}{MAE theo cell ($\times10^{-3}$) $\downarrow$} \\\cmidrule(lr){3-8}
  & & \multicolumn{3}{c}{số công bố của bài} & PINN4SOH & \multicolumn{2}{c}{PINN-lai của đồ án} \\\cmidrule(lr){3-5}\cmidrule(lr){6-6}\cmidrule(lr){7-8}
 Bộ & Chế độ & PINN4SOH & MLP & CNN & chạy lại & tiền xử lý của bài & không rò rỉ \\\midrule
 XJTU & đầy đủ & 7{,}85 & 21{,}02 & 21{,}19 & 8{,}66 & \textbf{6{,}62} & 7{,}81 \\
@@ -30,13 +31,13 @@ HUST & $K = 1$ & 39{,}42 & 50{,}37 & 112{,}78 & 47{,}13 & \textbf{14{,}71}$^{*}$
 Theo RMSE, Bảng~\ref{tab:pubrmse} lấy trên mỗi bộ mô hình có sai số thấp nhất của đồ án và ghi tên mô hình đó. RMSE thấp nhất của đồ án thấp hơn số công bố ở XJTU, TJU và HUST (XJTU: PINN-lai, 22{,}2\,\%; TJU: PINN-lai, 14{,}0\,\%; HUST: PINN-lai, 16{,}3\,\%); ở MIT, GBDT cao hơn 0{,}2\,\%.
 
 \begin{table}[!htbp]\centering\small
-\caption[RMSE tốt nhất của đồ án so với PINN4SOH]{RMSE ($\times10^{-3}$) trên đúng cách chia của bài PINN4SOH, chế độ đầy đủ, cùng tiền xử lý với bài. Cột thứ hai tính từ tệp kết quả công bố cùng mã nguồn của bài; cột thứ ba là RMSE thấp nhất trong PINN-lai, GBDT và PINN-semi của đồ án, cột Mô hình ghi mô hình đạt được. Cả hai cột lấy trung bình qua cell test, lần chạy và nhóm như Bảng~\ref{tab:pub}. In đậm: thấp hơn trong hai cột; mũi tên xuống là đồ án thấp hơn.}\label{tab:pubrmse}
+\caption[RMSE tốt nhất của đồ án so với PINN4SOH]{RMSE ($\times10^{-3}$) trên đúng cách chia của bài PINN4SOH, chế độ đầy đủ, cùng tiền xử lý với bài. Cột thứ hai tính từ tệp kết quả công bố cùng mã nguồn của bài; cột thứ ba là RMSE thấp nhất trong PINN-lai, GBDT và PINN-semi của đồ án, cột Mô hình ghi mô hình đạt được. Cả hai cột lấy trung bình qua cell test, lần chạy và nhóm như Bảng~\ref{tab:pub}. In đậm: thấp hơn trong hai cột. Chênh lệch là RMSE của đồ án so với số công bố, âm là đồ án thấp hơn.}\label{tab:pubrmse}
 \begin{tabular}{lrrlr}\toprule
-Bộ dữ liệu & RMSE PINN4SOH công bố & RMSE tốt nhất của đồ án & Mô hình & Chênh lệch \\\midrule
-XJTU & 10{,}88 & \textbf{8{,}47} & PINN-lai & $\downarrow$\,22{,}2\,\% \\
-TJU & 12{,}28 & \textbf{10{,}56} & PINN-lai & $\downarrow$\,14{,}0\,\% \\
-MIT & \textbf{7{,}51} & 7{,}52 & GBDT & $\uparrow$\,0{,}2\,\% \\
-HUST & 8{,}69 & \textbf{7{,}27} & PINN-lai & $\downarrow$\,16{,}3\,\% \\
+Bộ dữ liệu & RMSE PINN4SOH công bố $\downarrow$ & RMSE tốt nhất của đồ án $\downarrow$ & Mô hình & Chênh lệch $\downarrow$ \\\midrule
+XJTU & 10{,}88 & \textbf{8{,}47} & PINN-lai & $-$22{,}2\,\% \\
+TJU & 12{,}28 & \textbf{10{,}56} & PINN-lai & $-$14{,}0\,\% \\
+MIT & \textbf{7{,}51} & 7{,}52 & GBDT & $+$0{,}2\,\% \\
+HUST & 8{,}69 & \textbf{7{,}27} & PINN-lai & $-$16{,}3\,\% \\
 \bottomrule\end{tabular}\end{table}
 
 \subsection{Các chỉ số tốt hơn các bài báo đã công bố}

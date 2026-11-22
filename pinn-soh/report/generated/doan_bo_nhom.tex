@@ -9,19 +9,21 @@ Bảng~\ref{tab:ablation} cho kết quả bỏ hoặc thêm nhóm ở 8 trườn
 \paragraph{Đọc kết quả.} Mọi tập rút gọn đều kém bộ đầy đủ ở ít nhất một trường hợp, và các trường hợp có lợi (bỏ $t$ ở MIT 10\,\%; thêm 16 đặc trưng tương đối ở TJU 70\,\%) không lặp lại ở bộ khác. Chọn đầu vào riêng cho từng bộ dựa trên những kết quả này là chọn mô hình trên tập test, còn chọn riêng cho từng fold bằng validation thì không cải thiện. Vì vậy đồ án dùng chung bộ 17 đầu vào cho mọi bộ dữ liệu và mọi mô hình.
 
 \begin{table}[!htbp]\centering\small\setlength{\tabcolsep}{4pt}
-\caption[Bỏ hoặc thêm nhóm đầu vào với GBDT]{Bỏ hoặc thêm nhóm đầu vào: GBDT học lại với từng tập đầu vào trên đúng các fold không rò rỉ (3 lần lặp $\times$ 5 fold), ở 10 và 70\,\% nhãn. Mỗi hàng là một tập đầu vào; các nhóm V, I, QT và $t$ như \Cref{tab:features}. Hàng đầu: MAE theo cell ($\times10^{-3}$) với đủ 17 đầu vào. Các hàng sau: MAE của tập đó chia cho MAE với đủ 17 đầu vào; lớn hơn 1 là kém hơn, tức phần bị bỏ có ích; nhỏ hơn 1 là tốt hơn. $^{*}$: thấp hơn có ý nghĩa, $^{\dagger}$: cao hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, Holm qua bốn bộ, $p < 0{,}05$); không có dấu: khác biệt không có ý nghĩa.}\label{tab:ablation}
+\caption[Bỏ hoặc thêm nhóm đầu vào với GBDT]{Bỏ hoặc thêm nhóm đầu vào: GBDT học lại với từng tập đầu vào trên đúng các fold không rò rỉ (3 lần lặp $\times$ 5 fold), ở 10 và 70\,\% nhãn. Mỗi hàng là một tập đầu vào; các nhóm V, I, QT và $t$ như \Cref{tab:features}. Hàng đầu: MAE theo cell ($\times10^{-3}$) với đủ 17 đầu vào. Các hàng sau: MAE của tập đó chia cho MAE với đủ 17 đầu vào; lớn hơn 1 là kém hơn, tức phần bị bỏ có ích; nhỏ hơn 1 là tốt hơn. $^{*}$: thấp hơn có ý nghĩa, $^{\dagger}$: cao hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, Holm qua bốn bộ, $p < 0{,}05$); không có dấu: khác biệt không có ý nghĩa. In đậm là tỉ số thấp nhất mỗi cột, tức tập đầu vào tốt nhất ở trường hợp đó.}\label{tab:ablation}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
  & \multicolumn{2}{c}{XJTU} & \multicolumn{2}{c}{TJU} & \multicolumn{2}{c}{MIT} & \multicolumn{2}{c}{HUST} \\\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
 Tập đầu vào & 10\,\% & 70\,\% & 10\,\% & 70\,\% & 10\,\% & 70\,\% & 10\,\% & 70\,\% \\\midrule
-đủ 17 đầu vào (MAE) & 14{,}01 & 9{,}64 & 12{,}60 & 6{,}96 & 3{,}15 & 1{,}59 & 23{,}84 & 14{,}60 \\
+\multicolumn{9}{@{}l}{\textit{MAE theo cell ($\times10^{-3}$) $\downarrow$}} \\
+đủ 17 đầu vào & 14{,}01 & 9{,}64 & 12{,}60 & 6{,}96 & 3{,}15 & 1{,}59 & 23{,}84 & 14{,}60 \\
 \addlinespace[2pt]
-bỏ $t$ & 1{,}12$^{\dagger}$ & 1{,}18$^{\dagger}$ & 1{,}32$^{\dagger}$ & 1{,}11$^{\dagger}$ & 0{,}90$^{*}$ & 1{,}01 & 1{,}30$^{\dagger}$ & 1{,}35$^{\dagger}$ \\
+\multicolumn{9}{@{}l}{\textit{tỉ số MAE so với đủ 17 đầu vào $\downarrow$}} \\
+bỏ $t$ & 1{,}12$^{\dagger}$ & 1{,}18$^{\dagger}$ & 1{,}32$^{\dagger}$ & 1{,}11$^{\dagger}$ & \textbf{0{,}90}$^{*}$ & 1{,}01 & 1{,}30$^{\dagger}$ & 1{,}35$^{\dagger}$ \\
 chỉ $t$ & 1{,}92$^{\dagger}$ & 2{,}67$^{\dagger}$ & 1{,}75$^{\dagger}$ & 3{,}03$^{\dagger}$ & 6{,}55$^{\dagger}$ & 12{,}33$^{\dagger}$ & 1{,}20$^{\dagger}$ & 1{,}86$^{\dagger}$ \\
 bỏ nhóm V & 0{,}99 & 1{,}06$^{\dagger}$ & 1{,}03$^{\dagger}$ & 1{,}10$^{\dagger}$ & 1{,}02 & 1{,}16$^{\dagger}$ & 1{,}11$^{\dagger}$ & 1{,}32$^{\dagger}$ \\
-bỏ nhóm I & 0{,}96 & 1{,}03 & 1{,}06$^{\dagger}$ & 1{,}05 & 1{,}00 & 1{,}00 & 1{,}01 & 1{,}06$^{\dagger}$ \\
-bỏ nhóm QT & 1{,}05$^{\dagger}$ & 1{,}02$^{\dagger}$ & 1{,}00 & 1{,}00 & 1{,}73$^{\dagger}$ & 1{,}99$^{\dagger}$ & 1{,}01 & 1{,}02 \\
-chỉ QT và $t$ & 0{,}96 & 1{,}12$^{\dagger}$ & 1{,}15$^{\dagger}$ & 1{,}33$^{\dagger}$ & 1{,}05 & 1{,}26$^{\dagger}$ & 1{,}17$^{\dagger}$ & 1{,}52$^{\dagger}$ \\
-thêm 16 đặc trưng tương đối & 1{,}02 & 0{,}99 & 0{,}98 & 0{,}89$^{*}$ & 1{,}19$^{\dagger}$ & 1{,}14$^{\dagger}$ & 1{,}03 & 0{,}95 \\
-chọn trên validation & 1{,}00 & 1{,}01 & 1{,}01 & 0{,}99 & 1{,}00 & 1{,}00 & 1{,}02 & 1{,}00 \\
+bỏ nhóm I & \textbf{0{,}96} & 1{,}03 & 1{,}06$^{\dagger}$ & 1{,}05 & 1{,}00 & \textbf{1{,}00} & \textbf{1{,}01} & 1{,}06$^{\dagger}$ \\
+bỏ nhóm QT & 1{,}05$^{\dagger}$ & 1{,}02$^{\dagger}$ & 1{,}00 & 1{,}00 & 1{,}73$^{\dagger}$ & 1{,}99$^{\dagger}$ & \textbf{1{,}01} & 1{,}02 \\
+chỉ QT và $t$ & \textbf{0{,}96} & 1{,}12$^{\dagger}$ & 1{,}15$^{\dagger}$ & 1{,}33$^{\dagger}$ & 1{,}05 & 1{,}26$^{\dagger}$ & 1{,}17$^{\dagger}$ & 1{,}52$^{\dagger}$ \\
+thêm 16 đặc trưng tương đối & 1{,}02 & \textbf{0{,}99} & \textbf{0{,}98} & \textbf{0{,}89}$^{*}$ & 1{,}19$^{\dagger}$ & 1{,}14$^{\dagger}$ & 1{,}03 & \textbf{0{,}95} \\
+chọn trên validation & 1{,}00 & 1{,}01 & 1{,}01 & 0{,}99 & 1{,}00 & \textbf{1{,}00} & 1{,}02 & 1{,}00 \\
 thêm $1/T$ (chỉ TJU) & -- & -- & 0{,}99$^{*}$ & 1{,}00 & -- & -- & -- & -- \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}

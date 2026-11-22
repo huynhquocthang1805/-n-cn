@@ -243,14 +243,13 @@ def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     lịch sử và nhánh theo đời nhận cả hai, PINN-dự báo chỉ nhận đặc trưng gốc) -> trung vị -> SOH, dung lượng, RUL,
     khoảng 90 %."""
     apply_theme(font=font)
-    fig = plt.figure(figsize=(7.2, 4.5))
-    ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(0, 6.25); ax.axis('off')
+    fig = plt.figure(figsize=(7.2, 3.7))
+    ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 10); ax.set_ylim(1.1, 6.25); ax.axis('off')
     GREY = '#6b7680'
     region(ax, 0.05, 1.2, 1.95, 4.95, 'ĐẦU VÀO TẠI GỐC k')
     region(ax, 2.12, 1.2, 5.83, 4.95, 'HiPINN')
     region(ax, 8.07, 1.2, 1.88, 4.95, 'ĐẦU RA')
-    box(ax, 0.17, 3.85, 1.71, 1.25, 'Lịch sử SOH tới k', 'đo được, hoặc ước\nlượng PINN-lai khi\ncell không được đo',
-        fs=7.0)
+    box(ax, 0.17, 3.85, 1.71, 1.25, 'Lịch sử SOH tới k', 'dung lượng đo\ncủa chính cell\ntới chu kỳ k', fs=7.0)
     box(ax, 0.17, 2.0, 1.71, 1.25, 'Đặc trưng sạc tới k', '16 đặc trưng\nmỗi chu kỳ,\nđã chuẩn hoá', fs=7.0)
     box(ax, 2.27, 1.55, 1.5, 1.55, 'Đặc trưng gốc $\\mathbf{z}_k$',
         '23 giá trị: mức $\\ell_k$,\nđộ dốc 30, 100 hàng,\n$k$, $1/T$, đặc trưng\nsạc gần nhất', C_OUT, '#9aa5ad',
@@ -289,10 +288,6 @@ def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     poly(ax, [(7.8, 4.1), (8.0, 4.1), (8.0, 4.92), (8.2, 4.92)], E_LOSS)
     arrow(ax, (7.8, 3.5), (8.2, 3.5), color=E_LOSS)
     poly(ax, [(7.8, 2.95), (8.0, 2.95), (8.0, 2.07), (8.2, 2.07)], E_LOSS)
-    box(ax, 0.05, 0.08, 9.9, 0.95, 'Huấn luyện trên cell train, lịch sử đo thật',
-        'mỗi nhánh học trên các cặp (gốc, tầm) của cell train; cấu hình và số cây của từng nhánh chọn theo MAE trên một '
-        'nửa cell validation;\nnửa còn lại để hiệu chỉnh khoảng; trung vị không có tham số cần chọn; cell test không '
-        'dùng khi học', '#ffffff', '#9aa5ad', fs=7.0)
     save(fig, out)
 
 

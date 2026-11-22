@@ -6,7 +6,7 @@ Mã nguồn được tổ chức thành các khối dữ liệu, mô hình, thí
 
 \Cref{tab:final} tóm tắt mô hình cuối của đồ án cho từng bài toán và kết quả chính trên test. Các mô hình khác trong báo cáo là mốc so sánh hoặc bước trung gian để đi tới các mô hình này.
 \begin{table}[!htbp]\centering\footnotesize
-\caption[Mô hình cuối của đồ án cho từng bài toán]{Mô hình cuối của đồ án cho từng bài toán. Tỉ số là MAE theo cell trên test của mô hình cuối chia cho mô hình được so; ý nghĩa theo kiểm định Wilcoxon ghép cặp theo cell.}\label{tab:final}
+\caption[Mô hình cuối của đồ án cho từng bài toán]{Mô hình cuối của đồ án cho từng bài toán. Tỉ số là MAE theo cell trên test của mô hình cuối chia cho mô hình được so (nhỏ hơn 1: mô hình cuối tốt hơn); ý nghĩa theo kiểm định Wilcoxon ghép cặp theo cell.}\label{tab:final}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}Xl}\toprule
 Bài toán & Mô hình cuối & Cách làm & Kết quả chính trên test & Mục \\\midrule
 Ước lượng SOH từ đoạn sạc khi ít nhãn & PINN-lai & trung bình ba PINN-semi ghép với GBDT ($\omega = \tfrac12$), rồi lọc xu thế nhân quả 10 hàng & MAE bằng 0{,}67--0{,}95 lần PINN-semi (16/16 có ý nghĩa); thấp hơn GBDT ở 10/16 trường hợp bộ $\times$ mức nhãn (8 có ý nghĩa), kém hơn có ý nghĩa ở 1 (TJU 70\,\%) & \ref{sec:e20res} \\\addlinespace
