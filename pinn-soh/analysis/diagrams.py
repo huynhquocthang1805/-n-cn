@@ -54,7 +54,7 @@ def region(ax, x, y, w, h, label):
 
 
 ARCH_TEXT = {
-    'vi': dict(data='DỮ LIỆU', model='MÔ HÌNH', loss='HÀM MẤT MÁT', lab='Cell có nhãn', unl='Mọi cell train',
+    'vi': dict(data='DỮ LIỆU', model='MÔ HÌNH', loss='HÀM MẤT MÁT', lab='Cell có nhãn', unl='Mọi cell huấn luyện',
                only='chỉ', F='Mạng nghiệm', G='Mạng', rate='tốc độ suy giảm ≥ 0', range='SOH hợp lý',
                upd='cập nhật đồng thời', fs=dict(F=7.6, G=7.4, r=7.4)),
     'en': dict(data='DATA', model='MODEL', loss='LOSSES', lab='Labelled cells', unl='All training cells', only='only',
@@ -213,7 +213,7 @@ def forecast_arch(out='results/fig_forecast_arch', font='TeX Gyre Heros'):
     o1 = box(ax, 7.95, 3.92, 1.85, 1.12, 'SOH và dung lượng', '$\\hat y(k+h)$ với mọi $h$\n$\\hat Q = \\hat y$ × dung lượng\ndanh định',
              C_OUT, '#9aa5ad', fs=7.0)
     o2 = box(ax, 7.95, 2.75, 1.85, 0.95, 'RUL', '$h$ đầu tiên có $\\hat y \\leq \\tau$', C_OUT, '#9aa5ad', fs=7.0)
-    o3 = box(ax, 7.95, 1.42, 1.85, 1.0, 'Khoảng 90 %', 'phân vị 5 % và 95 % của\nsai số trên cell validation,\ntheo $h/L$',
+    o3 = box(ax, 7.95, 1.42, 1.85, 1.0, 'Khoảng 90 %', 'phân vị 5 % và 95 % của\nsai số trên cell xác thực,\ntheo $h/L$',
              C_OUT, '#9aa5ad', fs=7.0)
     # đầu vào -> z
     poly(ax, [(1.92, 4.075), (2.15, 4.075), (2.15, 3.55), (2.38, 3.55)], GREY)
@@ -229,8 +229,8 @@ def forecast_arch(out='results/fig_forecast_arch', font='TeX Gyre Heros'):
     poly(ax, [(7.52, 3.45), (7.72, 3.45), (7.72, 4.47), (7.95, 4.47)], E_LOSS)
     arrow(ax, (7.52, 3.22), (7.95, 3.22), color=E_LOSS)
     poly(ax, [(7.52, 3.0), (7.72, 3.0), (7.72, 1.92), (7.95, 1.92)], E_LOSS)
-    box(ax, 0.05, 0.08, 9.9, 0.92, 'Huấn luyện trên cell train, lịch sử đo thật',
-        'mỗi cell 40 gốc × 40 tầm; GBDT chọn số cây, PINN-dự báo dừng sớm theo MAE trên cell validation;'
+    box(ax, 0.05, 0.08, 9.9, 0.92, 'Học trên các cell huấn luyện, lịch sử đo thật',
+        'mỗi cell 40 gốc × 40 tầm; GBDT chọn số cây, PINN-dự báo dừng sớm theo MAE trên cell xác thực;'
         ' cell test không dùng khi học', '#ffffff', '#9aa5ad', fs=7.0)
     save(fig, out)
 
@@ -260,14 +260,14 @@ def hipinn_arch(out='results/fig_hipinn_arch', font='TeX Gyre Heros'):
     box(ax, 4.05, 4.45, 2.35, 1.1, 'HiGBDT', '$\\to \\ell_k - \\mathrm{SOH}(k+h)$ theo $h$\n6 cấu hình × 3 số cây',
         C_NET, E_NET, fs=7.0)
     box(ax, 4.05, 2.9, 2.35, 1.3, 'Nhánh theo đời', 'GBDT đời còn lại $\\to \\hat N$\nkhuôn quỹ đạo của K cell\n'
-        'train theo $u = c/\\hat N$', C_LIFE, E_LIFE, fs=7.0)
+        'huấn luyện theo $u = c/\\hat N$', C_LIFE, E_LIFE, fs=7.0)
     box(ax, 4.05, 1.4, 2.35, 1.2, 'PINN-dự báo', '$\\mathbf{z}_k \\to (a \\geq 0,\\ \\lambda)$, nghiệm đóng\n'
         '$\\ell_k + \\ln(1-\\lambda a h)/\\lambda$', C_PHY, E_PHY, fs=7.0)
     box(ax, 6.7, 2.7, 1.1, 1.75, 'Trung vị', 'của ba nhánh\ntại mỗi gốc\nvà tầm $h$', C_LOSS, E_LOSS, fs=7.0)
     box(ax, 8.2, 4.3, 1.62, 1.25, 'SOH, dung lượng', '$\\hat y(k+h)$ mọi $h$;\n$\\hat Q = \\hat y\\,\\times$\ndanh định',
         C_OUT, '#9aa5ad', fs=7.0)
     box(ax, 8.2, 3.0, 1.62, 1.0, 'RUL', '$h$ đầu tiên có\n$\\hat y \\leq \\tau$', C_OUT, '#9aa5ad', fs=7.0)
-    box(ax, 8.2, 1.45, 1.62, 1.25, 'Khoảng 90 %', '$\\hat y \\pm q\\sqrt{1+h/L}$,\n$q$ từ nửa cell\nvalidation còn lại',
+    box(ax, 8.2, 1.45, 1.62, 1.25, 'Khoảng 90 %', '$\\hat y \\pm q\\sqrt{1+h/L}$,\n$q$ từ nửa cell\nxác thực còn lại',
         C_OUT, '#9aa5ad', fs=7.0)
     # đầu vào -> đặc trưng
     poly(ax, [(1.88, 4.475), (2.27, 4.475)], GREY)

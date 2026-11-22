@@ -324,7 +324,7 @@ def cost_text():
     """Mục chi phí tính toán (Chương 4), từ analysis/compute_cost.py; bản sao ở generated/data/compute_cost.csv."""
     p = keep_copy('results/compute_cost.csv', 'compute_cost.csv')
     if p is None:
-        return '(Chưa có số đo chi phí: chạy \\texttt{python analysis/compute_cost.py}.)'
+        return '(Chưa có số đo chi phí: chạy \\texttt{python analysis/compute\\_cost.py}.)'
     C = pd.read_csv(p)
     kb = lambda x: v(x / 1024, 0) + '\\,KB'
     mb = lambda x: v(x / 1024 ** 2, 1) + '\\,MB'
@@ -688,10 +688,10 @@ def rel_dev():
             a = j.args
             rv = lambda p: json.load(open(p))['val_predictions']
             A, B = rv(j.out), rv(base[(a['dataset'], a['label_frac'], a['fold'])])
-            for x, (k, s) in ((A, 'rel'), (B, 'base')):
-                y, p, c = np.asarray(x['y']), np.asarray(x['p']), np.asarray(x['cell'])
-                acc.setdefault((a['dataset'], a['label_frac'], s), []).extend(
-                    float(np.abs(p[c == i] - y[c == i]).mean()) for i in np.unique(c))
+            for x, s in ((A, 'rel'), (B, 'base')):         # như analysis/dev_e20.py: MAE theo cell của fold, rồi
+                y, p, c = np.asarray(x['y']), np.asarray(x['p']), np.asarray(x['cell'])    # trung bình qua các fold
+                acc.setdefault((a['dataset'], a['label_frac'], s), []).append(
+                    float(np.mean([np.abs(p[c == i] - y[c == i]).mean() for i in np.unique(c)])))
         r = {f'{ds}|{f}': float(np.mean(acc[(ds, f, 'rel')]) / np.mean(acc[(ds, f, 'base')]))
              for ds, f, s in acc if s == 'rel'}
         json.dump(dict(ratios=r, geo=float(np.exp(np.mean(np.log(list(r.values())))))), open(path, 'w'), indent=1)

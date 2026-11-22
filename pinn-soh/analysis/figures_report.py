@@ -206,7 +206,7 @@ def e28_budget():
         ax.xaxis.set_minor_locator(plt.NullLocator())
         _log_ticks(ax, min(vals) / 1.1, max(vals) * 1.1)
         panel_title(ax, f'{ds} ({CHEM[ds]})', pad=4)
-    _finish(fig, axes, '% số chu kỳ của cell train có đo dung lượng', 'MAE theo cell (×10$^{-3}$)', 2, 3)
+    _finish(fig, axes, '% số chu kỳ của cell huấn luyện có đo dung lượng', 'MAE theo cell (×10$^{-3}$)', 2, 3)
     save(fig, f'{OUT}/fig_e28_budget')
 
 
@@ -580,7 +580,7 @@ def e22_rul():
 
 
 # ─────────────────────────────────────────────────────────── E33: dự báo có đặc trưng lịch sử (HiPINN)
-E33_SET = [('lab30', 'do', '30 % nhãn', '#86b6ef', 'o'), ('all', 'do', 'mọi cell train', '#0b3d73', 's')]   # lịch sử đo
+E33_SET = [('lab30', 'do', '30 % nhãn', '#86b6ef', 'o'), ('all', 'do', 'mọi cell huấn luyện', '#0b3d73', 's')]   # lịch sử đo
 
 
 E33_FIG_MODELS = ['giu', 'tuyen', 'gbdt', 'pinn', 'ket_hop', 'gbdt_ls', 'pinn_ls', 'doi', 'hipinn_w', 'hipinn']

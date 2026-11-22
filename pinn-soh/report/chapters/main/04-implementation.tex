@@ -103,12 +103,12 @@ Mỗi lệnh ghi kết quả vào thư mục \texttt{demo/} dưới dạng một
 \toprule
 Lệnh và tham số & Chức năng \\
 \midrule
-\texttt{train --dataset XJTU} & học PINN-semi ở 30\,\% nhãn trên một fold của bộ dữ liệu, lưu \texttt{demo/XJTU.pt} \\
-\texttt{predict --model demo/XJTU.pt --csv} \textit{tệp} \texttt{[--nominal} \textit{Ah}\texttt{] [--temp} \textit{°C}\texttt{]
-[--an-nhan]} & ước lượng SOH ở từng chu kỳ; \texttt{--an-nhan} bỏ cột dung lượng để giả lập cell chưa đo \\
-\texttt{forecast --model demo/XJTU.pt --csv} \textit{tệp} \texttt{[--den-chu-ky} \textit{k}\texttt{]} & dự báo SOH, dung lượng
+\texttt{train -{}-dataset XJTU} & học PINN-semi ở 30\,\% nhãn trên một fold của bộ dữ liệu, lưu \texttt{demo/XJTU.pt} \\
+\texttt{predict -{}-model demo/XJTU.pt -{}-csv} \textit{tệp} \texttt{[-{}-nominal} \textit{Ah}\texttt{] [-{}-temp} \textit{°C}\texttt{]
+[-{}-an-nhan]} & ước lượng SOH ở từng chu kỳ; \texttt{-{}-an-nhan} bỏ cột dung lượng để giả lập cell chưa đo \\
+\texttt{forecast -{}-model demo/XJTU.pt -{}-csv} \textit{tệp} \texttt{[-{}-den-chu-ky} \textit{k}\texttt{]} & dự báo SOH, dung lượng
 và RUL bằng HiPINN từ chu kỳ gốc $k$ (mặc định chu kỳ cuối của tệp); cần dung lượng đo tới $k$ \\
-\texttt{cap-nhat --model demo/XJTU.pt --csv} \textit{tệp} \texttt{[--lich q20|q10|q05]} \texttt{[--do-chu-ky "1,60,120"]} &
+\texttt{cap-nhat -{}-model demo/XJTU.pt -{}-csv} \textit{tệp} \texttt{[-{}-lich q20|q10|q05]} \texttt{[-{}-do-chu-ky "1,60,120"]} &
 cập nhật SOH ở các chu kỳ không đo từ lần đo gần nhất bằng GBDT-cập nhật; lịch đo giả lập hoặc danh sách chu kỳ có đo \\
 \texttt{tat-ca} & áp dụng HiPINN cho một cell kiểm tra của mỗi bộ, hình $2 \times 2$ \\
 \bottomrule
