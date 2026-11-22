@@ -14,10 +14,10 @@ GBDT & Cây quyết định tăng cường gradient (Gradient Boosting Decision 
 GBDT-cập nhật & GBDT học thay đổi SOH kể từ lần đo dung lượng gần nhất\\
 GPR & Hồi quy quá trình Gauss (Gaussian Process Regression)\\
 HiGBDT & GBDT dự báo có đặc trưng lịch sử SOH (History-informed GBDT)\\
-HiGBDT-$\Delta$, -R, -V & HiGBDT cập nhật SOH: độ giảm, phần dư, chọn trên validation\\
+HiGBDT-$\Delta$, -R, -V & HiGBDT cập nhật SOH: độ giảm, phần dư, chọn trên tập xác thực\\
 HiPINN & Trung vị của HiGBDT, PINN-dự báo, nhánh theo đời (History-informed PINN)\\
-HiPINN-lai & PINN-lai có thêm đặc trưng lịch sử của đặc trưng sạc, dùng khi validation chọn (History-informed PINN-lai)\\
-HiPINN-w, -tb & HiPINN với trọng số chọn trên validation; với trung bình ba nhánh\\
+HiPINN-lai & PINN-lai có thêm đặc trưng lịch sử của đặc trưng sạc, dùng ở những fold mà tập xác thực chọn (History-informed PINN-lai)\\
+HiPINN-w, -tb & HiPINN với trọng số chọn trên tập xác thực, và với trung bình ba nhánh\\
 KTC & Khoảng tin cậy\\
 LAM & Mất vật liệu hoạt động (Loss of Active Material)\\
 LFP & Lithium sắt phốt phát (LiFePO$_4$)\\
@@ -28,8 +28,8 @@ MAPE & Sai số phần trăm tuyệt đối trung bình (Mean Absolute Percentag
 MLP & Perceptron nhiều lớp (Multilayer Perceptron)\\
 NCA, NCM & Oxit niken--coban--nhôm, oxit niken--coban--mangan\\
 PINN & Mạng nơ-ron có thông tin vật lý (Physics-Informed Neural Network)\\
-PINN-semi & PINN bán giám sát, loss vật lý áp lên cả cell không nhãn\\
-PINN-lai & Mô hình kết hợp: ba PINN-semi, GBDT và bộ lọc quỹ đạo\\
+PINN-semi & PINN bán giám sát, hàm mất mát vật lý áp lên cả cell không nhãn\\
+PINN-lai & Mô hình kết hợp: ba PINN-semi, GBDT và bộ lọc xu thế\\
 PINN-dự báo & PINN chọn tham số nghiệm đóng của đường suy giảm để dự báo SOH\\
 PINN-GBDT & Trung bình của PINN-dự báo và GBDT theo tầm (dự báo, mốc so sánh)\\
 PINN4SOH & PINN của Wang và cộng sự (2024), bài gốc dùng để so sánh\\

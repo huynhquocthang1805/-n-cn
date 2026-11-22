@@ -770,6 +770,9 @@ def thesis_tables(F=None, K=None):
             if ' & ' in ln and ln.rstrip().endswith('\\\\'):
                 cells = [c.strip() for c in ln.rstrip()[:-2].split(' & ')]
                 ds = cells[0]
+                if F is not None:        # ba cột đầu là PINN-lai cố định và GBDT: phải trùng phân tích theo fold
+                    for col, f, m in ((1, 0.3, 'pinn_lai'), (2, 0.7, 'pinn_lai'), (3, 0.7, 'gbdt')):
+                        assert abs(_num(cells[col]) - 1e3 * fval(F, ds, f, m)) < 0.006, ('bảng ngân sách đo', ds, f, m)
                 cells[-1] = v(1e3 * float(K[(K.ds == ds) & np.isclose(K.f, 0.7) & (K.tier == 'q10')].kalman.iloc[0]))
                 lines[i] = ' & '.join(cells) + ' \\\\'
         e28 = head_ + '\\midrule' + '\n'.join(lines) + '\\bottomrule' + tail
