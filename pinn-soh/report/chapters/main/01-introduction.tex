@@ -2,31 +2,37 @@
 \label{chap:introduction}
 
 \noindent
-\textit{Chương này nêu lý do chọn đề tài, bài toán, mục tiêu, phạm vi và các đóng góp của đồ án, rồi tóm tắt cấu trúc
-của báo cáo.}
-
 \section{Lý do chọn đề tài}
+Trong quá trình vận hành, dung lượng của pin lithium-ion suy giảm dần theo thời gian. 
+Hệ thống quản lý pin (BMS) cần ước lượng chính xác trạng thái sức khoẻ (SOH) để tính quãng đường còn lại, 
+điều chỉnh chế độ sạc và cảnh báo thời điểm thay pin. Để đo đúng dung lượng, cell pin phải trải qua một chu trình xả đầy theo 
+tiêu chuẩn, tốn nhiều giờ và buộc hệ thống ngừng hoạt động. Ngược lại, các tín hiệu điện áp và dòng điện trong quá trình sạc lại 
+được BMS ghi nhận liên tục ở mọi chu kỳ. Sự chênh lệch này tạo ra bài toán điển hình của việc thiếu hụt nhãn dữ liệu: thông tin 
+đầu vào rất dồi dào, nhưng chỉ một tỷ lệ nhỏ cell có nhãn SOH đầy đủ. Trong điều kiện ít nhãn như vậy, các mô hình học sâu thuần dữ liệu 
+thường dễ quá khớp vào tập nhỏ cell huấn luyện và cho ra quỹ đạo ước lượng dao động, thiếu ổn định khi áp dụng lên cell mới.
 
-Dung lượng của cell lithium-ion giảm dần trong quá trình sử dụng. Hệ thống quản lý pin (BMS) cần biết trạng thái sức
-khoẻ (SOH) để ước tính quãng đường còn lại, điều chỉnh chiến lược sạc và cảnh báo thời điểm thay pin. Muốn biết chính
-xác dung lượng phải xả đầy cell theo một quy trình chuẩn, việc này mất nhiều giờ và buộc pin dừng vận hành. Ngược lại,
-điện áp và dòng điện lúc sạc được ghi ở mọi chu kỳ của mọi cell. Vì vậy dữ liệu đầu vào thì nhiều, còn nhãn SOH thì ít.
+Để khắc phục hạn chế trên, mạng nơ-ron có thông tin vật lý (PINN) là một hướng tiếp cận giàu tiềm năng khi tích hợp 
+các quy luật suy giảm hoá lý của hệ pin vào quá trình huấn luyện. Vì các ràng buộc vật lý có thể tính trực tiếp từ dữ liệu sạc, 
+mô hình vẫn khai thác được thông tin từ những cell chưa đo dung lượng. Gần đây, công trình PINN4SOH~\cite{wang2024} 
+đã triển khai hướng đi này trên bốn bộ dữ liệu lão hoá pin công khai và chia sẻ mã nguồn. Tuy nhiên,
+ ở bước lọc ngoại lai và chuẩn hoá, nhóm tác giả lại sử dụng thống kê trên toàn bộ vòng đời của từng cell, 
+ bao gồm cả các cell thuộc tập kiểm tra. Đây là một dạng rò rỉ dữ liệu đã được chỉ ra trong các nghiên cứu học máy khoa học 
+ ~\cite{kapoor2023}, khiến sai số báo cáo không còn phản ánh đúng năng lực của mô hình khi triển khai thực tế.
+Ngoài ra, khả năng tái lập các kết quả công bố của công trình này cũng chưa được kiểm chứng độc lập. 
 
-Mạng nơ-ron có thông tin vật lý (PINN) là một cách tận dụng dữ liệu không nhãn, vì ràng buộc vật lý tính được chỉ từ dữ
-liệu sạc. PINN4SOH~\cite{wang2024} áp dụng hướng này trên bốn bộ dữ liệu công khai và công bố mã nguồn. Tuy nhiên, khi
-lọc ngoại lai và chuẩn hoá, bài dùng thống kê của cả vòng đời từng cell, kể cả cell kiểm tra. Đây là một dạng rò rỉ dữ
-liệu đã biết~\cite{kapoor2023}, làm sai số đo được không phản ánh sai số khi triển khai. Mức độ tái lập của số công bố
-cũng chưa được kiểm tra. Đồ án chọn đề tài này để xây dựng một mô hình ước lượng SOH khi ít nhãn và đánh giá nó, cùng các mô hình khác, trong một giao
-thức không rò rỉ.
-
+Xuất phát từ những khoảng trống đó, đề tài tập trung xây dựng mô hình học sâu có hỗ trợ thông tin hoá lý nhằm ước 
+lượng SOH hiệu quả trong kịch bản ít nhãn, đồng thời thiết lập một giao thức đánh giá chặt chẽ, không rò rỉ dữ liệu 
+để đối chiếu công bằng giữa các mô hình. Bên cạnh bài toán ước lượng, đề tài cũng khảo sát cách phân bổ phép đo dung 
+lượng hợp lý hơn và mở rộng sang bài toán dự báo quỹ đạo suy giảm cùng tuổi thọ còn lại (RUL) phục vụ vận hành BMS.   
 \section{Phát biểu bài toán}
+Đồ án tập trung giải quyết hai bài toán chính trên dữ liệu lão hoá của cell pin lithium-ion:
 
-Bài toán thứ nhất là ước lượng: cho 16 đặc trưng đoạn sạc và chỉ số chu kỳ của mọi chu kỳ, trong đó chỉ một phần các
-cell huấn luyện có nhãn SOH, cần học một mô hình cho sai số nhỏ nhất trên các cell chưa từng xuất hiện khi huấn luyện.
-Mô hình chỉ được dùng dữ liệu tới chu kỳ hiện tại. Bài toán thứ hai là dự báo: đứng ở chu kỳ $k$, biết SOH đo được của
-cell tới $k$, dự báo SOH ở các chu kỳ sau đó, dung lượng còn lại và số chu kỳ còn lại tới ngưỡng cuối
-đời (RUL). Phát biểu hình thức ở \Cref{sec:bai_toan}.
+\begin{itemize}
+    \item \textbf{Bài toán ước lượng SOH trong điều kiện ít nhãn:} Đầu vào là 16 đặc trưng trích xuất từ đoạn sạc cùng chỉ số chu kỳ qua từng lần sạc của các cell pin, trong đó chỉ một phần nhỏ số cell huấn luyện có nhãn SOH đo được. Mục tiêu là xây dựng mô hình cho sai số ước lượng thấp nhất trên những cell chưa từng xuất hiện trong quá trình huấn luyện. Để bảo đảm khả năng chạy trực tuyến trên BMS, tại mỗi bước suy luận, mô hình chỉ được phép sử dụng dữ liệu tính đến chu kỳ hiện tại.
+    \item \textbf{Bài toán dự báo suy giảm và tuổi thọ còn lại (RUL):} Xét tại một chu kỳ gốc $k$, khi đã biết các đặc trưng đoạn sạc và lịch sử SOH đo được của cell pin tính đến chu kỳ $k$, mục tiêu là dự báo giá trị SOH ở các chu kỳ tiếp theo, suy ra dung lượng pin tương ứng và ước tính số chu kỳ còn lại trước khi SOH giảm xuống dưới ngưỡng cuối đời (RUL).
+\end{itemize}
 
+Mô tả chi tiết các bài toán được trình bày ở Mục \Cref{sec:bai_toan}.
 \section{Mục tiêu}
 
 Mục tiêu chính của đồ án là xây dựng một mô hình ước lượng SOH dùng được khi chỉ một phần nhỏ cell có nhãn, và
