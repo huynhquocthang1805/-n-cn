@@ -88,7 +88,8 @@ TERMS = [
     ('theo dự đoán phù hợp', 'theo phương pháp conformal'), ('dự đoán phù hợp', 'phương pháp conformal'),
     ('mỗi cell có một phiếu', 'mỗi cell được tính với trọng số như nhau'),
     ('mỗi cell một phiếu', 'mỗi cell có trọng số như nhau'), ('biến thể cắt bỏ', 'biến thể lược bỏ thành phần'),
-    ('mặt mất mát', 'bề mặt hàm mất mát'),
+    ('mặt mất mát', 'bề mặt hàm mất mát'), ('mỗi cell được test', 'mỗi cell được kiểm tra'),
+    ('Trên test', 'Trên tập kiểm tra'), ('cùng chiều với test', 'cùng chiều với tập kiểm tra'),
 ]
 
 
@@ -329,6 +330,7 @@ def cost_text():
     kb = lambda x: v(x / 1024, 0) + '\\,KB'
     mb = lambda x: v(x / 1024 ** 2, 1) + '\\,MB'
     sz = lambda x: kb(x) if x < 1024 ** 2 else mb(x)
+    szr = lambda a, b: (f'{v(a / 1024 ** 2, 1)}--{mb(b)}' if a >= 1024 ** 2 else f'{sz(a)}--{sz(b)}')
     rows = [f'{r.ds} & {thou(r.sol_params)} & {r.gbdt_trees} & {sz(r.lai_bytes)} & {v(r.ms_lai, 2)} & '
             f'{sz(r.hipinn_bytes)} & {v(r.ms_hipinn, 0)} \\\\' for r in C.itertuples()]
     tab = (r'\begin{table}[!htbp]\centering\small' '\n'
@@ -349,20 +351,20 @@ def cost_text():
     parts = [f'lượt dự đoán của GBDT ({rng(C.ms_gbdt, 2)}\\,ms)', f'ba lượt truyền thẳng ({rng(C.ms_nn3, 2)}\\,ms)']
     parts = parts if gb_first else parts[::-1]
     mem = C.hipinn_bytes.max() / 1024 ** 2
-    mem_txt = ('vài MB' if mem < 10 else 'vài chục MB' if mem < 100 else 'vài trăm MB')
+    mem_txt = f'{int(np.ceil(mem))}\\,MB trở lên'
     return ('BMS thường chạy trên vi điều khiển hoặc một máy tính nhúng có bộ nhớ và năng lực tính toán hạn chế, nên chi '
             'phí suy luận là một tiêu chí khi triển khai. \\Cref{tab:cost} đo chi phí của hai mô hình cuối trên CPU một '
             f'luồng. Mỗi mạng nghiệm của PINN-lai có {thou(int(C.sol_params.iloc[0]))} tham số. Khi suy luận chỉ cần mạng '
             'nghiệm, còn mạng tốc độ chỉ dùng lúc học. GBDT của PINN-lai có '
-            f'{rng(C.gbdt_trees.astype(float), 0)} cây tuỳ bộ. Toàn bộ PINN-lai chiếm {sz(C.lai_bytes.min())}--'
-            f'{sz(C.lai_bytes.max())} và cần {rng(C.ms_lai, 2)}\\,ms cho mỗi chu kỳ mới, chủ yếu cho {parts[0]}, sau đó là '
+            f'{rng(C.gbdt_trees.astype(float), 0)} cây tuỳ bộ. Toàn bộ PINN-lai chiếm '
+            f'{szr(C.lai_bytes.min(), C.lai_bytes.max())} và cần {rng(C.ms_lai, 2)}\\,ms cho mỗi chu kỳ mới, chủ yếu cho {parts[0]}, sau đó là '
             f'{parts[1]}. Bộ lọc xu thế chỉ cần '
             'nhớ 10 ước lượng gần nhất của cell. Với một lần đo mỗi chu kỳ sạc, chi phí này nhỏ so với thời gian một lần sạc. '
             + ('HiPINN nặng hơn: ' if C.hipinn_bytes.min() > C.lai_bytes.max() else 'HiPINN chiếm ')
-            + f'{sz(C.hipinn_bytes.min())}--{sz(C.hipinn_bytes.max())}, lớn nhất ở {big.ds}, trong đó '
-            f'nhánh theo đời (GBDT đời còn lại và khuôn quỹ đạo của các cell huấn luyện) chiếm {pct(min(share(r) for r in C.itertuples()))}--'
-            f'{pct(max(share(r) for r in C.itertuples()))}. Một lần dự báo cho mọi tầm tới $3L$ mất {rng(C.ms_hipinn, 0)}\\,ms. '
-            f'Dự báo không cần chạy ở mọi chu kỳ, nên HiPINN phù hợp với một máy chủ hay một bộ điều khiển có bộ nhớ cỡ '
+            + f'{szr(C.hipinn_bytes.min(), C.hipinn_bytes.max())}, lớn nhất ở {big.ds}, trong đó '
+            f'nhánh theo đời (GBDT đời còn lại và khuôn quỹ đạo của các cell huấn luyện) chiếm '
+            f'{v(100 * min(share(r) for r in C.itertuples()), 0)}--{pct(max(share(r) for r in C.itertuples()))}. Một lần dự báo cho mọi tầm tới $3L$ mất {rng(C.ms_hipinn, 0)}\\,ms. '
+            f'Dự báo không cần chạy ở mọi chu kỳ, nên HiPINN phù hợp với một máy chủ hay một bộ điều khiển có bộ nhớ từ '
             f'{mem_txt}, còn PINN-lai đủ nhẹ để chạy sau mỗi lần sạc trên một máy tính nhúng. Các số đo trên một lõi CPU của '
             'máy chạy thí nghiệm, không phải trên phần cứng của BMS. Trên vi điều khiển, độ trễ sẽ lớn hơn và cần đo lại.'
             '\n\n' + tab)
@@ -570,18 +572,21 @@ def history_text_f(F):
         end += (f'Ở {len(good)} trường hợp lịch sử giúp có ý nghĩa thống kê, HiPINN-lai giữ được {pct(keep)} mức giảm '
                 f'sai số của bản luôn dùng lịch sử. ')
     if bad:
-        end += (f'Ở {len(bad)} trường hợp lịch sử làm kém đi có ý nghĩa thống kê, mức tăng sai số trung bình là '
-                f'{pct(np.mean(r_hip(bad)), 1)} với HiPINN-lai so với {pct(np.mean(r_his(bad)), 1)} với bản luôn dùng '
-                'lịch sử. ')
+        head = (f'Ở trường hợp duy nhất lịch sử làm kém đi có ý nghĩa thống kê ({case(bad)}), mức tăng sai số là '
+                if len(bad) == 1 else
+                f'Ở {len(bad)} trường hợp lịch sử làm kém đi có ý nghĩa thống kê, mức tăng sai số trung bình là ')
+        end += (head + f'{pct(np.mean(r_hip(bad)), 1)} với HiPINN-lai so với {pct(np.mean(r_his(bad)), 1)} với bản luôn '
+                'dùng lịch sử. ')
     return ('Bảng~\\ref{tab:hist} cho sai số khi thêm lịch sử của đặc trưng sạc vào đầu vào. Với PINN-lai, bản có lịch sử '
             f'có MAE bằng {rng(list(rat.values()))} lần bản không lịch sử. Bản có lịch sử thấp hơn có ý nghĩa thống kê ở '
             f'{case(good)}, và cao hơn có ý nghĩa thống kê ở {case(bad)}. Trên MIT không dạng lịch sử nào được tập xác thực '
             'chọn. HiPINN-lai chọn riêng trong từng fold có dùng lịch sử hay không: bản có lịch sử chỉ được dùng khi MAE trên cell xác thực của '
             'fold đó giảm ít nhất 2\\,\\%. Tỉ lệ fold chọn lịch sử là '
-            + jv([f'{pct(min(share[ds]))}--{pct(max(share[ds]))} ở {ds}' if min(share[ds]) != max(share[ds])
+            + jv([f'{v(100 * min(share[ds]), 0)}--{pct(max(share[ds]))} ở {ds}' if min(share[ds]) != max(share[ds])
                   else f'{pct(share[ds][0])} ở {ds}' for ds in hist_ds]) + ' (tuỳ mức nhãn). '
-            f'Kết quả là HiPINN-lai có MAE bằng {rng(rh)} lần PINN-lai, thấp hơn có ý nghĩa thống kê ở {case(hg)} và cao '
-            f'hơn có ý nghĩa thống kê ở {case(hb)} (\\Cref{{tab:allmae}}). ' + end
+            f'Kết quả là HiPINN-lai có MAE bằng {rng(rh)} lần PINN-lai, thấp hơn có ý nghĩa thống kê ở {case(hg)} '
+            + (f'và cao hơn có ý nghĩa thống kê ở {case(hb)}' if hb else 'và không cao hơn có ý nghĩa thống kê ở trường hợp nào')
+            + ' (\\Cref{tab:allmae}). ' + end
             + 'Quyết định dùng lịch sử chỉ dựa trên vài cell xác thực mỗi fold nên không phải lúc nào cũng đúng.')
 
 
@@ -833,7 +838,7 @@ def filter_text():
     return (r'Ở cách đặt này, tỉ lệ chu kỳ bị loại là '
             + ', '.join(f'{v(x, 1)}' + r'\,\%' + f' ({ds})' for ds, x in zip(DS, drop('k5')))
             + r'. Một kiểm tra sau, không dùng để chọn tham số (GBDT, 30\,\% nhãn, 3 lần lặp $\times$ 5 fold, MAE chấm '
-            r'trên cùng một tập chu kỳ test cho mọi cách đặt, Wilcoxon ghép cặp theo cell, Holm qua bốn bộ): đổi ngưỡng thành 3, 4, 6 hoặc 8 làm tỉ lệ chu kỳ bị loại '
+            r'trên cùng một tập chu kỳ kiểm tra cho mọi cách đặt, Wilcoxon ghép cặp theo cell, Holm qua bốn bộ): đổi ngưỡng thành 3, 4, 6 hoặc 8 làm tỉ lệ chu kỳ bị loại '
             r'đi từ ' + pc(drop('k3')) + r' (ngưỡng 3) tới ' + pc(drop('k8')) + r' (ngưỡng 8), còn MAE bằng '
             + rng(list(K.ratio), 3) + ' lần cách đặt của đồ án'
             + updown(K)
@@ -902,9 +907,9 @@ def experiments_table(n_rerun, n_feat_jobs, n_feat_fits):
 
 # --------------------------------------------------------------------------- kiểm toán rò rỉ
 LEAK = [('row', 'chia theo chu kỳ'), ('minmax', 'min--max theo cell'), ('life3s', 'lọc dùng cả vòng đời'),
-        ('normtest', 'chuẩn hoá gồm cả test')]
+        ('normtest', 'chuẩn hoá gồm cả tập kiểm tra')]
 LEAK_HEAD = {'row': ('chia theo', 'chu kỳ'), 'minmax': ('min--max', 'theo cell'), 'life3s': ('lọc dùng cả', 'vòng đời'),
-             'normtest': ('chuẩn hoá', 'gồm cả test')}
+             'normtest': ('chuẩn hoá gồm', 'cả tập kiểm tra')}
 
 
 def leakage():
@@ -938,7 +943,7 @@ def leakage():
             f'như đủ để suy ra SOH; trên TJU ({v(m["TJU"])}) và MIT ({v(m["MIT"])}) nó làm sai số tăng vì xoá mất mức '
             f'tuyệt đối của đặc trưng. Dù theo chiều nào, con số đo được cũng không phản ánh sai số khi triển khai, vì '
             f'tuổi thọ của cell đang vận hành chưa biết trước. Lọc ngoại lai dùng cả vòng đời ({L["life"]}) và chuẩn hoá '
-            f'gồm cả test ({L["normtest"]}) tác động nhỏ hơn nhưng vẫn là rò rỉ.')
+            f'gồm cả tập kiểm tra ({L["normtest"]}) tác động nhỏ hơn nhưng vẫn là rò rỉ.')
     return '\n'.join(out), text, L
 
 
@@ -1063,7 +1068,7 @@ def fig_benchmark(S):
         bx.yaxis.set_major_formatter(VN_TICKS)
         bx.set_xticks(K); bx.set_xlim(0.8, 4.2)
         bx.grid(axis='y', color=GRID, lw=0.6); bx.grid(axis='x', visible=False)
-        bx.set_xlabel('số cell có nhãn $K$' + (' mỗi batch' if ds == 'XJTU' else ''))
+        bx.set_xlabel('số cell có nhãn $K$' + (' mỗi nhóm thí nghiệm' if ds == 'XJTU' else ''))
         bx.set_title(f'({"bc"[i]}) {ds}, chế độ ít mẫu', loc='left', fontweight='bold', fontsize=9)
         if i == 0:
             bx.set_ylabel(r'MAE theo cell ($\times10^{-3}$, thang log)')
@@ -1480,8 +1485,8 @@ def compare_chapter(S, T, B, L_leak, E33=None, PH=None):
              r'đoán tuổi thọ của cả cell từ các chu kỳ đầu, Zhu và cộng sự~\cite{zhu2022} dùng điện áp hồi phục sau sạc, '
              r'Ma và cộng sự~\cite{ma2022} dùng học chuyển giao với cách chia riêng. Vì cách chia và đầu vào khác nhau, sai '
              r'số của các bài đó không so trực tiếp được với đồ án, và báo cáo không trích chúng. Mọi so sánh dưới đây dùng '
-             r'đúng 39 nhóm đánh giá của bài, dựng lại từ nhật ký huấn luyện công bố kèm mã: một nhóm cho mỗi batch của '
-             r'XJTU và TJU ở chế độ đầy đủ, một nhóm cho MIT (23 cell test) và cho HUST (20 cell test), và các nhóm ít mẫu '
+             r'đúng 39 nhóm đánh giá của bài, dựng lại từ nhật ký huấn luyện công bố kèm mã: mỗi nhóm thí nghiệm (batch) của '
+             r'XJTU và TJU là một nhóm đánh giá ở chế độ đầy đủ, một nhóm cho MIT (23 cell test) và cho HUST (20 cell test), và các nhóm ít mẫu '
              r'$K = 1, \dots, 4$ của XJTU và HUST. Sai số tính đúng như bài: MAE từng cell test, trung bình qua lần chạy, '
              r'qua cell, qua nhóm. PINN-lai của đồ án chạy với hai cách tiền xử lý: bản sao tiền xử lý của bài (có rò rỉ, '
              r'chỉ để so cùng điều kiện) và tiền xử lý không rò rỉ của đồ án. Bảng~\ref{tab:pub} và \Cref{fig:bench} tập '
@@ -1533,7 +1538,7 @@ def compare_chapter(S, T, B, L_leak, E33=None, PH=None):
         rf'với dữ liệu của bài, nên phần chênh đến từ phần cứng và phiên bản thư viện.',
     ]
     internal = [
-        r'GBDT đơn lẻ có sai số thấp hơn PINN-semi ở 14/16 trường hợp bộ $\times$ mức nhãn (10 có ý nghĩa); PINN-semi chỉ '
+        r'GBDT đơn lẻ có sai số thấp hơn PINN-semi ở 14/16 trường hợp bộ $\times$ mức nhãn (10 có ý nghĩa). PINN-semi chỉ '
         r'vượt GBDT có ý nghĩa ở HUST 30\,\% nhãn (Mục~\ref{sec:labels}). PINN-lai cố định vẫn kém GBDT có ý nghĩa ở TJU 70\,\%.',
         r'Ở 70\,\% nhãn, PINN-semi kém MLP có ý nghĩa trên TJU (tỉ số 1{,}09); với kiểm định bảo thủ ở mức fold, lợi ích ở '
         r'30\,\% nhãn chỉ đứng vững trên MIT.',
@@ -1635,12 +1640,12 @@ def reproducibility(B):
         items.append(f'PINN-lai, GBDT và PINN-semi trên 39 nhóm của PINN4SOH ({thou(e["runs"])} lượt) được chạy lại toàn bộ và so với '
                      f'kết quả của lần chạy trước: {e["summary_same"]} trên {e["summary_n"]} giá trị trung bình (MAE, RMSE và '
                      'độ lệch chuẩn qua ba hạt giống của PINN-lai, GBDT và trung bình ba PINN-semi, với hai cách tiền xử lý, '
-                     'trên 12 chế độ) giống hệt; '
+                     'trên 12 chế độ) giống hệt. '
                      + (f'MAE và RMSE theo cell của cả {thou(e["cells"])} dòng trùng ở 6 chữ số có nghĩa đã lưu.'
                         if e['cells_same'] else 'bảng MAE và RMSE theo cell không trùng hoàn toàn ở 6 chữ số có nghĩa đã lưu.'))
     items.append('GBDT với đủ 17 đầu vào trong phân tích đặc trưng (Mục~\\ref{sec:dt_pp}) cho MAE theo cell giống hệt '
                  'với lượt GBDT tham chiếu của thí nghiệm chính (XJTU, 30\\,\\% nhãn, lần lặp 0, fold 0).')
-    items.append(f'So với PINN4SOH trên đúng dữ liệu train của bài: một đại lượng ghi theo từng epoch trong nhật ký huấn '
+    items.append(f'So với PINN4SOH trên đúng dữ liệu huấn luyện của bài: một đại lượng ghi theo từng vòng huấn luyện (epoch) trong nhật ký huấn '
                  f'luyện công bố của bài, tính lại trên các hàng train dựng lại ở đây, khớp ở cả {B["n_eq"]} nhóm; sai số '
                  'khi chạy lại mã gốc không trùng số công bố vì khác phần cứng và phiên bản thư viện.')
     s.append(' '.join(items))
@@ -1704,17 +1709,22 @@ def final_table(B, C6, E33=None, F20=None, KS=None):
     th = [ftest(F20, 'hipinn_lai', 'pinn_lai', ds, f) for ds, f in cases]
     gw = [f'{ds} {int(100 * f)}\\,\\%' for (ds, f), t in zip(cases, tg) if t.ratio > 1 and t.p_holm < 0.05]
     hup = sum(t.ratio < 1 and t.p_holm < 0.05 for t in th); hdn = sum(t.ratio > 1 and t.p_holm < 0.05 for t in th)
+    thg = [ftest(F20, 'hipinn_lai', 'gbdt', ds, f) for ds, f in cases]
+    hg_lo = sum(t.ratio < 1 for t in thg); hg_up = sum(t.ratio < 1 and t.p_holm < 0.05 for t in thg)
+    hg_dn = sum(t.ratio > 1 and t.p_holm < 0.05 for t in thg)
+    none = lambda k, word: (f'{word} có ý nghĩa thống kê ở {k}/16' if k else f'không {word} có ý nghĩa thống kê ở trường hợp nào')
     rows = [
         ('Ước lượng SOH từ đoạn sạc khi ít nhãn', 'PINN-lai',
          r'trung bình ba PINN-semi ghép với GBDT ($\omega = \tfrac12$), rồi lọc xu thế nhân quả 10 hàng',
          f'MAE bằng {rng([t.ratio for t in tp])} lần PINN-semi ({sum(t.ratio < 1 and t.p_holm < 0.05 for t in tp)}/16 '
-         f'có ý nghĩa thống kê); thấp hơn GBDT ở {sum(t.ratio < 1 for t in tg)}/16 trường hợp bộ $\\times$ mức nhãn '
+         f'có ý nghĩa thống kê). Thấp hơn GBDT ở {sum(t.ratio < 1 for t in tg)}/16 trường hợp bộ $\\times$ mức nhãn '
          f'({sum(t.ratio < 1 and t.p_holm < 0.05 for t in tg)} có ý nghĩa thống kê)'
          + (f', kém hơn có ý nghĩa thống kê ở {len(gw)} ({jv(gw)})' if gw else ''), r'\ref{sec:e20res}'),
         ('Như trên, khi theo dõi được đặc trưng sạc của cell qua thời gian', 'HiPINN-lai',
          r'PINN-lai có thêm trung bình trượt mũ và độ dốc của đặc trưng sạc, chỉ dùng ở những fold mà tập xác thực chọn',
-         f'MAE bằng {rng([t.ratio for t in th])} lần PINN-lai, thấp hơn có ý nghĩa thống kê ở {hup}/16 và cao hơn ở '
-         f'{hdn}/16 trường hợp; phân tích hậu kiểm', r'\ref{sec:e20res}'),
+         f'MAE bằng {rng([t.ratio for t in th])} lần PINN-lai, thấp hơn có ý nghĩa thống kê ở {hup}/16 trường hợp và '
+         + none(hdn, 'cao hơn') + f'. So với GBDT, thấp hơn ở {hg_lo}/16 ({hg_up} có ý nghĩa thống kê) và '
+         + none(hg_dn, 'cao hơn') + '. Phân tích hậu kiểm', r'\ref{sec:e20res}'),
         ('Học khi chỉ đo thưa dung lượng', 'PINN-lai, nhãn thưa',
          r'mọi cell train được đo dung lượng mỗi $0{,}05L$ chu kỳ, tức 1{,}2--6{,}0\,\% số chu kỳ',
          r'MAE bằng 0{,}85--0{,}93 lần PINN-lai học với 30\,\% số cell có nhãn đầy đủ, thấp hơn có ý nghĩa trên cả bốn '
@@ -1727,7 +1737,7 @@ def final_table(B, C6, E33=None, F20=None, KS=None):
         ga = lambda ds, t, m: float(GA[(GA.ds == ds) & (GA.tier == t)][m].iloc[0])
         low = {t: sum(ga(ds, t, 'selected') < ga(ds, t, 'e32_style') for ds in DS) for t in ('q20', 'q10')}
         assert low['q20'] < 3 and low['q10'] < 3, 'HiGBDT-V tốt hơn GBDT-cập nhật khi đo thưa: đổi mô hình cuối'
-        upd += (f'; HiGBDT-V, bản có lịch sử, chỉ thấp hơn nó ở {low["q20"]}/4 bộ khi đo mỗi $0{{,}}2L$ và '
+        upd += (f'. HiGBDT-V, bản có lịch sử, chỉ thấp hơn nó ở {low["q20"]}/4 bộ khi đo mỗi $0{{,}}2L$ và '
                 f'{low["q10"]}/4 bộ khi đo mỗi $0{{,}}1L$')
     rows.append(('Cập nhật SOH khi cell mới được đo vài lần', 'GBDT-cập nhật',
                  'GBDT học SOH đã đổi bao nhiêu kể từ lần đo dung lượng gần nhất', upd,
@@ -1743,7 +1753,7 @@ def final_table(B, C6, E33=None, F20=None, KS=None):
                      + ('được quy tắc chọn khi học trên mọi cell huấn luyện' if E['rul_b'].get('all') == 'hipinn' else
                         'không được quy tắc chọn khi học trên mọi cell huấn luyện')
                      + (', không mô hình nào thoả ở 30\\,\\% nhãn' if E['rul_b'].get('lab30') is None else '')
-                     + (f'; trên {jv(E["worse_rul"])}, PINN-GBDT tốt hơn' if E['worse_rul'] else '') + '.',
+                     + (f'. Trên {jv(E["worse_rul"])}, PINN-GBDT có MAE RUL thấp hơn' if E['worse_rul'] else '') + '.',
                      r'\ref{sec:e33res}'))
     rows.append(('So với PINN4SOH trên đúng cách chia của bài', 'PINN-lai',
                  'cùng tiền xử lý với bài, và tiền xử lý không rò rỉ',
@@ -1758,7 +1768,8 @@ def final_table(B, C6, E33=None, F20=None, KS=None):
            r'\caption[Mô hình cuối của đồ án cho từng bài toán]{Mô hình cuối của đồ án cho từng bài toán. Tỉ số là MAE '
            r'theo cell trên test của mô hình cuối chia cho mô hình được so (nhỏ hơn 1: mô hình cuối tốt hơn); ý nghĩa '
            r'theo kiểm định Wilcoxon ghép cặp theo cell.}\label{tab:final}',
-           r'\begin{tabularx}{\textwidth}{' + L('p{2.3cm}') + L('p{1.9cm}') + L('X') + L('X') + r'l}\toprule',
+           r'\setlength{\tabcolsep}{4pt}'
+           r'\begin{tabularx}{\textwidth}{' + L('p{2.0cm}') + L('p{1.6cm}') + L('p{3.3cm}') + L('X') + r'l}\toprule',
            r'Bài toán & Mô hình cuối & Cách làm & Kết quả chính trên test & Mục \\\midrule']
     out += [' & '.join(r) + r' \\' + (r'\addlinespace' if i < len(rows) - 1 else '') for i, r in enumerate(rows)]
     out += [r'\bottomrule\end{tabularx}\end{table}']

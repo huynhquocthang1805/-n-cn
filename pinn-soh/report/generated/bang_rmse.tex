@@ -1,5 +1,5 @@
 \begin{table}[!htbp]\centering\footnotesize
-\caption[RMSE và MAPE của mọi mô hình chính ở 30\,\% nhãn]{Ở 30\,\% nhãn: RMSE theo cell ($\times10^{-3}$) và MAPE (\%, tính chung mọi chu kỳ) trên test; in đậm là thấp nhất mỗi cột. HiPINN-lai như ở Bảng~\ref{tab:allmae}.}\label{tab:allrm}
+\caption[RMSE và MAPE của mọi mô hình chính ở 30\,\% nhãn]{Ở 30\,\% nhãn: RMSE theo cell ($\times10^{-3}$) và MAPE (\%, tính chung mọi chu kỳ) trên tập kiểm tra; in đậm là thấp nhất mỗi cột. PINN-lai và HiPINN-lai như ở Bảng~\ref{tab:allmae}.}\label{tab:allrm}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrrrr}\toprule
  & \multicolumn{2}{c}{XJTU} & \multicolumn{2}{c}{TJU} & \multicolumn{2}{c}{MIT} & \multicolumn{2}{c}{HUST} \\\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
 Mô hình & RMSE $\downarrow$ & MAPE $\downarrow$ & RMSE $\downarrow$ & MAPE $\downarrow$ & RMSE $\downarrow$ & MAPE $\downarrow$ & RMSE $\downarrow$ & MAPE $\downarrow$ \\\midrule
@@ -9,6 +9,6 @@ LSTM & 17{,}91 & 1{,}32 & 10{,}27 & 0{,}94 & 3{,}05 & 0{,}23 & 23{,}45 & 1{,}85 
 Transformer & 17{,}39 & 1{,}37 & 11{,}72 & 1{,}04 & 3{,}72 & 0{,}29 & 23{,}17 & 1{,}87 \\
 GBDT & \textbf{14{,}37} & 1{,}19 & 9{,}74 & 0{,}90 & 2{,}93 & 0{,}21 & 25{,}98 & 2{,}04 \\
 PINN-semi & 19{,}42 & 1{,}32 & 13{,}54 & 1{,}16 & 3{,}34 & 0{,}28 & 22{,}84 & 1{,}83 \\
-PINN-lai & 14{,}37 & \textbf{1{,}16} & 9{,}54 & 0{,}87 & \textbf{2{,}47} & \textbf{0{,}18} & \textbf{21{,}86} & 1{,}72 \\
-HiPINN-lai & 14{,}37 & 1{,}16 & \textbf{9{,}22} & \textbf{0{,}85} & 2{,}47 & 0{,}18 & 22{,}38 & \textbf{1{,}65} \\
+PINN-lai & 15{,}80 & 1{,}18 & 10{,}14 & 0{,}91 & \textbf{2{,}46} & \textbf{0{,}19} & 22{,}29 & 1{,}75 \\
+HiPINN-lai & 15{,}56 & \textbf{1{,}17} & \textbf{9{,}70} & \textbf{0{,}88} & \textbf{2{,}46} & \textbf{0{,}19} & \textbf{21{,}74} & \textbf{1{,}67} \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}

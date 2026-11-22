@@ -1,25 +1,25 @@
 \begin{table}[!htbp]\centering\small
-\caption[Thêm lịch sử của cell vào đầu vào]{MAE theo cell ($\times10^{-3}$) trên test khi thêm lịch sử của cell vào đầu vào, 3 lần lặp $\times$ 5 fold. Dạng lịch sử được chọn trên validation cho từng bộ và loại mô hình; trên MIT không dạng nào giảm sai số validation đủ 2\,\% nên không có cột lịch sử. PINN-lai là bản có trọng số ghép và cửa sổ lọc chọn trên validation. HiPINN-lai lấy cột PINN-lai có lịch sử ở những trường hợp validation chọn dùng lịch sử, còn lại lấy cột PINN-lai. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa (Wilcoxon ghép cặp theo cell, $p < 0{,}05$) so với cột không lịch sử ngay trước. In đậm là thấp hơn trong mỗi cặp không/có lịch sử.}\label{tab:hist}
+\caption[Thêm lịch sử của cell vào đầu vào]{MAE theo cell ($\times10^{-3}$) trên tập kiểm tra khi thêm lịch sử của đặc trưng sạc vào đầu vào, 3 lần lặp $\times$ 5 fold. Dạng lịch sử của mỗi bộ được chốt ở giai đoạn phát triển trên tập xác thực; trên MIT không dạng nào giảm sai số trên tập xác thực đủ 2\,\% nên không có cột lịch sử. PINN-lai là cấu hình cố định ở cả hai cột. $^{*}$/$^{\dagger}$: thấp hơn/cao hơn có ý nghĩa thống kê so với cột không lịch sử ngay trước (Wilcoxon ghép cặp theo cell, hiệu chỉnh Holm qua các bộ có lịch sử, $p < 0{,}05$). In đậm là thấp hơn trong mỗi cặp không/có lịch sử.}\label{tab:hist}
 \begin{tabular}{llrrrr}\toprule
  & & \multicolumn{4}{c}{MAE theo cell ($\times10^{-3}$) $\downarrow$} \\\cmidrule(lr){3-6}
  & & \multicolumn{2}{c}{PINN-semi} & \multicolumn{2}{c}{PINN-lai} \\\cmidrule(lr){3-4}\cmidrule(lr){5-6}
 Bộ & Nhãn & không lịch sử & có lịch sử & không lịch sử & có lịch sử \\\midrule
-XJTU & 10\,\% & \textbf{14{,}65} & 20{,}79$^{\dagger}$ & \textbf{12{,}71} & 15{,}95$^{\dagger}$ \\
- & 30\,\% & \textbf{13{,}35} & 15{,}34 & \textbf{10{,}78} & 11{,}25 \\
- & 50\,\% & \textbf{13{,}20} & 15{,}12 & \textbf{10{,}02} & 10{,}21 \\
- & 70\,\% & \textbf{12{,}53} & 13{,}17 & \textbf{9{,}50} & 9{,}73 \\
-TJU & 10\,\% & \textbf{14{,}01} & 15{,}88$^{\dagger}$ & \textbf{11{,}70} & 11{,}83 \\
- & 30\,\% & 11{,}39 & \textbf{10{,}51}$^{*}$ & 8{,}00 & \textbf{7{,}78}$^{*}$ \\
- & 50\,\% & 10{,}74 & \textbf{9{,}43}$^{*}$ & 7{,}23 & \textbf{6{,}92}$^{*}$ \\
- & 70\,\% & 10{,}80 & \textbf{9{,}57}$^{*}$ & 7{,}11 & \textbf{6{,}82}$^{*}$ \\
+XJTU & 10\,\% & \textbf{14{,}65} & 20{,}79$^{\dagger}$ & \textbf{12{,}83} & 16{,}14$^{\dagger}$ \\
+ & 30\,\% & \textbf{13{,}35} & 15{,}34 & \textbf{11{,}43} & 11{,}81 \\
+ & 50\,\% & \textbf{13{,}20} & 15{,}12 & \textbf{10{,}65} & 10{,}86 \\
+ & 70\,\% & \textbf{12{,}53} & 13{,}17 & \textbf{10{,}00} & 10{,}19 \\
+TJU & 10\,\% & \textbf{14{,}01} & 15{,}88$^{\dagger}$ & \textbf{11{,}79} & 12{,}16 \\
+ & 30\,\% & 11{,}39 & \textbf{10{,}51}$^{*}$ & 8{,}52 & \textbf{8{,}15}$^{*}$ \\
+ & 50\,\% & 10{,}74 & \textbf{9{,}43}$^{*}$ & 7{,}77 & \textbf{7{,}22}$^{*}$ \\
+ & 70\,\% & 10{,}80 & \textbf{9{,}57}$^{*}$ & 7{,}76 & \textbf{7{,}22}$^{*}$ \\
 MIT & 10\,\% & 3{,}29 & -- & 2{,}52 & -- \\
- & 30\,\% & 2{,}50 & -- & 1{,}75 & -- \\
- & 50\,\% & 2{,}45 & -- & 1{,}59 & -- \\
- & 70\,\% & 2{,}38 & -- & 1{,}48 & -- \\
-HUST & 10\,\% & \textbf{22{,}76} & 23{,}63 & 20{,}36 & \textbf{20{,}15} \\
- & 30\,\% & \textbf{17{,}10} & 17{,}11 & 15{,}99 & \textbf{15{,}34}$^{*}$ \\
- & 50\,\% & 16{,}42 & \textbf{14{,}81}$^{*}$ & 14{,}26 & \textbf{13{,}17}$^{*}$ \\
- & 70\,\% & 16{,}38 & \textbf{13{,}71}$^{*}$ & 13{,}76 & \textbf{12{,}24}$^{*}$ \\
+ & 30\,\% & 2{,}50 & -- & 1{,}79 & -- \\
+ & 50\,\% & 2{,}45 & -- & 1{,}67 & -- \\
+ & 70\,\% & 2{,}38 & -- & 1{,}59 & -- \\
+HUST & 10\,\% & \textbf{22{,}76} & 23{,}63 & 20{,}52 & \textbf{20{,}15} \\
+ & 30\,\% & \textbf{17{,}10} & 17{,}11 & 16{,}19 & \textbf{15{,}39}$^{*}$ \\
+ & 50\,\% & 16{,}42 & \textbf{14{,}81}$^{*}$ & 14{,}29 & \textbf{13{,}02}$^{*}$ \\
+ & 70\,\% & 16{,}38 & \textbf{13{,}71}$^{*}$ & 13{,}78 & \textbf{12{,}20}$^{*}$ \\
 \bottomrule\end{tabular}\end{table}
 
-\paragraph{HiPINN-lai.} Bảng~\ref{tab:hist} cho sai số khi thêm lịch sử của cell vào đầu vào. Với PINN-lai, lịch sử giúp trên TJU và HUST khi có từ 30\,\% nhãn (MAE bằng 0{,}89--0{,}97 lần bản không lịch sử) nhưng làm kém đi trên XJTU (1{,}02--1{,}25 lần); ở 10\,\% nhãn, tỉ số là XJTU 1{,}25, TJU 1{,}01, HUST 0{,}99. Trên MIT không dạng lịch sử nào được validation chọn. HiPINN-lai chỉ dùng bản có lịch sử ở những trường hợp validation chọn (TJU và HUST từ 30\,\% nhãn) và trùng PINN-lai ở các trường hợp còn lại (\Cref{tab:allmae}).
+Bảng~\ref{tab:hist} cho sai số khi thêm lịch sử của đặc trưng sạc vào đầu vào. Với PINN-lai, bản có lịch sử có MAE bằng 0{,}89--1{,}26 lần bản không lịch sử. Bản có lịch sử thấp hơn có ý nghĩa thống kê ở TJU 30\,\%, TJU 50\,\%, TJU 70\,\%, HUST 30\,\%, HUST 50\,\% và HUST 70\,\%, và cao hơn có ý nghĩa thống kê ở XJTU 10\,\%. Trên MIT không dạng lịch sử nào được tập xác thực chọn. HiPINN-lai chọn riêng trong từng fold có dùng lịch sử hay không: bản có lịch sử chỉ được dùng khi MAE trên cell xác thực của fold đó giảm ít nhất 2\,\%. Tỉ lệ fold chọn lịch sử là 7--47\,\% ở XJTU, 27--73\,\% ở TJU và 40--93\,\% ở HUST (tuỳ mức nhãn). Kết quả là HiPINN-lai có MAE bằng 0{,}90--1{,}04 lần PINN-lai, thấp hơn có ý nghĩa thống kê ở TJU 30\,\%, TJU 50\,\%, TJU 70\,\%, HUST 30\,\%, HUST 50\,\% và HUST 70\,\% và không cao hơn có ý nghĩa thống kê ở trường hợp nào (\Cref{tab:allmae}). Ở 6 trường hợp lịch sử giúp có ý nghĩa thống kê, HiPINN-lai giữ được 87\,\% mức giảm sai số của bản luôn dùng lịch sử. Ở trường hợp duy nhất lịch sử làm kém đi có ý nghĩa thống kê (XJTU 10\,\%), mức tăng sai số là 4{,}0\,\% với HiPINN-lai so với 25{,}8\,\% với bản luôn dùng lịch sử. Quyết định dùng lịch sử chỉ dựa trên vài cell xác thực mỗi fold nên không phải lúc nào cũng đúng.

@@ -1,5 +1,5 @@
 \begin{table}[!htbp]\centering\scriptsize
-\caption[Tỉ số MAE của PINN-semi so với MLP và GBDT]{Tỉ số MAE theo cell của PINN-semi so với MLP và GBDT ở từng mức nhãn (nhỏ hơn 1: PINN-semi tốt hơn); “cell tốt hơn” là tỉ lệ cell test mà PINN-semi có sai số thấp hơn. In đậm: tốt nhất trong mỗi bộ (tỉ số thấp nhất, tỉ lệ cell tốt hơn cao nhất). $^{*}$: $p_\text{Holm} < 0{,}05$ theo cell; $^{\dagger}$: còn có ý nghĩa với kiểm định bảo thủ mức fold.}\label{tab:cmp}
+\caption[Tỉ số MAE của PINN-semi so với MLP và GBDT]{Tỉ số MAE theo cell của PINN-semi so với MLP và GBDT ở từng mức nhãn (nhỏ hơn 1: PINN-semi tốt hơn); “cell tốt hơn” là tỉ lệ cell kiểm tra mà PINN-semi có sai số thấp hơn. In đậm: tốt nhất trong mỗi bộ (tỉ số thấp nhất, tỉ lệ cell tốt hơn cao nhất). $^{*}$: $p_\text{Holm} < 0{,}05$ theo cell; $^{\dagger}$: còn có ý nghĩa thống kê với kiểm định bảo thủ mức fold.}\label{tab:cmp}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{llrrrrrr}\toprule
  & & \multicolumn{3}{c}{PINN-semi so với MLP} & \multicolumn{3}{c}{PINN-semi so với GBDT} \\\cmidrule(lr){3-5}\cmidrule(lr){6-8}
 Bộ & Nhãn & tỉ số MAE [KTC] $\downarrow$ & cell tốt hơn $\uparrow$ & $p_\text{Holm}$ & tỉ số MAE [KTC] $\downarrow$ & cell tốt hơn $\uparrow$ & $p_\text{Holm}$ \\\midrule

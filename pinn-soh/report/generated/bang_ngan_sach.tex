@@ -1,10 +1,10 @@
 \begin{table}[!htbp]\centering\small
-\caption[MAE theo cell theo ngân sách đo dung lượng]{MAE theo cell ($\times10^{-3}$) trên test, trung bình 3 lần lặp; trong ngoặc là phần trăm số chu kỳ của cell train có đo dung lượng (70\,\% số cell là toàn bộ). Hai cột đo thưa: mọi cell train được đo ở chu kỳ đầu, sau mỗi $qL$ chu kỳ và ở chu kỳ cuối. Cột cuối: đo thêm cell test theo cùng lịch, cập nhật bằng bộ lọc Kalman, sai số trên các chu kỳ không được đo. In đậm là thấp nhất trong năm cột đầu của mỗi hàng; cột cuối có đo thêm cell test nên không so cùng.}\label{tab:e28}
+\caption[MAE theo cell theo ngân sách đo dung lượng]{MAE theo cell ($\times10^{-3}$) trên tập kiểm tra, trung bình 3 lần lặp; trong ngoặc là phần trăm số chu kỳ của cell huấn luyện có đo dung lượng (70\,\% số cell là toàn bộ). Hai cột đo thưa: mọi cell huấn luyện được đo ở chu kỳ đầu, sau mỗi $qL$ chu kỳ và ở chu kỳ cuối. Cột cuối: PINN-lai học với 70\,\% số cell, đo thêm cell kiểm tra mỗi $0{,}1L$ chu kỳ và cập nhật bằng bộ lọc Kalman; sai số trên các chu kỳ không được đo; lịch đo dùng $L$ tính trên cell huấn luyện của fold. In đậm là thấp nhất trong năm cột đầu của mỗi hàng; cột cuối có đo thêm cell kiểm tra nên không so cùng.}\label{tab:e28}
 \begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule
  & \multicolumn{6}{c}{MAE theo cell ($\times10^{-3}$) $\downarrow$} \\\cmidrule(lr){2-7}
-Bộ & \begin{tabular}[b]{@{}r@{}}PINN-lai,\\30\,\% cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai,\\70\,\% cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}GBDT,\\70\,\% cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai, đo\\mỗi $0{,}1L$\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai, đo\\mỗi $0{,}05L$\end{tabular} & \begin{tabular}[b]{@{}r@{}}đo cả cell mới\\mỗi $0{,}1L$\end{tabular} \\\midrule
-XJTU & 11{,}43 (44{,}1) & 10{,}00 & \textbf{9{,}64} & 10{,}51 (3{,}2) & 10{,}28 (6{,}0) & 7{,}46 \\
-TJU & 8{,}52 (42{,}6) & 7{,}76 & \textbf{6{,}96} & 8{,}28 (3{,}1) & 7{,}54 (5{,}9) & 4{,}13 \\
-MIT & 1{,}79 (42{,}7) & \textbf{1{,}59} & \textbf{1{,}59} & 1{,}91 (1{,}9) & 1{,}67 (3{,}6) & 1{,}18 \\
-HUST & 16{,}19 (43{,}1) & \textbf{13{,}78} & 14{,}60 & 13{,}87 (0{,}6) & \textbf{13{,}78} (1{,}2) & 5{,}00 \\
+Bộ & \begin{tabular}[b]{@{}r@{}}PINN-lai,\\30\,\% cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai,\\70\,\% cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}GBDT,\\70\,\% cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai, đo\\mỗi $0{,}1L$\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai, đo\\mỗi $0{,}05L$\end{tabular} & \begin{tabular}[b]{@{}r@{}}PINN-lai 70\,\%, đo cả\\cell mới mỗi $0{,}1L$\end{tabular} \\\midrule
+XJTU & 11{,}43 (44{,}1) & 10{,}00 & \textbf{9{,}64} & 10{,}51 (3{,}2) & 10{,}28 (6{,}0) & 7{,}35 \\
+TJU & 8{,}52 (42{,}6) & 7{,}76 & \textbf{6{,}96} & 8{,}28 (3{,}1) & 7{,}54 (5{,}9) & 3{,}56 \\
+MIT & 1{,}79 (42{,}7) & \textbf{1{,}59} & \textbf{1{,}59} & 1{,}91 (1{,}9) & 1{,}67 (3{,}6) & 1{,}04 \\
+HUST & 16{,}19 (43{,}1) & \textbf{13{,}78} & 14{,}60 & 13{,}87 (0{,}6) & \textbf{13{,}78} (1{,}2) & 5{,}06 \\
 \bottomrule\end{tabular}\end{adjustbox}\end{table}
