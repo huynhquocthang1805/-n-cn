@@ -1080,7 +1080,7 @@ def final_table(B, C6, E33=None):
                 f'{low["q10"]}/4 bộ khi đo mỗi $0{{,}}1L$')
     rows.append(('Cập nhật SOH khi cell mới được đo vài lần', 'GBDT-cập nhật',
                  'GBDT học SOH đã đổi bao nhiêu kể từ lần đo dung lượng gần nhất', upd,
-                 r'\ref{sec:budgetres}, \ref{sec:anchor}'))
+                 r'\ref{sec:budgetres}'))
     if E33 is not None:
         E = E33
         rows.append(('Dự báo SOH, dung lượng và RUL', 'HiPINN',
@@ -1254,7 +1254,7 @@ def e33_table(E):
             rows.append(' & '.join([ds] + cells) + r' \\')
         rows.append(r'\addlinespace[3pt]')
     return (r'\begin{table}[!htbp]\centering\small' '\n'
-            r'\caption[MAE của SOH dự báo, E33]{MAE theo cell ($\times10^{-3}$) của SOH dự báo trên mọi chu kỳ đo được '
+            r'\caption[MAE của SOH dự báo theo mô hình]{MAE theo cell ($\times10^{-3}$) của SOH dự báo trên mọi chu kỳ đo được '
             r'sau gốc ($0{,}2L$, $0{,}4L$, $0{,}6L$), trung bình qua 3 lần lặp; in đậm là thấp nhất mỗi hàng. '
             r'$^{*}$/$^{\dagger}$: HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT theo kiểm định Wilcoxon ghép '
             r'cặp theo cell (Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33}' '\n'
@@ -1262,39 +1262,6 @@ def e33_table(E):
             r' & \multicolumn{3}{c}{chỉ đặc trưng gốc} & \multicolumn{5}{c}{có đặc trưng lịch sử} \\'
             r'\cmidrule(lr){2-4}\cmidrule(lr){5-9}' '\n'
             'Bộ & ' + ' & '.join(head2(*E33_HEAD[m]) for m in E33_TAB) + r' \\\midrule' '\n'
-            + '\n'.join(rows[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
-
-
-E33_VAL = [('chon', ['gbdt_ls', 'hipinn_w', 'hipinn']), ('hieu_chinh', ['gbdt_ls', 'hipinn_w', 'tb3', 'hipinn'])]
-
-
-def e33_val_table(E):
-    """Phụ lục: MAE trên hai nửa validation (mỗi cell lấy trung bình qua các lượt nó thuộc nửa đó)."""
-    cols = [(part, m) for part, ms in E33_VAL for m in ms]
-    ncol = 1 + len(cols)
-    rows = []
-    for b, lab in (('lab30', r'30\,\% nhãn'), ('all', 'mọi cell train')):
-        rows.append(group_row(lab, ncol))
-        for ds in DS:
-            cells = []
-            for part, ms in E33_VAL:
-                vals = [E.half(b, ds, part, m) for m in ms]
-                cells += [(r'\textbf{' + m3(x, 2) + '}') if x == min(vals) else m3(x, 2) for x in vals]
-            p, hw, _, _ = E.half_test(b, ds, 'hieu_chinh', 'gbdt_ls')
-            cells[-1] += (r'$^{*}$' if hw else r'$^{\dagger}$') if p < 0.05 else r'\phantom{$^{*}$}'
-            rows.append(' & '.join([ds] + cells) + r' \\')
-        rows.append(r'\addlinespace[3pt]')
-    n1, n2 = len(E33_VAL[0][1]), len(E33_VAL[1][1])
-    return (r'\begin{table}[!htbp]\centering\small' '\n'
-            r'\caption[MAE trên hai nửa validation, E33]{MAE theo cell ($\times10^{-3}$) trên hai nửa cell validation, '
-            r'lịch sử đo; mỗi cell lấy trung bình qua các lượt mà nó thuộc nửa đó. Nửa chọn là nơi chọn trọng số của '
-            r'HiPINN-w; nửa hiệu chỉnh không dùng để chọn gì cho các mô hình trong bảng. In đậm là thấp nhất '
-            r'trong mỗi nửa. $^{*}$/$^{\dagger}$: trên nửa hiệu chỉnh, HiPINN tốt hơn/kém hơn có ý nghĩa so với HiGBDT '
-            r'(Wilcoxon ghép cặp theo cell, Holm qua bốn bộ, $p<0{,}05$).}\label{tab:e33val}' '\n'
-            r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * len(cols) + r'}\toprule' '\n'
-            r' & \multicolumn{' + str(n1) + r'}{c}{nửa chọn} & \multicolumn{' + str(n2) + r'}{c}{nửa hiệu chỉnh} \\'
-            r'\cmidrule(lr){2-' + str(1 + n1) + r'}\cmidrule(lr){' + str(2 + n1) + '-' + str(1 + n1 + n2) + '}\n'
-            'Bộ & ' + ' & '.join(head2(*E33_HEAD[m]) for _, m in cols) + r' \\\midrule' '\n'
             + '\n'.join(rows[:-1]) + '\n' r'\bottomrule\end{tabular}\end{adjustbox}\end{table}')
 
 
@@ -1310,7 +1277,7 @@ def e33_rul_table(E):
                                  + [pct(E.rv(b, sc, ds, 'in20_hipinn')), pct(E.rv(b, sc, ds, 'cov_h'))]) + r' \\')
         rr.append(r'\addlinespace[3pt]')
     return (r'\begin{table}[!htbp]\centering\small' '\n'
-            r'\caption[MAE của RUL dự báo, E33]{MAE của RUL (chu kỳ), trung bình qua các gốc ở 25, 50 và 75\,\% chu kỳ '
+            r'\caption[MAE của RUL dự báo theo mô hình]{MAE của RUL (chu kỳ), trung bình qua các gốc ở 25, 50 và 75\,\% chu kỳ '
             r'cuối đời thật và qua 3 lần lặp; in đậm là thấp nhất. Hai cột cuối là của HiPINN: tỉ lệ dự báo nằm trong '
             r'$\pm20\,\%$ RUL thực và độ phủ của khoảng RUL 90\,\%.}\label{tab:e33rul}' '\n'
             r'\begin{adjustbox}{max width=\textwidth}\begin{tabular}{l' + 'r' * (3 + len(E33_TAB)) + r'}\toprule' '\n'
@@ -1425,7 +1392,7 @@ def e34_anchor(D34):
 
 
 def e33_section(D):
-    """Mục kết quả E33 (Chương 5) và Phụ lục A. Lời văn viết tay; số lấy từ bảng kết quả, nhận định định tính được
+    """Mục kết quả E33 và đoạn HiGBDT cho bài toán cập nhật (Chương 5). Lời văn viết tay; số lấy từ bảng kết quả, nhận định định tính được
     kiểm bằng điều kiện trên số liệu (sai thì dừng dựng báo cáo hoặc đổi câu, thay vì in câu sai)."""
     E = E33Data(D)
     jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
@@ -1490,7 +1457,7 @@ def e33_section(D):
     p2 = (r'\paragraph{HiPINN-w.} HiPINN-w, phương án đầu của HiPINN, chọn trọng số của ba nhánh và nhánh PINN trên nửa '
           f'validation dùng để chọn; nửa này chỉ có {int(CH.n_sel.min())}--{int(CH.n_sel.max())} cell mỗi lượt. Trên '
           f'chính nửa đó, HiPINN-w có MAE bằng {rng(r_sel)} lần HiGBDT; trên nửa hiệu chỉnh, tỉ số này là '
-          f'{rng(r_cal)} (\\Cref{{tab:e33val}} ở \\Cref{{app:additional}}), và trên cell test là '
+          f'{rng(r_cal)}, và trên cell test là '
           f'{rng(r_wt)}, cao hơn HiGBDT ở {k_wt}/{len(do) * len(DS)} trường hợp. Trọng số chọn trên vài cell phản '
           'ánh chính các cell đó nhiều hơn là quy luật chung, nên '
           + ('ưu thế mất đi' if lost else 'ưu thế giảm đi') + ' khi chuyển sang cell khác. HiPINN vì vậy dùng trung vị, '
@@ -1533,7 +1500,8 @@ def e33_section(D):
     weak = [bb for bb in ('all', 'lab30') if sum(cl_b[bb]) <= 2]
     p3b = (r'\paragraph{Kiểm tra trên nửa hiệu chỉnh.} Dạng trung vị được chọn sau khi đã thấy kết quả test của '
            'HiPINN-w, nên cần một kiểm tra không dùng cell test. Nửa hiệu chỉnh không dùng để chọn gì cho các '
-           'mô hình trong \\Cref{tab:e33val}, và sai số của trung vị trên nửa này chưa được xem khi quyết định. Trên '
+           'mô hình HiGBDT, HiPINN-w, HiPINN-tb và HiPINN, và sai số của trung vị trên nửa này chưa được xem khi quyết '
+           'định. Trên '
            f'nửa này, HiPINN có MAE thấp hơn HiPINN-w ở {c_w}/{len(halves)} trường hợp; so với HiGBDT, HiPINN thấp hơn ở '
            + ' và '.join(part_b) + '. ')
     if not weak:
@@ -1612,7 +1580,7 @@ def e33_section(D):
     cov_do = [E.val(b, sc, ds, 'cov_h') for b, sc in do for ds in DS]
     cov_r = [E.rv('all', 'do', ds, 'cov_h') for ds in DS]
     in20 = [E.rv('all', 'do', ds, 'in20_hipinn') for ds in DS]
-    p7 = (r'\paragraph{RUL và khoảng dự báo.} \Cref{tab:e33rul} ở \Cref{app:additional} cho MAE của RUL. Với mọi cell '
+    p7 = (r'\paragraph{RUL và khoảng dự báo.} \Cref{tab:e33rul} cho MAE của RUL. Với mọi cell '
           f'train, RUL của HiPINN có MAE bằng {rng(rr)} lần PINN-GBDT ({sig_txt(*rk)}) và {rng(rl)} lần HiGBDT '
           f'({sig_txt(*rlk)}); tỉ lệ RUL dự báo nằm trong $\\pm 20\\,\\%$ RUL thực là {pct_rng(in20)}. ')
     if over:
@@ -1648,7 +1616,7 @@ def e33_section(D):
         p8 += (('Ở ' + jv(none) + ' không mô hình nào thoả. ') if none else '')
     p8 += (f'Với RUL, quy tắc chọn {name(rul)}.' if rul else 'Với RUL, không mô hình nào thoả quy tắc.')
     figs = (r'\begin{figure}[!htbp]\centering' '\n' r'\includegraphics[width=\textwidth]{graphics/fig_e33_mae.pdf}' '\n'
-            r'\caption[MAE của SOH dự báo trong E33]{MAE theo cell (trung bình qua 3 lần lặp, thang log) của các mô hình '
+            r'\caption[MAE của SOH dự báo theo mô hình và ngân sách nhãn]{MAE theo cell (trung bình qua 3 lần lặp, thang log) của các mô hình '
             r'ở hai ngân sách nhãn, 30\,\% nhãn hoặc mọi cell train; lịch sử SOH tới gốc là dung lượng đo.}'
             r'\label{fig:e33mae}'
             '\n' r'\end{figure}')
@@ -1667,16 +1635,13 @@ def e33_section(D):
     body = ('\\FloatBarrier\n\\subsection{Dự báo SOH, dung lượng và RUL: HiGBDT và HiPINN}\\label{sec:e33res}\n\n' + p0 + '\n\n'
             + e33_table(E) + '\n\n' + p1 + '\n\n' + p2 + '\n\n' + p3 + '\n\n' + p3b + '\n\n' + figs + '\n\n'
             + p4 + '\n\n'
-            + fig_tail + '\n\n' + p5 + '\n\n' + fig_traj + '\n\n' + (p6 + '\n\n' if p6 else '') + p7 + '\n\n' + p8
-            + '\n')
+            + fig_tail + '\n\n' + p5 + '\n\n' + fig_traj + '\n\n' + (p6 + '\n\n' if p6 else '') + p7 + '\n\n'
+            + e33_rul_table(E) + '\n\n' + p8 + '\n')
     write('doan_e33.tex', body)
-    # ---------------- Phụ lục A
+    # ---------------- HiGBDT cho bài toán cập nhật (Chương 5, mục ngân sách đo và cập nhật)
     D34 = e34_load()
     a_text, a_tab = e34_anchor(D34) if D34 is not None else (r'(Chưa có kết quả E34: chạy E34 rồi dựng lại báo cáo.)', '')
-    pa = (r'\section{Dự báo SOH: RUL và hai nửa validation}' '\n\n' + e33_rul_table(E) + '\n\n'
-          + e33_val_table(E) + '\n\n'
-          r'\section{HiGBDT cho bài toán cập nhật}\label{sec:anchor}' '\n\n' + a_text + '\n\n' + a_tab)
-    write('phu_luc_a.tex', pa)
+    write('doan_cap_nhat_hi.tex', r'\paragraph{HiGBDT cho bài toán cập nhật.}\label{sec:anchor} ' + a_text + '\n\n' + a_tab)
     return dict(soh=soh, rul=rul, name=name, r_hk=r_hk, r_hl=r_hl, r_g=r_g, r_p=r_p, best_n=best_n,
                 n_all=n_all, n_hl=n_hl, cov_h=cov_do, cov_rul=cov_r, in20=in20, worst=worst,
                 tail_ls=tail(worst, 'gbdt_ls'), tail_h=tail(worst, 'hipinn'), mit_k=tk, mit_h=th,
@@ -1798,7 +1763,7 @@ def main():
         E33 = e33_section(D33)
     else:
         write('doan_e33.tex', r'(Chưa có kết quả E33 với HiPINN: chạy E33 rồi dựng lại báo cáo.)')
-        write('phu_luc_a.tex', '')
+        write('doan_cap_nhat_hi.tex', '')
     C6 = compare_chapter(S, T, B, L_leak, E33)
     reproducibility(B)
     tomtat = conclusion(B, L_leak, C6, F is not None, n_total, E33)

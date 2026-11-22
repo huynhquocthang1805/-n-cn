@@ -300,7 +300,7 @@ python run.py report                    # runs/E33 đủ 120 lượt thì tính 
 Kết quả của mỗi lượt E33 nặng 4–7 MB (cả thí nghiệm khoảng 600 MB) nên không đưa lên git; `report/generated/data/`
 giữ các bảng đã tổng hợp, đủ để dựng báo cáo mà không cần `runs/`.
 
-Kết quả (mục dự báo ở Chương 5 và Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
+Kết quả (mục dự báo ở Chương 5 của báo cáo; MAE theo cell, ×10⁻³):
 
 * HiGBDT chạy lại ở 30 % nhãn với lịch sử đo: XJTU 17,34, TJU 7,07, MIT 10,24, HUST 12,78; lần chạy đầu (thư mục kết quả
   đặt bằng biến môi trường GDOAN) là 18,23, 7,21, 10,11, 12,56 (tương quan theo cell 0,931–0,982; chênh do phiên bản scikit-learn và NumPy). Đặc trưng
@@ -334,7 +334,7 @@ python run.py E34                       # 60 lượt, khoảng 17 phút với 4 
 python analysis/analyze_e34.py          # results/e34_*.csv, results/fig_e34_cost.pdf
 ```
 
-Kết quả (Phụ lục A của báo cáo; MAE theo cell, ×10⁻³):
+Kết quả (mục ngân sách đo và cập nhật ở Chương 5 của báo cáo; MAE theo cell, ×10⁻³):
 
 * Lịch q10, XJTU / TJU / MIT / HUST: giữ lần đo 11,79 / 12,66 / 6,46 / 13,35; GBDT-cập nhật 3,82 / 1,87 / 0,91 / 1,09;
   HiGBDT-V 3,91 / 2,21 / 0,92 / 1,09.

@@ -40,9 +40,9 @@ Không số nào gõ tay vào bảng.
 | Chương 3, 5: kiểm toán rò rỉ | `results/thesis_leakage.csv` (chạy lại E15 và nhánh F của E13; bản sao ở `generated/data/`) |
 | Chương 4: số lượt chạy | `pinnsoh/experiments.py`, `benchmark/results/summary.csv`, `results/features_prune.csv` |
 | Chương 5: so với PINN4SOH | `benchmark/results/` từ `benchmark/compare.py` |
-| Phụ lục B: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27` so với `generated/data/e27_lan_dau.json` (kết quả của lần chạy E27 đầu tiên, lấy từ `benchmark/results` ở commit `e174340`); tóm tắt ở `generated/data/tai_lap.json` |
-| Chương 3, 5, Phụ lục A: dự báo SOH, dung lượng, RUL với HiGBDT và HiPINN (E33) | `runs/E33` (lịch sử ước lượng lấy từ `runs/E20`, 70 % nhãn): `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`); sơ đồ `graphics/fig_hipinn_arch.pdf` từ `analysis/diagrams.py` |
-| Phụ lục A: HiGBDT cho bài toán cập nhật (E34) | `runs/E34`: `analysis/analyze_e34.py` (bảng `results/e34_*.csv`, bản sao ở `generated/data/`, hình `graphics/fig_e34_cost.pdf`) |
+| Phụ lục A: kiểm tra tái lập | `tools/kiem_tai_lap.py` (nhật ký lưu ở `generated/data/kiem_tai_lap.txt`), `runs/E15`, `runs/E27` so với `generated/data/e27_lan_dau.json` (kết quả của lần chạy E27 đầu tiên, lấy từ `benchmark/results` ở commit `e174340`); tóm tắt ở `generated/data/tai_lap.json` |
+| Chương 3, 5: dự báo SOH, dung lượng, RUL với HiGBDT và HiPINN (E33; báo cáo chỉ dùng lịch sử SOH đo) | `runs/E33`: `analysis/analyze_e33.py` (bảng `results/e33_*.csv`, bản sao ở `generated/data/`) và `analysis/figures_report.py` (hình `graphics/fig_e33_*.pdf`); sơ đồ `graphics/fig_hipinn_arch.pdf` từ `analysis/diagrams.py` |
+| Chương 5: HiGBDT cho bài toán cập nhật (E34) | `runs/E34`: `analysis/analyze_e34.py` (bảng `results/e34_*.csv`, bản sao ở `generated/data/`, hình `graphics/fig_e34_cost.pdf`) |
 | Chương 5: các bảng còn lại | bảng của báo cáo đã nộp (`archive/thesis/do-an/main.tex`), đọc bằng `paper/thesis_tables.py` |
 
 Khi `runs/E33` đủ 120 lượt (hoặc `runs/E34` đủ 60 lượt), `build.py` tính lại bảng và vẽ lại các hình tương ứng; không có thì dùng bản đã lưu ở `generated/data/` và `graphics/`. Chỉ chạy lại phần dự báo: `python run.py E20` (E33 chỉ cần các lượt PINN-semi và GBDT ở 70 % nhãn, cho kịch bản lịch sử ước lượng), `python run.py E33`, `python run.py E34`.
