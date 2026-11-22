@@ -34,7 +34,8 @@ def schedule(cyc, q, L, phase=0.0):
     marks = np.arange(cyc[0] + phase, cyc[-1] + 1e-9, q * L)
     if phase > 0:
         marks = np.concatenate([[cyc[0]], marks])
-    is_m[np.unique(np.searchsorted(cyc, marks, side='left'))] = True
+    idx = np.searchsorted(cyc, marks, side='left')
+    is_m[np.unique(idx[idx < n])] = True          # mốc sau chu kỳ cuối (sai số làm tròn của arange): bỏ, như E25 và E34
     return is_m, ~is_m
 
 

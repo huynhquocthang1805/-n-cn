@@ -49,6 +49,15 @@ class UpdateHistory(unittest.TestCase):
         b = inputs(self.z, self.c, o, 100); ix = a['rows'] < 30
         np.testing.assert_allclose(a['rich'][ix], b['rich'][ix])
 
+    def test_mark_after_last_cycle(self):
+        """Mốc đo cuối vượt chu kỳ cuối chỉ vì sai số làm tròn (15 × 89,6 > 1344) không được làm lỗi chỉ số; như E25,
+        E34 và E32, mốc đó bị bỏ."""
+        from pinnsoh.update import schedule as s32
+        cyc = np.arange(1345, dtype=float)
+        m32, _ = s32(cyc, 0.05, 1792.0)
+        m34, _ = schedule(cyc, 0.05, 1792.0)
+        np.testing.assert_array_equal(m32, m34)
+
     def test_cold_start(self):
         self.assertEqual(len(inputs(self.z, self.c, np.full(60, np.nan), 100)['rows']), 0)
 

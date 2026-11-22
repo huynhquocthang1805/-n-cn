@@ -142,7 +142,8 @@ def schedule(cyc, q, L):
         ev = np.arange(n) >= 1
     else:
         marks = np.arange(cyc[0], cyc[-1] + 1e-9, q * L)
-        is_m[np.unique(np.searchsorted(cyc, marks, side='left'))] = True
+        idx = np.searchsorted(cyc, marks, side='left')
+        is_m[np.unique(idx[idx < n])] = True      # như pinnsoh/update.py: mốc sau chu kỳ cuối bị bỏ
         ev = ~is_m
     return is_m, ev
 

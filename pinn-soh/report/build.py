@@ -428,7 +428,8 @@ def _rows_of(blk):
 
 
 def _unbold(c):
-    return re.sub(r'\\textbf\{([^}]*)\}', r'\1', c)
+    """Bỏ \\textbf{...} quanh một ô, kể cả khi bên trong có ngoặc nhọn lồng một mức ('\\textbf{14{,}37}')."""
+    return re.sub(r'\\textbf\{((?:[^{}]|\{[^{}]*\})*)\}', r'\1', c)
 
 
 def allmae_table(F):
@@ -545,6 +546,8 @@ def history_text_f(F):
     C, U = F['choices'], F['units']
     jv = lambda xs: xs[0] if len(xs) == 1 else ', '.join(xs[:-1]) + ' và ' + xs[-1]
     hist_ds = [ds for ds in DS if C[C.ds == ds].hist_avail.max() > 0]
+    if not hist_ds:
+        return '(Chưa có kết quả E29: chạy E29 rồi \\texttt{python analysis/analyze\\_e20\\_folds.py}.)'
     rat = {(ds, f): fval(F, ds, f, 'lai_h') / fval(F, ds, f, 'pinn_lai') for ds in hist_ds for f in FR}
     sig = lambda a, b, s: [(ds, f) for ds in hist_ds for f in FR
                            if (t := ftest(F, a, b, ds, f)) is not None and t.p_holm < 0.05 and (t.ratio - 1) * s > 0]
