@@ -1,0 +1,586 @@
+{
+ "nguon": "benchmark/results ở commit e174340: summary.csv (độ chính xác đầy đủ) và cells.csv (6 chữ số có nghĩa), do benchmark/compare.py sinh từ các file chạy của lần chạy E27 đầu tiên",
+ "theo_cell": {
+  "dong": 3852,
+  "sha1": "753e37f8e0b9d754a1bc2693e5fb6fc4eeb0335a",
+  "cach_tinh": "sha1 của các dòng paper_*/strict_* (source, dataset, mode, group, run, cell, mae, rmse) xếp theo khoá, ghi bằng to_csv(index=False, float_format=\"%.6g\")"
+ },
+ "tong_hop": [
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "full",
+   "mae": 0.006616020850467891,
+   "rmse": 0.008467781392578555,
+   "sd": 9.560294229713839e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "XJTU",
+   "mode": "full",
+   "mae": 0.006818926821454755,
+   "rmse": 0.00884454750638927,
+   "sd": 2.7313251831645724e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "XJTU",
+   "mode": "full",
+   "mae": 0.007202259916551167,
+   "rmse": 0.009733936943327973,
+   "sd": 0.00014622403823170193
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "full",
+   "mae": 0.007810280592670749,
+   "rmse": 0.010753465840417973,
+   "sd": 6.0353500583053616e-05
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "XJTU",
+   "mode": "full",
+   "mae": 0.0072790699948594535,
+   "rmse": 0.010461114195849495,
+   "sd": 4.608140389746092e-05
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "XJTU",
+   "mode": "full",
+   "mae": 0.009130897119990664,
+   "rmse": 0.013325325615536439,
+   "sd": 0.0001533712176623776
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "TJU",
+   "mode": "full",
+   "mae": 0.008780027775282124,
+   "rmse": 0.010559529123696414,
+   "sd": 9.442771955180221e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "TJU",
+   "mode": "full",
+   "mae": 0.008632516065250907,
+   "rmse": 0.010886750532635834,
+   "sd": 6.373849218018583e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "TJU",
+   "mode": "full",
+   "mae": 0.010373400188313925,
+   "rmse": 0.012649325885411858,
+   "sd": 0.00024238064167875732
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "TJU",
+   "mode": "full",
+   "mae": 0.0061609083430882615,
+   "rmse": 0.007203124442161432,
+   "sd": 1.168333346733919e-05
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "TJU",
+   "mode": "full",
+   "mae": 0.006396446302366862,
+   "rmse": 0.0076147052970653994,
+   "sd": 2.0710181301849198e-05
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "TJU",
+   "mode": "full",
+   "mae": 0.0065150802307518555,
+   "rmse": 0.007608553482306717,
+   "sd": 2.819941305825271e-05
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "MIT",
+   "mode": "full",
+   "mae": 0.00679630122964412,
+   "rmse": 0.007764774862422918,
+   "sd": 2.3004225464914468e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "MIT",
+   "mode": "full",
+   "mae": 0.006153029110237295,
+   "rmse": 0.007523860674607222,
+   "sd": 6.902194227721898e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "MIT",
+   "mode": "full",
+   "mae": 0.007894229195341803,
+   "rmse": 0.009137426511924715,
+   "sd": 1.6574769359604884e-05
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "MIT",
+   "mode": "full",
+   "mae": 0.0014257558603607517,
+   "rmse": 0.0019139114279143727,
+   "sd": 7.774030606612707e-05
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "MIT",
+   "mode": "full",
+   "mae": 0.0014438062000108817,
+   "rmse": 0.0021720679042967054,
+   "sd": 0.00010470492390720732
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "MIT",
+   "mode": "full",
+   "mae": 0.001904975669336263,
+   "rmse": 0.0025810141924894094,
+   "sd": 7.413987265946096e-05
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "HUST",
+   "mode": "full",
+   "mae": 0.006450629977214489,
+   "rmse": 0.007268901483312731,
+   "sd": 2.093791069048123e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "HUST",
+   "mode": "full",
+   "mae": 0.006161380339632449,
+   "rmse": 0.007279764262407512,
+   "sd": 2.6819146357683597e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "HUST",
+   "mode": "full",
+   "mae": 0.007351435681254387,
+   "rmse": 0.008334535161859164,
+   "sd": 8.895586902973568e-06
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "HUST",
+   "mode": "full",
+   "mae": 0.012508951104884241,
+   "rmse": 0.01827566863286039,
+   "sd": 4.670139053064425e-05
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "HUST",
+   "mode": "full",
+   "mae": 0.013652703526886481,
+   "rmse": 0.020147747162451782,
+   "sd": 9.611434526258153e-05
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "HUST",
+   "mode": "full",
+   "mae": 0.0129038133653743,
+   "rmse": 0.018596493896809976,
+   "sd": 0.0001363487713377903
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n1",
+   "mae": 0.010512223398565371,
+   "rmse": 0.012655999007866415,
+   "sd": 0.00018407745056968472
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "XJTU",
+   "mode": "n1",
+   "mae": 0.010200573938086285,
+   "rmse": 0.012435924304789887,
+   "sd": 0.0001500246299958755
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "XJTU",
+   "mode": "n1",
+   "mae": 0.013502401272339757,
+   "rmse": 0.017111573902128856,
+   "sd": 0.0005717467082640554
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n1",
+   "mae": 0.013271984654546798,
+   "rmse": 0.016572708368669333,
+   "sd": 0.0009133857328448589
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "XJTU",
+   "mode": "n1",
+   "mae": 0.016022066980265332,
+   "rmse": 0.020771945237195225,
+   "sd": 0.001027969814323054
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "XJTU",
+   "mode": "n1",
+   "mae": 0.015492979571459129,
+   "rmse": 0.021424525786756927,
+   "sd": 0.001176058925780335
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n2",
+   "mae": 0.007724773144782271,
+   "rmse": 0.009830902899451975,
+   "sd": 0.00010922669042771037
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "XJTU",
+   "mode": "n2",
+   "mae": 0.008224627029121025,
+   "rmse": 0.01025447639675271,
+   "sd": 0.0001604872620181861
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "XJTU",
+   "mode": "n2",
+   "mae": 0.008544349532174434,
+   "rmse": 0.011439360158744805,
+   "sd": 6.420106258366467e-05
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n2",
+   "mae": 0.013598572216317816,
+   "rmse": 0.017008546672652065,
+   "sd": 0.0004433771930804393
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "XJTU",
+   "mode": "n2",
+   "mae": 0.013111450920372261,
+   "rmse": 0.017836497019264676,
+   "sd": 0.00031898085209783105
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "XJTU",
+   "mode": "n2",
+   "mae": 0.015634689869922978,
+   "rmse": 0.02042895805761344,
+   "sd": 0.000477674625345791
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n3",
+   "mae": 0.007147685556404565,
+   "rmse": 0.009459790999439938,
+   "sd": 6.673273662567946e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "XJTU",
+   "mode": "n3",
+   "mae": 0.007039011175209706,
+   "rmse": 0.009246666276679387,
+   "sd": 3.879081265719478e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "XJTU",
+   "mode": "n3",
+   "mae": 0.008213865687013587,
+   "rmse": 0.011395920475236835,
+   "sd": 0.00011245748156477438
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n3",
+   "mae": 0.009482942851674551,
+   "rmse": 0.012966916173193866,
+   "sd": 6.941298204451532e-05
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "XJTU",
+   "mode": "n3",
+   "mae": 0.00934783416597335,
+   "rmse": 0.01360105808497847,
+   "sd": 0.00024698729282706685
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "XJTU",
+   "mode": "n3",
+   "mae": 0.011295275426730858,
+   "rmse": 0.016384841778420717,
+   "sd": 0.0005186829352225447
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n4",
+   "mae": 0.007198596229647281,
+   "rmse": 0.009102589680950486,
+   "sd": 4.5631727982791044e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "XJTU",
+   "mode": "n4",
+   "mae": 0.007035120994518134,
+   "rmse": 0.009007997417062912,
+   "sd": 3.2481643582297924e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "XJTU",
+   "mode": "n4",
+   "mae": 0.008175814182698094,
+   "rmse": 0.010977291050315032,
+   "sd": 0.00017765228336232214
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "XJTU",
+   "mode": "n4",
+   "mae": 0.008386763102465953,
+   "rmse": 0.01141537468737292,
+   "sd": 9.095630671434522e-05
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "XJTU",
+   "mode": "n4",
+   "mae": 0.008158695045117945,
+   "rmse": 0.011861664866869298,
+   "sd": 0.00011370120686063747
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "XJTU",
+   "mode": "n4",
+   "mae": 0.00981463663817972,
+   "rmse": 0.014117694798499301,
+   "sd": 0.0002381859495024489
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n1",
+   "mae": 0.014708446577148551,
+   "rmse": 0.016091331931568212,
+   "sd": 0.0007485587617828446
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "HUST",
+   "mode": "n1",
+   "mae": 0.010079266223038267,
+   "rmse": 0.011596619791660025,
+   "sd": 9.567351973313948e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "HUST",
+   "mode": "n1",
+   "mae": 0.020769183572975122,
+   "rmse": 0.023759157236205097,
+   "sd": 0.0015578620476622356
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n1",
+   "mae": 0.04672135504490819,
+   "rmse": 0.05189210557221972,
+   "sd": 0.00044729605849832236
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "HUST",
+   "mode": "n1",
+   "mae": 0.03285868859074319,
+   "rmse": 0.04036956901919984,
+   "sd": 0.00017473645770115602
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "HUST",
+   "mode": "n1",
+   "mae": 0.061736552414180114,
+   "rmse": 0.06861291208461166,
+   "sd": 0.0006354526456288543
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n2",
+   "mae": 0.01153214278590728,
+   "rmse": 0.012710773479647445,
+   "sd": 0.00020713897519383226
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "HUST",
+   "mode": "n2",
+   "mae": 0.009663132445912544,
+   "rmse": 0.011223702824323615,
+   "sd": 0.00014231825896480538
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "HUST",
+   "mode": "n2",
+   "mae": 0.014722370208263566,
+   "rmse": 0.016770125767947255,
+   "sd": 0.00024251380424717502
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n2",
+   "mae": 0.023824289320532595,
+   "rmse": 0.030023184456388453,
+   "sd": 0.0006198358709978357
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "HUST",
+   "mode": "n2",
+   "mae": 0.03712501504413369,
+   "rmse": 0.057356489661333866,
+   "sd": 0.00014566477661246481
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "HUST",
+   "mode": "n2",
+   "mae": 0.04644735546673938,
+   "rmse": 0.053220100400994855,
+   "sd": 0.0020150433378858814
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n3",
+   "mae": 0.009155780460132771,
+   "rmse": 0.010079101665203056,
+   "sd": 5.839883507776376e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "HUST",
+   "mode": "n3",
+   "mae": 0.007733167213065528,
+   "rmse": 0.008760091713658892,
+   "sd": 3.2665509469609424e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "HUST",
+   "mode": "n3",
+   "mae": 0.01170234005232045,
+   "rmse": 0.012930029014495015,
+   "sd": 0.00010152973996112702
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n3",
+   "mae": 0.021126310584389872,
+   "rmse": 0.02600893742227343,
+   "sd": 0.0002850840340191078
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "HUST",
+   "mode": "n3",
+   "mae": 0.028088908983795437,
+   "rmse": 0.035557705836122395,
+   "sd": 0.00016347640872967873
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "HUST",
+   "mode": "n3",
+   "mae": 0.021490023167142224,
+   "rmse": 0.027043201529471556,
+   "sd": 0.000603844296339925
+  },
+  {
+   "source": "paper_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n4",
+   "mae": 0.009905217435093715,
+   "rmse": 0.011058293464207081,
+   "sd": 6.699556571282076e-05
+  },
+  {
+   "source": "paper_gbdt",
+   "dataset": "HUST",
+   "mode": "n4",
+   "mae": 0.008584099044868974,
+   "rmse": 0.009875724020891223,
+   "sd": 1.9425855733893794e-05
+  },
+  {
+   "source": "paper_pinn3",
+   "dataset": "HUST",
+   "mode": "n4",
+   "mae": 0.01233700042195561,
+   "rmse": 0.014189406758847334,
+   "sd": 0.00016875548105012257
+  },
+  {
+   "source": "strict_pinn_lai",
+   "dataset": "HUST",
+   "mode": "n4",
+   "mae": 0.022643050390301848,
+   "rmse": 0.027404407399373238,
+   "sd": 0.0002264965949119491
+  },
+  {
+   "source": "strict_gbdt",
+   "dataset": "HUST",
+   "mode": "n4",
+   "mae": 0.029048262257297307,
+   "rmse": 0.036532064581339355,
+   "sd": 4.427994226769863e-05
+  },
+  {
+   "source": "strict_pinn3",
+   "dataset": "HUST",
+   "mode": "n4",
+   "mae": 0.021485393103547325,
+   "rmse": 0.02683325714705561,
+   "sd": 0.0002573921182394722
+  }
+ ]
+}

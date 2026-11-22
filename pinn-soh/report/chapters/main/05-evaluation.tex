@@ -1,0 +1,159 @@
+\chapter{Thực nghiệm và đánh giá}
+\label{chap:evaluation}\label{ch:ketqua}
+
+\section{Thiết lập thực nghiệm}\label{sec:thietlap}
+
+Thực nghiệm dùng bốn bộ dữ liệu XJTU, TJU, MIT và HUST (\Cref{tab:datastats}) với giao thức ở \Cref{sec:protocol}: kiểm
+định chéo 5 fold theo cell, 5 lần lặp (3 lần với các thí nghiệm về sau) và bốn mức nhãn 10, 30, 50 và 70\,\% số cell.
+Chỉ số chính là MAE theo cell trên tập kiểm tra, đơn vị $10^{-3}$ SOH. RMSE, MAPE và $R^2$ được báo cáo thêm
+(\Cref{sec:lt_danhgia}). Tỉ số nhỏ hơn 1 nghĩa là mô hình đứng trước có sai số thấp hơn. Hai mô hình được so bằng kiểm
+định Wilcoxon ghép cặp theo cell, và giá trị $p$ được hiệu chỉnh Holm khi cùng một phép so lặp trên nhiều bộ. Các mô hình
+cơ sở là Ridge, GPR, GBDT, MLP, CNN, LSTM, Transformer, PINN-sup và PINN hộp đen (\Cref{tab:models}). Với bài báo gốc, mốc
+so sánh là PINN4SOH trên đúng cách chia của bài (\Cref{ch:sosanh}). Mọi lượt chạy trên CPU, mỗi lượt một luồng với hạt
+giống cố định, bằng Python 3.11, PyTorch 2.14 và scikit-learn 1.9. \Cref{tab:exps} liệt kê các thí nghiệm và số lượt
+chạy.
+
+Kết quả trong chương được chia làm hai loại. Kết quả xác nhận đến từ các mô hình và cấu hình đã chốt trước khi đọc dự đoán
+trên tập kiểm tra: PINN-semi, các mô hình đối chứng, PINN-lai cố định, các thí nghiệm ngân sách đo và cập nhật, HiGBDT và
+các nhánh dự báo. Kết quả hậu kiểm đến từ các lựa chọn đưa ra sau khi đã xem kết quả kiểm tra: PINN-lai tinh chỉnh,
+HiPINN-lai, nhánh theo đời, dạng trung vị của HiPINN và quy tắc chọn mô hình dự báo. Kết quả hậu kiểm được ghi rõ ở từng
+chỗ, và với HiPINN có thêm một phép kiểm tra trên nửa tập xác thực không dùng khi chọn (\Cref{sec:e33res}).
+
+\section{Kết quả}\label{sec:ketqua}
+
+Mọi kết quả trong mục này dùng giao thức không rò rỉ của Mục~\ref{sec:protocol}. Riêng phần so sánh với PINN4SOH ở
+\Cref{ch:sosanh} dùng cách chia của bài.
+
+\subsection{Kiểm toán rò rỉ}\label{sec:leakres}
+
+\input{generated/doan_ro_ri}
+
+\subsection{PINN bán giám sát và học có nhãn theo lượng nhãn}\label{sec:labels}
+
+Bảng~\ref{tab:big} cho MAE của mọi mô hình trong thí nghiệm này (Ridge, GPR, GBDT, MLP, PINN-sup, PINN hộp đen,
+PINN-semi) ở bốn mức nhãn, 5 lần lặp $\times$ 5 fold. Bảng~\ref{tab:cmp} so PINN-semi với MLP và GBDT bằng kiểm định ghép
+cặp theo cell.
+
+\input{generated/bang_nhan}
+
+Lợi ích của PINN-semi rõ nhất khi có ít nhãn. Ở 10\,\% nhãn, tỉ số MAE của PINN-semi so với MLP là XJTU 0{,}60, TJU 0{,}90,
+MIT 0{,}39 và HUST 0{,}61, thấp hơn có ý nghĩa thống kê trên cả bốn bộ (Bảng~\ref{tab:cmp}). Ở mức này mỗi fold chỉ có
+6--13 cell có nhãn, nên MLP dễ quá khớp. Hàm mất mát vật lý trên các cell không nhãn buộc mạng cho quỹ đạo hợp lý trên
+chính những cell nó chưa có nhãn. Quy đổi theo lượng nhãn bằng nội suy log-tuyến tính giữa các mức, PINN-semi dùng
+10\,\% nhãn đạt sai số mà MLP cần XJTU 45\,\%, TJU 17\,\%, MIT 33\,\% và HUST 25\,\% nhãn mới đạt, tức tiết kiệm 1{,}7--4{,}5
+lần số nhãn.
+
+Lợi ích giảm dần khi thêm nhãn. Ở 30\,\% nhãn, PINN-semi vẫn thấp hơn MLP có ý nghĩa thống kê trên cả bốn bộ, với tỉ số từ
+0{,}76 (MIT) tới 0{,}96 (TJU), nhưng với kiểm định bảo thủ ở mức fold, kết luận chỉ còn đứng vững trên MIT. Ở 70\,\% nhãn,
+mọi cell huấn luyện đều có nhãn, PINN-semi trùng PINN-sup và vật lý chỉ còn vai trò chuẩn hoá. Tỉ số so với MLP khi đó là
+XJTU 0{,}96, TJU 1{,}09, MIT 0{,}85 và HUST 0{,}94: cải thiện có ý nghĩa thống kê trên MIT, còn trên TJU thì MLP tốt hơn có ý
+nghĩa thống kê. Trung bình nhân của tỉ số qua bốn bộ đi từ 0{,}60 (10\,\%) qua 0{,}86 (30\,\%), 0{,}92 (50\,\%) tới 0{,}96
+(70\,\%). Nhãn càng đủ, ràng buộc vật lý càng ít mang thông tin mới.
+
+So với các mô hình học có nhãn khác, GBDT là đối thủ mạnh nhất. Nó thấp hơn PINN-semi có ý nghĩa thống kê ở 10\,\% nhãn
+(TJU) và ở 30, 50, 70\,\% nhãn (XJTU, TJU, MIT), còn PINN-semi chỉ thấp hơn GBDT có ý nghĩa thống kê ở HUST 30\,\%. GPR kém
+GBDT ở 16/16 trường hợp bộ $\times$ mức nhãn nhưng vẫn thấp hơn PINN-semi ở 10/16. Ridge tốt hơn MLP ở 10\,\% nhãn trên
+XJTU, MIT và HUST, nhưng cải thiện chậm khi thêm nhãn. Như vậy vật lý cải thiện rõ mạng nơ-ron khi ít nhãn và đưa nó tới
+gần mô hình cây ở 10\,\% nhãn (tỉ số so với GBDT 0{,}95--1{,}10), nhưng PINN-semi đơn lẻ chưa vượt được GBDT.
+
+\input{generated/bang_ti_so}
+
+\subsection{Quỹ đạo dự đoán theo lượng nhãn}\label{sec:traj}
+
+\Cref{fig:traj} đặt cạnh nhau dự đoán cho cùng một cell khi lượng nhãn tăng từ 10 lên 30 và 70\,\%. Khi ít nhãn, cả MLP
+và PINN-semi bám được hình dạng của quỹ đạo nhưng lệch mức, rõ nhất ở TJU và HUST. Thêm nhãn chủ yếu làm giảm phần lệch mức
+này chứ không làm thay đổi hình dạng. Ở 10\,\% nhãn, dự đoán của MLP dao động mạnh hơn và có những đoạn đi lên, còn
+PINN-semi giữ được xu hướng giảm. Khoảng cách giữa hai mô hình thu hẹp dần khi nhãn tăng.
+\input{generated/doan_quy_dao}
+
+\begin{figure}[!htbp]\centering
+\includegraphics[width=0.92\textwidth]{graphics/fig_pred_traj.pdf}
+\caption[Quỹ đạo SOH của cùng một cell kiểm tra mỗi bộ khi có 10, 30 và 70\,\% số cell mang nhãn]{Quỹ đạo SOH của cùng
+một cell kiểm tra mỗi bộ khi có 10, 30 và 70\,\% số cell mang nhãn (lần lặp 0), dự đoán bởi MLP, PINN-semi và PINN-lai
+(cấu hình cố định). Cell được chọn là cell có sai số MLP ở
+trung vị của bộ tại 30\,\% nhãn, bỏ qua các cell có nhãn nhảy bất thường giữa hai chu kỳ; trục dọc theo dải SOH thực đo
+nên vài chu kỳ đầu của XJTU vượt khỏi khung.}\label{fig:traj}
+\end{figure}
+
+\subsection{Lợi ích của PINN-semi đến từ đâu}\label{sec:source}
+
+\input{generated/bang_nguon_loi}
+
+Bảng~\ref{tab:source} tách lợi ích ở 30\,\% nhãn. Chỉ riêng ràng buộc đơn điệu đã mang lại 62--95\,\% mức giảm sai số
+(thang log) của PINN-semi so với MLP. Bỏ $\mathcal{L}_\text{ode}$ và $\mathcal{L}_\text{range}$ làm MAE bằng 1{,}01--1{,}11
+lần PINN-semi đầy đủ, lớn nhất ở MIT. Ở 10\,\% nhãn, phần lợi ích do áp hàm mất mát vật lý lên cell không nhãn (PINN-semi
+so với PINN-sup, tỉ số XJTU 0{,}74, TJU 0{,}94, MIT 0{,}62, HUST 0{,}73) chiếm 50--64\,\% mức giảm sai số so với MLP. Động học
+xám tốt hơn động học hộp đen kiểu PINN4SOH có ý nghĩa thống kê ở 4 trong 16 trường hợp và kém hơn có ý nghĩa thống kê ở 1.
+Ở 30\,\% nhãn, sai số của PINN hộp đen gần như trùng biến thể chỉ đơn điệu (chênh không quá 2\,\%). Điều này phù hợp với
+giả thuyết rằng khi $G$ nhận cả $u_t$, mạng học được $G \approx u_t$ và phần dư động học được thoả mãn một cách tầm thường.
+Vì sao phần vật lý đóng góp chủ yếu qua ràng buộc đơn điệu được phân tích ở \Cref{sec:vatly}.
+
+\subsection{Mô hình chuỗi thời gian, GBDT và PINN-lai}\label{sec:e20res}
+
+Bảng~\ref{tab:allmae} đặt bốn mô hình học sâu của đề cương cạnh GBDT, PINN-semi, PINN-lai và HiPINN-lai, cùng fold, cùng
+cell có nhãn và 3 lần lặp.
+
+\input{generated/bang_mae_chinh}
+
+So với MLP, tỉ số MAE của CNN là 0{,}37--0{,}90, của LSTM 0{,}36--0{,}90 và của Transformer 0{,}43--0{,}93. Mô hình chuỗi
+thấp hơn MLP có ý nghĩa thống kê ở 42/48 phép so. Nhìn nhiều chu kỳ cho mô hình thấy xu thế của đặc trưng sạc và làm
+trung bình nhiễu đo của từng chu kỳ. Trong ba mô hình chuỗi, LSTM thấp nhất ở 8/16 trường hợp. Mô hình chuỗi tốt nhất
+thấp hơn GBDT ở 4/16 trường hợp (mọi mức nhãn trên HUST) và thấp hơn PINN-semi ở 14/16.
+
+\input{generated/doan_pinn_lai}
+
+\input{generated/bang_lich_su}
+
+\input{generated/doan_rmse}
+
+\input{generated/bang_rmse}
+
+\subsection{Khoảng dự đoán}\label{sec:conformal}
+
+PINN-lai được gắn khoảng dự đoán 90\,\% bằng phương pháp conformal tách tập, hiệu chỉnh trên tập xác thực của từng fold.
+Dạng thích nghi chia phần dư cho độ vênh giữa nhóm PINN và GBDT. Độ phủ thực tế trên tập kiểm tra là 84{,}9--92{,}6\,\% với
+độ rộng cố định và 86{,}3--92{,}9\,\% với độ rộng thích nghi, trung bình 88{,}8\,\%. Độ rộng trung bình của dạng thích nghi
+là 0{,}65--10{,}19\,\% SOH. Với độ rộng thích nghi, 14--25\,\% số cell có độ phủ dưới 80\,\%. Đó là các cell bị lệch mức
+suốt cả đời.
+
+\subsection{Ngân sách đo và cập nhật khi dùng}\label{sec:budgetres}
+
+\input{generated/bang_ngan_sach}
+
+\begin{figure}[!htbp]\centering
+% Hình chép từ báo cáo đã nộp (không còn dữ liệu để vẽ lại); nhãn trục hoành "cell train" được viết lại bằng tiếng
+% Việt: ô trắng phủ đúng dòng nhãn cũ (toạ độ lấy bằng pdftotext -bbox, đơn vị là phần của khung hình) và nhãn mới
+% cùng phông TeX Gyre Heros.
+\begin{tikzpicture}
+\node[anchor=south west, inner sep=0] (img) at (0,0) {\includegraphics[width=\textwidth]{graphics/fig_e28_budget.pdf}};
+\begin{scope}[x={(img.south east)}, y={(img.north west)}]
+\fill[white] (0.0926, 0.1220) rectangle (0.4927, 0.1678);
+\fill[white] (0.5803, 0.1220) rectangle (0.9800, 0.1678);
+\node[inner sep=0, font=\fontsize{8.4}{10}\fontfamily{qhv}\selectfont] at (0.2927, 0.1460)
+  {\% số chu kỳ của cell huấn luyện có đo dung lượng};
+\node[inner sep=0, font=\fontsize{8.4}{10}\fontfamily{qhv}\selectfont] at (0.7802, 0.1460)
+  {\% số chu kỳ của cell huấn luyện có đo dung lượng};
+\end{scope}
+\end{tikzpicture}
+\caption[MAE theo phần trăm số chu kỳ của cell huấn luyện có đo dung lượng]{MAE theo cell trên tập kiểm tra theo phần trăm
+số chu kỳ của cell huấn luyện có đo dung lượng (hai trục thang log). Nét đứt: nhãn theo cell (10, 30, 50, 70\,\% số cell
+có nhãn đầy đủ); nét liền: đo thưa mọi cell huấn luyện theo lịch $qL$, $q$ = 0{,}5; 0{,}2; 0{,}1; 0{,}05.}\label{fig:e28}
+\end{figure}
+
+Gắn nhãn đầy đủ cho 30\,\% số cell tương ứng 43--44\,\% số chu kỳ huấn luyện. Đo mỗi $0{,}05L$ chu kỳ trên mọi cell chỉ
+dùng 1{,}2--6{,}0\,\% số chu kỳ, ít hơn 7--37 lần, nhưng PINN-lai học theo cách này có MAE bằng 0{,}85--0{,}93 lần PINN-lai
+học với 30\,\% số cell, thấp hơn có ý nghĩa thống kê trên cả bốn bộ (Bảng~\ref{tab:e28}, Hình~\ref{fig:e28}). So với 70\,\%
+số cell, tỉ số là 0{,}97--1{,}05: tốt hơn có ý nghĩa thống kê ở TJU và kém hơn có ý nghĩa thống kê ở MIT. Lý do là phần lớn
+sai số là lệch mức riêng của từng cell, mô hình chỉ học được khi thấy nhãn của chính cell đó, còn các chu kỳ liền nhau của
+một cell gần như lặp lại thông tin của nhau.
+
+\input{generated/doan_kalman}
+
+\input{generated/doan_cap_nhat_hi}
+
+\input{generated/doan_e33}
+
+\FloatBarrier
+\section{Thảo luận}\label{ch:sosanh}
+
+\input{generated/doan_so_sanh}

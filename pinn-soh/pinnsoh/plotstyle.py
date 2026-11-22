@@ -196,7 +196,8 @@ def figure_note(fig, text, y=-0.02):
 
 def save(fig, path_noext, also_pdf=True, dpi=None):
     """Lưu .png cho HTML/Word và .pdf vector cho LaTeX."""
-    fig.savefig(f'{path_noext}.png', dpi=dpi or plt.rcParams['savefig.dpi'])
+    # không ghi thời điểm tạo vào file -> vẽ lại cùng dữ liệu cho file giống từng byte (git không báo đổi)
+    fig.savefig(f'{path_noext}.png', dpi=dpi or plt.rcParams['savefig.dpi'], metadata={'Software': None})
     if also_pdf:
-        fig.savefig(f'{path_noext}.pdf')
+        fig.savefig(f'{path_noext}.pdf', metadata={'CreationDate': None, 'Producer': None})
     plt.close(fig)

@@ -1,0 +1,35 @@
+\chapter{Kết luận và hướng phát triển}
+\label{chap:conclusion}\label{ch:ketluan}
+
+\section{Kết luận}
+
+\input{generated/doan_ket_luan}
+
+\section{Hạn chế}
+
+Hạn chế lớn nhất là một mô hình cây đơn giản (GBDT) vẫn là đối thủ khó nhất. PINN-semi đơn lẻ chưa vượt được nó khi có
+từ 30\,\% nhãn, và chỉ khi ghép với GBDT thành PINN-lai mới thấp hơn GBDT ở phần lớn trường hợp. Ràng buộc vật lý chưa
+được đưa vào chính mô hình cây. Phần vật lý cũng đóng góp chủ yếu qua tiên nghiệm đơn điệu và miền giá trị: các tham số
+hoá lý $\lambda, E_a$ không được dữ liệu xác định, và tốc độ $r$ của dạng đạo hàm riêng không phải tốc độ suy giảm thật
+của cell (\Cref{sec:vatly}). Đồ án không tái lập được chính xác số công bố của PINN4SOH vì không dựng lại được môi trường
+gốc (GPU, phiên bản thư viện), nên báo cáo nêu cả số công bố lẫn số chạy lại. Khoảng dự đoán 90\,\% chưa đạt độ phủ danh
+nghĩa ở mọi bộ.
+
+Một số lựa chọn được đưa ra sau khi đã có kết quả trên tập kiểm tra: bản tinh chỉnh của PINN-lai, việc thêm đặc trưng
+lịch sử trong HiPINN-lai, nhánh theo đời và dạng trung vị của HiPINN, và quy tắc chọn mô hình dự báo. Các kết quả này được
+ghi rõ là phân tích hậu kiểm và chưa được kiểm chứng trên dữ liệu mới. Các lựa chọn rời rạc ở giai đoạn phát triển (thành
+phần của PINN-lai, dạng đặc trưng lịch sử, độ dài cửa sổ của mô hình chuỗi) được chốt trên tập xác thực của lần lặp 0 gộp
+qua 5 fold. Mỗi cell vì vậy có thể đã góp vào các lựa chọn đó khi nó là cell xác thực ở một fold khác, dù các lựa chọn
+được chốt trước khi đọc dự đoán trên tập kiểm tra. Mọi tham số liên tục và mọi lựa chọn ở bước đánh giá đều làm riêng trong
+từng fold. PINN-lai và các thí nghiệm về sau dùng 3 thay vì 5 lần lặp. Cuối cùng, đồ án chưa xử lý dữ liệu thô của từng bộ
+nên chưa thử được các đặc trưng cần đường cong đầy đủ, và chưa có dữ liệu vận hành ngoài phòng thí nghiệm hay dữ liệu nhiều
+cell ghép song song (giai đoạn 2 của đề cương).
+
+\section{Hướng phát triển}
+
+Hướng tiếp theo trước hết là giai đoạn 2 của đề cương: dữ liệu vận hành ngoài phòng thí nghiệm và dữ liệu nhiều cell
+ghép song song. Trích lại đặc trưng từ tín hiệu điện áp, dòng điện gốc của từng bộ sẽ cho phép thử các đặc trưng cần
+đường cong đầy đủ như dung lượng gia tăng hay điện áp hồi phục. Vì GBDT là đối thủ mạnh nhất của mạng có vật lý, một
+hướng đáng thử là đưa ràng buộc vật lý vào chính mô hình cây. Khoảng dự đoán và khoảng RUL cần đạt độ phủ đặt ra, chẳng
+hạn bằng cách hiệu chỉnh trên nhiều cell hơn hoặc theo từng cell. Các phân tích hậu kiểm và các lựa chọn mô hình cũng cần
+được kiểm chứng trên một bộ dữ liệu chưa dùng khi phát triển.

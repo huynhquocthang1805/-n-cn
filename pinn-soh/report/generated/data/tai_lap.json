@@ -1,0 +1,18 @@
+{
+ "leak_refs": {
+  "n": 5,
+  "same": 5
+ },
+ "sample": {
+  "same": 20,
+  "n": 20,
+  "text": "18/20] XJTU->TJU mlp k3 s0                MAE_cell 0.0896      4s  (đã 5 phút, còn ~1 phút)\n[   19/20] gbdt XJTU f0.3 cv0-0               MAE_cell 0.0100      7s  (đã 6 phút, còn ~0 phút)\n[   20/20] ridge XJTU f0.3 cv0-0              MAE_cell 0.0156      0s  (đã 6 phút, còn ~0 phút)\nxong sau 6 phút\n\nthí nghiệm lượt                                                 kết quả\nE13        A_XJTU_mlp_f0.3_s0_global_global_cv0-0of5.json       giống từng bit\nE13        C_XJTU_pinn_semi_f0.3_s0_global_global_cv0-0of5.json giống từng bit\nE13        F_XJTU_mlp_f0.7_s0_global_global_cv0-0of5.json       giống từng bit\nE13        B_XJTU_pinn_sup_f0.3_s0_global_global_cv0-0of5.json  giống từng bit\nE13        D_XJTU_pinn_semi_f0.3_s0_global_global_cv0-0of5.json giống từng bit\nE13        E_XJTU_pinn_semi_f0.3_s0_global_global_cv0-0of5.json giống từng bit\nE13        G_XJTU_pinn_semi_f0.7_s0_global_global_cv0-0of5.json giống từng bit\nE15        row_XJTU_cv0-0.json                                  giống từng bit\nE15        minmax_XJTU_cv0-0.json                               giống từng bit\nE15        life3s_XJTU_cv0-0.json                               giống từng bit\nE15        normtest_XJTU_cv0-0.json                             giống từng bit\nE16        ridge_XJTU_f0.3_cv0-0of5.json                        giống từng bit\nE16        gbdt_XJTU_f0.3_cv0-0of5.json                         giống từng bit\nE16        gpr_XJTU_f0.3_cv0-0of5.json                          giống từng bit\nE17        B_XJTU_pinn_sup_f0.1_s0_global_global_cv0-0of5.json  giống từng bit\nE17        H_XJTU_pinn_bb_f0.1_s0_global_global_cv0-0of5.json   giống từng bit\nE17        H_XJTU_pinn_bb_f0.3_s0_global_global_cv0-0of5.json   giống từng bit\nE18        samenorm_XJTU_to_TJU_mlp_k3_s0_global.json           giống từng bit\nE18        samenorm_XJTU_to_TJU_pinn_semi_k3_s0_global.json     giống từng bit\nE19        samenorm_XJTU_to_TJU_gbdt_k3_s0_global.json          giống từng bit\n\n20/20 lượt giống từng bit với kết quả công bố\n"
+ },
+ "e27": {
+  "runs": 1002,
+  "summary_n": 216,
+  "summary_same": 216,
+  "cells": 3852,
+  "cells_same": true
+ }
+}

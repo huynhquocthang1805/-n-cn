@@ -1,0 +1,22 @@
+\begin{table}[!t]\centering\small
+\caption[Các thí nghiệm có kết quả trong báo cáo]{Các thí nghiệm có kết quả trong báo cáo và số lượt huấn luyện (mỗi lượt là một mô hình trên một fold, hoặc một lần chạy trên một nhóm; lượt trùng cấu hình chỉ tính một lần).}\label{tab:exps}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r}\toprule
+Thí nghiệm & Lượt \\\midrule
+Kiểm định chéo chính: MLP, PINN-semi ở 4 mức nhãn; PINN-sup và hai biến thể lược bỏ thành phần ở 30\,\% & 1.100 \\
+Kiểm toán rò rỉ: 4 cách chia và chuẩn hoá sai, MLP 70\,\% nhãn & 160 \\
+Ridge, GPR, GBDT ở 4 mức nhãn & 1.200 \\
+PINN-sup ở 10 và 50\,\%; PINN hộp đen ở 4 mức nhãn & 600 \\
+PINN-lai: 9 hướng cải tiến chọn trên tập xác thực; 3 PINN-semi, GBDT, 3 lần lặp, 4 mức nhãn & 1.680 \\
+CNN, LSTM, Transformer: chọn độ dài cửa sổ trên tập xác thực; 3 lần lặp, 4 mức nhãn & 840 \\
+Đầu vào có lịch sử của cell: chọn dạng trên tập xác thực; PINN-semi, MLP, GBDT & 1.190 \\
+Ngân sách đo: đo thưa mọi cell huấn luyện theo 4 lịch đo & 1.560 \\
+GBDT-cập nhật: cập nhật SOH từ lần đo gần nhất & 240 \\
+Dự báo SOH, dung lượng, RUL: HiGBDT, HiPINN, các nhánh và mô hình đối chứng, 2 ngân sách nhãn, 3 lần lặp & 120 \\
+HiGBDT cho bài toán cập nhật: GBDT-cập nhật, HiGBDT-$\Delta$, -R, -V trên 4 lịch đo & 60 \\
+PINN-lai, GBDT và PINN-semi trên đúng 39 nhóm của PINN4SOH, 2 cách tiền xử lý, 3 hạt giống & 1.002 \\
+Mã gốc PINN4SOH trên 39 nhóm đánh giá của bài, 10 lần mỗi nhóm & 390 \\
+Phân tích đặc trưng: 120 fold $\times$ 9--10 lần huấn luyện GBDT với các tập đầu vào khác nhau & 1.110 \\
+Độ nhạy của bộ lọc ngoại lai: GBDT với 7 cách đặt khác của bộ lọc, 4 bộ, 30\,\% nhãn & 420 \\
+\midrule
+Tổng & 11.672 \\
+\bottomrule\end{tabularx}\end{table}

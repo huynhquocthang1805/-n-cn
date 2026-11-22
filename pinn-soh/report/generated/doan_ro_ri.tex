@@ -1,0 +1,12 @@
+Bảng~\ref{tab:leak} cho thấy mức độ của từng dạng rò rỉ khi chỉ đổi đúng một yếu tố so với giao thức chuẩn. Chia theo chu kỳ làm sai số thấp đi 1{,}2--1{,}8 lần dù mô hình và dữ liệu không đổi. Bộ “dự đoán” không dùng đặc trưng nào, chỉ chép nhãn của chu kỳ huấn luyện gần nhất, có sai số bằng 0{,}01--0{,}15 lần mô hình thật được đánh giá đúng, đúng như Mệnh đề~\ref{md:rowleak}. Chuẩn hoá min--max theo cả vòng đời cell, như trong mã PINN4SOH, làm sai số thấp giả tạo trên XJTU (0{,}80) và HUST (0{,}46), nơi SOH cuối đời của mọi cell gần như bằng nhau nên vị trí trong vòng đời gần như đủ để suy ra SOH. Trên TJU (1{,}51) và MIT (2{,}76) nó làm sai số tăng vì xoá mất mức tuyệt đối của đặc trưng. Dù theo chiều nào, con số đo được cũng không phản ánh sai số khi triển khai, vì tuổi thọ của cell đang vận hành chưa biết trước. Lọc ngoại lai dùng cả vòng đời (0{,}87--1{,}01) và chuẩn hoá gồm cả tập kiểm tra (0{,}98--1{,}03) tác động nhỏ hơn nhưng vẫn là rò rỉ.
+
+\begin{table}[!htbp]\centering\small
+\caption[Kiểm toán rò rỉ]{Kiểm toán rò rỉ: MAE theo cell của cùng một MLP (70\,\% nhãn, 2 lần lặp $\times$ 5 fold) theo giao thức không rò rỉ, và tỉ số giữa MAE dưới mỗi cách làm sai với MAE đó (nhỏ hơn 1: sai số trông thấp hơn thực tế). Cột cuối: chia theo chu kỳ rồi chép nhãn của chu kỳ huấn luyện gần nhất trong cùng cell, không dùng đặc trưng nào. Bảng đo độ lệch của đánh giá chứ không so mô hình, nên không có chiều tốt hơn và không in đậm: tỉ số càng xa 1, cách làm sai càng làm lệch con số báo cáo.}\label{tab:leak}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{lrrrrrr}\toprule
+ & & \multicolumn{5}{c}{tỉ số MAE dưới cách làm sai so với MAE không rò rỉ} \\\cmidrule(lr){3-7}
+Bộ & \begin{tabular}[b]{@{}r@{}}MAE không\\rò rỉ ($\times10^{-3}$)\end{tabular} & \begin{tabular}[b]{@{}r@{}}chia theo\\chu kỳ\end{tabular} & \begin{tabular}[b]{@{}r@{}}min--max\\theo cell\end{tabular} & \begin{tabular}[b]{@{}r@{}}lọc dùng cả\\vòng đời\end{tabular} & \begin{tabular}[b]{@{}r@{}}chuẩn hoá gồm\\cả tập kiểm tra\end{tabular} & \begin{tabular}[b]{@{}r@{}}chép\\nhãn\end{tabular} \\\midrule
+XJTU & 13{,}11 & 0{,}55 & 0{,}80 & 0{,}87 & 1{,}03 & 0{,}14 \\
+TJU & 9{,}86 & 0{,}85 & 1{,}51 & 0{,}98 & 1{,}01 & 0{,}10 \\
+MIT & 2{,}80 & 0{,}81 & 2{,}76 & 1{,}01 & 1{,}01 & 0{,}15 \\
+HUST & 17{,}46 & 0{,}64 & 0{,}46 & 0{,}96 & 0{,}98 & 0{,}01 \\
+\bottomrule\end{tabular}\end{adjustbox}\end{table}

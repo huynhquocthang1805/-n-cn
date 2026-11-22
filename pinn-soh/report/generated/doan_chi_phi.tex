@@ -1,0 +1,12 @@
+BMS thường chạy trên vi điều khiển hoặc một máy tính nhúng có bộ nhớ và năng lực tính toán hạn chế, nên chi phí suy luận là một tiêu chí khi triển khai. \Cref{tab:cost} đo chi phí của hai mô hình cuối trên CPU một luồng. Mỗi mạng nghiệm của PINN-lai có 27.137 tham số. Khi suy luận chỉ cần mạng nghiệm, còn mạng tốc độ chỉ dùng lúc học. GBDT của PINN-lai có 100--1000 cây tuỳ bộ. Toàn bộ PINN-lai chiếm 705\,KB--3{,}7\,MB và cần 1{,}10--7{,}32\,ms cho mỗi chu kỳ mới, chủ yếu cho lượt dự đoán của GBDT (0{,}72--6{,}34\,ms), sau đó là ba lượt truyền thẳng (0{,}13--0{,}20\,ms). Bộ lọc xu thế chỉ cần nhớ 10 ước lượng gần nhất của cell. Với một lần đo mỗi chu kỳ sạc, chi phí này nhỏ so với thời gian một lần sạc. HiPINN nặng hơn: 4{,}5--10{,}3\,MB, lớn nhất ở HUST, trong đó nhánh theo đời (GBDT đời còn lại và khuôn quỹ đạo của các cell huấn luyện) chiếm 71--93\,\%. Một lần dự báo cho mọi tầm tới $3L$ mất 18--29\,ms. Dự báo không cần chạy ở mọi chu kỳ, nên HiPINN phù hợp với một máy chủ hay một bộ điều khiển có bộ nhớ từ 11\,MB trở lên, còn PINN-lai đủ nhẹ để chạy sau mỗi lần sạc trên một máy tính nhúng. Các số đo trên một lõi CPU của máy chạy thí nghiệm, không phải trên phần cứng của BMS. Trên vi điều khiển, độ trễ sẽ lớn hơn và cần đo lại.
+
+\begin{table}[!htbp]\centering\small
+\caption[Chi phí tính toán của PINN-lai và HiPINN]{Chi phí tính toán trên CPU một luồng của mô hình trong công cụ dòng lệnh (học ở 30\,\% nhãn trên một fold của mỗi bộ). Tham số mạng nghiệm tính cho một trong ba mạng của PINN-lai; dung lượng là kích thước khi lưu; độ trễ là trung vị của nhiều lần gọi. PINN-lai: một chu kỳ mới (ba mạng nghiệm, GBDT cho một hàng, bộ lọc xu thế). HiPINN: một lần dự báo từ một gốc cho mọi tầm tới $3L$, gồm cả tính đặc trưng lịch sử của cell.}\label{tab:cost}
+\begin{tabular}{lrrrrrr}\toprule
+ & \multicolumn{4}{c}{PINN-lai} & \multicolumn{2}{c}{HiPINN} \\\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+Bộ & \begin{tabular}[b]{@{}r@{}}tham số\\mạng nghiệm\end{tabular} & \begin{tabular}[b]{@{}r@{}}số cây\\GBDT\end{tabular} & \begin{tabular}[b]{@{}r@{}}dung\\lượng\end{tabular} & \begin{tabular}[b]{@{}r@{}}độ trễ\\(ms/chu kỳ)\end{tabular} & \begin{tabular}[b]{@{}r@{}}dung\\lượng\end{tabular} & \begin{tabular}[b]{@{}r@{}}độ trễ\\(ms/dự báo)\end{tabular} \\\midrule
+XJTU & 27.137 & 850 & 3{,}2\,MB & 5{,}90 & 4{,}5\,MB & 18 \\
+TJU & 27.137 & 1000 & 3{,}7\,MB & 7{,}32 & 6{,}3\,MB & 19 \\
+MIT & 27.137 & 850 & 3{,}2\,MB & 5{,}72 & 8{,}5\,MB & 29 \\
+HUST & 27.137 & 100 & 705\,KB & 1{,}10 & 10{,}3\,MB & 18 \\
+\bottomrule\end{tabular}\end{table}

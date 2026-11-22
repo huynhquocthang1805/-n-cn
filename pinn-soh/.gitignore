@@ -5,9 +5,11 @@ venv/
 .ipynb_checkpoints/
 
 # Dữ liệu gốc và kết quả chạy: gửi kèm dạng zip riêng, không đẩy lên git
-PINN4SOH/data/
+PINN4SOH/data
+*.pt
 runs/
-results/
+/results/
+# benchmark/results/ (vài trăm KB, kết quả so với PINN4SOH theo từng cell) được đưa lên git
 
 # Sản phẩm dựng ra
 report.html
@@ -24,3 +26,25 @@ logs/
 *.log
 *.out
 *.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# checkpoint nhỏ của demo (~120 KB) được đưa lên git
+!demo/*.pt
+*.lof
+*.lot
+archive/thesis/do-an/main.pdf
+paper/main.pdf
+
+# bộ nhớ đệm dữ liệu và kết quả phân tích (dựng lại được)
+.cache/
+*.tmp
+
+# bộ dự báo của demo: tự huấn luyện lại khi chạy lần đầu, phụ thuộc phiên bản scikit-learn
+demo/*_dubao.pkl
+report/main.pdf
+*.xdv
+
+# bộ dự báo của demo (HiPINN, E23): học lại lần đầu gọi forecast, không đẩy lên git
+demo/*.pkl

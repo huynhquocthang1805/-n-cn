@@ -1,0 +1,33 @@
+\chapter{Mã nguồn và khả năng tái lập}
+\label{app:source-code}
+
+\noindent
+Mã nguồn của đồ án (dữ liệu, mô hình, thí nghiệm, phân tích và báo cáo này) nằm ở:
+\begin{center}
+  \url{https://github.com/huynhquocthang1805/-n-cn}
+\end{center}
+Dữ liệu là bản đặc trưng công bố kèm PINN4SOH tại \url{https://github.com/wang-fujin/PINN4SOH}.
+
+\section{Chạy lại}
+
+Cần Python 3.11 và các thư viện trong \texttt{requirements.txt}. Bước dựng báo cáo cần thêm pdf\LaTeX{} và Bib\TeX.
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Lệnh & Việc làm \\
+\midrule
+\texttt{python run.py data} & tải dữ liệu, dựng bộ nhớ đệm \\
+\texttt{python run.py E13} (\ldots\ \texttt{E34}) & chạy một thí nghiệm, bỏ qua lượt đã có kết quả \\
+\texttt{python run.py analyze} & bảng và hình từ kết quả \\
+\texttt{python run.py benchmark} & bảng và hình so sánh với PINN4SOH \\
+\texttt{python run.py features} & phân tích đặc trưng đầu vào \\
+\texttt{python run.py report} & dựng báo cáo này \\
+\texttt{python run.py reproduce} & chạy lại 20 lượt mẫu, so với kết quả đã lưu \\
+\texttt{python -m unittest discover -s tests} & kiểm thử: chỉ dùng quá khứ, lịch đo, HiPINN \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Các kiểm tra tái lập}\label{sec:tailap}
+
+\input{generated/doan_tai_lap}
